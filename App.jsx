@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // GLOBAL STYLES
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -18,22 +18,22 @@ input[type=range]{accent-color:#2d5a1b;}
 .pdot{animation:pulseDot 1.8s ease infinite;}
 `;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // STORAGE
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const LS = {
   get:(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch{return d;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DESIGN TOKENS — Aryes palette
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// DESIGN TOKENS ‚Äî Aryes palette
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const T = {
   // Backgrounds
-  bg:       "#f5f0e8",   // crema principal — igual que la landing
+  bg:       "#f5f0e8",   // crema principal ‚Äî igual que la landing
   card:     "#ffffff",
-  cardWarm: "#faf7f2",   // crema más suave para cards internas
+  cardWarm: "#faf7f2",   // crema m√°s suave para cards internas
   muted:    "#ede8df",   // beige neutro
   hover:    "#e8e1d5",
 
@@ -42,7 +42,7 @@ const T = {
   borderDk: "#c8bfb0",
 
   // Text
-  text:     "#1a1710",   // casi negro cálido
+  text:     "#1a1710",   // casi negro c√°lido
   textMd:   "#4a453c",
   textSm:   "#7a7368",
   textXs:   "#a09880",
@@ -72,9 +72,9 @@ const T = {
   sans:     "'Inter', system-ui, sans-serif",
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // ARYES LOGO SVG (hoja verde + wordmark, fiel al original)
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const AryesLogo = ({ height = 36 }) => (
   <svg height={height} viewBox="0 0 160 44" fill="none" xmlns="http://www.w3.org/2000/svg">
     {/* Leaf shape */}
@@ -85,9 +85,9 @@ const AryesLogo = ({ height = 36 }) => (
   </svg>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INVENTORY MATH  (ROP · Safety Stock · EOQ)
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// INVENTORY MATH  (ROP ¬∑ Safety Stock ¬∑ EOQ)
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const avgDaily   = h => (!h?.length ? 0 : h.reduce((s,x)=>s+x.consumed,0)/h.length/30);
 const stdDev     = h => {
   if(!h||h.length<2) return 0;
@@ -114,26 +114,26 @@ const alertLevel = (p, s) => {
   return {level,daysToROP,daysOut,rop:r,ss,eoq:eq,daily,ropDate};
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // DEFAULT DATA
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const DEFAULT_SUPPLIERS = [
   {id:"arg",name:"Argentina",flag:"AR",color:"#1d4ed8",times:{preparation:2,customs:1,freight:4,warehouse:1},
-   company:"Distribuidora del Sur S.A.",contact:"Martín Rodríguez",email:"martin@distrsur.com.ar",phone:"+54 11 4523-7890",whatsapp:"+54 9 11 4523-7890",
+   company:"Distribuidora del Sur S.A.",contact:"Mart√≠n Rodr√≠guez",email:"martin@distrsur.com.ar",phone:"+54 11 4523-7890",whatsapp:"+54 9 11 4523-7890",
    country:"Argentina",city:"Buenos Aires",currency:"USD",paymentTerms:"30",paymentMethod:"Transferencia bancaria",
    minOrder:"500",discount:"5",rating:5,active:true,
-   notes:"Proveedor principal. Envíos martes y jueves. Pedido mínimo USD 500. Descuento 5% por volumen >USD 2000."},
+   notes:"Proveedor principal. Env√≠os martes y jueves. Pedido m√≠nimo USD 500. Descuento 5% por volumen >USD 2000."},
   {id:"ecu",name:"Ecuador",flag:"EC",color:"#15803d",times:{preparation:3,customs:4,freight:8,warehouse:2},
-   company:"Tropical Ingredients Cia. Ltda.",contact:"Andrea Vásquez",email:"avasquez@tropicalingr.ec",phone:"+593 2 234-5678",whatsapp:"+593 99 234-5678",
-   country:"Ecuador",city:"Guayaquil",currency:"USD",paymentTerms:"50",paymentMethod:"Carta de crédito",
+   company:"Tropical Ingredients Cia. Ltda.",contact:"Andrea V√°squez",email:"avasquez@tropicalingr.ec",phone:"+593 2 234-5678",whatsapp:"+593 99 234-5678",
+   country:"Ecuador",city:"Guayaquil",currency:"USD",paymentTerms:"50",paymentMethod:"Carta de cr√©dito",
    minOrder:"800",discount:"0",rating:4,active:true,
-   notes:"Cacao y derivados. Temporada alta oct–dic coincide con cosecha. Precios suben ~15% en enero."},
+   notes:"Cacao y derivados. Temporada alta oct‚Äìdic coincide con cosecha. Precios suben ~15% en enero."},
   {id:"eur",name:"Europa",flag:"EU",color:"#6d28d9",times:{preparation:5,customs:10,freight:25,warehouse:3},
    company:"Europastry Ingredients GmbH",contact:"Klaus Bauer",email:"k.bauer@europastry.de",phone:"+49 89 1234-5678",whatsapp:"",
-   country:"Alemania",city:"Múnich",currency:"EUR",paymentTerms:"60",paymentMethod:"Swift / Wire transfer",
+   country:"Alemania",city:"M√∫nich",currency:"EUR",paymentTerms:"60",paymentMethod:"Swift / Wire transfer",
    minOrder:"2000",discount:"8",rating:5,active:true,
-   notes:"Vainilla, especias y mejoradores premium. Lead time muy largo — planificar con 2 meses de anticipación. Descuento 8% en pedidos >EUR 5000."},
-  {id:"other",name:"Otros",flag:"—",color:"#b45309",times:{preparation:3,customs:5,freight:12,warehouse:2},
+   notes:"Vainilla, especias y mejoradores premium. Lead time muy largo ‚Äî planificar con 2 meses de anticipaci√≥n. Descuento 8% en pedidos >EUR 5000."},
+  {id:"other",name:"Otros",flag:"‚Äî",color:"#b45309",times:{preparation:3,customs:5,freight:12,warehouse:2},
    company:"",contact:"",email:"",phone:"",whatsapp:"",
    country:"",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
    minOrder:"0",discount:"0",rating:3,active:true,notes:""},
@@ -149,8 +149,8 @@ const DEFAULT_PRODUCTS = [
   {id:2,name:"Cacao en polvo",  barcode:"7750895000456",supplierId:"ecu",unit:"kg",stock:30, unitCost:8.50,history:gh(85,.35)},
   {id:3,name:"Especias mixtas", barcode:"5410013000789",supplierId:"eur",unit:"kg",stock:8,  unitCost:45.0,history:gh(14,.45)},
   {id:4,name:"Aceite de oliva", barcode:"8410179000012",supplierId:"eur",unit:"lt",stock:60, unitCost:12.0,history:gh(110,.30)},
-  {id:5,name:"Azúcar blanca",   barcode:"7790895000345",supplierId:"arg",unit:"kg",stock:400,unitCost:0.90,history:gh(580,.15)},
-  {id:6,name:"Glucosa líquida", barcode:"7790895000678",supplierId:"arg",unit:"kg",stock:45, unitCost:3.20,history:gh(130,.20)},
+  {id:5,name:"Az√∫car blanca",   barcode:"7790895000345",supplierId:"arg",unit:"kg",stock:400,unitCost:0.90,history:gh(580,.15)},
+  {id:6,name:"Glucosa l√≠quida", barcode:"7790895000678",supplierId:"arg",unit:"kg",stock:45, unitCost:3.20,history:gh(130,.20)},
   {id:7,name:"Manteca s/sal",   barcode:"7790895000901",supplierId:"arg",unit:"kg",stock:80, unitCost:6.50,history:gh(200,.30)},
   {id:8,name:"Vainilla natural",barcode:"5410013001234",supplierId:"eur",unit:"lt",stock:3,  unitCost:85.0,history:gh(8,.55)},
 ];
@@ -162,12 +162,12 @@ const ALERT_CFG = {
   ok:         {label:"Normal",       dot:T.ok,      bg:T.okBg,    bd:T.okBd,    txt:T.ok,     pri:0},
 };
 
-const fmtDate  = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"}):"—";
-const fmtShort = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short"}):"—";
+const fmtDate  = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"}):"‚Äî";
+const fmtShort = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short"}):"‚Äî";
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // ATOMS
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const Cap = ({children,style:sx})=>(
   <span style={{fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase",color:T.textSm,...sx}}>{children}</span>
 );
@@ -196,16 +196,16 @@ const StockBar = ({stock,r,ss,max})=>{
 };
 
 const Spark = ({history,color=T.textXs})=>{
-  if(!history?.length||history.length<2) return <span style={{fontSize:10,color:T.textXs}}>—</span>;
+  if(!history?.length||history.length<2) return <span style={{fontSize:10,color:T.textXs}}>‚Äî</span>;
   const v=history.map(h=>h.consumed),mx=Math.max(...v),mn=Math.min(...v),W=60,H=20;
   const pts=v.map((x,i)=>`${i/(v.length-1)*W},${H-((mx===mn?.5:(x-mn)/(mx-mn))*(H-3))-1.5}`).join(" ");
   return(<svg width={W} height={H}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" opacity=".7"/>
     <circle cx={(v.length-1)/(v.length-1)*W} cy={H-((mx===mn?.5:(v[v.length-1]-mn)/(mx-mn))*(H-3))-1.5} r="2.5" fill={color}/></svg>);
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // FORM ATOMS
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const inp={width:"100%",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4};
 const Inp=({value,onChange,type="text",placeholder,min,step,style:sx,inputRef,onKeyDown,autoFocus})=>(
   <input ref={inputRef} type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} step={step} onKeyDown={onKeyDown} autoFocus={autoFocus} style={{...inp,...sx}}/>
@@ -236,9 +236,9 @@ const Btn=({onClick,children,variant="primary",small,full,disabled})=>{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const Modal=({title,sub,onClose,children,wide})=>(
   <div style={{position:"fixed",inset:0,background:"rgba(245,240,232,.9)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:900,padding:20}}>
     <div className="au" style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,width:"100%",maxWidth:wide?840:540,maxHeight:"94vh",overflowY:"auto",boxShadow:"0 16px 60px rgba(0,0,0,.1)"}}>
@@ -247,16 +247,16 @@ const Modal=({title,sub,onClose,children,wide})=>(
           {sub&&<Cap style={{color:T.green}}>{sub}</Cap>}
           <h2 style={{fontFamily:T.serif,fontSize:26,fontWeight:500,color:T.text,marginTop:sub?4:0,letterSpacing:"-.01em"}}>{title}</h2>
         </div>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:T.textXs,fontSize:22,lineHeight:1,padding:4,marginTop:2}}>×</button>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:T.textXs,fontSize:22,lineHeight:1,padding:4,marginTop:2}}>√ó</button>
       </div>
       <div style={{padding:"22px 28px 28px"}}>{children}</div>
     </div>
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // PRODUCT FORM
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const ProductForm=({product,suppliers,onSave,onClose})=>{
   const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,history:[]};
   const [f,setF]=useState(product?{...product}:blank);
@@ -266,7 +266,7 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
   const parseCSV=()=>{
     try{
       const rows=csv.trim().split("\n").map(r=>{const[m,c]=r.split(",");return{month:m?.trim(),consumed:+c?.trim()};}).filter(r=>r.month&&!isNaN(r.consumed)&&r.consumed>0);
-      if(!rows.length){alert("No se encontraron datos válidos.");return;}
+      if(!rows.length){alert("No se encontraron datos v√°lidos.");return;}
       setF(p=>({...p,history:rows}));
     }catch{alert("Formato incorrecto. Usar: YYYY-MM,cantidad");}
   };
@@ -279,17 +279,17 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
     <div style={{display:"grid",gap:16}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Field label="Nombre del producto"><Inp value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ej: Harina 000"/></Field>
-        <Field label="Código de barras (EAN)">
+        <Field label="C√≥digo de barras (EAN)">
           <div style={{display:"flex",gap:6}}>
             <Inp inputRef={bRef} value={f.barcode} onChange={e=>set("barcode",e.target.value)} placeholder="Escanear o tipear"/>
-            <button onClick={()=>bRef.current?.focus()} style={{border:`1px solid ${T.border}`,background:T.muted,padding:"0 10px",cursor:"pointer",fontSize:15,color:T.textSm,borderRadius:4}} title="Foco para scanner">▦</button>
+            <button onClick={()=>bRef.current?.focus()} style={{border:`1px solid ${T.border}`,background:T.muted,padding:"0 10px",cursor:"pointer",fontSize:15,color:T.textSm,borderRadius:4}} title="Foco para scanner">‚ñ¶</button>
           </div>
         </Field>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
         <Field label="Proveedor / Origen">
           <Sel value={f.supplierId} onChange={e=>set("supplierId",e.target.value)}>
-            {suppliers.map(s=><option key={s.id} value={s.id}>[{s.flag}] {s.name} — {totalLead(s)}d</option>)}
+            {suppliers.map(s=><option key={s.id} value={s.id}>[{s.flag}] {s.name} ‚Äî {totalLead(s)}d</option>)}
           </Sel>
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
@@ -298,7 +298,7 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
       <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>
       {r!==null&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
-          {[{l:"Punto de pedido (ROP)",v:`${r} ${f.unit}`,h:"Pedir cuando llegue a este nivel"},{l:"Stock de seguridad",v:`${ss} ${f.unit}`,h:"Buffer 95% nivel de servicio"},{l:"Cantidad óptima (EOQ)",v:eq?`${eq} ${f.unit}`:"—",h:"Minimiza costos"}].map((s,i)=>(
+          {[{l:"Punto de pedido (ROP)",v:`${r} ${f.unit}`,h:"Pedir cuando llegue a este nivel"},{l:"Stock de seguridad",v:`${ss} ${f.unit}`,h:"Buffer 95% nivel de servicio"},{l:"Cantidad √≥ptima (EOQ)",v:eq?`${eq} ${f.unit}`:"‚Äî",h:"Minimiza costos"}].map((s,i)=>(
             <div key={i} style={{background:T.cardWarm,padding:"12px 14px"}}>
               <Cap>{s.l}</Cap>
               <div style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:T.text,margin:"4px 0 2px"}}>{s.v}</div>
@@ -308,12 +308,12 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
         </div>
       )}
       <div style={{borderTop:`1px solid ${T.border}`,paddingTop:14}}>
-        <Field label="Historial de consumo mensual" hint="Pegá desde Excel: YYYY-MM,cantidad — una línea por mes. Más historial = cálculos más precisos.">
+        <Field label="Historial de consumo mensual" hint="Peg√° desde Excel: YYYY-MM,cantidad ‚Äî una l√≠nea por mes. M√°s historial = c√°lculos m√°s precisos.">
           <textarea value={csv} onChange={e=>setCsv(e.target.value)} placeholder={"2024-09,410\n2024-10,420\n2024-11,380\n2024-12,460\n2025-01,410\n2025-02,430"}
             style={{width:"100%",height:90,fontFamily:"monospace",fontSize:12,color:T.text,background:T.muted,border:`1px solid ${T.border}`,padding:"9px 11px",resize:"vertical",borderRadius:4,marginTop:5}}/>
           <div style={{display:"flex",gap:10,marginTop:8,alignItems:"center"}}>
             <Btn onClick={parseCSV} variant="ghost" small>Importar historial</Btn>
-            {f.history.length>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>✓ {f.history.length} meses · prom. {Math.round(f.history.reduce((s,h)=>s+h.consumed,0)/f.history.length)} {f.unit}/mes</span>}
+            {f.history.length>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>‚úì {f.history.length} meses ¬∑ prom. {Math.round(f.history.reduce((s,h)=>s+h.consumed,0)/f.history.length)} {f.unit}/mes</span>}
           </div>
         </Field>
       </div>
@@ -325,9 +325,9 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // ORDER MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const OrderModal=({product,supplier,onConfirm,onClose})=>{
   const lead=totalLead(supplier);
   const daily=avgDaily(product.history);
@@ -342,7 +342,7 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
   const stockAfter=product.stock+qty;
   const daysAfter=daily>0?Math.round(stockAfter/daily):999;
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
-  const tfs=[{k:"preparation",l:"Preparación"},{k:"customs",l:"Aduana"},{k:"freight",l:"Flete"},{k:"warehouse",l:"Depósito"}];
+  const tfs=[{k:"preparation",l:"Preparaci√≥n"},{k:"customs",l:"Aduana"},{k:"freight",l:"Flete"},{k:"warehouse",l:"Dep√≥sito"}];
   return(
     <Modal title={product.name} sub="Generar pedido de reabastecimiento" onClose={onClose} wide>
       <div style={{display:"grid",gap:20}}>
@@ -350,13 +350,13 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
           <div style={{background:ALERT_CFG[level].bg,border:`1px solid ${ALERT_CFG[level].bd}`,padding:"11px 14px",borderRadius:4,display:"flex",gap:10,alignItems:"center"}}>
             <span style={{width:8,height:8,borderRadius:"50%",background:ALERT_CFG[level].dot,flexShrink:0,...(level==="order_now"?{animation:"pulseDot 1.8s ease infinite"}:{})}}/>
             <span style={{fontFamily:T.sans,fontSize:12,color:ALERT_CFG[level].txt,fontWeight:600}}>
-              {level==="order_now"?`Stock bajo el punto de pedido — quedan aprox. ${daysOut} días de existencia`:`El stock alcanza el punto de pedido en ${daysToROP} días — pedí antes del ${fmtShort(new Date(Date.now()+daysToROP*864e5))}`}
+              {level==="order_now"?`Stock bajo el punto de pedido ‚Äî quedan aprox. ${daysOut} d√≠as de existencia`:`El stock alcanza el punto de pedido en ${daysToROP} d√≠as ‚Äî ped√≠ antes del ${fmtShort(new Date(Date.now()+daysToROP*864e5))}`}
             </span>
           </div>
         )}
         {/* 4 metrics */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
-          {[{l:"Stock actual",v:`${product.stock} ${product.unit}`},{l:"Punto de pedido",v:`${r} ${product.unit}`,sub:"ROP"},{l:"Stock de seguridad",v:`${ss} ${product.unit}`,sub:"Safety"},{l:"Días restantes",v:`${daysOut<999?daysOut+"d":"∞"}`,c:daysOut<=lead?T.danger:T.text}].map((s,i)=>(
+          {[{l:"Stock actual",v:`${product.stock} ${product.unit}`},{l:"Punto de pedido",v:`${r} ${product.unit}`,sub:"ROP"},{l:"Stock de seguridad",v:`${ss} ${product.unit}`,sub:"Safety"},{l:"D√≠as restantes",v:`${daysOut<999?daysOut+"d":"‚àû"}`,c:daysOut<=lead?T.danger:T.text}].map((s,i)=>(
             <div key={i} style={{background:T.cardWarm,padding:"13px 15px"}}>
               <div style={{display:"flex",alignItems:"center",gap:5}}>
                 <Cap>{s.l}</Cap>
@@ -405,7 +405,7 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:10}}>
             <div>
               <div style={{display:"flex",gap:8,marginBottom:10}}>
-                {[{id:true,label:`EOQ — ${eq} ${product.unit}`,hint:"Óptimo por costo"},{id:false,label:"Manual",hint:"Ingresar cantidad"}].map(opt=>(
+                {[{id:true,label:`EOQ ‚Äî ${eq} ${product.unit}`,hint:"√ìptimo por costo"},{id:false,label:"Manual",hint:"Ingresar cantidad"}].map(opt=>(
                   <button key={String(opt.id)} onClick={()=>setUseEOQ(opt.id)}
                     style={{flex:1,padding:"10px 12px",border:`1px solid ${useEOQ===opt.id?T.green:T.border}`,background:useEOQ===opt.id?T.greenBg:T.card,cursor:"pointer",textAlign:"left",borderRadius:4}}>
                     <div style={{fontFamily:T.sans,fontSize:11,fontWeight:600,color:useEOQ===opt.id?T.green:T.textMd}}>{opt.label}</div>
@@ -416,7 +416,7 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
               {!useEOQ&&<Inp type="number" value={qty} onChange={e=>setQty(Math.max(0,+e.target.value))} placeholder={`Cantidad en ${product.unit}`}/>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
-              {[{l:"Cantidad",v:`${qty} ${product.unit}`},{l:"Costo total",v:`USD ${(qty*product.unitCost).toFixed(2)}`},{l:"Stock después",v:`${stockAfter} ${product.unit}`},{l:"Días de stock",v:`${daysAfter<999?daysAfter:999}d`}].map((s,i)=>(
+              {[{l:"Cantidad",v:`${qty} ${product.unit}`},{l:"Costo total",v:`USD ${(qty*product.unitCost).toFixed(2)}`},{l:"Stock despu√©s",v:`${stockAfter} ${product.unit}`},{l:"D√≠as de stock",v:`${daysAfter<999?daysAfter:999}d`}].map((s,i)=>(
                 <div key={i} style={{background:T.cardWarm,padding:"10px 12px"}}>
                   <Cap>{s.l}</Cap>
                   <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:T.text,marginTop:2}}>{s.v}</div>
@@ -426,7 +426,7 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
           </div>
         </div>
         <div style={{display:"flex",gap:10}}>
-          <Btn onClick={()=>onConfirm(qty)} full>Confirmar pedido · {qty} {product.unit} · USD {(qty*product.unitCost).toFixed(2)}</Btn>
+          <Btn onClick={()=>onConfirm(qty)} full>Confirmar pedido ¬∑ {qty} {product.unit} ¬∑ USD {(qty*product.unitCost).toFixed(2)}</Btn>
           <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
         </div>
       </div>
@@ -434,9 +434,9 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // EXCEL IMPORT
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const ExcelModal=({products,onApply,onClose})=>{
   const [text,setText]=useState("");
   const [headers,setHeaders]=useState([]);
@@ -453,7 +453,7 @@ const ExcelModal=({products,onApply,onClose})=>{
     const data=lines.slice(1).map(l=>{const cells=l.split(sep).map(c=>c.trim().replace(/"/g,""));const o={};hdrs.forEach((h,i)=>o[h]=cells[i]||"");return o;});
     setHeaders(hdrs);setRows(data);
     const g=cs=>hdrs.find(h=>cs.some(c=>h.toLowerCase().includes(c)))||"";
-    setCols({code:g(["codigo","código","cod","ean","barcode"]),name:g(["nombre","descripcion","descripción","producto","articulo","artículo"]),stock:g(["stock","cantidad","existencia","saldo","disponible"])});
+    setCols({code:g(["codigo","c√≥digo","cod","ean","barcode"]),name:g(["nombre","descripcion","descripci√≥n","producto","articulo","art√≠culo"]),stock:g(["stock","cantidad","existencia","saldo","disponible"])});
   },[text]);
 
   useEffect(()=>{
@@ -473,19 +473,19 @@ const ExcelModal=({products,onApply,onClose})=>{
       <div style={{display:"grid",gap:16}}>
         <div style={{background:T.watchBg,borderLeft:`3px solid ${T.watch}`,padding:"12px 14px",borderRadius:4}}>
           <p style={{fontFamily:T.sans,fontSize:12,color:"#1e40af",lineHeight:1.6}}>
-            <strong>Desde Mercado:</strong> Listado de stock → Exportar → Excel/CSV → seleccioná todo (Ctrl+A) → copiá (Ctrl+C) → pegá abajo.
+            <strong>Desde Mercado:</strong> Listado de stock ‚Üí Exportar ‚Üí Excel/CSV ‚Üí seleccion√° todo (Ctrl+A) ‚Üí copi√° (Ctrl+C) ‚Üí peg√° abajo.
           </p>
         </div>
-        <Field label="Pegá el contenido del Excel aquí (Ctrl+V)">
-          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder={"Código\tNombre\tStock disponible\n7790895000123\tHarina 000\t150"}
+        <Field label="Peg√° el contenido del Excel aqu√≠ (Ctrl+V)">
+          <textarea value={text} onChange={e=>setText(e.target.value)} placeholder={"C√≥digo\tNombre\tStock disponible\n7790895000123\tHarina 000\t150"}
             style={{width:"100%",height:100,fontFamily:"monospace",fontSize:11,color:T.text,background:T.muted,border:`1px solid ${T.border}`,padding:"9px 11px",resize:"vertical",borderRadius:4}}/>
         </Field>
         {headers.length>0&&(
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-            {[{k:"code",l:"Columna código"},{k:"name",l:"Columna nombre"},{k:"stock",l:"Columna stock ★"}].map(cf=>(
+            {[{k:"code",l:"Columna c√≥digo"},{k:"name",l:"Columna nombre"},{k:"stock",l:"Columna stock ‚òÖ"}].map(cf=>(
               <Field key={cf.k} label={cf.l}>
                 <Sel value={cols[cf.k]} onChange={e=>setCols(c=>({...c,[cf.k]:e.target.value}))}>
-                  <option value="">— no usar —</option>
+                  <option value="">‚Äî no usar ‚Äî</option>
                   {headers.map(h=><option key={h} value={h}>{h}</option>)}
                 </Sel>
               </Field>
@@ -498,7 +498,7 @@ const ExcelModal=({products,onApply,onClose})=>{
             <div style={{border:`1px solid ${T.border}`,borderRadius:4,marginTop:8,maxHeight:180,overflowY:"auto"}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead><tr style={{background:T.muted}}>
-                  {["Producto","Stock actual","Nuevo stock","Δ"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,borderBottom:`1px solid ${T.border}`}}>{h}</th>)}
+                  {["Producto","Stock actual","Nuevo stock","Œî"].map(h=><th key={h} style={{padding:"8px 12px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,borderBottom:`1px solid ${T.border}`}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {preview.map((r,i)=>{const diff=r.newStock-r.product.stock;return(
@@ -515,7 +515,7 @@ const ExcelModal=({products,onApply,onClose})=>{
           </div>
         )}
         <div style={{display:"flex",gap:10}}>
-          <Btn onClick={()=>preview.length&&onApply(preview)} full disabled={!preview.length}>Aplicar actualización ({preview.length} productos)</Btn>
+          <Btn onClick={()=>preview.length&&onApply(preview)} full disabled={!preview.length}>Aplicar actualizaci√≥n ({preview.length} productos)</Btn>
           <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
         </div>
       </div>
@@ -523,9 +523,9 @@ const ExcelModal=({products,onApply,onClose})=>{
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CAMERA SCANNER  (ZXing — Google barcode library)
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// CAMERA SCANNER  (ZXing ‚Äî Google barcode library)
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const CameraScanner = ({ onDetected, onClose }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -546,7 +546,7 @@ const CameraScanner = ({ onDetected, onClose }) => {
             const s = document.createElement("script");
             s.src = "https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.3/zxing.min.js";
             s.onload = resolve;
-            s.onerror = () => reject(new Error("No se pudo cargar la librería de escaneo"));
+            s.onerror = () => reject(new Error("No se pudo cargar la librer√≠a de escaneo"));
             document.head.appendChild(s);
           });
         }
@@ -574,7 +574,7 @@ const CameraScanner = ({ onDetected, onClose }) => {
           if (cancelled) return;
           if (result) {
             const text = result.getText();
-            // Debounce — ignore same code within 2 seconds
+            // Debounce ‚Äî ignore same code within 2 seconds
             if (text === lastScanRef.current) return;
             lastScanRef.current = text;
             setLastScan(text);
@@ -586,9 +586,9 @@ const CameraScanner = ({ onDetected, onClose }) => {
       } catch (e) {
         if (!cancelled) {
           setStatus("error");
-          if (e.name === "NotAllowedError") setErrorMsg("Permiso de cámara denegado. Habilitá el acceso en la configuración del navegador.");
-          else if (e.name === "NotFoundError") setErrorMsg("No se encontró cámara en este dispositivo.");
-          else setErrorMsg(e.message || "Error al acceder a la cámara.");
+          if (e.name === "NotAllowedError") setErrorMsg("Permiso de c√°mara denegado. Habilit√° el acceso en la configuraci√≥n del navegador.");
+          else if (e.name === "NotFoundError") setErrorMsg("No se encontr√≥ c√°mara en este dispositivo.");
+          else setErrorMsg(e.message || "Error al acceder a la c√°mara.");
         }
       }
     };
@@ -607,8 +607,8 @@ const CameraScanner = ({ onDetected, onClose }) => {
       {/* Header */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(to bottom, rgba(0,0,0,.7), transparent)" }}>
         <div>
-          <div style={{ fontFamily: T.serif, fontSize: 20, color: "#fff", fontWeight: 500 }}>Escaneando con cámara</div>
-          <div style={{ fontFamily: T.sans, fontSize: 11, color: "rgba(255,255,255,.6)", marginTop: 2 }}>Apuntá al código de barras del producto</div>
+          <div style={{ fontFamily: T.serif, fontSize: 20, color: "#fff", fontWeight: 500 }}>Escaneando con c√°mara</div>
+          <div style={{ fontFamily: T.sans, fontSize: 11, color: "rgba(255,255,255,.6)", marginTop: 2 }}>Apunt√° al c√≥digo de barras del producto</div>
         </div>
         <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "1px solid rgba(255,255,255,.25)", borderRadius: 6, color: "#fff", padding: "8px 14px", cursor: "pointer", fontFamily: T.sans, fontSize: 12, fontWeight: 600 }}>Cerrar</button>
       </div>
@@ -641,15 +641,15 @@ const CameraScanner = ({ onDetected, onClose }) => {
         {status === "starting" && (
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.7)", borderRadius: 4 }}>
             <div style={{ width: 36, height: 36, border: `3px solid ${T.green}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}/>
-            <p style={{ fontFamily: T.sans, fontSize: 13, color: "#fff", marginTop: 14 }}>Iniciando cámara...</p>
+            <p style={{ fontFamily: T.sans, fontSize: 13, color: "#fff", marginTop: 14 }}>Iniciando c√°mara...</p>
           </div>
         )}
 
         {/* Error */}
         {status === "error" && (
           <div style={{ padding: "32px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 40, marginBottom: 14 }}>📷</div>
-            <p style={{ fontFamily: T.sans, fontSize: 14, color: "#fff", fontWeight: 600, marginBottom: 8 }}>No se pudo acceder a la cámara</p>
+            <div style={{ fontSize: 40, marginBottom: 14 }}>üì∑</div>
+            <p style={{ fontFamily: T.sans, fontSize: 14, color: "#fff", fontWeight: 600, marginBottom: 8 }}>No se pudo acceder a la c√°mara</p>
             <p style={{ fontFamily: T.sans, fontSize: 12, color: "rgba(255,255,255,.6)", lineHeight: 1.6 }}>{errorMsg}</p>
             <button onClick={onClose} style={{ marginTop: 20, background: T.green, border: "none", color: "#fff", padding: "10px 24px", borderRadius: 4, fontFamily: T.sans, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Volver al scanner manual</button>
           </div>
@@ -659,12 +659,12 @@ const CameraScanner = ({ onDetected, onClose }) => {
       {/* Last scan feedback */}
       {lastScan && (
         <div style={{ marginTop: 16, background: T.greenBg, border: `1px solid ${T.greenBd}`, borderRadius: 6, padding: "10px 20px", textAlign: "center" }}>
-          <p style={{ fontFamily: T.sans, fontSize: 12, color: T.green, fontWeight: 600 }}>Código detectado: {lastScan}</p>
+          <p style={{ fontFamily: T.sans, fontSize: 12, color: T.green, fontWeight: 600 }}>C√≥digo detectado: {lastScan}</p>
         </div>
       )}
 
       <p style={{ fontFamily: T.sans, fontSize: 11, color: "rgba(255,255,255,.4)", marginTop: 20, textAlign: "center", padding: "0 24px" }}>
-        Funciona con códigos EAN-8, EAN-13, UPC, QR y más · Usá cámara trasera para mejores resultados
+        Funciona con c√≥digos EAN-8, EAN-13, UPC, QR y m√°s ¬∑ Us√° c√°mara trasera para mejores resultados
       </p>
 
       <style>{`
@@ -675,9 +675,9 @@ const CameraScanner = ({ onDetected, onClose }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SCANNER  (USB lector + Cámara del celular)
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// SCANNER  (USB lector + C√°mara del celular)
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const Scanner=({products,suppliers,onUpdate})=>{
   const [mode, setMode] = useState("usb"); // "usb" | "camera"
   const [val,setVal]=useState("");
@@ -729,15 +729,15 @@ const Scanner=({products,suppliers,onUpdate})=>{
         <Cap style={{color:T.green}}>Herramienta</Cap>
         <h1 style={{fontFamily:T.serif,fontSize:38,fontWeight:500,color:T.text,marginTop:6,letterSpacing:"-.02em"}}>Scanner</h1>
         <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm,marginTop:6,lineHeight:1.6}}>
-          Escaneá productos con el lector USB/Bluetooth o con la cámara de tu celular.
+          Escane√° productos con el lector USB/Bluetooth o con la c√°mara de tu celular.
         </p>
       </div>
 
       {/* Mode selector */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:T.border,borderRadius:8,overflow:"hidden",marginBottom:16}}>
         {[
-          {id:"usb",   icon:"⌨️", title:"Lector USB / Bluetooth", sub:"Lector físico conectado a la PC"},
-          {id:"camera",icon:"📷", title:"Cámara del celular",     sub:"Usá la cámara para escanear"},
+          {id:"usb",   icon:"‚å®Ô∏è", title:"Lector USB / Bluetooth", sub:"Lector f√≠sico conectado a la PC"},
+          {id:"camera",icon:"üì∑", title:"C√°mara del celular",     sub:"Us√° la c√°mara para escanear"},
         ].map(m=>(
           <button key={m.id} onClick={()=>setMode(m.id)}
             style={{background:mode===m.id?T.greenBg:T.card,border:"none",padding:"16px 18px",cursor:"pointer",textAlign:"left",borderBottom:mode===m.id?`2px solid ${T.green}`:"2px solid transparent"}}>
@@ -751,11 +751,11 @@ const Scanner=({products,suppliers,onUpdate})=>{
       {/* USB mode */}
       {mode==="usb"&&(
         <div style={{border:`2px dashed ${T.border}`,borderRadius:8,padding:"18px 20px",marginBottom:14,background:T.card}}>
-          <Cap>Campo de escaneo — click aquí antes de escanear</Cap>
+          <Cap>Campo de escaneo ‚Äî click aqu√≠ antes de escanear</Cap>
           <Inp inputRef={ref} value={val} onChange={e=>setVal(e.target.value)} onKeyDown={handleKey}
-            placeholder="Esperando escaneo o buscá por nombre..." autoFocus
+            placeholder="Esperando escaneo o busc√° por nombre..." autoFocus
             style={{fontSize:16,letterSpacing:"0.04em",marginTop:8}}/>
-          <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:5}}>El lector envía Enter automáticamente al escanear.</p>
+          <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:5}}>El lector env√≠a Enter autom√°ticamente al escanear.</p>
         </div>
       )}
 
@@ -764,24 +764,24 @@ const Scanner=({products,suppliers,onUpdate})=>{
         <div style={{marginBottom:14}}>
           <button onClick={()=>setShowCamera(true)}
             style={{width:"100%",background:T.green,border:"none",borderRadius:8,padding:"20px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:10}}>
-            <span style={{fontSize:40}}>📷</span>
-            <div style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:"#fff"}}>Abrir cámara</div>
+            <span style={{fontSize:40}}>üì∑</span>
+            <div style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:"#fff"}}>Abrir c√°mara</div>
             <div style={{fontFamily:T.sans,fontSize:12,color:"rgba(255,255,255,.75)"}}>
-              Funciona desde el celular · Chrome y Safari · Sin instalar nada
+              Funciona desde el celular ¬∑ Chrome y Safari ¬∑ Sin instalar nada
             </div>
           </button>
           <div style={{marginTop:10,background:T.watchBg,border:`1px solid ${T.watchBd}`,borderRadius:6,padding:"10px 14px"}}>
             <p style={{fontFamily:T.sans,fontSize:11,color:T.watch,lineHeight:1.6}}>
-              <strong>Tip:</strong> Para mejores resultados, abrí esta página desde el navegador de tu celular. El sistema pedirá permiso para usar la cámara la primera vez.
+              <strong>Tip:</strong> Para mejores resultados, abr√≠ esta p√°gina desde el navegador de tu celular. El sistema pedir√° permiso para usar la c√°mara la primera vez.
             </p>
           </div>
           {/* Also keep manual input as fallback */}
           <div style={{marginTop:10,border:`1px dashed ${T.border}`,borderRadius:6,padding:"12px 14px",background:T.card}}>
-            <Cap style={{color:T.textXs}}>O ingresá el código manualmente</Cap>
+            <Cap style={{color:T.textXs}}>O ingres√° el c√≥digo manualmente</Cap>
             <div style={{display:"flex",gap:8,marginTop:8}}>
               <Inp value={val} onChange={e=>setVal(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&val.trim()){processCode(val);setVal("");}}}
-                placeholder="Tipear código EAN..." style={{fontSize:14}}/>
+                placeholder="Tipear c√≥digo EAN..." style={{fontSize:14}}/>
               <Btn onClick={()=>{if(val.trim()){processCode(val);setVal("");}}} small>Buscar</Btn>
             </div>
           </div>
@@ -829,7 +829,7 @@ const Scanner=({products,suppliers,onUpdate})=>{
       {/* Log */}
       {log.length>0&&(
         <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
-          <div style={{padding:"11px 16px",background:T.muted,borderBottom:`1px solid ${T.border}`}}><Cap>Registro de sesión</Cap></div>
+          <div style={{padding:"11px 16px",background:T.muted,borderBottom:`1px solid ${T.border}`}}><Cap>Registro de sesi√≥n</Cap></div>
           {log.map((l,i)=>(
             <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<log.length-1?`1px solid ${T.border}`:"none",background:i===0?T.cardWarm:T.card}}>
               <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs,minWidth:40}}>{l.time}</span>
@@ -844,22 +844,22 @@ const Scanner=({products,suppliers,onUpdate})=>{
 };
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // SUPPLIER RATING STARS
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const Stars = ({ value, onChange }) => (
   <div style={{display:"flex",gap:3}}>
     {[1,2,3,4,5].map(n => (
       <button key={n} onClick={()=>onChange&&onChange(n)}
         style={{background:"none",border:"none",cursor:onChange?"pointer":"default",
-          fontSize:16,color:n<=value?"#f59e0b":"#ddd6cb",padding:"0 1px",lineHeight:1}}>★</button>
+          fontSize:16,color:n<=value?"#f59e0b":"#ddd6cb",padding:"0 1px",lineHeight:1}}>‚òÖ</button>
     ))}
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // SUPPLIER FORM MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const SupplierForm = ({ supplier, onSave, onClose }) => {
   const blank = {
     id: Date.now().toString(), name:"", flag:"", color:"#1d4ed8",
@@ -873,14 +873,14 @@ const SupplierForm = ({ supplier, onSave, onClose }) => {
   const set = (k,v) => setF(p => ({...p,[k]:v}));
   const setTime = (k,v) => setF(p => ({...p,times:{...p.times,[k]:Math.max(0,+v)}}));
   const tfCols = ["#3b82f6","#ef4444","#f59e0b","#10b981"];
-  const tfs = [["preparation","Preparación"],["customs","Aduana"],["freight","Flete"],["warehouse","Depósito"]];
+  const tfs = [["preparation","Preparaci√≥n"],["customs","Aduana"],["freight","Flete"],["warehouse","Dep√≥sito"]];
   return (
     <div style={{display:"grid",gap:18}}>
       {/* Identity */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:12}}>
-        <Field label="Nombre / Región"><Inp value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ej: Argentina"/></Field>
+        <Field label="Nombre / Regi√≥n"><Inp value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ej: Argentina"/></Field>
         <Field label="Empresa proveedora"><Inp value={f.company} onChange={e=>set("company",e.target.value)} placeholder="Nombre legal"/></Field>
-        <Field label="País (2 letras)"><Inp value={f.flag} onChange={e=>set("flag",e.target.value.toUpperCase().slice(0,2))} placeholder="AR"/></Field>
+        <Field label="Pa√≠s (2 letras)"><Inp value={f.flag} onChange={e=>set("flag",e.target.value.toUpperCase().slice(0,2))} placeholder="AR"/></Field>
       </div>
 
       {/* Contact */}
@@ -889,7 +889,7 @@ const SupplierForm = ({ supplier, onSave, onClose }) => {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <Field label="Nombre del contacto"><Inp value={f.contact} onChange={e=>set("contact",e.target.value)} placeholder="Nombre y apellido"/></Field>
           <Field label="Email"><Inp type="email" value={f.email} onChange={e=>set("email",e.target.value)} placeholder="contacto@empresa.com"/></Field>
-          <Field label="Teléfono"><Inp value={f.phone} onChange={e=>set("phone",e.target.value)} placeholder="+54 11 1234-5678"/></Field>
+          <Field label="Tel√©fono"><Inp value={f.phone} onChange={e=>set("phone",e.target.value)} placeholder="+54 11 1234-5678"/></Field>
           <Field label="WhatsApp"><Inp value={f.whatsapp} onChange={e=>set("whatsapp",e.target.value)} placeholder="+54 9 11 1234-5678"/></Field>
         </div>
       </div>
@@ -903,20 +903,20 @@ const SupplierForm = ({ supplier, onSave, onClose }) => {
               {["USD","EUR","ARS","BRL"].map(c=><option key={c} value={c}>{c}</option>)}
             </Sel>
           </Field>
-          <Field label="Plazo de pago (días)"><Inp type="number" value={f.paymentTerms} onChange={e=>set("paymentTerms",e.target.value)} placeholder="30"/></Field>
-          <Field label="Pedido mínimo"><Inp type="number" value={f.minOrder} onChange={e=>set("minOrder",e.target.value)} placeholder="USD"/></Field>
+          <Field label="Plazo de pago (d√≠as)"><Inp type="number" value={f.paymentTerms} onChange={e=>set("paymentTerms",e.target.value)} placeholder="30"/></Field>
+          <Field label="Pedido m√≠nimo"><Inp type="number" value={f.minOrder} onChange={e=>set("minOrder",e.target.value)} placeholder="USD"/></Field>
           <Field label="Descuento (%)"><Inp type="number" value={f.discount} onChange={e=>set("discount",e.target.value)} placeholder="0"/></Field>
         </div>
         <div style={{marginTop:12}}>
-          <Field label="Forma de pago"><Inp value={f.paymentMethod} onChange={e=>set("paymentMethod",e.target.value)} placeholder="Ej: Transferencia bancaria, Carta de crédito..."/></Field>
+          <Field label="Forma de pago"><Inp value={f.paymentMethod} onChange={e=>set("paymentMethod",e.target.value)} placeholder="Ej: Transferencia bancaria, Carta de cr√©dito..."/></Field>
         </div>
       </div>
 
       {/* Lead times */}
       <div style={{borderTop:`1px solid ${T.border}`,paddingTop:14}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-          <Cap style={{color:T.green}}>Tiempos de entrega (días)</Cap>
-          <Cap>Total: {Object.values(f.times).reduce((a,b)=>a+b,0)} días</Cap>
+          <Cap style={{color:T.green}}>Tiempos de entrega (d√≠as)</Cap>
+          <Cap>Total: {Object.values(f.times).reduce((a,b)=>a+b,0)} d√≠as</Cap>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
           {tfs.map(([k,l],i)=>(
@@ -935,7 +935,7 @@ const SupplierForm = ({ supplier, onSave, onClose }) => {
 
       {/* Rating & Notes */}
       <div style={{borderTop:`1px solid ${T.border}`,paddingTop:14,display:"grid",gridTemplateColumns:"auto 1fr",gap:20,alignItems:"start"}}>
-        <Field label="Calificación">
+        <Field label="Calificaci√≥n">
           <div style={{marginTop:6}}><Stars value={f.rating} onChange={v=>set("rating",v)}/></div>
         </Field>
         <Field label="Notas internas">
@@ -953,12 +953,12 @@ const SupplierForm = ({ supplier, onSave, onClose }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // SUPPLIER DETAIL PANEL
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
   const tfCols = ["#3b82f6","#ef4444","#f59e0b","#10b981"];
-  const tfs = [["preparation","Preparación"],["customs","Aduana"],["freight","Flete"],["warehouse","Depósito"]];
+  const tfs = [["preparation","Preparaci√≥n"],["customs","Aduana"],["freight","Flete"],["warehouse","Dep√≥sito"]];
   const supProducts = products.filter(p=>p.supplierId===supplier.id);
   const supOrders = orders.filter(o=>o.supplierId===supplier.id).slice(0,8);
   const pendingOrders = supOrders.filter(o=>o.status==="pending");
@@ -974,7 +974,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             {l:"Productos",   v:supProducts.length},
             {l:"Pedidos activos", v:pendingOrders.length, c:pendingOrders.length>0?T.watch:T.text},
             {l:"Total comprado",  v:`${supplier.currency||"USD"} ${totalSpent.toFixed(0)}`},
-            {l:"Lead time",       v:`${totalLead(supplier)} días`},
+            {l:"Lead time",       v:`${totalLead(supplier)} d√≠as`},
           ].map((s,i)=>(
             <div key={i} style={{background:T.cardWarm,padding:"14px 16px"}}>
               <Cap>{s.l}</Cap>
@@ -989,11 +989,11 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             <Cap style={{color:T.green}}>Contacto</Cap>
             <div style={{marginTop:10,display:"grid",gap:8}}>
               {[
-                {icon:"👤",label:"Contacto",val:supplier.contact},
-                {icon:"✉️",label:"Email",val:supplier.email,href:`mailto:${supplier.email}`},
-                {icon:"📞",label:"Teléfono",val:supplier.phone,href:`tel:${supplier.phone}`},
-                {icon:"💬",label:"WhatsApp",val:supplier.whatsapp,href:supplier.whatsapp?`https://wa.me/${supplier.whatsapp.replace(/\D/g,"")}`:""},
-                {icon:"📍",label:"Ubicación",val:[supplier.city,supplier.country].filter(Boolean).join(", ")},
+                {icon:"üë§",label:"Contacto",val:supplier.contact},
+                {icon:"‚úâÔ∏è",label:"Email",val:supplier.email,href:`mailto:${supplier.email}`},
+                {icon:"üìû",label:"Tel√©fono",val:supplier.phone,href:`tel:${supplier.phone}`},
+                {icon:"üí¨",label:"WhatsApp",val:supplier.whatsapp,href:supplier.whatsapp?`https://wa.me/${supplier.whatsapp.replace(/\D/g,"")}`:""},
+                {icon:"üìç",label:"Ubicaci√≥n",val:[supplier.city,supplier.country].filter(Boolean).join(", ")},
               ].filter(r=>r.val).map((r,i)=>(
                 <div key={i} style={{display:"flex",gap:10,alignItems:"center"}}>
                   <span style={{fontSize:14,width:20,textAlign:"center"}}>{r.icon}</span>
@@ -1017,15 +1017,15 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             <Cap style={{color:T.green}}>Condiciones comerciales</Cap>
             <div style={{marginTop:10,display:"grid",gap:8}}>
               {[
-                {l:"Moneda",v:supplier.currency},
-                {l:"Plazo de pago",v:`${supplier.paymentTerms||"—"} días`},
-                {l:"Forma de pago",v:supplier.paymentMethod||"—"},
-                {l:"Pedido mínimo",v:supplier.minOrder>0?`${supplier.currency||"USD"} ${supplier.minOrder}`:"Sin mínimo"},
+                {l:"Moneda",supplier.currency},
+                {l:"Plazo de pago",v:`${supplier.paymentTerms||"‚Äî"} d√≠as`},
+                {l:"Forma de pago",v:supplier.paymentMethod||"‚Äî"},
+                {l:"Pedido m√≠nimo",v:supplier.minOrder>0?`${supplier.currency||"USD"} ${supplier.minOrder}`:"Sin m√≠nimo"},
                 {l:"Descuento",v:supplier.discount>0?`${supplier.discount}% por volumen`:"Sin descuento"},
               ].map((r,i)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<4?`1px solid ${T.muted}`:"none"}}>
                   <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{r.l}</span>
-                  <span style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{r.v||r[1]||"—"}</span>
+                  <span style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{r.v||r[1]||"‚Äî"}</span>
                 </div>
               ))}
             </div>
@@ -1100,7 +1100,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
         )}
 
         <div style={{display:"flex",gap:10,paddingTop:4}}>
-          <Btn onClick={onEdit} full variant="ghost">✏️ Editar proveedor</Btn>
+          <Btn onClick={onEdit} full variant="ghost">‚úèÔ∏è Editar proveedor</Btn>
           <Btn onClick={onClose} variant="ghost">Cerrar</Btn>
         </div>
       </div>
@@ -1109,9 +1109,9 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
 };
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PLANNING MODULE — Proyección 6 meses + temporadas + cuánto pedir
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// PLANNING MODULE ‚Äî Proyecci√≥n 6 meses + temporadas + cu√°nto pedir
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 
 // Months helper
 const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -1139,7 +1139,7 @@ const SeasonBadge = ({ mult }) => {
               mult >= 1.2 ? {c:"#166534",bg:"#f0fdf4",bd:"#bbf7d0",l:"Alta"} :
               mult <= 0.8 ? {c:"#1e40af",bg:"#eff6ff",bd:"#bfdbfe",l:"Baja"} :
                             {c:T.textSm,bg:T.muted,bd:T.border,l:"Normal"};
-  return <span style={{fontFamily:T.sans,fontSize:10,fontWeight:700,color:cfg.c,background:cfg.bg,border:`1px solid ${cfg.bd}`,padding:"2px 7px",borderRadius:2}}>{cfg.l} ×{mult}</span>;
+  return <span style={{fontFamily:T.sans,fontSize:10,fontWeight:700,color:cfg.c,background:cfg.bg,border:`1px solid ${cfg.bd}`,padding:"2px 7px",borderRadius:2}}>{cfg.l} √ó{mult}</span>;
 };
 
 // Main planning view
@@ -1223,12 +1223,12 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
         <div>
-          <Cap style={{color:T.green}}>Proyección</Cap>
+          <Cap style={{color:T.green}}>Proyecci√≥n</Cap>
           <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>
-            Planificación · próximos 6 meses
+            Planificaci√≥n ¬∑ pr√≥ximos 6 meses
           </h1>
           <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm,marginTop:6,lineHeight:1.6}}>
-            Ajustá la demanda esperada por mes, definí temporadas altas y bajas, y el sistema calcula exactamente cuánto pedir de cada producto.
+            Ajust√° la demanda esperada por mes, defin√≠ temporadas altas y bajas, y el sistema calcula exactamente cu√°nto pedir de cada producto.
           </p>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -1243,7 +1243,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
         </div>
       </div>
 
-      {/* ── PRODUCT VIEW ── */}
+      {/* ‚îÄ‚îÄ PRODUCT VIEW ‚îÄ‚îÄ */}
       {viewMode==="product" && (
         <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:16,alignItems:"start"}}>
           {/* Product list sidebar */}
@@ -1270,11 +1270,11 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"18px 22px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
                   <div>
-                    <Cap style={{color:T.green}}>[{selectedProduct.sup?.flag}] {selectedProduct.sup?.name} · Lead {totalLead(selectedProduct.sup)}d</Cap>
+                    <Cap style={{color:T.green}}>[{selectedProduct.sup?.flag}] {selectedProduct.sup?.name} ¬∑ Lead {totalLead(selectedProduct.sup)}d</Cap>
                     <h2 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.text,marginTop:4}}>{selectedProduct.name}</h2>
                     <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
                       <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Stock actual: <strong>{selectedProduct.stock} {selectedProduct.unit}</strong></span>
-                      <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Consumo histórico prom.: <strong>{Math.round(avgDaily(selectedProduct.history)*30)} {selectedProduct.unit}/mes</strong></span>
+                      <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Consumo hist√≥rico prom.: <strong>{Math.round(avgDaily(selectedProduct.history)*30)} {selectedProduct.unit}/mes</strong></span>
                       <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Costo unit.: <strong>{selectedProduct.currency||"USD"} {selectedProduct.unitCost}</strong></span>
                     </div>
                   </div>
@@ -1294,7 +1294,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
                 <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <Cap>Demanda proyectada mes a mes</Cap>
-                  <Cap style={{color:T.textXs}}>Base histórica: {Math.round(avgDaily(selectedProduct.history)*30)} {selectedProduct.unit}/mes · Editá cualquier celda para sobreescribir</Cap>
+                  <Cap style={{color:T.textXs}}>Base hist√≥rica: {Math.round(avgDaily(selectedProduct.history)*30)} {selectedProduct.unit}/mes ¬∑ Edit√° cualquier celda para sobreescribir</Cap>
                 </div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -1320,7 +1320,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                             <td style={{padding:"11px 14px"}}>
                               <div style={{fontFamily:T.sans,fontSize:13,fontWeight:600,color:T.text}}>{m.label}</div>
                               {i < (selPlan.coverageMonths||2) && (
-                                <div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:2}}>● en cobertura objetivo</div>
+                                <div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:2}}>‚óè en cobertura objetivo</div>
                               )}
                             </td>
                             <td style={{padding:"11px 14px",textAlign:"center"}}>
@@ -1374,7 +1374,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
 
               {/* Visual bar chart */}
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"16px 20px"}}>
-                <Cap>Proyección visual</Cap>
+                <Cap>Proyecci√≥n visual</Cap>
                 <div style={{display:"flex",gap:6,alignItems:"flex-end",height:90,marginTop:14,paddingBottom:4}}>
                   {months.map((m,i)=>{
                     const projected = projectedDemand(selectedProduct, m.key);
@@ -1396,7 +1396,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                   })}
                 </div>
                 <div style={{display:"flex",gap:14,marginTop:8}}>
-                  {[{c:T.green,l:"Ingreso manual"},{c:T.greenLt,l:"En cobertura (automático)"},{c:T.muted,l:"Fuera de cobertura"}].map(({c,l})=>(
+                  {[{c:T.green,l:"Ingreso manual"},{c:T.greenLt,l:"En cobertura (autom√°tico)"},{c:T.muted,l:"Fuera de cobertura"}].map(({c,l})=>(
                     <span key={l} style={{display:"flex",alignItems:"center",gap:5,fontFamily:T.sans,fontSize:10,color:T.textSm}}>
                       <span style={{width:10,height:10,background:c,borderRadius:2,display:"inline-block"}}/>{l}
                     </span>
@@ -1407,7 +1407,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
               {/* Order recommendation */}
               <div style={{background:selectedProduct.qtyNeeded>0?T.dangerBg:T.okBg,border:`1px solid ${selectedProduct.qtyNeeded>0?T.dangerBd:T.okBd}`,borderRadius:8,padding:"16px 20px"}}>
                 <Cap style={{color:selectedProduct.qtyNeeded>0?T.danger:T.ok}}>
-                  {selectedProduct.qtyNeeded>0?"Recomendación de pedido":"Stock suficiente"}
+                  {selectedProduct.qtyNeeded>0?"Recomendaci√≥n de pedido":"Stock suficiente"}
                 </Cap>
                 {selectedProduct.qtyNeeded>0 ? (
                   <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,marginTop:10,alignItems:"center"}}>
@@ -1417,7 +1417,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                       </div>
                       <p style={{fontFamily:T.sans,fontSize:12,color:T.textMd,marginTop:6,lineHeight:1.6}}>
                         Para cubrir la demanda proyectada de <strong>{selPlan.coverageMonths||2} meses</strong> + stock de seguridad ({safetyStock(selectedProduct.history,totalLead(selectedProduct.sup))} {selectedProduct.unit}),
-                        considerando el lead time de <strong>{totalLead(selectedProduct.sup)} días</strong> de {selectedProduct.sup?.name}.
+                        considerando el lead time de <strong>{totalLead(selectedProduct.sup)} d√≠as</strong> de {selectedProduct.sup?.name}.
                         Costo estimado: <strong>USD {(selectedProduct.qtyNeeded*(selectedProduct.unitCost||0)).toFixed(2)}</strong>
                       </p>
                     </div>
@@ -1425,7 +1425,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                   </div>
                 ) : (
                   <p style={{fontFamily:T.sans,fontSize:13,color:T.ok,marginTop:6}}>
-                    El stock actual ({selectedProduct.stock} {selectedProduct.unit}) es suficiente para cubrir los próximos {selPlan.coverageMonths||2} meses de demanda proyectada.
+                    El stock actual ({selectedProduct.stock} {selectedProduct.unit}) es suficiente para cubrir los pr√≥ximos {selPlan.coverageMonths||2} meses de demanda proyectada.
                   </p>
                 )}
               </div>
@@ -1434,7 +1434,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
         </div>
       )}
 
-      {/* ── SUMMARY VIEW ── */}
+      {/* ‚îÄ‚îÄ SUMMARY VIEW ‚îÄ‚îÄ */}
       {viewMode==="summary" && (
         <div style={{display:"grid",gap:20}}>
           {/* Summary stats */}
@@ -1452,7 +1452,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
             ))}
           </div>
 
-          {/* Monthly demand heatmap — all products */}
+          {/* Monthly demand heatmap ‚Äî all products */}
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto"}}>
             <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`}}>
               <Cap>Demanda proyectada total por mes (todos los productos)</Cap>
@@ -1491,7 +1491,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                       <td style={{padding:"11px 14px",textAlign:"right"}}>
                         {p.qtyNeeded>0
                           ? <span style={{fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.danger}}>+{p.qtyNeeded} {p.unit}</span>
-                          : <span style={{fontFamily:T.sans,fontSize:12,color:T.ok}}>✓</span>}
+                          : <span style={{fontFamily:T.sans,fontSize:12,color:T.ok}}>‚úì</span>}
                       </td>
                     </tr>
                   );
@@ -1521,7 +1521,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
             <div>
               <div style={{marginBottom:10}}>
                 <Cap>Pedidos consolidados por proveedor</Cap>
-                <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginTop:4}}>Agrupá tus pedidos para aprovechar mínimos y descuentos.</p>
+                <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginTop:4}}>Agrup√° tus pedidos para aprovechar m√≠nimos y descuentos.</p>
               </div>
               <div style={{display:"grid",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
                 {suppliers.map(sup=>{
@@ -1544,9 +1544,9 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                           <div style={{fontFamily:T.serif,fontSize:22,fontWeight:500,color:meetsMin?T.ok:T.warning}}>
                             {sup.currency||"USD"} {totalCost.toFixed(0)}
                           </div>
-                          {!meetsMin && <div style={{fontFamily:T.sans,fontSize:11,color:T.warning,marginTop:2}}>⚠ Mínimo: {sup.currency||"USD"} {minOrder} — faltan {sup.currency||"USD"} {(minOrder-totalCost).toFixed(0)}</div>}
-                          {meetsMin && minOrder>0 && <div style={{fontFamily:T.sans,fontSize:11,color:T.ok,marginTop:2}}>✓ Supera pedido mínimo</div>}
-                          {sup.discount>0 && totalCost >= minOrder && <div style={{fontFamily:T.sans,fontSize:11,color:T.green,marginTop:2}}>🏷️ Descuento {sup.discount}% aplicable</div>}
+                          {!meetsMin && <div style={{fontFamily:T.sans,fontSize:11,color:T.warning,marginTop:2}}>‚ö† M√≠nimo: {sup.currency||"USD"} {minOrder} ‚Äî faltan {sup.currency||"USD"} {(minOrder-totalCost).toFixed(0)}</div>}
+                          {meetsMin && minOrder>0 && <div style={{fontFamily:T.sans,fontSize:11,color:T.ok,marginTop:2}}>‚úì Supera pedido m√≠nimo</div>}
+                          {sup.discount>0 && totalCost >= minOrder && <div style={{fontFamily:T.sans,fontSize:11,color:T.green,marginTop:2}}>üè∑Ô∏è Descuento {sup.discount}% aplicable</div>}
                         </div>
                       </div>
                       <div style={{display:"flex",gap:1,background:T.border,borderRadius:4,overflow:"hidden"}}>
@@ -1571,22 +1571,22 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
 };
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOVEMENTS VIEW — Historial completo de movimientos
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// MOVEMENTS VIEW ‚Äî Historial completo de movimientos
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const MOV_CFG = {
-  order_placed: { icon:"📋", label:"Pedido generado",   color:"#1d4ed8", bg:"#eff6ff", bd:"#bfdbfe" },
-  delivery:     { icon:"📦", label:"Mercadería recibida",color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  scanner_in:   { icon:"⌨️", label:"Ingreso scanner",    color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  excel_in:     { icon:"📊", label:"Ajuste Excel +",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  excel_out:    { icon:"📊", label:"Ajuste Excel −",     color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
-  manual_in:    { icon:"➕", label:"Entrada manual",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  manual_out:   { icon:"➖", label:"Salida manual",      color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
-  adjustment:   { icon:"⚖️", label:"Ajuste de inventario",color:"#92400e",bg:"#fffbeb",bd:"#fde68a" },
+  order_placed: { icon:"üìã", label:"Pedido generado",   color:"#1d4ed8", bg:"#eff6ff", bd:"#bfdbfe" },
+  delivery:     { icon:"üì¶", label:"Mercader√≠a recibida",color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
+  scanner_in:   { icon:"‚å®Ô∏è", label:"Ingreso scanner",    color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
+  excel_in:     { icon:"üìä", label:"Ajuste Excel +",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
+  excel_out:    { icon:"üìä", label:"Ajuste Excel ‚àí",     color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
+  manual_in:    { icon:"‚ûï", label:"Entrada manual",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
+  manual_out:   { icon:"‚ûñ", label:"Salida manual",      color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
+  adjustment:   { icon:"‚öñÔ∏è", label:"Ajuste de inventario",color:"#92400e",bg:"#fffbeb",bd:"#fde68a" },
 };
 
 const MovTypeTag = ({type}) => {
-  const c = MOV_CFG[type] || {icon:"•",label:type,color:T.textSm,bg:T.muted,bd:T.border};
+  const c = MOV_CFG[type] || {icon:"‚Ä¢",label:type,color:T.textSm,bg:T.muted,bd:T.border};
   return (
     <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,border:`1px solid ${c.bd}`,color:c.color,
       fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",padding:"3px 8px",borderRadius:3}}>
@@ -1632,7 +1632,7 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
       {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
         <div>
-          <Cap style={{color:T.green}}>Auditoría</Cap>
+          <Cap style={{color:T.green}}>Auditor√≠a</Cap>
           <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Historial de movimientos</h1>
           <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm,marginTop:5,lineHeight:1.5}}>
             Registro completo de todas las entradas, salidas y ajustes de stock.
@@ -1685,7 +1685,7 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
         {(search||filterProd!=="all"||filterType!=="all"||filterDateFrom||filterDateTo) && (
           <button onClick={()=>{setSearch("");setFilterProd("all");setFilterType("all");setFilterDateFrom("");setFilterDateTo("");}}
             style={{fontFamily:T.sans,fontSize:11,color:T.green,background:"none",border:"none",cursor:"pointer",marginTop:8,fontWeight:600}}>
-            × Limpiar filtros
+            √ó Limpiar filtros
           </button>
         )}
       </div>
@@ -1693,13 +1693,13 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
       {/* Movements table */}
       {filtered.length === 0 ? (
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"48px 32px",textAlign:"center"}}>
-          <div style={{fontSize:36,marginBottom:12}}>📋</div>
+          <div style={{fontSize:36,marginBottom:12}}>üìã</div>
           <p style={{fontFamily:T.sans,fontSize:14,color:T.textSm,fontWeight:500}}>
-            {movements.length===0 ? "Sin movimientos registrados aún." : "Sin movimientos que coincidan con los filtros."}
+            {movements.length===0 ? "Sin movimientos registrados a√∫n." : "Sin movimientos que coincidan con los filtros."}
           </p>
           {movements.length===0 && (
             <p style={{fontFamily:T.sans,fontSize:12,color:T.textXs,marginTop:6,lineHeight:1.6}}>
-              Los movimientos se registran automáticamente al generar pedidos, marcar entregas, usar el scanner o importar Excel.
+              Los movimientos se registran autom√°ticamente al generar pedidos, marcar entregas, usar el scanner o importar Excel.
             </p>
           )}
         </div>
@@ -1736,16 +1736,16 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
                       {m.productName}
                     </td>
                     <td style={{padding:"10px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>
-                      {m.supplierName||"—"}
+                      {m.supplierName||"‚Äî"}
                     </td>
                     <td style={{padding:"10px 13px",whiteSpace:"nowrap"}}>
                       <span style={{fontFamily:T.serif,fontSize:16,fontWeight:600,
                         color:isIn?T.ok:isOut?T.danger:T.watch}}>
-                        {isIn?"+":isOut?"−":""}{m.qty} {m.unit}
+                        {isIn?"+":isOut?"‚àí":""}{m.qty} {m.unit}
                       </span>
                     </td>
                     <td style={{padding:"10px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm,maxWidth:280}}>
-                      {m.note||"—"}
+                      {m.note||"‚Äî"}
                     </td>
                   </tr>
                 );
@@ -1762,9 +1762,9 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
             const rows=[["Fecha","Hora","Tipo","Producto","Proveedor","Cantidad","Unidad","Nota"],...filtered.map(m=>{const d=new Date(m.ts);return[d.toLocaleDateString("es-UY"),d.toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"}),(MOV_CFG[m.type]||{label:m.type}).label,m.productName,m.supplierName||"",m.qty,m.unit,m.note||""];})];
             const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("
 ");
-            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);a.download=`aryes-movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,Ôªø"+encodeURIComponent(csv);a.download=`aryes-movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
           }} style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.green,background:T.greenBg,border:`1px solid ${T.greenBd}`,padding:"8px 16px",borderRadius:4,cursor:"pointer"}}>
-            ↓ Exportar CSV ({filtered.length} registros)
+            ‚Üì Exportar CSV ({filtered.length} registros)
           </button>
         </div>
       )}
@@ -1772,9 +1772,9 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // MANUAL MOVEMENT MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const ManualMovModal = ({ products, onSave, onClose }) => {
   const [f, setF] = useState({ productId:"", type:"manual_in", qty:1, note:"" });
   const set = (k,v) => setF(p=>({...p,[k]:v}));
@@ -1798,20 +1798,20 @@ const ManualMovModal = ({ products, onSave, onClose }) => {
       <div style={{display:"grid",gap:16}}>
         <div style={{background:T.watchBg,border:`1px solid ${T.watchBd}`,borderRadius:4,padding:"10px 14px"}}>
           <p style={{fontFamily:T.sans,fontSize:12,color:T.watch,lineHeight:1.6}}>
-            Usá esto para correcciones de inventario, mermas, ajustes por conteo físico, o cualquier movimiento que no fue capturado automáticamente.
+            Us√° esto para correcciones de inventario, mermas, ajustes por conteo f√≠sico, o cualquier movimiento que no fue capturado autom√°ticamente.
           </p>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Field label="Tipo de movimiento">
             <Sel value={f.type} onChange={e=>set("type",e.target.value)}>
-              <option value="manual_in">➕ Entrada manual</option>
-              <option value="manual_out">➖ Salida manual</option>
-              <option value="adjustment">⚖️ Ajuste de inventario</option>
+              <option value="manual_in">‚ûï Entrada manual</option>
+              <option value="manual_out">‚ûñ Salida manual</option>
+              <option value="adjustment">‚öñÔ∏è Ajuste de inventario</option>
             </Sel>
           </Field>
           <Field label="Producto">
             <Sel value={f.productId} onChange={e=>set("productId",e.target.value)}>
-              <option value="">— Seleccioná —</option>
+              <option value="">‚Äî Seleccion√° ‚Äî</option>
               {products.map(p=><option key={p.id} value={p.id}>{p.name} ({p.stock} {p.unit})</option>)}
             </Sel>
           </Field>
@@ -1822,14 +1822,14 @@ const ManualMovModal = ({ products, onSave, onClose }) => {
         {selProd && f.type !== "adjustment" && (
           <div style={{background:T.muted,borderRadius:4,padding:"10px 14px"}}>
             <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>
-              Stock actual: <strong>{selProd.stock} {selProd.unit}</strong> →
-              Stock después: <strong style={{color:f.type==="manual_in"?T.ok:T.danger}}>
+              Stock actual: <strong>{selProd.stock} {selProd.unit}</strong> ‚Üí
+              Stock despu√©s: <strong style={{color:f.type==="manual_in"?T.ok:T.danger}}>
                 {f.type==="manual_in"?(selProd.stock+(+f.qty||0)):(selProd.stock-(+f.qty||0))} {selProd.unit}
               </strong>
             </p>
           </div>
         )}
-        <Field label="Nota / Motivo" hint="Ej: Merma por vencimiento, Ajuste conteo físico, Cortesía cliente, etc.">
+        <Field label="Nota / Motivo" hint="Ej: Merma por vencimiento, Ajuste conteo f√≠sico, Cortes√≠a cliente, etc.">
           <Inp value={f.note} onChange={e=>set("note",e.target.value)} placeholder="Motivo del movimiento..."/>
         </Field>
         <div style={{display:"flex",gap:10}}>
@@ -1842,9 +1842,9 @@ const ManualMovModal = ({ products, onSave, onClose }) => {
 };
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // EMAIL SETTINGS VIEW
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -1858,7 +1858,7 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           service_id: cfg.serviceId, template_id: cfg.templateId, user_id: cfg.publicKey,
-          template_params: { to_email: cfg.toEmail, subject:"✓ Aryes — Email de prueba funcionando", html_content:"<p style='font-family:sans-serif;padding:20px;'>✅ Las notificaciones de Aryes están configuradas correctamente. Recibirás alertas automáticas cuando el stock cruce el punto de pedido.</p>", alert_count:0 }
+          template_params: { to_email: cfg.toEmail, subject:"‚úì Aryes ‚Äî Email de prueba funcionando", html_content:"<p style='font-family:sans-serif;padding:20px;'>‚úÖ Las notificaciones de Aryes est√°n configuradas correctamente. Recibir√°s alertas autom√°ticas cuando el stock cruce el punto de pedido.</p>", alert_count:0 }
         })
       });
       setTestResult(resp.status===200?"ok":"error");
@@ -1874,10 +1874,10 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
       <div style={{background:cfg.enabled&&configured?T.okBg:T.warnBg, border:`1px solid ${cfg.enabled&&configured?T.okBd:T.warnBd}`, borderRadius:8, padding:"14px 18px", display:"flex", justifyContent:"space-between", alignItems:"center"}}>
         <div>
           <div style={{fontFamily:T.sans,fontSize:13,fontWeight:700,color:cfg.enabled&&configured?T.ok:T.warning}}>
-            {cfg.enabled&&configured ? "✓ Notificaciones activas" : configured ? "Notificaciones desactivadas" : "⚠ Pendiente de configuración"}
+            {cfg.enabled&&configured ? "‚úì Notificaciones activas" : configured ? "Notificaciones desactivadas" : "‚ö† Pendiente de configuraci√≥n"}
           </div>
           <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginTop:3}}>
-            {cfg.enabled&&configured ? `Enviando alertas a ${cfg.toEmail}` : !configured ? "Completá los datos de EmailJS para activar" : "Activá el switch para empezar a recibir alertas"}
+            {cfg.enabled&&configured ? `Enviando alertas a ${cfg.toEmail}` : !configured ? "Complet√° los datos de EmailJS para activar" : "Activ√° el switch para empezar a recibir alertas"}
           </p>
         </div>
         <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
@@ -1892,15 +1892,15 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
       {/* How to setup guide */}
       <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
         <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`}}>
-          <Cap>Cómo configurar EmailJS (gratis — 200 emails/mes)</Cap>
+          <Cap>C√≥mo configurar EmailJS (gratis ‚Äî 200 emails/mes)</Cap>
         </div>
         <div style={{padding:"16px 18px",display:"grid",gap:10}}>
           {[
-            {n:1, t:"Creá cuenta gratis", d:<>Entrá a <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{color:T.green,fontWeight:600}}>emailjs.com</a> → Sign Up gratis</>, },
-            {n:2, t:"Conectá tu email",   d:"En el panel → Email Services → Add New Service → elegí Gmail, Outlook o el que uses → conectá tu cuenta"},
-            {n:3, t:"Creá un template",   d:'En Email Templates → Create New → en el cuerpo del email escribí exactamente: {{{html_content}}} — así Aryes puede enviar el HTML del reporte'},
-            {n:4, t:"Copiá las claves",   d:"Service ID (en Email Services), Template ID (en Email Templates), Public Key (en Account → API Keys)"},
-            {n:5, t:"Pegá las claves abajo y activá", d:"Completá los 4 campos, activá el switch de arriba, y hacé click en 'Enviar email de prueba'"},
+            {n:1, t:"Cre√° cuenta gratis", d:<>Entr√° a <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{color:T.green,fontWeight:600}}>emailjs.com</a> ‚Üí Sign Up gratis</>, },
+            {n:2, t:"Conect√° tu email",   d:"En el panel ‚Üí Email Services ‚Üí Add New Service ‚Üí eleg√≠ Gmail, Outlook o el que uses ‚Üí conect√° tu cuenta"},
+            {n:3, t:"Cre√° un template",   d:'En Email Templates ‚Üí Create New ‚Üí en el cuerpo del email escrib√≠ exactamente: {{{html_content}}} ‚Äî as√≠ Aryes puede enviar el HTML del reporte'},
+            {n:4, t:"Copi√° las claves",   d:"Service ID (en Email Services), Template ID (en Email Templates), Public Key (en Account ‚Üí API Keys)"},
+            {n:5, t:"Peg√° las claves abajo y activ√°", d:"Complet√° los 4 campos, activ√° el switch de arriba, y hac√© click en 'Enviar email de prueba'"},
           ].map(s=>(
             <div key={s.n} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
               <div style={{width:24,height:24,borderRadius:"50%",background:T.green,color:"#fff",fontFamily:T.sans,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{s.n}</div>
@@ -1915,7 +1915,7 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
 
       {/* Config fields */}
       <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
-        <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`}}><Cap>Configuración EmailJS</Cap></div>
+        <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`}}><Cap>Configuraci√≥n EmailJS</Cap></div>
         <div style={{padding:"16px 18px",display:"grid",gap:14}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Field label="Service ID" hint="Ej: service_abc123">
@@ -1926,10 +1926,10 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
             </Field>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-            <Field label="Public Key" hint="En Account → API Keys">
+            <Field label="Public Key" hint="En Account ‚Üí API Keys">
               <Inp value={cfg.publicKey} onChange={e=>set("publicKey",e.target.value)} placeholder="xxxxxxxxxxxxxxxxxxxx"/>
             </Field>
-            <Field label="Email de destino" hint="Donde querés recibir las alertas">
+            <Field label="Email de destino" hint="Donde quer√©s recibir las alertas">
               <Inp type="email" value={cfg.toEmail} onChange={e=>set("toEmail",e.target.value)} placeholder="tu@email.com"/>
             </Field>
           </div>
@@ -1940,14 +1940,14 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
         <div>
           <Btn onClick={handleTest} full disabled={!configured||testing} variant="ghost">
-            {testing ? "Enviando..." : "✉ Enviar email de prueba"}
+            {testing ? "Enviando..." : "‚úâ Enviar email de prueba"}
           </Btn>
-          {testResult==="ok" && <p style={{fontFamily:T.sans,fontSize:12,color:T.ok,marginTop:6,textAlign:"center"}}>✓ Email enviado correctamente</p>}
-          {testResult==="error" && <p style={{fontFamily:T.sans,fontSize:12,color:T.danger,marginTop:6,textAlign:"center"}}>✗ Error — verificá las claves</p>}
+          {testResult==="ok" && <p style={{fontFamily:T.sans,fontSize:12,color:T.ok,marginTop:6,textAlign:"center"}}>‚úì Email enviado correctamente</p>}
+          {testResult==="error" && <p style={{fontFamily:T.sans,fontSize:12,color:T.danger,marginTop:6,textAlign:"center"}}>‚úó Error ‚Äî verific√° las claves</p>}
         </div>
         <div>
           <Btn onClick={()=>onManualSend(alertProds)} full disabled={!configured||!alertProds.length}>
-            📋 Enviar resumen ahora ({alertProds.length} alertas)
+            üìã Enviar resumen ahora ({alertProds.length} alertas)
           </Btn>
           {!alertProds.length && <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:6,textAlign:"center"}}>Sin alertas activas ahora mismo</p>}
         </div>
@@ -1955,18 +1955,18 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
 
       {/* Alert behavior info */}
       <div style={{background:T.cardWarm,border:`1px solid ${T.border}`,borderRadius:6,padding:"14px 18px"}}>
-        <Cap>Comportamiento de las alertas automáticas</Cap>
+        <Cap>Comportamiento de las alertas autom√°ticas</Cap>
         <div style={{display:"grid",gap:8,marginTop:12}}>
           {[
-            {icon:"🔴", t:"Pedir YA",     d:"Email inmediato cuando el stock cae por debajo del punto de pedido (ROP)"},
-            {icon:"🟡", t:"Pedir pronto", d:"Email inmediato cuando quedan ≤5 días para cruzar el ROP"},
-            {icon:"🔄", t:"Sin repetición", d:"No manda el mismo email dos veces para el mismo producto — espera hasta que el stock cambie"},
-            {icon:"📋", t:"Resumen manual", d:"Podés pedir el resumen de todas las alertas activas en cualquier momento con el botón de arriba"},
+            {icon:"üî¥", t:"Pedir YA",     d:"Email inmediato cuando el stock cae por debajo del punto de pedido (ROP)"},
+            {icon:"üü°", t:"Pedir pronto", d:"Email inmediato cuando quedan ‚â§5 d√≠as para cruzar el ROP"},
+            {icon:"üîÑ", t:"Sin repetici√≥n", d:"No manda el mismo email dos veces para el mismo producto ‚Äî espera hasta que el stock cambie"},
+            {icon:"üìã", t:"Resumen manual", d:"Pod√©s pedir el resumen de todas las alertas activas en cualquier momento con el bot√≥n de arriba"},
           ].map((r,i)=>(
             <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
               <span style={{fontSize:16,flexShrink:0}}>{r.icon}</span>
               <div>
-                <span style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{r.t} — </span>
+                <span style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{r.t} ‚Äî </span>
                 <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{r.d}</span>
               </div>
             </div>
@@ -1977,17 +1977,17 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // MAIN APP
-// ─────────────────────────────────────────────────────────────────────────────
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IMPORTER TAB — Catálogo Lovable (249 productos)
-// ─────────────────────────────────────────────────────────────────────────────
-const LOVABLE_CATALOG = [{"id":"adi-001","name":"Desmoldante Aerosol Lisse 600 ml","description":"Aerosol desmoldante para moldes de metal, silicona y teflón.","unitCost":368.85,"unit":"un","stock":40,"supplierId":"arg","brand":"Adimix","category":"Complementos","minStock":10,"dailyUsage":0.44},{"id":"adi-002","name":"Mejorador Enzipan 250 g","description":"Mejorador de harina para panadería.","unitCost":73.77,"unit":"un","stock":50,"supplierId":"arg","brand":"Adimix","category":"Complementos","minStock":12,"dailyUsage":0.56},{"id":"adi-003","name":"Mix Pão de Queijo 1 kg","description":"Premezcla para pan de queso brasileño.","unitCost":172.13,"unit":"un","stock":40,"supplierId":"arg","brand":"Adimix","category":"Premezclas","minStock":10,"dailyUsage":0.44},{"id":"adi-004","name":"Caramelo Líquido 7 kg","description":"Caramelo líquido profesional listo para usar.","unitCost":139.34,"unit":"kg","stock":25,"supplierId":"arg","brand":"Adimix","category":"Caramelo","minStock":6,"dailyUsage":0.28},{"id":"adi-005","name":"Lactofil Premium 1 L","description":"Crema vegetal multipropósito.","unitCost":250.0,"unit":"un","stock":35,"supplierId":"arg","brand":"Adimix","category":"Complementos","minStock":8,"dailyUsage":0.39},{"id":"dr-001","name":"Azúcar Impalpable 1 kg","description":"Azúcar especial molida extremadamente fina. Ideal para merengues, glasés y decoración.","unitCost":176.23,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":15,"dailyUsage":0.67},{"id":"dr-002","name":"Glacé Real 1 kg","description":"Mezcla en polvo para glasé profesional. Secado rápido, consistencia perfecta.","unitCost":213.11,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-003","name":"Fondant 1 kg","description":"Fondant profesional para cobertura y modelado. Textura elástica y maleable.","unitCost":196.72,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-004","name":"Pastamix 800 g","description":"Pasta americana para tortas artísticas. Textura acetinada y versátil.","unitCost":307.38,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-005","name":"Pastamix 3 kg","description":"Pasta americana profesional 3 kg. Misma calidad, formato para alta producción.","unitCost":1020.49,"unit":"un","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":6,"dailyUsage":0.28},{"id":"dr-006","name":"Pasta Americana Colorful 800 g","description":"Pasta americana en colores intensos. No requiere teñido.","unitCost":315.57,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-007","name":"Rendamix 100 g","description":"Mezcla para encajes decorativos flexibles. 100 g rinden ~300 g.","unitCost":155.74,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-008","name":"Pasta Americana Mix 4,5 kg","description":"Pasta americana profesional 4,5 kg. Ideal para alto volumen.","unitCost":1536.89,"unit":"un","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoración Mix","minStock":5,"dailyUsage":0.22},{"id":"dr-009","name":"Azúcar Colores 80 g","description":"Azúcar cristal colorida para decoración. Disponible en 15+ colores.","unitCost":45.08,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":20,"dailyUsage":0.89},{"id":"dr-010","name":"Azúcar Colores 500 g","description":"Azúcar cristal colorida 500 g, formato profesional.","unitCost":131.15,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-011","name":"Granas Colores 120 g","description":"Granulado blando colorido para decoración de tortas y cupcakes.","unitCost":45.08,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":20,"dailyUsage":0.89},{"id":"dr-012","name":"Granas Colores 500 g","description":"Granulado blando colorido 500 g, formato profesional.","unitCost":131.15,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-013","name":"Grageas Colores 100 g","description":"Confites coloridos con centro crocante para topping.","unitCost":53.27,"unit":"un","stock":70,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":17,"dailyUsage":0.78},{"id":"dr-014","name":"Grageas Colores 500 g","description":"Confites coloridos 500 g, formato profesional.","unitCost":159.84,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-015","name":"Granas Colores 5 kg","description":"Granulado industrial 5 kg. Chocolate, mixto y mezclado.","unitCost":163.93,"unit":"kg","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":5,"dailyUsage":0.22},{"id":"dr-016","name":"Aromatizante 30 ml","description":"Aromas hidrosolubles para pastelería. 25+ sabores disponibles.","unitCost":61.48,"unit":"un","stock":100,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":25,"dailyUsage":1.11},{"id":"dr-017","name":"Aromatizante Vainilla 1 lt","description":"Aromatizante vainilla concentrada 960 ml. Alta fijación.","unitCost":217.21,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":10,"dailyUsage":0.44},{"id":"dr-018","name":"Aromatizante Chocolate/Coco/Manteca 1 lt","description":"Aromatizante concentrado 960 ml. Chocolate, coco, manteca, frutilla.","unitCost":245.9,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":7,"dailyUsage":0.33},{"id":"dr-019","name":"Aromatizante Naranja/Limón/Menta 1 lt","description":"Aromatizante cítricos y menta 960 ml. Alta fijación.","unitCost":360.65,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":7,"dailyUsage":0.33},{"id":"dr-020","name":"Color Gel 15 g","description":"Colorante en gel para modelados y glasés. Rinde 7x más que convencionales.","unitCost":65.57,"unit":"un","stock":100,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":25,"dailyUsage":1.11},{"id":"dr-021","name":"Color Softgel 25 g","description":"Colorante soft gel clásico. Colores intensos para chantilly y merengue.","unitCost":110.66,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":20,"dailyUsage":0.89},{"id":"dr-022","name":"Color Softgel Big 150 g","description":"Colorante soft gel 150 g. 15 colores, formato profesional intensivo.","unitCost":352.46,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":10,"dailyUsage":0.44},{"id":"dr-023","name":"Color para Chocolates 12 g","description":"Choco Tint, colorante liposoluble para chocolates y coberturas.","unitCost":98.36,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":15,"dailyUsage":0.67},{"id":"dr-024","name":"Color Polvo Esfumado 3 g","description":"Colorante en polvo para caldas, cremas y rellenos. 12+ colores.","unitCost":139.34,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":15,"dailyUsage":0.67},{"id":"dr-025","name":"Color Pen 60 g","description":"Rotulador comestible para decoración sobre fondant y glasé.","unitCost":135.25,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":12,"dailyUsage":0.56},{"id":"dr-026","name":"Colorante Líquido 10 ml","description":"Colorante líquido para texturas cremosas. Alta pigmentación.","unitCost":45.08,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":20,"dailyUsage":0.89},{"id":"dr-027","name":"Colorante Líquido 1 lt","description":"Colorante líquido 960 ml, producción industrial.","unitCost":155.74,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":7,"dailyUsage":0.33},{"id":"dr-028","name":"Ácido Cítrico 50 g","description":"Conservante natural, regula acidez y evita oscurecimiento.","unitCost":81.97,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":15,"dailyUsage":0.67},{"id":"dr-029","name":"Agar Agar 30 g","description":"Gelificante vegetal derivado de algas marinas.","unitCost":299.18,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-030","name":"CMC 50 g","description":"Carboximetilcelulosa: espesante, humectante y gelificante.","unitCost":110.65,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-031","name":"Cremor Tártaro 50 g","description":"Estabiliza claras batidas. Indispensable para merengue.","unitCost":81.97,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-032","name":"Gel Confitero 50 g","description":"Gel brillante para decorar y preparar tortas antes del fondant.","unitCost":81.97,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-033","name":"Glucosa Jarabe 150 g","description":"Anticristalizante para caramelos, merengue italiano y glasés.","unitCost":98.36,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":15,"dailyUsage":0.67},{"id":"dr-034","name":"Glucosa Jarabe 500 g","description":"Glucosa jarabe 500 g. Anticristalizante para confitería.","unitCost":163.93,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-035","name":"Glucosa Jarabe 1 kg","description":"Glucosa jarabe profesional 1 kg. Formato óptimo para obrador.","unitCost":245.9,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-036","name":"Glucosa Polvo (Dextrosa) 50 g","description":"Dextrosa para heladería. Reduce cristales de hielo.","unitCost":81.97,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-037","name":"Emustab 200 g","description":"Emulsificante para chantilly, mousses y helados. 200 g.","unitCost":121.32,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-038","name":"Emustab 1 kg","description":"Emulsificante profesional 1 kg. Dosificación 10 g/lt.","unitCost":418.03,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":7,"dailyUsage":0.33},{"id":"dr-039","name":"Gelatina Neutra 1 kg","description":"Gelatina neutra profesional. Sin sabor ni color.","unitCost":1065.57,"unit":"un","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":6,"dailyUsage":0.28},{"id":"dr-040","name":"Preparado Frutilla 1 kg","description":"Preparado top frutilla para helados. Trozos visibles.","unitCost":286.88,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":7,"dailyUsage":0.33},{"id":"dr-041","name":"Crema Chocolat 1 kg","description":"Crema para vetear: maní, avellana con cacao, gianduia.","unitCost":442.62,"unit":"kg","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":6,"dailyUsage":0.28},{"id":"dr-042","name":"Variegato Frutales 2 kg","description":"Variegato frutal 2 kg: amarena, frutilla, frutos del bosque.","unitCost":565.57,"unit":"kg","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":6,"dailyUsage":0.28},{"id":"dr-043","name":"Variegato Frutales 12 kg","description":"Variegato frutal industrial 12 kg. Frutilla, frutos del bosque.","unitCost":528.69,"unit":"kg","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"dr-044","name":"Variegato Frutales Zero 1 kg","description":"Variegato frutal sin azúcar. Frutilla, maracuyá, frutos del bosque.","unitCost":655.74,"unit":"kg","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.22},{"id":"dr-045","name":"Veteado Chocolat Clásico 2 kg","description":"Veteado chocolate 2 kg: coco bianco, cookie cream, torta limón.","unitCost":545.08,"unit":"kg","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.22},{"id":"dr-046","name":"Veteado Chocolat Premium 2 kg","description":"Veteado chocolate premium: biscoti, moka, caramelo salado, gianduia.","unitCost":745.9,"unit":"kg","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"dr-047","name":"Veteado Chocolat 12 kg","description":"Veteado chocolate industrial 12 kg. Biscoti crema y gianduia.","unitCost":631.15,"unit":"kg","stock":10,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.11},{"id":"dr-048","name":"Sabor Algemix Polvo Base Leche 1 kg","description":"Saborizante en polvo para helados a base de leche. 20 g/lt. 20+ sabores.","unitCost":307.38,"unit":"kg","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":10,"dailyUsage":0.44},{"id":"dr-049","name":"Sabor Tropical Polvo Base Agua 1 kg","description":"Saborizante en polvo base agua. Ananá, limón, naranja, sandía.","unitCost":327.87,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":7,"dailyUsage":0.33},{"id":"dr-050","name":"Vainilla Líquida 1 kg","description":"Aroma vainilla concentrada para heladería. 1–2 cc/lt.","unitCost":352.45,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":7,"dailyUsage":0.33},{"id":"dr-051","name":"Aceite de Menta 1 kg","description":"Aceite esencial menta concentrado. 1–2 cc/lt. Alta pureza.","unitCost":1803.28,"unit":"kg","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.17},{"id":"dr-052","name":"Aroma Coco 1 kg","description":"Aroma coco concentrado para heladería. 1–2 cc/lt.","unitCost":565.57,"unit":"kg","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":6,"dailyUsage":0.28},{"id":"dr-053","name":"Sabor y Color Crema de Huevo 5 lt","description":"Saborizante y colorante crema de huevo. 3,5 cc/lt.","unitCost":462.62,"unit":"lt","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.17},{"id":"dr-054","name":"Emulsión Frutilla 1 lt","description":"Emulsión frutilla para helados al agua. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-055","name":"Emulsión Manzana Verde 1 lt","description":"Emulsión manzana verde para sorbetes. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-056","name":"Emulsión Durazno 1 lt","description":"Emulsión durazno para helados al agua. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-057","name":"Emultina Limón 1 lt","description":"Emultina limón cítrico intenso para sorbetes. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-058","name":"Emultina Uva 1 lt","description":"Emultina uva para helados al agua. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-059","name":"Emultina Naranja 1 lt","description":"Emultina naranja cítrica para sorbetes. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-060","name":"Cobertura Clásica 1,3 kg","description":"Salsa copas clásica: chocolate, dulce de leche, caramelo, frutilla.","unitCost":172.13,"unit":"kg","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":10,"dailyUsage":0.44},{"id":"dr-061","name":"Cobertura Premium 1,3 kg","description":"Salsa copas premium con pulpa: frutilla, mora, menta, maracuyá.","unitCost":225.41,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":7,"dailyUsage":0.33},{"id":"dr-062","name":"Cobertura Clásica 300 g","description":"Salsa copas clásica 300 g, formato práctico.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":12,"dailyUsage":0.56},{"id":"dr-063","name":"Soft Vainilla o Chocolate 1 kg","description":"Premezcla para máquina soft. Solo agregar leche.","unitCost":270.49,"unit":"un","stock":35,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Food Service","minStock":8,"dailyUsage":0.39},{"id":"dr-064","name":"Chocolate Caliente 1 kg","description":"Premezcla chocolate caliente profesional. Solo agregar leche.","unitCost":327.87,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Food Service","minStock":7,"dailyUsage":0.33},{"id":"led-001","name":"Relleno y Cobertura Chantilly 4,7 kg","description":"Crema lista para batir chantilly 4,7 kg. Textura, volumen y estabilidad.","unitCost":217.21,"unit":"kg","stock":70,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":17,"dailyUsage":0.78},{"id":"led-002","name":"Relleno y Cobertura Chantilly 1 kg","description":"Crema lista para batir chantilly 1 kg. También en vainilla y frutilla.","unitCost":250.0,"unit":"kg","stock":80,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":20,"dailyUsage":0.89},{"id":"led-003","name":"Relleno y Cobertura Chantilly 500 g","description":"Crema lista para batir chantilly 500 g.","unitCost":303.28,"unit":"kg","stock":90,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":22,"dailyUsage":1.0},{"id":"led-004","name":"Relleno y Cobertura Chocolate 4,5 kg","description":"Crema lista para batir chocolate 4,5 kg. Sedosa y estable.","unitCost":270.49,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":15,"dailyUsage":0.67},{"id":"led-005","name":"Relleno y Cobertura Chocolate 1 kg","description":"Crema lista para batir chocolate 1 kg. Puede freezarse.","unitCost":327.87,"unit":"kg","stock":70,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":17,"dailyUsage":0.78},{"id":"led-006","name":"Relleno y Cobertura Chocolate 500 g","description":"Crema lista para batir chocolate 500 g.","unitCost":360.66,"unit":"kg","stock":80,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":20,"dailyUsage":0.89},{"id":"led-007","name":"Merengue en Polvo 250 g","description":"Polvo instantáneo para merengue profesional 250 g.","unitCost":385.25,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":15,"dailyUsage":0.67},{"id":"led-008","name":"Merengue en Polvo 4 kg","description":"Polvo para merengue industrial 4 kg. Resultados consistentes.","unitCost":270.49,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":10,"dailyUsage":0.44},{"id":"led-009","name":"Crema Pastelera 250 g","description":"Polvo para crema pastelera en frío, sin cocción. 250 g.","unitCost":418.03,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":15,"dailyUsage":0.67},{"id":"led-010","name":"Crema Pastelera 4 kg","description":"Polvo para crema pastelera en frío, industrial 4 kg.","unitCost":319.67,"unit":"kg","stock":35,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":8,"dailyUsage":0.39},{"id":"led-011","name":"Mousse Chantilly 250 g","description":"Polvo para mousse chantilly. Excelente volumen y estabilidad.","unitCost":627.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":12,"dailyUsage":0.56},{"id":"led-012","name":"Mousse Chantilly 1 kg","description":"Polvo para mousse chantilly profesional 1 kg.","unitCost":602.46,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":10,"dailyUsage":0.44},{"id":"led-013","name":"Gel de Brillo Neutro 310 g","description":"Gel brillo en frío para tartas y postres. No se chorrea.","unitCost":237.7,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":15,"dailyUsage":0.67},{"id":"led-014","name":"Destello Neutro 4,4 kg","description":"Gel brillo listo para usar 4,4 kg. Aplicación directa.","unitCost":159.84,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":10,"dailyUsage":0.44},{"id":"led-015","name":"Gel de Brillo Caliente 10 kg","description":"Gel brillo caliente industrial 10 kg.","unitCost":131.15,"unit":"kg","stock":25,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":6,"dailyUsage":0.28},{"id":"led-016","name":"Crema Paris 280 g","description":"Ganache lista sabor chocolate amargo. Brillo espejo bajo frío.","unitCost":401.64,"unit":"kg","stock":50,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":12,"dailyUsage":0.56},{"id":"led-017","name":"Crema Paris 4 kg","description":"Cubretortas París chocolate amargo 4 kg. Versátil para baños.","unitCost":327.89,"unit":"kg","stock":30,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":7,"dailyUsage":0.33},{"id":"led-018","name":"Mix Cupcake Vainilla 500 g","description":"Premezcla sin gluten para cupcakes vainilla. Rinde 12 unidades.","unitCost":233.61,"unit":"kg","stock":55,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":13,"dailyUsage":0.61},{"id":"led-019","name":"Mix Brownie 470 g","description":"Premezcla sin gluten para brownie chocolate. Crujiente por fuera.","unitCost":258.2,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":15,"dailyUsage":0.67},{"id":"led-020","name":"Mix Brownie 4 kg","description":"Premezcla sin gluten brownie industrial 4 kg.","unitCost":217.21,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":10,"dailyUsage":0.44},{"id":"led-021","name":"Mix Budín Vainilla 500 g","description":"Premezcla sin gluten budín vainilla. Rinde 1 molde grande.","unitCost":213.11,"unit":"kg","stock":50,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":12,"dailyUsage":0.56},{"id":"led-022","name":"Mix Macarons 250 g","description":"Premezcla con almendras para macarons franceses. Solo agua caliente.","unitCost":532.79,"unit":"kg","stock":45,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":11,"dailyUsage":0.5},{"id":"led-023","name":"Mix Macarons 3,5 kg","description":"Premezcla macarons profesional 3,5 kg. Alto rendimiento.","unitCost":422.13,"unit":"kg","stock":20,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":5,"dailyUsage":0.22},{"id":"agr-001","name":"Aceite Doratta 15,8 L","description":"Aceite palma refinado 15,8 L. Fritura profesional, alto punto de humo.","unitCost":2250.0,"unit":"un","stock":30,"supplierId":"arg","brand":"Agropalma","category":"Aceites","minStock":7,"dailyUsage":0.33},{"id":"agr-002","name":"Grasa de Palma 20 kg","description":"Grasa palma refinada 20 kg. Para coberturas y masas hojaldradas.","unitCost":122.73,"unit":"kg","stock":20,"supplierId":"arg","brand":"Agropalma","category":"Aceites","minStock":5,"dailyUsage":0.22},{"id":"mec3-001","name":"Pasta Ananá 3 kg","description":"Pasta concentrada ananá. Sin colorantes artificiales. Dosif: 60 g/lt.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-002","name":"Pasta Banana 3 kg","description":"Pasta concentrada banana. Color dorado, sabor tropical intenso.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-003","name":"Pasta Frambuesa 3 kg","description":"Pasta concentrada frambuesa. Sabor refinado para sorbetes.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-004","name":"Pasta Frutilla 3 kg","description":"Pasta concentrada frutilla sin colorantes. Sabor auténtico.","unitCost":918.03,"unit":"kg","stock":25,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":6,"dailyUsage":0.28},{"id":"mec3-005","name":"Pasta Mango 3 kg","description":"Pasta concentrada mango. Color dorado, sabor exótico irresistible.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-006","name":"Pasta Maracuyá 3 kg","description":"Pasta concentrada maracuyá. Sabor ácido tropical para sorbetes.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-007","name":"Pasta Limón 3 kg","description":"Pasta concentrada limón. Sabor cítrico fresco e intenso.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-008","name":"Pasta Azurro Cielo 5 kg","description":"Pasta sabor fantasía color celeste. Preferida de los chicos.","unitCost":799.18,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-009","name":"Pasta Bubbly 5 kg","description":"Pasta sabor chicle, color rosa vibrante. Gluten Free, Halal.","unitCost":1213.11,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-010","name":"Pasta Biscottino 4,5 kg","description":"Pasta galletita para el famoso sabor Cookies MEC3. Dosif: 50 g/lt.","unitCost":995.9,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-011","name":"Pasta Biancocioc 6 kg","description":"Pasta chocolate blanco para heladería y pastelería.","unitCost":1090.16,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-012","name":"Pasta Cherry 5 kg","description":"Concentrado de cerezas para sorbetes y helados frutales.","unitCost":1122.95,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-013","name":"Pasta Cocco 4 kg","description":"Pasta coco con aroma embriagante. Dosif: 60 g/lt.","unitCost":1032.79,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-014","name":"Pasta Caffè 1 kg","description":"Extracto café concentrado. Sabor suave y distintivo. Dosif: 10 g/lt.","unitCost":2991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-015","name":"Pasta Chantilly Cookies Black 4,5 kg","description":"Pasta saborizante Cookies Black. Impacto visual y sabor equilibrado.","unitCost":1086.07,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-016","name":"Pasta Cheese Cake en Polvo 1 kg","description":"Base polvo sabor cheesecake para helado. Dosif: 40 g/lt.","unitCost":1295.08,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-017","name":"Pasta Limoncello en Polvo 2,5 kg","description":"Pasta polvo limoncello. Fresca con sabor italiano auténtico.","unitCost":991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-018","name":"Pasta Mascarpone en Polvo 2 kg","description":"Base mascarpone para tiramisú y postres cremosos.","unitCost":1500.0,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-019","name":"Pasta Yoghin Yogurth en Polvo 1 kg","description":"Pasta polvo yogurt. Frescura y acidez del yogurt natural.","unitCost":1196.72,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-020","name":"Pasta Limone 50 en Polvo 2,5 kg","description":"Pasta limón 50 con estabilizante. Sorbetes clásicos.","unitCost":1155.74,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-021","name":"Pasta Menta 3 kg","description":"Pasta menta fresca para helados refrescantes. Dosif: 50 g/lt.","unitCost":952.82,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-022","name":"Pasta Mister Nico (Maní) 4 kg","description":"Pasta maní para helado Mister Nico. Dosif: 80–100 g/lt.","unitCost":1180.33,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-023","name":"Pistacho California 4 kg","description":"Pasta pura pistacho californiano 99,8%. Origen: USA California.","unitCost":4147.54,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-024","name":"Pistacho Pesto con Trozos 2,5 kg","description":"Pasta pistacho tipo pesto con trozos visibles. Premium.","unitCost":3581.97,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"mec3-025","name":"Nocciola Prima Fine 5 kg","description":"Pasta avellana pura. Origen Campania, variedad Mortarella.","unitCost":2151.64,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-026","name":"Nocciola Selection 5 kg","description":"Pasta avellana Selection. Blend seleccionado, perfil equilibrado.","unitCost":1491.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-027","name":"Nocciola Oscura 5 kg","description":"Pasta avellana oscura. Tostado especial, sabor intenso.","unitCost":1627.05,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-028","name":"Nocciola Máxima (Kinder) 5 kg","description":"Pasta avellana Máxima Premium. Mortarella + Tonda Gentile.","unitCost":2340.16,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-029","name":"Sinfonía Italiana KIT 12,7 kg","description":"Kit multi-sabores para vitrina temática italiana.","unitCost":1065.57,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"mec3-030","name":"Pasta Tiramisú 4,5 kg","description":"Pasta tiramisú italiana. Mascarpone, café y cacao.","unitCost":1040.98,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-031","name":"Unicornio KIT 6,7 kg","description":"Kit colores fantasía para helados creativos.","unitCost":1098.36,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"mec3-032","name":"Pasta Vainilla French 3 kg","description":"Pasta vainilla francesa de Tahití. Fragancia inconfundible.","unitCost":1159.84,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-033","name":"Pasta Zabaione 5,5 kg","description":"Pasta zabaione italiano clásico. Yemas, azúcar, Marsala.","unitCost":991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-034","name":"Variegato Cookie Black Oreo 6 kg","description":"Variegato Cookies Black con crema cacao y trozos galletita.","unitCost":1065.57,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-035","name":"Variegato Cookie Lemon 6 kg","description":"Variegato Cookies Lemon Meringue. Galletita, limón y merengue.","unitCost":1065.57,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-036","name":"Variegato Fiordibosco 3 kg","description":"Variegato frutos del bosque. Rico en fruta, aromático.","unitCost":991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-037","name":"Variegato Mamá Que Buena 5 kg","description":"Variegato cacao, wafers y avellanas. El snack convertido en helado.","unitCost":967.21,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-038","name":"Variegato Mecralph 5,5 kg","description":"Crema chocolate blanco y coco rallado para vetear.","unitCost":1254.1,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-039","name":"Variegato Mecrock 6 kg","description":"Crema chocolate y avellana con granos avellana crocante.","unitCost":1282.79,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-040","name":"Variegato Mecrock Plus 5 kg","description":"Mecrock con gianduia y wafers crocantes. Más es mejor.","unitCost":1176.0,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-041","name":"Variegato Mister Nico (Snickers) 4 kg","description":"Super-variegato maní, caramelo y trozos crocantes.","unitCost":877.05,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-042","name":"Variegato Quella Pistacho Crunch 2,3 kg","description":"Crema pistacho seductora con textura crocante. Premium.","unitCost":1938.52,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.11},{"id":"mec3-043","name":"Variegato Quello Caramelo 6 kg","description":"Variegato caramelo denso. Sabor a crema de leche caramelizada.","unitCost":827.87,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-044","name":"Variegato Wafer 5 kg","description":"Variegato con trozos de wafer crujiente.","unitCost":1073.77,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-045","name":"Base Soave 2 kg","description":"Base heladería balanceada. 100 g + 250 g azúcar + 1 lt leche.","unitCost":831.97,"unit":"kg","stock":30,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":7,"dailyUsage":0.33},{"id":"mec3-046","name":"Base Elena 1,8 kg","description":"Base para helado cremoso. 180 g + 190 g azúcar/lt leche.","unitCost":840.16,"unit":"kg","stock":25,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":6,"dailyUsage":0.28},{"id":"mec3-047","name":"Supergelmix 3 kg","description":"Base universal para sorbetes frutales. 50 g + 300 g azúcar/lt.","unitCost":938.52,"unit":"kg","stock":25,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":6,"dailyUsage":0.28},{"id":"mec3-048","name":"Cioki 1 kg","description":"Base chocolate para helado. 200 g + 1000 cc leche.","unitCost":655.74,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":5,"dailyUsage":0.22},{"id":"mec3-049","name":"Cremfix 1 kg","description":"Fijador de crema para helados. Mejora cremosidad y estabilidad.","unitCost":643.44,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":5,"dailyUsage":0.22},{"id":"nor-001","name":"Gousses Vainilla Madagascar Bourbon Bio","description":"Chauchas vainilla Bourbon orgánica Madagascar. Notas boisé y rhum-raisin.","unitCost":0,"unit":"un","stock":20,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.22},{"id":"nor-002","name":"Gousses Vainilla México","description":"Chauchas vainilla mexicana. Notas delicadas de ciruela y cacao.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.17},{"id":"nor-003","name":"Gousses Vainilla Tahití","description":"Chauchas vainilla Tahití. Perfil floral y anisado, variedad rarísima.","unitCost":0,"unit":"un","stock":10,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.11},{"id":"nor-004","name":"Gousses Vainilla Fendue","description":"Chauchas vainilla Madagascar abiertas. Mayor practicidad en obrador.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.17},{"id":"nor-005","name":"Pasta Vainilla Madagascar Bio VANIFUSION","description":"Pasta chauchas Madagascar lista para usar. Sin cortar ni raspar.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.17},{"id":"nor-006","name":"Pasta Vainilla Tahitensis VANIFUSION","description":"Pasta vainilla Tahitensis. Notas florales y anisadas únicas.","unitCost":0,"unit":"un","stock":10,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.11},{"id":"nor-007","name":"Extracto Vainilla Bourbon Bio","description":"Extracto vainilla Bourbon orgánica con granos visibles. 1 lt.","unitCost":0,"unit":"un","stock":20,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.22},{"id":"nor-008","name":"Extracto Vainilla Bio Sin Granos","description":"Extracto vainilla sin granos para acabados limpios y uniformes.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.17},{"id":"nor-009","name":"Polvo Vainilla Bio Madagascar","description":"Chauchas finamente molidas. Ideal para masas secas.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.17},{"id":"nor-010","name":"Tadoka La Justa Dosis","description":"Dosificación precisa de vainilla Planifolia + Tahitensis.","unitCost":0,"unit":"un","stock":20,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.22},{"id":"nor-011","name":"Vakana Perla de Vainilla","description":"Perlas de vainilla para dosificación precisa y decoración.","unitCost":0,"unit":"un","stock":10,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.11},{"id":"nor-012","name":"Pasta Granos Café Bio","description":"Pasta café arábica orgánico de Etiopía. Sabor acidulado y afrutado.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Café Bio","minStock":5,"dailyUsage":0.17},{"id":"nor-013","name":"Extracto Café Concentrado Bio","description":"Extracto café arábica Colombia. Alta intensidad aromática.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Café Bio","minStock":5,"dailyUsage":0.17},{"id":"per-001","name":"Cacao Polvo 20-22% 1 kg","description":"Cacao polvo italiano 20-22% grasa. Aroma inconfundible, solubilidad perfecta.","unitCost":926.23,"unit":"kg","stock":20,"supplierId":"eur","brand":"Pernigotti","category":"Cacao y Chocolate","minStock":5,"dailyUsage":0.22},{"id":"per-002","name":"Stracciatella 1 kg","description":"Chocolate para stracciatella. Escamas finas y crujientes en el helado.","unitCost":606.56,"unit":"kg","stock":25,"supplierId":"eur","brand":"Pernigotti","category":"Cacao y Chocolate","minStock":6,"dailyUsage":0.28},{"id":"per-003","name":"Pasta Gianduia 6 kg","description":"Pasta Gianduia italiana. Avellana + cacao, receta piamontesa original.","unitCost":1311.48,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"per-004","name":"Torrone Rustico 4,5 kg","description":"Pasta turrón rústico con miel, almendras y avellanas.","unitCost":1491.8,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"per-005","name":"Frollino 5,5 kg","description":"Pasta galletita frollino. Sabor manteca italiana con sutil crunch.","unitCost":926.23,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"per-006","name":"Amore Nocciola 5 kg","description":"Pasta avellana Amore. Sabor intenso con notas de caramelo.","unitCost":950.82,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"per-007","name":"Arancio Variegato 3,5 kg","description":"Variegato naranja con trozos de naranja confitada.","unitCost":778.68,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"per-008","name":"Pistacho al Gusto 4 kg","description":"Pasta pistacho al gusto. Versátil, ideal para producción diaria.","unitCost":1729.51,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"per-009","name":"Pistacho Natura 2,5 kg","description":"Pasta pistacho puro 100% Natura. Sin colorantes. Línea premium.","unitCost":3950.82,"unit":"kg","stock":8,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.09},{"id":"per-010","name":"Pistacho Maestro 2,5 kg","description":"Pasta pistacho Maestro. Calidad superior a precio accesible.","unitCost":2983.61,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"per-011","name":"Morettina Clásica 6 kg","description":"Cobertura chocolate clásica. Se solidifica en frío creando capa crujiente.","unitCost":696.72,"unit":"kg","stock":20,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.22},{"id":"per-012","name":"Morettina Blanca 6 kg","description":"Cobertura chocolate blanco. Capa crujiente dulce y cremosa.","unitCost":696.72,"unit":"kg","stock":20,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.22},{"id":"per-013","name":"Morettina Pepita Clásica 5,5 kg","description":"Morettina con pepitas de chocolate crocantes. Doble textura.","unitCost":1172.13,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.17},{"id":"per-014","name":"Morettina Pepita Blanca 5,5 kg","description":"Morettina blanca con pepitas chocolate blanco. Contraste premium.","unitCost":1172.13,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.17},{"id":"per-015","name":"Morettina Pistacho 6 kg","description":"Cobertura Morettina sabor pistacho. Propuesta diferenciadora.","unitCost":1721.31,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.11},{"id":"per-016","name":"Morettina Pastelera Clásica 12 kg","description":"Morettina pastelera industrial 12 kg. Mayor fluidez para obrador.","unitCost":614.75,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.11},{"id":"per-017","name":"Morettina Pastelera Pistacho 5,5 kg","description":"Morettina pastelera pistacho 5,5 kg. Para petit fours y bombones.","unitCost":942.62,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.11},{"id":"rdc-001","name":"Chocolate Amargo Dark 70% 2,5 kg","description":"Cobertura amarga 70%. Ecuador + R.Dominicana. Perfil complejo.","unitCost":1385.25,"unit":"kg","stock":50,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"rdc-002","name":"Chocolate Amargo Dark 70% 15 kg","description":"Cobertura amarga 70% industrial 15 kg.","unitCost":1295.08,"unit":"kg","stock":20,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.22},{"id":"rdc-003","name":"Chocolate Amargo Black 65% 2,5 kg","description":"Cacao Nacional ecuatoriano. Notas especiadas de clavo y pimiento.","unitCost":1229.51,"unit":"kg","stock":40,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"rdc-004","name":"Chocolate Amargo Black 65% 15 kg","description":"Chocolate Black 65% industrial 15 kg.","unitCost":1200.82,"unit":"kg","stock":15,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"rdc-005","name":"Chocolate Fluido 56% 2,5 kg","description":"Alta fluidez para moldeo y baños. Notas tostadas suaves.","unitCost":1217.21,"unit":"kg","stock":40,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"rdc-006","name":"Chocolate Fluido 56% 15 kg","description":"Chocolate Fluido 56% industrial 15 kg.","unitCost":1192.62,"unit":"kg","stock":15,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"rdc-007","name":"Chocolate Semiamargo 56% 2,5 kg","description":"Notas flores blancas y café tostado. Amargos emblemáticos.","unitCost":1118.85,"unit":"kg","stock":40,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"rdc-008","name":"Chocolate Semiamargo 56% 15 kg","description":"Chocolate Semiamargo 56% industrial 15 kg.","unitCost":1045.08,"unit":"kg","stock":15,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"rdc-009","name":"Chocolate con Leche Caramelizado 40% 2,5 kg","description":"Leche caramelizada. Sabor a caramelo, miel y frutos secos.","unitCost":1122.95,"unit":"kg","stock":30,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"rdc-010","name":"Chocolate con Leche Blend 35% 2,5 kg","description":"Ecuador + Perú. Perfil redondo, ligeramente afrutado.","unitCost":1122.95,"unit":"kg","stock":35,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":8,"dailyUsage":0.39},{"id":"rdc-011","name":"Chocolate con Leche Blend 35% 15 kg","description":"Chocolate Leche Blend 35% industrial 15 kg.","unitCost":1045.08,"unit":"kg","stock":10,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.11},{"id":"rdc-012","name":"Chocolate Blanco con Maíz 33% 2,5 kg","description":"Innovación con maíz andino tostado. Notas de toffee y miel.","unitCost":1270.49,"unit":"kg","stock":25,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":6,"dailyUsage":0.28},{"id":"rdc-013","name":"Chocolate Blanco 31% 2,5 kg","description":"Primer chocolate blanco ecuatoriano. Leche del volcán Cayambe.","unitCost":1122.95,"unit":"kg","stock":30,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"rdc-014","name":"Chocolate Blanco 31% 15 kg","description":"Chocolate Blanco 31% industrial 15 kg.","unitCost":1045.08,"unit":"kg","stock":10,"supplierId":"ecu","brand":"República del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.11},{"id":"rdc-015","name":"Cacao en Polvo 22-24% 2,25 kg","description":"Cacao polvo alto contenido grasa 22-24%. Color intenso.","unitCost":1311.48,"unit":"kg","stock":45,"supplierId":"ecu","brand":"República del Cacao","category":"Derivados de Cacao","minStock":11,"dailyUsage":0.5},{"id":"rdc-016","name":"Manteca de Cacao 1,5 kg","description":"Manteca cacao pura ecuatoriana. Para ajustar fluidez y textura.","unitCost":0,"unit":"kg","stock":20,"supplierId":"ecu","brand":"República del Cacao","category":"Derivados de Cacao","minStock":5,"dailyUsage":0.22},{"id":"rdc-017","name":"Nibs de Cacao 1 kg","description":"Nibs cacao tostados ecuatorianos. Para texturas e inclusiones.","unitCost":2049.18,"unit":"kg","stock":15,"supplierId":"ecu","brand":"República del Cacao","category":"Derivados de Cacao","minStock":5,"dailyUsage":0.17},{"id":"rdc-018","name":"Licor de Cacao 1 kg","description":"Licor cacao 100% puro R.Dominicana. Base para chocolatería.","unitCost":2000.0,"unit":"kg","stock":15,"supplierId":"ecu","brand":"República del Cacao","category":"Derivados de Cacao","minStock":5,"dailyUsage":0.17},{"id":"sel-001","name":"Cobertura Confeiteiro con Leche 1 kg","description":"Cobertura leche Selecta. Buena fluidez para baños y moldeo.","unitCost":336.07,"unit":"kg","stock":60,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":15,"dailyUsage":0.67},{"id":"sel-002","name":"Cobertura Confeiteiro Semiamargo 1 kg","description":"Cobertura semiamargo Selecta. Sabor equilibrado con notas de cacao.","unitCost":336.07,"unit":"kg","stock":60,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":15,"dailyUsage":0.67},{"id":"sel-003","name":"Cobertura Confeiteiro Blanco 1 kg","description":"Cobertura blanco Selecta. Cremosa y dulce para decoraciones.","unitCost":336.07,"unit":"kg","stock":60,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":15,"dailyUsage":0.67},{"id":"sel-004","name":"Cobertura Supreme Amargo 1 kg","description":"Cobertura Supreme amargo. Línea premium, sabor intenso y profundo.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-005","name":"Gotas Supreme con Leche 1 kg","description":"Gotas chocolate leche Supreme. Resistentes al horneado.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-006","name":"Gotas Supreme Semiamargo 1 kg","description":"Gotas semiamargo Supreme. Para cookies, brownies y muffins.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-007","name":"Gotas Supreme Blanco 1 kg","description":"Gotas chocolate blanco Supreme. Resistentes al horneado.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-008","name":"Ganache con Leche 4 kg","description":"Ganache leche listo para usar. Cremoso para rellenos y coberturas.","unitCost":311.48,"unit":"kg","stock":40,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"sel-009","name":"Ganache Semiamargo 4 kg","description":"Ganache semiamargo listo. Sabor intenso, textura sedosa.","unitCost":311.48,"unit":"kg","stock":40,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"sel-010","name":"Ganache Blanco 4 kg","description":"Ganache blanco listo. Se puede colorear con colorantes liposolubles.","unitCost":311.48,"unit":"kg","stock":40,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"sel-011","name":"Chips Negro 1 kg","description":"Chips chocolate negro para inclusiones en helados y panificados.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-012","name":"Chips Blanco 1 kg","description":"Chips chocolate blanco. Resistentes al horneado y freezado.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-013","name":"Cacao Polvo Namur 500 g","description":"Cacao polvo Namur color oscuro intenso. Alta solubilidad.","unitCost":659.84,"unit":"kg","stock":45,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":11,"dailyUsage":0.5},{"id":"sel-014","name":"Cacao Polvo Namur 10 kg","description":"Cacao polvo Namur industrial 10 kg. Consistencia lote a lote.","unitCost":459.02,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"sel-015","name":"Granizado Semiamargo 8 kg","description":"Mini gotas chocolate para stracciatella y decoración de helados.","unitCost":282.79,"unit":"kg","stock":35,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":8,"dailyUsage":0.39},{"id":"sel-016","name":"Microgalletitas baño Chocolate 7 kg","description":"Microgalletitas bañadas chocolate. Crocantes en contacto con helado.","unitCost":680.33,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"sel-017","name":"Super Liga Neutra 1 kg","description":"Estabilizante neutro para helado. Frío o caliente. Dosif: 10 g/lt.","unitCost":290.98,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":12,"dailyUsage":0.56},{"id":"sel-018","name":"Super Liga Neutra 20 kg","description":"Estabilizante neutro industrial 20 kg. Dosif: 10 g/lt.","unitCost":245.9,"unit":"kg","stock":20,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.22},{"id":"sel-019","name":"Liga Extra Industrial 1 kg","description":"Estabilizante industrial proceso caliente. Dosif: 3 g/lt.","unitCost":475.41,"unit":"kg","stock":35,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":8,"dailyUsage":0.39},{"id":"sel-020","name":"Liga Extra Industrial 10 kg","description":"Liga Extra Industrial 10 kg. Dosif: 3 g/lt.","unitCost":426.23,"unit":"kg","stock":15,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.17},{"id":"sel-021","name":"SUPRA 5 Emulsificante 1 kg","description":"Emulsificante+estabilizante para crema y agua. Dosif: 5 g/lt.","unitCost":700.81,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":7,"dailyUsage":0.33},{"id":"sel-022","name":"XP 3000 Emulsificante Industrial 25 kg","description":"Emulsificante industrial 25 kg. Dosif: 3 g/lt.","unitCost":524.59,"unit":"kg","stock":10,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.11},{"id":"sel-023","name":"Emustab 10 kg","description":"Emulsionante Emustab industrial 10 kg. Proceso frío y caliente.","unitCost":282.79,"unit":"kg","stock":20,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.22},{"id":"sel-024","name":"Emustab 3 kg","description":"Emulsionante Emustab 3 kg. Cremosidad y estabilidad.","unitCost":327.86,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":7,"dailyUsage":0.33},{"id":"sel-025","name":"Estabilizante Aqua 5 1 kg","description":"Estabilizante para sorbetes y paletas. Proceso frío. Dosif: 5 g/lt.","unitCost":549.18,"unit":"kg","stock":25,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":6,"dailyUsage":0.28},{"id":"sel-026","name":"Laqua 10 Emulsificante 500 g","description":"Emulsificante proceso frío. Sin pasteurizador. Dosif: 10 g/lt.","unitCost":491.8,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":7,"dailyUsage":0.33},{"id":"sel-027","name":"Base Zero Aqua 1 kg","description":"Base cero azúcar para helados al agua. Líneas saludables.","unitCost":549.18,"unit":"kg","stock":25,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":6,"dailyUsage":0.28},{"id":"sosa-001","name":"Liofilizado Frutilla Polvo 250 g","description":"Fresa liofilizada en polvo. 100% propiedades organolépticas preservadas.","unitCost":2676.23,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Liofilizados","minStock":5,"dailyUsage":0.22},{"id":"sosa-002","name":"Liofilizado Maracuyá Polvo 700 g","description":"Maracuyá liofilizado polvo. Sabor tropical concentrado.","unitCost":4147.54,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Liofilizados","minStock":5,"dailyUsage":0.17},{"id":"sosa-003","name":"Liofilizado Frambuesa Polvo 300 g","description":"Frambuesa liofilizada polvo. Sabor, color y aroma natural.","unitCost":4307.38,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Liofilizados","minStock":5,"dailyUsage":0.17},{"id":"sosa-004","name":"Cereza Crispy 200 g","description":"Cereza liofilizada granulada 2-10 mm. Textura crujiente.","unitCost":1696.72,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.22},{"id":"sosa-005","name":"Mango Crispy 250 g","description":"Mango liofilizado granulado. Textura crocante con sabor tropical.","unitCost":1963.11,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.22},{"id":"sosa-006","name":"Maracuyá Crispy 200 g","description":"Maracuyá liofilizado en trozos crujientes. Acidez concentrada.","unitCost":2745.9,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.22},{"id":"sosa-007","name":"Mango Crispy Wet-Proof 400 g","description":"Mango crispy resistente a la humedad. Mantiene crunch en helados.","unitCost":2815.57,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-008","name":"Frambuesa Crispy Wet-Proof 400 g","description":"Frambuesa crispy wet-proof. Crujiente en medios húmedos.","unitCost":3459.02,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-009","name":"Frutilla Crispy Wet-Proof 400 g","description":"Fresa crispy wet-proof. Sabor natural con textura duradera.","unitCost":3864.75,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-010","name":"Maracuyá Crispy Wet-Proof 400 g","description":"Maracuyá crispy wet-proof. Acidez tropical resistente.","unitCost":3196.72,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-011","name":"Peta Crispy Neutral 700 g","description":"Azúcar efervescente. Explosión sensorial al contacto con saliva.","unitCost":2717.21,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-012","name":"Peta Crispy Chocolate 900 g","description":"Gránulos efervescentes con chocolate. Sensación chispeante.","unitCost":3405.74,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-013","name":"Gelatina Hojas Plata 180 2 kg","description":"Gelatina hojas Plata 180 Bloom. Alta disolución y transparencia.","unitCost":6684.43,"unit":"un","stock":10,"supplierId":"eur","brand":"SOSA","category":"Gelatina","minStock":5,"dailyUsage":0.11},{"id":"sosa-014","name":"Gelatina Hojas Dorado 230 2 kg","description":"Gelatina hojas Oro 230 Bloom. Máxima transparencia y pureza.","unitCost":6684.43,"unit":"un","stock":10,"supplierId":"eur","brand":"SOSA","category":"Gelatina","minStock":5,"dailyUsage":0.11},{"id":"sosa-015","name":"Gelcrem Hot 500 g","description":"Espesante gelificante caliente. Cremas freezables sedosas.","unitCost":1106.56,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-016","name":"Gelcrem Cold 500 g","description":"Espesante gelificante frío. Sin cocción, aplicación instantánea.","unitCost":483.61,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-017","name":"Proespuma Cold 700 g","description":"Emulsionante para espumas frías con sifón. Neutro en sabor.","unitCost":983.61,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-018","name":"Albuwhip Polvo 500 g","description":"Albúmina huevo en polvo. 25% más capacidad montante que clara fresca.","unitCost":2209.02,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-019","name":"Goma Gellan 500 g","description":"Gelificante vegetal para geles firmes, elásticos o quebradizos.","unitCost":8069.67,"unit":"un","stock":10,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.11},{"id":"tro-001","name":"Chocolate Semiamargo 54% 1 kg","description":"Cobertura semiamargo 54% argentino. Alfajores, bombones, tortas.","unitCost":918.03,"unit":"kg","stock":50,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"tro-001-5","name":"Chocolate Semiamargo 54% 5 kg","description":"Cobertura semiamargo 54% 5 kg.","unitCost":918.03,"unit":"kg","stock":30,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"tro-001-20","name":"Chocolate Semiamargo 54% 20 kg","description":"Cobertura semiamargo 54% industrial 20 kg.","unitCost":918.03,"unit":"kg","stock":15,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"tro-002","name":"Chocolate con Leche 1 kg","description":"Cobertura chocolate leche argentino. Cremoso, para alfajores.","unitCost":918.03,"unit":"kg","stock":50,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"tro-002-5","name":"Chocolate con Leche 5 kg","description":"Cobertura chocolate leche 5 kg.","unitCost":918.03,"unit":"kg","stock":30,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"tro-002-20","name":"Chocolate con Leche 20 kg","description":"Cobertura chocolate leche industrial 20 kg.","unitCost":918.03,"unit":"kg","stock":15,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"tro-003","name":"Chocolate Blanco 1 kg","description":"Cobertura blanca argentina. Para alfajores blancos y bombones.","unitCost":918.03,"unit":"kg","stock":50,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"tro-003-5","name":"Chocolate Blanco 5 kg","description":"Cobertura blanca 5 kg.","unitCost":918.03,"unit":"kg","stock":30,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"tro-003-20","name":"Chocolate Blanco 20 kg","description":"Cobertura blanca industrial 20 kg.","unitCost":918.03,"unit":"kg","stock":15,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"tro-004","name":"Chocolate Amargo 71% 1 kg","description":"Cobertura amarga 71%. Ganaches de autor y trufas premium.","unitCost":1135.25,"unit":"kg","stock":40,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"tro-004-5","name":"Chocolate Amargo 71% 5 kg","description":"Cobertura amarga 71% 5 kg.","unitCost":1135.25,"unit":"kg","stock":25,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":6,"dailyUsage":0.28},{"id":"tro-004-20","name":"Chocolate Amargo 71% 20 kg","description":"Cobertura amarga 71% industrial 20 kg.","unitCost":1135.25,"unit":"kg","stock":10,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.11}];
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+// IMPORTER TAB ‚Äî Cat√°logo Lovable (249 productos)
+// ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+const LOVABLE_CATALOG = [{"id":"adi-001","name":"Desmoldante Aerosol Lisse 600 ml","description":"Aerosol desmoldante para moldes de metal, silicona y tefl√≥n.","unitCost":368.85,"unit":"un","stock":40,"supplierId":"arg","brand":"Adimix","category":"Complementos","minStock":10,"dailyUsage":0.44},{"id":"adi-002","name":"Mejorador Enzipan 250 g","description":"Mejorador de harina para panader√≠a.","unitCost":73.77,"unit":"un","stock":50,"supplierId":"arg","brand":"Adimix","category":"Complementos","minStock":12,"dailyUsage":0.56},{"id":"adi-003","name":"Mix P√£o de Queijo 1 kg","description":"Premezcla para pan de queso brasile√±o.","unitCost":172.13,"unit":"un","stock":40,"supplierId":"arg","brand":"Adimix","category":"Premezclas","minStock":10,"dailyUsage":0.44},{"id":"adi-004","name":"Caramelo L√≠quido 7 kg","description":"Caramelo l√≠quido profesional listo para usar.","unitCost":139.34,"unit":"kg","stock":25,"supplierId":"arg","brand":"Adimix","category":"Caramelo","minStock":6,"dailyUsage":0.28},{"id":"adi-005","name":"Lactofil Premium 1 L","description":"Crema vegetal multiprop√≥sito.","unitCost":250.0,"unit":"un","stock":35,"supplierId":"arg","brand":"Adimix","category":"Complementos","minStock":8,"dailyUsage":0.39},{"id":"dr-001","name":"Az√∫car Impalpable 1 kg","description":"Az√∫car especial molida extremadamente fina. Ideal para merengues, glas√©s y decoraci√≥n.","unitCost":176.23,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":15,"dailyUsage":0.67},{"id":"dr-002","name":"Glac√© Real 1 kg","description":"Mezcla en polvo para glas√© profesional. Secado r√°pido, consistencia perfecta.","unitCost":213.11,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-003","name":"Fondant 1 kg","description":"Fondant profesional para cobertura y modelado. Textura el√°stica y maleable.","unitCost":196.72,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-004","name":"Pastamix 800 g","description":"Pasta americana para tortas art√≠sticas. Textura acetinada y vers√°til.","unitCost":307.38,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-005","name":"Pastamix 3 kg","description":"Pasta americana profesional 3 kg. Misma calidad, formato para alta producci√≥n.","unitCost":1020.49,"unit":"un","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":6,"dailyUsage":0.28},{"id":"dr-006","name":"Pasta Americana Colorful 800 g","description":"Pasta americana en colores intensos. No requiere te√±ido.","unitCost":315.57,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-007","name":"Rendamix 100 g","description":"Mezcla para encajes decorativos flexibles. 100 g rinden ~300 g.","unitCost":155.74,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-008","name":"Pasta Americana Mix 4,5 kg","description":"Pasta americana profesional 4,5 kg. Ideal para alto volumen.","unitCost":1536.89,"unit":"un","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Decoraci√≥n Mix","minStock":5,"dailyUsage":0.22},{"id":"dr-009","name":"Az√∫car Colores 80 g","description":"Az√∫car cristal colorida para decoraci√≥n. Disponible en 15+ colores.","unitCost":45.08,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":20,"dailyUsage":0.89},{"id":"dr-010","name":"Az√∫car Colores 500 g","description":"Az√∫car cristal colorida 500 g, formato profesional.","unitCost":131.15,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-011","name":"Granas Colores 120 g","description":"Granulado blando colorido para decoraci√≥n de tortas y cupcakes.","unitCost":45.08,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":20,"dailyUsage":0.89},{"id":"dr-012","name":"Granas Colores 500 g","description":"Granulado blando colorido 500 g, formato profesional.","unitCost":131.15,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-013","name":"Grageas Colores 100 g","description":"Confites coloridos con centro crocante para topping.","unitCost":53.27,"unit":"un","stock":70,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":17,"dailyUsage":0.78},{"id":"dr-014","name":"Grageas Colores 500 g","description":"Confites coloridos 500 g, formato profesional.","unitCost":159.84,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-015","name":"Granas Colores 5 kg","description":"Granulado industrial 5 kg. Chocolate, mixto y mezclado.","unitCost":163.93,"unit":"kg","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Confites Mix","minStock":5,"dailyUsage":0.22},{"id":"dr-016","name":"Aromatizante 30 ml","description":"Aromas hidrosolubles para pasteler√≠a. 25+ sabores disponibles.","unitCost":61.48,"unit":"un","stock":100,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":25,"dailyUsage":1.11},{"id":"dr-017","name":"Aromatizante Vainilla 1 lt","description":"Aromatizante vainilla concentrada 960 ml. Alta fijaci√≥n.","unitCost":217.21,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":10,"dailyUsage":0.44},{"id":"dr-018","name":"Aromatizante Chocolate/Coco/Manteca 1 lt","description":"Aromatizante concentrado 960 ml. Chocolate, coco, manteca, frutilla.","unitCost":245.9,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":7,"dailyUsage":0.33},{"id":"dr-019","name":"Aromatizante Naranja/Lim√≥n/Menta 1 lt","description":"Aromatizante c√≠tricos y menta 960 ml. Alta fijaci√≥n.","unitCost":360.65,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":7,"dailyUsage":0.33},{"id":"dr-020","name":"Color Gel 15 g","description":"Colorante en gel para modelados y glas√©s. Rinde 7x m√°s que convencionales.","unitCost":65.57,"unit":"un","stock":100,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":25,"dailyUsage":1.11},{"id":"dr-021","name":"Color Softgel 25 g","description":"Colorante soft gel cl√°sico. Colores intensos para chantilly y merengue.","unitCost":110.66,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":20,"dailyUsage":0.89},{"id":"dr-022","name":"Color Softgel Big 150 g","description":"Colorante soft gel 150 g. 15 colores, formato profesional intensivo.","unitCost":352.46,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":10,"dailyUsage":0.44},{"id":"dr-023","name":"Color para Chocolates 12 g","description":"Choco Tint, colorante liposoluble para chocolates y coberturas.","unitCost":98.36,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":15,"dailyUsage":0.67},{"id":"dr-024","name":"Color Polvo Esfumado 3 g","description":"Colorante en polvo para caldas, cremas y rellenos. 12+ colores.","unitCost":139.34,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":15,"dailyUsage":0.67},{"id":"dr-025","name":"Color Pen 60 g","description":"Rotulador comestible para decoraci√≥n sobre fondant y glas√©.","unitCost":135.25,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":12,"dailyUsage":0.56},{"id":"dr-026","name":"Colorante L√≠quido 10 ml","description":"Colorante l√≠quido para texturas cremosas. Alta pigmentaci√≥n.","unitCost":45.08,"unit":"un","stock":80,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":20,"dailyUsage":0.89},{"id":"dr-027","name":"Colorante L√≠quido 1 lt","description":"Colorante l√≠quido 960 ml, producci√≥n industrial.","unitCost":155.74,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Colorantes","minStock":7,"dailyUsage":0.33},{"id":"dr-028","name":"√Åcido C√≠trico 50 g","description":"Conservante natural, regula acidez y evita oscurecimiento.","unitCost":81.97,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":15,"dailyUsage":0.67},{"id":"dr-029","name":"Agar Agar 30 g","description":"Gelificante vegetal derivado de algas marinas.","unitCost":299.18,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-030","name":"CMC 50 g","description":"Carboximetilcelulosa: espesante, humectante y gelificante.","unitCost":110.65,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-031","name":"Cremor T√°rtaro 50 g","description":"Estabiliza claras batidas. Indispensable para merengue.","unitCost":81.97,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-032","name":"Gel Confitero 50 g","description":"Gel brillante para decorar y preparar tortas antes del fondant.","unitCost":81.97,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-033","name":"Glucosa Jarabe 150 g","description":"Anticristalizante para caramelos, merengue italiano y glas√©s.","unitCost":98.36,"unit":"un","stock":60,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":15,"dailyUsage":0.67},{"id":"dr-034","name":"Glucosa Jarabe 500 g","description":"Glucosa jarabe 500 g. Anticristalizante para confiter√≠a.","unitCost":163.93,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-035","name":"Glucosa Jarabe 1 kg","description":"Glucosa jarabe profesional 1 kg. Formato √≥ptimo para obrador.","unitCost":245.9,"unit":"un","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":10,"dailyUsage":0.44},{"id":"dr-036","name":"Glucosa Polvo (Dextrosa) 50 g","description":"Dextrosa para helader√≠a. Reduce cristales de hielo.","unitCost":81.97,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-037","name":"Emustab 200 g","description":"Emulsificante para chantilly, mousses y helados. 200 g.","unitCost":121.32,"unit":"un","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":12,"dailyUsage":0.56},{"id":"dr-038","name":"Emustab 1 kg","description":"Emulsificante profesional 1 kg. Dosificaci√≥n 10 g/lt.","unitCost":418.03,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":7,"dailyUsage":0.33},{"id":"dr-039","name":"Gelatina Neutra 1 kg","description":"Gelatina neutra profesional. Sin sabor ni color.","unitCost":1065.57,"unit":"un","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aditivos Mix","minStock":6,"dailyUsage":0.28},{"id":"dr-040","name":"Preparado Frutilla 1 kg","description":"Preparado top frutilla para helados. Trozos visibles.","unitCost":286.88,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":7,"dailyUsage":0.33},{"id":"dr-041","name":"Crema Chocolat 1 kg","description":"Crema para vetear: man√≠, avellana con cacao, gianduia.","unitCost":442.62,"unit":"kg","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":6,"dailyUsage":0.28},{"id":"dr-042","name":"Variegato Frutales 2 kg","description":"Variegato frutal 2 kg: amarena, frutilla, frutos del bosque.","unitCost":565.57,"unit":"kg","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":6,"dailyUsage":0.28},{"id":"dr-043","name":"Variegato Frutales 12 kg","description":"Variegato frutal industrial 12 kg. Frutilla, frutos del bosque.","unitCost":528.69,"unit":"kg","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"dr-044","name":"Variegato Frutales Zero 1 kg","description":"Variegato frutal sin az√∫car. Frutilla, maracuy√°, frutos del bosque.","unitCost":655.74,"unit":"kg","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.22},{"id":"dr-045","name":"Veteado Chocolat Cl√°sico 2 kg","description":"Veteado chocolate 2 kg: coco bianco, cookie cream, torta lim√≥n.","unitCost":545.08,"unit":"kg","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.22},{"id":"dr-046","name":"Veteado Chocolat Premium 2 kg","description":"Veteado chocolate premium: biscoti, moka, caramelo salado, gianduia.","unitCost":745.9,"unit":"kg","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"dr-047","name":"Veteado Chocolat 12 kg","description":"Veteado chocolate industrial 12 kg. Biscoti crema y gianduia.","unitCost":631.15,"unit":"kg","stock":10,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Variegatos","minStock":5,"dailyUsage":0.11},{"id":"dr-048","name":"Sabor Algemix Polvo Base Leche 1 kg","description":"Saborizante en polvo para helados a base de leche. 20 g/lt. 20+ sabores.","unitCost":307.38,"unit":"kg","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":10,"dailyUsage":0.44},{"id":"dr-049","name":"Sabor Tropical Polvo Base Agua 1 kg","description":"Saborizante en polvo base agua. Anan√°, lim√≥n, naranja, sand√≠a.","unitCost":327.87,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":7,"dailyUsage":0.33},{"id":"dr-050","name":"Vainilla L√≠quida 1 kg","description":"Aroma vainilla concentrada para helader√≠a. 1‚Äì2 cc/lt.","unitCost":352.45,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":7,"dailyUsage":0.33},{"id":"dr-051","name":"Aceite de Menta 1 kg","description":"Aceite esencial menta concentrado. 1‚Äì2 cc/lt. Alta pureza.","unitCost":1803.28,"unit":"kg","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.17},{"id":"dr-052","name":"Aroma Coco 1 kg","description":"Aroma coco concentrado para helader√≠a. 1‚Äì2 cc/lt.","unitCost":565.57,"unit":"kg","stock":25,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":6,"dailyUsage":0.28},{"id":"dr-053","name":"Sabor y Color Crema de Huevo 5 lt","description":"Saborizante y colorante crema de huevo. 3,5 cc/lt.","unitCost":462.62,"unit":"lt","stock":15,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.17},{"id":"dr-054","name":"Emulsi√≥n Frutilla 1 lt","description":"Emulsi√≥n frutilla para helados al agua. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-055","name":"Emulsi√≥n Manzana Verde 1 lt","description":"Emulsi√≥n manzana verde para sorbetes. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-056","name":"Emulsi√≥n Durazno 1 lt","description":"Emulsi√≥n durazno para helados al agua. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-057","name":"Emultina Lim√≥n 1 lt","description":"Emultina lim√≥n c√≠trico intenso para sorbetes. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-058","name":"Emultina Uva 1 lt","description":"Emultina uva para helados al agua. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-059","name":"Emultina Naranja 1 lt","description":"Emultina naranja c√≠trica para sorbetes. 2,5 g/lt.","unitCost":709.02,"unit":"lt","stock":20,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Aromatizantes","minStock":5,"dailyUsage":0.22},{"id":"dr-060","name":"Cobertura Cl√°sica 1,3 kg","description":"Salsa copas cl√°sica: chocolate, dulce de leche, caramelo, frutilla.","unitCost":172.13,"unit":"kg","stock":40,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":10,"dailyUsage":0.44},{"id":"dr-061","name":"Cobertura Premium 1,3 kg","description":"Salsa copas premium con pulpa: frutilla, mora, menta, maracuy√°.","unitCost":225.41,"unit":"kg","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":7,"dailyUsage":0.33},{"id":"dr-062","name":"Cobertura Cl√°sica 300 g","description":"Salsa copas cl√°sica 300 g, formato pr√°ctico.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Salsas Algemix","minStock":12,"dailyUsage":0.56},{"id":"dr-063","name":"Soft Vainilla o Chocolate 1 kg","description":"Premezcla para m√°quina soft. Solo agregar leche.","unitCost":270.49,"unit":"un","stock":35,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Food Service","minStock":8,"dailyUsage":0.39},{"id":"dr-064","name":"Chocolate Caliente 1 kg","description":"Premezcla chocolate caliente profesional. Solo agregar leche.","unitCost":327.87,"unit":"un","stock":30,"supplierId":"arg","brand":"Duas Rodas / Mix","category":"Food Service","minStock":7,"dailyUsage":0.33},{"id":"led-001","name":"Relleno y Cobertura Chantilly 4,7 kg","description":"Crema lista para batir chantilly 4,7 kg. Textura, volumen y estabilidad.","unitCost":217.21,"unit":"kg","stock":70,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":17,"dailyUsage":0.78},{"id":"led-002","name":"Relleno y Cobertura Chantilly 1 kg","description":"Crema lista para batir chantilly 1 kg. Tambi√©n en vainilla y frutilla.","unitCost":250.0,"unit":"kg","stock":80,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":20,"dailyUsage":0.89},{"id":"led-003","name":"Relleno y Cobertura Chantilly 500 g","description":"Crema lista para batir chantilly 500 g.","unitCost":303.28,"unit":"kg","stock":90,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":22,"dailyUsage":1.0},{"id":"led-004","name":"Relleno y Cobertura Chocolate 4,5 kg","description":"Crema lista para batir chocolate 4,5 kg. Sedosa y estable.","unitCost":270.49,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":15,"dailyUsage":0.67},{"id":"led-005","name":"Relleno y Cobertura Chocolate 1 kg","description":"Crema lista para batir chocolate 1 kg. Puede freezarse.","unitCost":327.87,"unit":"kg","stock":70,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":17,"dailyUsage":0.78},{"id":"led-006","name":"Relleno y Cobertura Chocolate 500 g","description":"Crema lista para batir chocolate 500 g.","unitCost":360.66,"unit":"kg","stock":80,"supplierId":"arg","brand":"Ledevit","category":"Rellenos y Coberturas","minStock":20,"dailyUsage":0.89},{"id":"led-007","name":"Merengue en Polvo 250 g","description":"Polvo instant√°neo para merengue profesional 250 g.","unitCost":385.25,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":15,"dailyUsage":0.67},{"id":"led-008","name":"Merengue en Polvo 4 kg","description":"Polvo para merengue industrial 4 kg. Resultados consistentes.","unitCost":270.49,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":10,"dailyUsage":0.44},{"id":"led-009","name":"Crema Pastelera 250 g","description":"Polvo para crema pastelera en fr√≠o, sin cocci√≥n. 250 g.","unitCost":418.03,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":15,"dailyUsage":0.67},{"id":"led-010","name":"Crema Pastelera 4 kg","description":"Polvo para crema pastelera en fr√≠o, industrial 4 kg.","unitCost":319.67,"unit":"kg","stock":35,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":8,"dailyUsage":0.39},{"id":"led-011","name":"Mousse Chantilly 250 g","description":"Polvo para mousse chantilly. Excelente volumen y estabilidad.","unitCost":627.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":12,"dailyUsage":0.56},{"id":"led-012","name":"Mousse Chantilly 1 kg","description":"Polvo para mousse chantilly profesional 1 kg.","unitCost":602.46,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Pasteleras","minStock":10,"dailyUsage":0.44},{"id":"led-013","name":"Gel de Brillo Neutro 310 g","description":"Gel brillo en fr√≠o para tartas y postres. No se chorrea.","unitCost":237.7,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":15,"dailyUsage":0.67},{"id":"led-014","name":"Destello Neutro 4,4 kg","description":"Gel brillo listo para usar 4,4 kg. Aplicaci√≥n directa.","unitCost":159.84,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":10,"dailyUsage":0.44},{"id":"led-015","name":"Gel de Brillo Caliente 10 kg","description":"Gel brillo caliente industrial 10 kg.","unitCost":131.15,"unit":"kg","stock":25,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":6,"dailyUsage":0.28},{"id":"led-016","name":"Crema Paris 280 g","description":"Ganache lista sabor chocolate amargo. Brillo espejo bajo fr√≠o.","unitCost":401.64,"unit":"kg","stock":50,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":12,"dailyUsage":0.56},{"id":"led-017","name":"Crema Paris 4 kg","description":"Cubretortas Par√≠s chocolate amargo 4 kg. Vers√°til para ba√±os.","unitCost":327.89,"unit":"kg","stock":30,"supplierId":"arg","brand":"Ledevit","category":"Brillos","minStock":7,"dailyUsage":0.33},{"id":"led-018","name":"Mix Cupcake Vainilla 500 g","description":"Premezcla sin gluten para cupcakes vainilla. Rinde 12 unidades.","unitCost":233.61,"unit":"kg","stock":55,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":13,"dailyUsage":0.61},{"id":"led-019","name":"Mix Brownie 470 g","description":"Premezcla sin gluten para brownie chocolate. Crujiente por fuera.","unitCost":258.2,"unit":"kg","stock":60,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":15,"dailyUsage":0.67},{"id":"led-020","name":"Mix Brownie 4 kg","description":"Premezcla sin gluten brownie industrial 4 kg.","unitCost":217.21,"unit":"kg","stock":40,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":10,"dailyUsage":0.44},{"id":"led-021","name":"Mix Bud√≠n Vainilla 500 g","description":"Premezcla sin gluten bud√≠n vainilla. Rinde 1 molde grande.","unitCost":213.11,"unit":"kg","stock":50,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":12,"dailyUsage":0.56},{"id":"led-022","name":"Mix Macarons 250 g","description":"Premezcla con almendras para macarons franceses. Solo agua caliente.","unitCost":532.79,"unit":"kg","stock":45,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":11,"dailyUsage":0.5},{"id":"led-023","name":"Mix Macarons 3,5 kg","description":"Premezcla macarons profesional 3,5 kg. Alto rendimiento.","unitCost":422.13,"unit":"kg","stock":20,"supplierId":"arg","brand":"Ledevit","category":"Premezclas Horneables","minStock":5,"dailyUsage":0.22},{"id":"agr-001","name":"Aceite Doratta 15,8 L","description":"Aceite palma refinado 15,8 L. Fritura profesional, alto punto de humo.","unitCost":2250.0,"unit":"un","stock":30,"supplierId":"arg","brand":"Agropalma","category":"Aceites","minStock":7,"dailyUsage":0.33},{"id":"agr-002","name":"Grasa de Palma 20 kg","description":"Grasa palma refinada 20 kg. Para coberturas y masas hojaldradas.","unitCost":122.73,"unit":"kg","stock":20,"supplierId":"arg","brand":"Agropalma","category":"Aceites","minStock":5,"dailyUsage":0.22},{"id":"mec3-001","name":"Pasta Anan√° 3 kg","description":"Pasta concentrada anan√°. Sin colorantes artificiales. Dosif: 60 g/lt.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-002","name":"Pasta Banana 3 kg","description":"Pasta concentrada banana. Color dorado, sabor tropical intenso.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-003","name":"Pasta Frambuesa 3 kg","description":"Pasta concentrada frambuesa. Sabor refinado para sorbetes.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-004","name":"Pasta Frutilla 3 kg","description":"Pasta concentrada frutilla sin colorantes. Sabor aut√©ntico.","unitCost":918.03,"unit":"kg","stock":25,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":6,"dailyUsage":0.28},{"id":"mec3-005","name":"Pasta Mango 3 kg","description":"Pasta concentrada mango. Color dorado, sabor ex√≥tico irresistible.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-006","name":"Pasta Maracuy√° 3 kg","description":"Pasta concentrada maracuy√°. Sabor √°cido tropical para sorbetes.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-007","name":"Pasta Lim√≥n 3 kg","description":"Pasta concentrada lim√≥n. Sabor c√≠trico fresco e intenso.","unitCost":1090.16,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.22},{"id":"mec3-008","name":"Pasta Azurro Cielo 5 kg","description":"Pasta sabor fantas√≠a color celeste. Preferida de los chicos.","unitCost":799.18,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-009","name":"Pasta Bubbly 5 kg","description":"Pasta sabor chicle, color rosa vibrante. Gluten Free, Halal.","unitCost":1213.11,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-010","name":"Pasta Biscottino 4,5 kg","description":"Pasta galletita para el famoso sabor Cookies MEC3. Dosif: 50 g/lt.","unitCost":995.9,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-011","name":"Pasta Biancocioc 6 kg","description":"Pasta chocolate blanco para helader√≠a y pasteler√≠a.","unitCost":1090.16,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-012","name":"Pasta Cherry 5 kg","description":"Concentrado de cerezas para sorbetes y helados frutales.","unitCost":1122.95,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-013","name":"Pasta Cocco 4 kg","description":"Pasta coco con aroma embriagante. Dosif: 60 g/lt.","unitCost":1032.79,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-014","name":"Pasta Caff√® 1 kg","description":"Extracto caf√© concentrado. Sabor suave y distintivo. Dosif: 10 g/lt.","unitCost":2991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-015","name":"Pasta Chantilly Cookies Black 4,5 kg","description":"Pasta saborizante Cookies Black. Impacto visual y sabor equilibrado.","unitCost":1086.07,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-016","name":"Pasta Cheese Cake en Polvo 1 kg","description":"Base polvo sabor cheesecake para helado. Dosif: 40 g/lt.","unitCost":1295.08,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-017","name":"Pasta Limoncello en Polvo 2,5 kg","description":"Pasta polvo limoncello. Fresca con sabor italiano aut√©ntico.","unitCost":991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-018","name":"Pasta Mascarpone en Polvo 2 kg","description":"Base mascarpone para tiramis√∫ y postres cremosos.","unitCost":1500.0,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-019","name":"Pasta Yoghin Yogurth en Polvo 1 kg","description":"Pasta polvo yogurt. Frescura y acidez del yogurt natural.","unitCost":1196.72,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-020","name":"Pasta Limone 50 en Polvo 2,5 kg","description":"Pasta lim√≥n 50 con estabilizante. Sorbetes cl√°sicos.","unitCost":1155.74,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-021","name":"Pasta Menta 3 kg","description":"Pasta menta fresca para helados refrescantes. Dosif: 50 g/lt.","unitCost":952.82,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-022","name":"Pasta Mister Nico (Man√≠) 4 kg","description":"Pasta man√≠ para helado Mister Nico. Dosif: 80‚Äì100 g/lt.","unitCost":1180.33,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-023","name":"Pistacho California 4 kg","description":"Pasta pura pistacho californiano 99,8%. Origen: USA California.","unitCost":4147.54,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-024","name":"Pistacho Pesto con Trozos 2,5 kg","description":"Pasta pistacho tipo pesto con trozos visibles. Premium.","unitCost":3581.97,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"mec3-025","name":"Nocciola Prima Fine 5 kg","description":"Pasta avellana pura. Origen Campania, variedad Mortarella.","unitCost":2151.64,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-026","name":"Nocciola Selection 5 kg","description":"Pasta avellana Selection. Blend seleccionado, perfil equilibrado.","unitCost":1491.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-027","name":"Nocciola Oscura 5 kg","description":"Pasta avellana oscura. Tostado especial, sabor intenso.","unitCost":1627.05,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-028","name":"Nocciola M√°xima (Kinder) 5 kg","description":"Pasta avellana M√°xima Premium. Mortarella + Tonda Gentile.","unitCost":2340.16,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-029","name":"Sinfon√≠a Italiana KIT 12,7 kg","description":"Kit multi-sabores para vitrina tem√°tica italiana.","unitCost":1065.57,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"mec3-030","name":"Pasta Tiramis√∫ 4,5 kg","description":"Pasta tiramis√∫ italiana. Mascarpone, caf√© y cacao.","unitCost":1040.98,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-031","name":"Unicornio KIT 6,7 kg","description":"Kit colores fantas√≠a para helados creativos.","unitCost":1098.36,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"mec3-032","name":"Pasta Vainilla French 3 kg","description":"Pasta vainilla francesa de Tahit√≠. Fragancia inconfundible.","unitCost":1159.84,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-033","name":"Pasta Zabaione 5,5 kg","description":"Pasta zabaione italiano cl√°sico. Yemas, az√∫car, Marsala.","unitCost":991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"mec3-034","name":"Variegato Cookie Black Oreo 6 kg","description":"Variegato Cookies Black con crema cacao y trozos galletita.","unitCost":1065.57,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-035","name":"Variegato Cookie Lemon 6 kg","description":"Variegato Cookies Lemon Meringue. Galletita, lim√≥n y merengue.","unitCost":1065.57,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-036","name":"Variegato Fiordibosco 3 kg","description":"Variegato frutos del bosque. Rico en fruta, arom√°tico.","unitCost":991.8,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-037","name":"Variegato Mam√° Que Buena 5 kg","description":"Variegato cacao, wafers y avellanas. El snack convertido en helado.","unitCost":967.21,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-038","name":"Variegato Mecralph 5,5 kg","description":"Crema chocolate blanco y coco rallado para vetear.","unitCost":1254.1,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-039","name":"Variegato Mecrock 6 kg","description":"Crema chocolate y avellana con granos avellana crocante.","unitCost":1282.79,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-040","name":"Variegato Mecrock Plus 5 kg","description":"Mecrock con gianduia y wafers crocantes. M√°s es mejor.","unitCost":1176.0,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-041","name":"Variegato Mister Nico (Snickers) 4 kg","description":"Super-variegato man√≠, caramelo y trozos crocantes.","unitCost":877.05,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-042","name":"Variegato Quella Pistacho Crunch 2,3 kg","description":"Crema pistacho seductora con textura crocante. Premium.","unitCost":1938.52,"unit":"kg","stock":10,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.11},{"id":"mec3-043","name":"Variegato Quello Caramelo 6 kg","description":"Variegato caramelo denso. Sabor a crema de leche caramelizada.","unitCost":827.87,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-044","name":"Variegato Wafer 5 kg","description":"Variegato con trozos de wafer crujiente.","unitCost":1073.77,"unit":"kg","stock":15,"supplierId":"eur","brand":"MEC3","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"mec3-045","name":"Base Soave 2 kg","description":"Base helader√≠a balanceada. 100 g + 250 g az√∫car + 1 lt leche.","unitCost":831.97,"unit":"kg","stock":30,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":7,"dailyUsage":0.33},{"id":"mec3-046","name":"Base Elena 1,8 kg","description":"Base para helado cremoso. 180 g + 190 g az√∫car/lt leche.","unitCost":840.16,"unit":"kg","stock":25,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":6,"dailyUsage":0.28},{"id":"mec3-047","name":"Supergelmix 3 kg","description":"Base universal para sorbetes frutales. 50 g + 300 g az√∫car/lt.","unitCost":938.52,"unit":"kg","stock":25,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":6,"dailyUsage":0.28},{"id":"mec3-048","name":"Cioki 1 kg","description":"Base chocolate para helado. 200 g + 1000 cc leche.","unitCost":655.74,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":5,"dailyUsage":0.22},{"id":"mec3-049","name":"Cremfix 1 kg","description":"Fijador de crema para helados. Mejora cremosidad y estabilidad.","unitCost":643.44,"unit":"kg","stock":20,"supplierId":"eur","brand":"MEC3","category":"Bases","minStock":5,"dailyUsage":0.22},{"id":"nor-001","name":"Gousses Vainilla Madagascar Bourbon Bio","description":"Chauchas vainilla Bourbon org√°nica Madagascar. Notas bois√© y rhum-raisin.","unitCost":0,"unit":"un","stock":20,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.22},{"id":"nor-002","name":"Gousses Vainilla M√©xico","description":"Chauchas vainilla mexicana. Notas delicadas de ciruela y cacao.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.17},{"id":"nor-003","name":"Gousses Vainilla Tahit√≠","description":"Chauchas vainilla Tahit√≠. Perfil floral y anisado, variedad rar√≠sima.","unitCost":0,"unit":"un","stock":10,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.11},{"id":"nor-004","name":"Gousses Vainilla Fendue","description":"Chauchas vainilla Madagascar abiertas. Mayor practicidad en obrador.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Gousses de Vanille","minStock":5,"dailyUsage":0.17},{"id":"nor-005","name":"Pasta Vainilla Madagascar Bio VANIFUSION","description":"Pasta chauchas Madagascar lista para usar. Sin cortar ni raspar.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.17},{"id":"nor-006","name":"Pasta Vainilla Tahitensis VANIFUSION","description":"Pasta vainilla Tahitensis. Notas florales y anisadas √∫nicas.","unitCost":0,"unit":"un","stock":10,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.11},{"id":"nor-007","name":"Extracto Vainilla Bourbon Bio","description":"Extracto vainilla Bourbon org√°nica con granos visibles. 1 lt.","unitCost":0,"unit":"un","stock":20,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.22},{"id":"nor-008","name":"Extracto Vainilla Bio Sin Granos","description":"Extracto vainilla sin granos para acabados limpios y uniformes.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.17},{"id":"nor-009","name":"Polvo Vainilla Bio Madagascar","description":"Chauchas finamente molidas. Ideal para masas secas.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.17},{"id":"nor-010","name":"Tadoka La Justa Dosis","description":"Dosificaci√≥n precisa de vainilla Planifolia + Tahitensis.","unitCost":0,"unit":"un","stock":20,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.22},{"id":"nor-011","name":"Vakana Perla de Vainilla","description":"Perlas de vainilla para dosificaci√≥n precisa y decoraci√≥n.","unitCost":0,"unit":"un","stock":10,"supplierId":"eur","brand":"Norohy","category":"Derivados de Vainilla","minStock":5,"dailyUsage":0.11},{"id":"nor-012","name":"Pasta Granos Caf√© Bio","description":"Pasta caf√© ar√°bica org√°nico de Etiop√≠a. Sabor acidulado y afrutado.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Caf√© Bio","minStock":5,"dailyUsage":0.17},{"id":"nor-013","name":"Extracto Caf√© Concentrado Bio","description":"Extracto caf√© ar√°bica Colombia. Alta intensidad arom√°tica.","unitCost":0,"unit":"un","stock":15,"supplierId":"eur","brand":"Norohy","category":"Caf√© Bio","minStock":5,"dailyUsage":0.17},{"id":"per-001","name":"Cacao Polvo 20-22% 1 kg","description":"Cacao polvo italiano 20-22% grasa. Aroma inconfundible, solubilidad perfecta.","unitCost":926.23,"unit":"kg","stock":20,"supplierId":"eur","brand":"Pernigotti","category":"Cacao y Chocolate","minStock":5,"dailyUsage":0.22},{"id":"per-002","name":"Stracciatella 1 kg","description":"Chocolate para stracciatella. Escamas finas y crujientes en el helado.","unitCost":606.56,"unit":"kg","stock":25,"supplierId":"eur","brand":"Pernigotti","category":"Cacao y Chocolate","minStock":6,"dailyUsage":0.28},{"id":"per-003","name":"Pasta Gianduia 6 kg","description":"Pasta Gianduia italiana. Avellana + cacao, receta piamontesa original.","unitCost":1311.48,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"per-004","name":"Torrone Rustico 4,5 kg","description":"Pasta turr√≥n r√∫stico con miel, almendras y avellanas.","unitCost":1491.8,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"per-005","name":"Frollino 5,5 kg","description":"Pasta galletita frollino. Sabor manteca italiana con sutil crunch.","unitCost":926.23,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"per-006","name":"Amore Nocciola 5 kg","description":"Pasta avellana Amore. Sabor intenso con notas de caramelo.","unitCost":950.82,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.17},{"id":"per-007","name":"Arancio Variegato 3,5 kg","description":"Variegato naranja con trozos de naranja confitada.","unitCost":778.68,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Variegatos","minStock":5,"dailyUsage":0.17},{"id":"per-008","name":"Pistacho al Gusto 4 kg","description":"Pasta pistacho al gusto. Vers√°til, ideal para producci√≥n diaria.","unitCost":1729.51,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"per-009","name":"Pistacho Natura 2,5 kg","description":"Pasta pistacho puro 100% Natura. Sin colorantes. L√≠nea premium.","unitCost":3950.82,"unit":"kg","stock":8,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.09},{"id":"per-010","name":"Pistacho Maestro 2,5 kg","description":"Pasta pistacho Maestro. Calidad superior a precio accesible.","unitCost":2983.61,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Pastas","minStock":5,"dailyUsage":0.11},{"id":"per-011","name":"Morettina Cl√°sica 6 kg","description":"Cobertura chocolate cl√°sica. Se solidifica en fr√≠o creando capa crujiente.","unitCost":696.72,"unit":"kg","stock":20,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.22},{"id":"per-012","name":"Morettina Blanca 6 kg","description":"Cobertura chocolate blanco. Capa crujiente dulce y cremosa.","unitCost":696.72,"unit":"kg","stock":20,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.22},{"id":"per-013","name":"Morettina Pepita Cl√°sica 5,5 kg","description":"Morettina con pepitas de chocolate crocantes. Doble textura.","unitCost":1172.13,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.17},{"id":"per-014","name":"Morettina Pepita Blanca 5,5 kg","description":"Morettina blanca con pepitas chocolate blanco. Contraste premium.","unitCost":1172.13,"unit":"kg","stock":15,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.17},{"id":"per-015","name":"Morettina Pistacho 6 kg","description":"Cobertura Morettina sabor pistacho. Propuesta diferenciadora.","unitCost":1721.31,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.11},{"id":"per-016","name":"Morettina Pastelera Cl√°sica 12 kg","description":"Morettina pastelera industrial 12 kg. Mayor fluidez para obrador.","unitCost":614.75,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.11},{"id":"per-017","name":"Morettina Pastelera Pistacho 5,5 kg","description":"Morettina pastelera pistacho 5,5 kg. Para petit fours y bombones.","unitCost":942.62,"unit":"kg","stock":10,"supplierId":"eur","brand":"Pernigotti","category":"Coberturas","minStock":5,"dailyUsage":0.11},{"id":"rdc-001","name":"Chocolate Amargo Dark 70% 2,5 kg","description":"Cobertura amarga 70%. Ecuador + R.Dominicana. Perfil complejo.","unitCost":1385.25,"unit":"kg","stock":50,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"rdc-002","name":"Chocolate Amargo Dark 70% 15 kg","description":"Cobertura amarga 70% industrial 15 kg.","unitCost":1295.08,"unit":"kg","stock":20,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.22},{"id":"rdc-003","name":"Chocolate Amargo Black 65% 2,5 kg","description":"Cacao Nacional ecuatoriano. Notas especiadas de clavo y pimiento.","unitCost":1229.51,"unit":"kg","stock":40,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"rdc-004","name":"Chocolate Amargo Black 65% 15 kg","description":"Chocolate Black 65% industrial 15 kg.","unitCost":1200.82,"unit":"kg","stock":15,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"rdc-005","name":"Chocolate Fluido 56% 2,5 kg","description":"Alta fluidez para moldeo y ba√±os. Notas tostadas suaves.","unitCost":1217.21,"unit":"kg","stock":40,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"rdc-006","name":"Chocolate Fluido 56% 15 kg","description":"Chocolate Fluido 56% industrial 15 kg.","unitCost":1192.62,"unit":"kg","stock":15,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"rdc-007","name":"Chocolate Semiamargo 56% 2,5 kg","description":"Notas flores blancas y caf√© tostado. Amargos emblem√°ticos.","unitCost":1118.85,"unit":"kg","stock":40,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"rdc-008","name":"Chocolate Semiamargo 56% 15 kg","description":"Chocolate Semiamargo 56% industrial 15 kg.","unitCost":1045.08,"unit":"kg","stock":15,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"rdc-009","name":"Chocolate con Leche Caramelizado 40% 2,5 kg","description":"Leche caramelizada. Sabor a caramelo, miel y frutos secos.","unitCost":1122.95,"unit":"kg","stock":30,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"rdc-010","name":"Chocolate con Leche Blend 35% 2,5 kg","description":"Ecuador + Per√∫. Perfil redondo, ligeramente afrutado.","unitCost":1122.95,"unit":"kg","stock":35,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":8,"dailyUsage":0.39},{"id":"rdc-011","name":"Chocolate con Leche Blend 35% 15 kg","description":"Chocolate Leche Blend 35% industrial 15 kg.","unitCost":1045.08,"unit":"kg","stock":10,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.11},{"id":"rdc-012","name":"Chocolate Blanco con Ma√≠z 33% 2,5 kg","description":"Innovaci√≥n con ma√≠z andino tostado. Notas de toffee y miel.","unitCost":1270.49,"unit":"kg","stock":25,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":6,"dailyUsage":0.28},{"id":"rdc-013","name":"Chocolate Blanco 31% 2,5 kg","description":"Primer chocolate blanco ecuatoriano. Leche del volc√°n Cayambe.","unitCost":1122.95,"unit":"kg","stock":30,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"rdc-014","name":"Chocolate Blanco 31% 15 kg","description":"Chocolate Blanco 31% industrial 15 kg.","unitCost":1045.08,"unit":"kg","stock":10,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Chocolates","minStock":5,"dailyUsage":0.11},{"id":"rdc-015","name":"Cacao en Polvo 22-24% 2,25 kg","description":"Cacao polvo alto contenido grasa 22-24%. Color intenso.","unitCost":1311.48,"unit":"kg","stock":45,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Derivados de Cacao","minStock":11,"dailyUsage":0.5},{"id":"rdc-016","name":"Manteca de Cacao 1,5 kg","description":"Manteca cacao pura ecuatoriana. Para ajustar fluidez y textura.","unitCost":0,"unit":"kg","stock":20,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Derivados de Cacao","minStock":5,"dailyUsage":0.22},{"id":"rdc-017","name":"Nibs de Cacao 1 kg","description":"Nibs cacao tostados ecuatorianos. Para texturas e inclusiones.","unitCost":2049.18,"unit":"kg","stock":15,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Derivados de Cacao","minStock":5,"dailyUsage":0.17},{"id":"rdc-018","name":"Licor de Cacao 1 kg","description":"Licor cacao 100% puro R.Dominicana. Base para chocolater√≠a.","unitCost":2000.0,"unit":"kg","stock":15,"supplierId":"ecu","brand":"Rep√∫blica del Cacao","category":"Derivados de Cacao","minStock":5,"dailyUsage":0.17},{"id":"sel-001","name":"Cobertura Confeiteiro con Leche 1 kg","description":"Cobertura leche Selecta. Buena fluidez para ba√±os y moldeo.","unitCost":336.07,"unit":"kg","stock":60,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":15,"dailyUsage":0.67},{"id":"sel-002","name":"Cobertura Confeiteiro Semiamargo 1 kg","description":"Cobertura semiamargo Selecta. Sabor equilibrado con notas de cacao.","unitCost":336.07,"unit":"kg","stock":60,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":15,"dailyUsage":0.67},{"id":"sel-003","name":"Cobertura Confeiteiro Blanco 1 kg","description":"Cobertura blanco Selecta. Cremosa y dulce para decoraciones.","unitCost":336.07,"unit":"kg","stock":60,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":15,"dailyUsage":0.67},{"id":"sel-004","name":"Cobertura Supreme Amargo 1 kg","description":"Cobertura Supreme amargo. L√≠nea premium, sabor intenso y profundo.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-005","name":"Gotas Supreme con Leche 1 kg","description":"Gotas chocolate leche Supreme. Resistentes al horneado.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-006","name":"Gotas Supreme Semiamargo 1 kg","description":"Gotas semiamargo Supreme. Para cookies, brownies y muffins.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-007","name":"Gotas Supreme Blanco 1 kg","description":"Gotas chocolate blanco Supreme. Resistentes al horneado.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-008","name":"Ganache con Leche 4 kg","description":"Ganache leche listo para usar. Cremoso para rellenos y coberturas.","unitCost":311.48,"unit":"kg","stock":40,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"sel-009","name":"Ganache Semiamargo 4 kg","description":"Ganache semiamargo listo. Sabor intenso, textura sedosa.","unitCost":311.48,"unit":"kg","stock":40,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"sel-010","name":"Ganache Blanco 4 kg","description":"Ganache blanco listo. Se puede colorear con colorantes liposolubles.","unitCost":311.48,"unit":"kg","stock":40,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"sel-011","name":"Chips Negro 1 kg","description":"Chips chocolate negro para inclusiones en helados y panificados.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-012","name":"Chips Blanco 1 kg","description":"Chips chocolate blanco. Resistentes al horneado y freezado.","unitCost":377.05,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"sel-013","name":"Cacao Polvo Namur 500 g","description":"Cacao polvo Namur color oscuro intenso. Alta solubilidad.","unitCost":659.84,"unit":"kg","stock":45,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":11,"dailyUsage":0.5},{"id":"sel-014","name":"Cacao Polvo Namur 10 kg","description":"Cacao polvo Namur industrial 10 kg. Consistencia lote a lote.","unitCost":459.02,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"sel-015","name":"Granizado Semiamargo 8 kg","description":"Mini gotas chocolate para stracciatella y decoraci√≥n de helados.","unitCost":282.79,"unit":"kg","stock":35,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":8,"dailyUsage":0.39},{"id":"sel-016","name":"Microgalletitas ba√±o Chocolate 7 kg","description":"Microgalletitas ba√±adas chocolate. Crocantes en contacto con helado.","unitCost":680.33,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"sel-017","name":"Super Liga Neutra 1 kg","description":"Estabilizante neutro para helado. Fr√≠o o caliente. Dosif: 10 g/lt.","unitCost":290.98,"unit":"kg","stock":50,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":12,"dailyUsage":0.56},{"id":"sel-018","name":"Super Liga Neutra 20 kg","description":"Estabilizante neutro industrial 20 kg. Dosif: 10 g/lt.","unitCost":245.9,"unit":"kg","stock":20,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.22},{"id":"sel-019","name":"Liga Extra Industrial 1 kg","description":"Estabilizante industrial proceso caliente. Dosif: 3 g/lt.","unitCost":475.41,"unit":"kg","stock":35,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":8,"dailyUsage":0.39},{"id":"sel-020","name":"Liga Extra Industrial 10 kg","description":"Liga Extra Industrial 10 kg. Dosif: 3 g/lt.","unitCost":426.23,"unit":"kg","stock":15,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.17},{"id":"sel-021","name":"SUPRA 5 Emulsificante 1 kg","description":"Emulsificante+estabilizante para crema y agua. Dosif: 5 g/lt.","unitCost":700.81,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":7,"dailyUsage":0.33},{"id":"sel-022","name":"XP 3000 Emulsificante Industrial 25 kg","description":"Emulsificante industrial 25 kg. Dosif: 3 g/lt.","unitCost":524.59,"unit":"kg","stock":10,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.11},{"id":"sel-023","name":"Emustab 10 kg","description":"Emulsionante Emustab industrial 10 kg. Proceso fr√≠o y caliente.","unitCost":282.79,"unit":"kg","stock":20,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":5,"dailyUsage":0.22},{"id":"sel-024","name":"Emustab 3 kg","description":"Emulsionante Emustab 3 kg. Cremosidad y estabilidad.","unitCost":327.86,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":7,"dailyUsage":0.33},{"id":"sel-025","name":"Estabilizante Aqua 5 1 kg","description":"Estabilizante para sorbetes y paletas. Proceso fr√≠o. Dosif: 5 g/lt.","unitCost":549.18,"unit":"kg","stock":25,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":6,"dailyUsage":0.28},{"id":"sel-026","name":"Laqua 10 Emulsificante 500 g","description":"Emulsificante proceso fr√≠o. Sin pasteurizador. Dosif: 10 g/lt.","unitCost":491.8,"unit":"kg","stock":30,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":7,"dailyUsage":0.33},{"id":"sel-027","name":"Base Zero Aqua 1 kg","description":"Base cero az√∫car para helados al agua. L√≠neas saludables.","unitCost":549.18,"unit":"kg","stock":25,"supplierId":"arg","brand":"Selecta","category":"Aditivos","minStock":6,"dailyUsage":0.28},{"id":"sosa-001","name":"Liofilizado Frutilla Polvo 250 g","description":"Fresa liofilizada en polvo. 100% propiedades organol√©pticas preservadas.","unitCost":2676.23,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Liofilizados","minStock":5,"dailyUsage":0.22},{"id":"sosa-002","name":"Liofilizado Maracuy√° Polvo 700 g","description":"Maracuy√° liofilizado polvo. Sabor tropical concentrado.","unitCost":4147.54,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Liofilizados","minStock":5,"dailyUsage":0.17},{"id":"sosa-003","name":"Liofilizado Frambuesa Polvo 300 g","description":"Frambuesa liofilizada polvo. Sabor, color y aroma natural.","unitCost":4307.38,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Liofilizados","minStock":5,"dailyUsage":0.17},{"id":"sosa-004","name":"Cereza Crispy 200 g","description":"Cereza liofilizada granulada 2-10 mm. Textura crujiente.","unitCost":1696.72,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.22},{"id":"sosa-005","name":"Mango Crispy 250 g","description":"Mango liofilizado granulado. Textura crocante con sabor tropical.","unitCost":1963.11,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.22},{"id":"sosa-006","name":"Maracuy√° Crispy 200 g","description":"Maracuy√° liofilizado en trozos crujientes. Acidez concentrada.","unitCost":2745.9,"unit":"un","stock":20,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.22},{"id":"sosa-007","name":"Mango Crispy Wet-Proof 400 g","description":"Mango crispy resistente a la humedad. Mantiene crunch en helados.","unitCost":2815.57,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-008","name":"Frambuesa Crispy Wet-Proof 400 g","description":"Frambuesa crispy wet-proof. Crujiente en medios h√∫medos.","unitCost":3459.02,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-009","name":"Frutilla Crispy Wet-Proof 400 g","description":"Fresa crispy wet-proof. Sabor natural con textura duradera.","unitCost":3864.75,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-010","name":"Maracuy√° Crispy Wet-Proof 400 g","description":"Maracuy√° crispy wet-proof. Acidez tropical resistente.","unitCost":3196.72,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-011","name":"Peta Crispy Neutral 700 g","description":"Az√∫car efervescente. Explosi√≥n sensorial al contacto con saliva.","unitCost":2717.21,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-012","name":"Peta Crispy Chocolate 900 g","description":"Gr√°nulos efervescentes con chocolate. Sensaci√≥n chispeante.","unitCost":3405.74,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Crispy","minStock":5,"dailyUsage":0.17},{"id":"sosa-013","name":"Gelatina Hojas Plata 180 2 kg","description":"Gelatina hojas Plata 180 Bloom. Alta disoluci√≥n y transparencia.","unitCost":6684.43,"unit":"un","stock":10,"supplierId":"eur","brand":"SOSA","category":"Gelatina","minStock":5,"dailyUsage":0.11},{"id":"sosa-014","name":"Gelatina Hojas Dorado 230 2 kg","description":"Gelatina hojas Oro 230 Bloom. M√°xima transparencia y pureza.","unitCost":6684.43,"unit":"un","stock":10,"supplierId":"eur","brand":"SOSA","category":"Gelatina","minStock":5,"dailyUsage":0.11},{"id":"sosa-015","name":"Gelcrem Hot 500 g","description":"Espesante gelificante caliente. Cremas freezables sedosas.","unitCost":1106.56,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-016","name":"Gelcrem Cold 500 g","description":"Espesante gelificante fr√≠o. Sin cocci√≥n, aplicaci√≥n instant√°nea.","unitCost":483.61,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-017","name":"Proespuma Cold 700 g","description":"Emulsionante para espumas fr√≠as con sif√≥n. Neutro en sabor.","unitCost":983.61,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-018","name":"Albuwhip Polvo 500 g","description":"Alb√∫mina huevo en polvo. 25% m√°s capacidad montante que clara fresca.","unitCost":2209.02,"unit":"un","stock":15,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.17},{"id":"sosa-019","name":"Goma Gellan 500 g","description":"Gelificante vegetal para geles firmes, el√°sticos o quebradizos.","unitCost":8069.67,"unit":"un","stock":10,"supplierId":"eur","brand":"SOSA","category":"Texturizantes","minStock":5,"dailyUsage":0.11},{"id":"tro-001","name":"Chocolate Semiamargo 54% 1 kg","description":"Cobertura semiamargo 54% argentino. Alfajores, bombones, tortas.","unitCost":918.03,"unit":"kg","stock":50,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"tro-001-5","name":"Chocolate Semiamargo 54% 5 kg","description":"Cobertura semiamargo 54% 5 kg.","unitCost":918.03,"unit":"kg","stock":30,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"tro-001-20","name":"Chocolate Semiamargo 54% 20 kg","description":"Cobertura semiamargo 54% industrial 20 kg.","unitCost":918.03,"unit":"kg","stock":15,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"tro-002","name":"Chocolate con Leche 1 kg","description":"Cobertura chocolate leche argentino. Cremoso, para alfajores.","unitCost":918.03,"unit":"kg","stock":50,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"tro-002-5","name":"Chocolate con Leche 5 kg","description":"Cobertura chocolate leche 5 kg.","unitCost":918.03,"unit":"kg","stock":30,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"tro-002-20","name":"Chocolate con Leche 20 kg","description":"Cobertura chocolate leche industrial 20 kg.","unitCost":918.03,"unit":"kg","stock":15,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"tro-003","name":"Chocolate Blanco 1 kg","description":"Cobertura blanca argentina. Para alfajores blancos y bombones.","unitCost":918.03,"unit":"kg","stock":50,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":12,"dailyUsage":0.56},{"id":"tro-003-5","name":"Chocolate Blanco 5 kg","description":"Cobertura blanca 5 kg.","unitCost":918.03,"unit":"kg","stock":30,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":7,"dailyUsage":0.33},{"id":"tro-003-20","name":"Chocolate Blanco 20 kg","description":"Cobertura blanca industrial 20 kg.","unitCost":918.03,"unit":"kg","stock":15,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.17},{"id":"tro-004","name":"Chocolate Amargo 71% 1 kg","description":"Cobertura amarga 71%. Ganaches de autor y trufas premium.","unitCost":1135.25,"unit":"kg","stock":40,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":10,"dailyUsage":0.44},{"id":"tro-004-5","name":"Chocolate Amargo 71% 5 kg","description":"Cobertura amarga 71% 5 kg.","unitCost":1135.25,"unit":"kg","stock":25,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":6,"dailyUsage":0.28},{"id":"tro-004-20","name":"Chocolate Amargo 71% 20 kg","description":"Cobertura amarga 71% industrial 20 kg.","unitCost":1135.25,"unit":"kg","stock":10,"supplierId":"arg","brand":"Tronador","category":"Chocolates","minStock":5,"dailyUsage":0.11}];
 
-const IMP_BRAND_COLORS = {"Adimix":"#e8735a","Agropalma":"#7ab648","Duas Rodas / Mix":"#f4a700","Ledevit":"#5b9bd5","MEC3":"#c0392b","Norohy":"#8e44ad","Pernigotti":"#2c3e50","República del Cacao":"#6d4c41","SOSA":"#16a085","Selecta":"#e67e22","Tronador":"#2980b9"};
-const IMP_SUP_LABEL = {"arg":"🇦🇷 Argentina / Brasil","ecu":"🇪🇨 Ecuador","eur":"🇪🇺 Europa"};
+const IMP_BRAND_COLORS = {"Adimix":"#e8735a","Agropalma":"#7ab648","Duas Rodas / Mix":"#f4a700","Ledevit":"#5b9bd5","MEC3":"#c0392b","Norohy":"#8e44ad","Pernigotti":"#2c3e50","Rep√∫blica del Cacao":"#6d4c41","SOSA":"#16a085","Selecta":"#e67e22","Tronador":"#2980b9"};
+const IMP_SUP_LABEL = {"arg":"üá¶üá∑ Argentina / Brasil","ecu":"üá™üá® Ecuador","eur":"üá™üá∫ Europa"};
 const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 
 function ImporterTab({onDone}){
@@ -2040,9 +2040,9 @@ function ImporterTab({onDone}){
     <div className="au" style={{display:"grid",gap:24}}>
       <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Importar</h1></div>
       <div style={{background:T.card,borderRadius:12,padding:48,textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
-        <div style={{fontSize:52,marginBottom:16}}>✅</div>
+        <div style={{fontSize:52,marginBottom:16}}>‚úÖ</div>
         <h2 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.green,marginBottom:8}}>Inventario cargado</h2>
-        <p style={{color:T.textSm,marginBottom:32}}>Los productos demo fueron eliminados y reemplazados por el catálogo real de Aryes</p>
+        <p style={{color:T.textSm,marginBottom:32}}>Los productos demo fueron eliminados y reemplazados por el cat√°logo real de Aryes</p>
         <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap",marginBottom:32}}>
           {[{n:result.total,l:"productos cargados",c:T.green},{n:11,l:"marcas",c:T.amber},{n:3,l:"proveedores",c:"#8e44ad"}].map((s,i)=>(
             <div key={i} style={{background:T.cardWarm,borderRadius:10,padding:"16px 24px",textAlign:"center",minWidth:120}}>
@@ -2051,7 +2051,7 @@ function ImporterTab({onDone}){
             </div>
           ))}
         </div>
-        <Btn onClick={onDone}>Ir al inventario →</Btn>
+        <Btn onClick={onDone}>Ir al inventario ‚Üí</Btn>
       </div>
     </div>
   );
@@ -2060,9 +2060,9 @@ function ImporterTab({onDone}){
     <div className="au" style={{display:"grid",gap:24}}>
       <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Importar</h1></div>
       <div style={{background:T.card,borderRadius:12,padding:64,textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
-        <div style={{fontSize:44,marginBottom:20}}>⏳</div>
+        <div style={{fontSize:44,marginBottom:20}}>‚è≥</div>
         <h2 style={{fontFamily:T.serif,fontSize:26,fontWeight:500,color:T.text,marginBottom:6}}>Cargando inventario...</h2>
-        <p style={{color:T.textSm,marginBottom:28,fontSize:14}}>{progress}% — {Math.round(selProducts.length*progress/100)} de {selProducts.length} productos</p>
+        <p style={{color:T.textSm,marginBottom:28,fontSize:14}}>{progress}% ‚Äî {Math.round(selProducts.length*progress/100)} de {selProducts.length} productos</p>
         <div style={{background:T.muted,borderRadius:20,height:8,maxWidth:360,margin:"0 auto"}}>
           <div style={{background:T.green,borderRadius:20,height:8,width:`${progress}%`,transition:"width .15s"}}/>
         </div>
@@ -2074,11 +2074,11 @@ function ImporterTab({onDone}){
     <div className="au" style={{display:"grid",gap:24}}>
       <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
         <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Importar</h1></div>
-        <div style={{display:"flex",gap:10}}><Btn secondary onClick={()=>setStep("select")}>← Volver</Btn><Btn onClick={doImport}>✓ Cargar {selProducts.length} productos</Btn></div>
+        <div style={{display:"flex",gap:10}}><Btn secondary onClick={()=>setStep("select")}>‚Üê Volver</Btn><Btn onClick={doImport}>‚úì Cargar {selProducts.length} productos</Btn></div>
       </div>
       <div style={{background:"#fff8e1",border:"1px solid #ffe082",borderRadius:10,padding:"16px 20px"}}>
-        <div style={{fontWeight:600,color:"#b45309",marginBottom:6}}>⚠ Se borrarán los productos demo</div>
-        <div style={{fontSize:13,color:"#78350f"}}>El sistema tiene <strong>{existingCount}</strong> producto{existingCount!==1?"s":""} actualmente. Al confirmar, <strong>se eliminarán todos</strong> y se cargarán los {selProducts.length} productos seleccionados.</div>
+        <div style={{fontWeight:600,color:"#b45309",marginBottom:6}}>‚ö† Se borrar√°n los productos demo</div>
+        <div style={{fontSize:13,color:"#78350f"}}>El sistema tiene <strong>{existingCount}</strong> producto{existingCount!==1?"s":""} actualmente. Al confirmar, <strong>se eliminar√°n todos</strong> y se cargar√°n los {selProducts.length} productos seleccionados.</div>
       </div>
       <div style={{background:T.card,borderRadius:12,padding:24,boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
         <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:24}}>
@@ -2114,21 +2114,21 @@ function ImporterTab({onDone}){
   return(
     <div className="au" style={{display:"grid",gap:24}}>
       <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
-        <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Importar catálogo</h1></div>
+        <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Importar cat√°logo</h1></div>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
-          {existingCount>0&&<span style={{fontSize:12,background:"#fff8e1",color:"#b45309",borderRadius:6,padding:"4px 10px"}}>⚠ {existingCount} productos actuales serán reemplazados</span>}
+          {existingCount>0&&<span style={{fontSize:12,background:"#fff8e1",color:"#b45309",borderRadius:6,padding:"4px 10px"}}>‚ö† {existingCount} productos actuales ser√°n reemplazados</span>}
           <span style={{color:T.textSm,fontSize:13,fontWeight:600}}>{selCount} seleccionados</span>
-          <Btn disabled={selCount===0} onClick={()=>setStep("preview")} style={{opacity:selCount===0?.4:1}}>Continuar →</Btn>
+          <Btn disabled={selCount===0} onClick={()=>setStep("preview")} style={{opacity:selCount===0?.4:1}}>Continuar ‚Üí</Btn>
         </div>
       </div>
       <div style={{background:"#f0f7ed",borderRadius:10,padding:"14px 18px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",border:"1px solid #c8e0b8"}}>
-        <span style={{fontSize:13,fontWeight:600,color:T.green}}>Selección rápida:</span>
-        <Btn onClick={selAllCatalog}>★ Todos los 249 productos</Btn>
-        <Btn secondary onClick={selAll}>✓ Visibles ({filtered.length})</Btn>
-        <Btn secondary onClick={deselAll}>✕ Deseleccionar visibles</Btn>
+        <span style={{fontSize:13,fontWeight:600,color:T.green}}>Selecci√≥n r√°pida:</span>
+        <Btn onClick={selAllCatalog}>‚òÖ Todos los 249 productos</Btn>
+        <Btn secondary onClick={selAll}>‚úì Visibles ({filtered.length})</Btn>
+        <Btn secondary onClick={deselAll}>‚úï Deseleccionar visibles</Btn>
       </div>
       <div style={{background:T.card,borderRadius:12,padding:24,boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
-        <input placeholder="🔍 Buscar por nombre, marca o categoría..." value={search} onChange={e=>setSearch(e.target.value)}
+        <input placeholder="üîç Buscar por nombre, marca o categor√≠a..." value={search} onChange={e=>setSearch(e.target.value)}
           style={{border:`1px solid ${T.border}`,borderRadius:8,padding:"9px 14px",fontSize:13,background:T.cardWarm,width:"100%",marginBottom:12}}/>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
           <span style={{fontSize:12,color:T.textSm,flexShrink:0}}>Marca:</span>
@@ -2145,7 +2145,7 @@ function ImporterTab({onDone}){
           ))}
         </div>
         <div style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${T.border}`,marginBottom:8}}>
-          <span style={{fontSize:12,color:T.textSm}}>{filtered.length} productos · {selCount} seleccionados</span>
+          <span style={{fontSize:12,color:T.textSm}}>{filtered.length} productos ¬∑ {selCount} seleccionados</span>
         </div>
         <div style={{maxHeight:480,overflow:"auto",display:"grid",gap:4}}>
           {filtered.map(prod=>{
@@ -2161,7 +2161,7 @@ function ImporterTab({onDone}){
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontSize:12,fontWeight:600,color:T.text}}>{prod.unitCost>0?`$${prod.unitCost.toFixed(0)} / ${prod.unit}`:"—"}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:T.text}}>{prod.unitCost>0?`$${prod.unitCost.toFixed(0)} / ${prod.unit}`:"‚Äî"}</div>
                   <div style={{fontSize:11,color:IMP_SUP_COLOR[prod.supplierId],fontWeight:500}}>{IMP_SUP_LABEL[prod.supplierId]}</div>
                 </div>
               </div>
@@ -2212,7 +2212,7 @@ export default function AryesApp(){
     const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
     const o={id:Date.now(),productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,orderedAt:new Date().toISOString(),expectedArrival:arrival.toISOString(),status:"pending",totalCost:(qty*product.unitCost).toFixed(2),leadBreakdown:{...sup.times}};
     setOrders(os=>[o,...os]);
-    addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
+    addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado ‚Äî llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
     setModal({type:"orderDone",order:o});
   };
   const markDelivered=id=>{
@@ -2221,7 +2221,7 @@ export default function AryesApp(){
     const updatedProds = products.map(p=>p.id===o.productId?{...p,stock:p.stock+o.qty}:p);
     setProducts(()=>updatedProds);
     setTimeout(()=>checkAndNotify(updatedProds,suppliers,emailCfg,notified),500);
-    addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercadería recibida — pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
+    addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercader√≠a recibida ‚Äî pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
   };
   const applyExcel=matches=>{
     const excelProds = products.map(p=>{const m=matches.find(x=>x.product.id===p.id);return m?{...p,stock:m.newStock}:p;});
@@ -2250,18 +2250,18 @@ export default function AryesApp(){
       const rows = alertProducts.map(p=>`
         <tr style="border-bottom:1px solid #eee;">
           <td style="padding:10px 14px;font-weight:600;">${p.name}</td>
-          <td style="padding:10px 14px;color:#b91c1c;font-weight:700;">${p.alert.level==="order_now"?"🔴 PEDIR YA":"🟡 Pedir pronto"}</td>
+          <td style="padding:10px 14px;color:#b91c1c;font-weight:700;">${p.alert.level==="order_now"?"üî¥ PEDIR YA":"üü° Pedir pronto"}</td>
           <td style="padding:10px 14px;">${p.stock} ${p.unit}</td>
           <td style="padding:10px 14px;">${p.alert.rop} ${p.unit}</td>
-          <td style="padding:10px 14px;font-weight:600;">${p.alert.eoq||"—"} ${p.unit}</td>
+          <td style="padding:10px 14px;font-weight:600;">${p.alert.eoq||"‚Äî"} ${p.unit}</td>
         </tr>`).join("");
       const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#2d5a1b;padding:20px 24px;">
-          <h1 style="color:#fff;font-size:22px;margin:0;">Aryes — Alerta de Stock</h1>
+          <h1 style="color:#fff;font-size:22px;margin:0;">Aryes ‚Äî Alerta de Stock</h1>
           <p style="color:rgba(255,255,255,.75);margin:4px 0 0;font-size:13px;">${new Date().toLocaleDateString("es-UY",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
         </div>
         <div style="padding:20px 24px;background:#fef2f2;border-left:4px solid #b91c1c;">
-          <p style="font-size:14px;color:#b91c1c;font-weight:700;margin:0;">${alertProducts.length} producto${alertProducts.length>1?"s requieren":"requiere"} atención inmediata</p>
+          <p style="font-size:14px;color:#b91c1c;font-weight:700;margin:0;">${alertProducts.length} producto${alertProducts.length>1?"s requieren":"requiere"} atenci√≥n inmediata</p>
         </div>
         <table style="width:100%;border-collapse:collapse;margin-top:0;">
           <thead><tr style="background:#f5f0e8;">
@@ -2274,7 +2274,7 @@ export default function AryesApp(){
           <tbody>${rows}</tbody>
         </table>
         <div style="padding:20px 24px;background:#f5f0e8;margin-top:20px;">
-          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado automáticamente por el sistema de gestión de stock de Aryes.</p>
+          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado autom√°ticamente por el sistema de gesti√≥n de stock de Aryes.</p>
         </div>
       </div>`;
       await fetch(`https://api.emailjs.com/api/v1.0/email/send`, {
@@ -2285,7 +2285,7 @@ export default function AryesApp(){
           user_id: cfg.publicKey,
           template_params: {
             to_email: cfg.toEmail,
-            subject: `Aryes Stock — ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atención"}`,
+            subject: `Aryes Stock ‚Äî ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atenci√≥n"}`,
             html_content: html,
             alert_count: alertProducts.length,
           }
@@ -2320,19 +2320,19 @@ export default function AryesApp(){
     }
   };
 
-  const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"movements",label:"Movimientos"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"}];
+  const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificaci√≥n"},{id:"movements",label:"Movimientos"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuraci√≥n"},{id:"importer",label:"üì¶ Importar"}];
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
     <div style={{display:"flex",minHeight:"100vh",background:T.bg}}>
       <style>{CSS}</style>
 
-      {/* ── SIDEBAR ── */}
+      {/* ‚îÄ‚îÄ SIDEBAR ‚îÄ‚îÄ */}
       <aside style={{width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
         {/* Logo */}
         <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
           <AryesLogo height={34}/>
-          <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gestión de stock · UY</Cap></div>
+          <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gesti√≥n de stock ¬∑ UY</Cap></div>
         </div>
 
         {/* Nav */}
@@ -2350,16 +2350,16 @@ export default function AryesApp(){
         <div style={{padding:"14px 16px",borderTop:`1px solid ${T.border}`}}>
           <button onClick={()=>setModal({type:"excel"})}
             style={{width:"100%",background:T.greenBg,border:`1px solid ${T.greenBd}`,borderRadius:4,padding:"9px 14px",fontFamily:T.sans,fontSize:11,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:T.green,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:6}}>
-            ↑ Actualizar stock
+            ‚Üë Actualizar stock
             <span style={{fontSize:10,color:T.greenLt,fontWeight:400}}>Excel</span>
           </button>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* ‚îÄ‚îÄ MAIN ‚îÄ‚îÄ */}
       <main style={{marginLeft:220,flex:1,padding:"36px 44px",minHeight:"100vh"}}>
 
-        {/* ══ DASHBOARD ══ */}
+        {/* ‚ïê‚ïê DASHBOARD ‚ïê‚ïê */}
         {tab==="dashboard"&&(
           <div className="au" style={{display:"grid",gap:32}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
@@ -2379,7 +2379,7 @@ export default function AryesApp(){
 
             {/* Stat cards */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
-              {[{l:"Total productos",v:products.length},{l:"Pedir ya",v:alerts.filter(p=>p.alert.level==="order_now").length,c:T.danger},{l:"Pedir pronto",v:alerts.filter(p=>p.alert.level==="order_soon").length,c:T.warning},{l:"En tránsito",v:orders.filter(o=>o.status==="pending").length,c:T.green}].map((s,i)=>(
+              {[{l:"Total productos",v:products.length},{l:"Pedir ya",v:alerts.filter(p=>p.alert.level==="order_now").length,c:T.danger},{l:"Pedir pronto",v:alerts.filter(p=>p.alert.level==="order_soon").length,c:T.warning},{l:"En tr√°nsito",v:orders.filter(o=>o.status==="pending").length,c:T.green}].map((s,i)=>(
                 <div key={i} style={{background:T.card,padding:"20px 24px"}}>
                   <Cap>{s.l}</Cap>
                   <div style={{fontFamily:T.serif,fontSize:48,fontWeight:400,color:s.c||T.text,lineHeight:1,marginTop:8}}>{s.v}</div>
@@ -2398,7 +2398,7 @@ export default function AryesApp(){
                       <div key={id} style={{background:T.card,padding:"15px 20px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
                         <div style={{flex:1,minWidth:180}}>
                           <div style={{fontFamily:T.sans,fontSize:14,fontWeight:600,color:T.text}}>{name}</div>
-                          <div style={{fontFamily:T.sans,fontSize:11,color:T.textSm,marginTop:2}}>[{sup?.flag}] {sup?.name} · Lead: {totalLead(sup)}d · ROP: {alert.rop} {unit} · {alert.daily.toFixed(1)}/día</div>
+                          <div style={{fontFamily:T.sans,fontSize:11,color:T.textSm,marginTop:2}}>[{sup?.flag}] {sup?.name} ¬∑ Lead: {totalLead(sup)}d ¬∑ ROP: {alert.rop} {unit} ¬∑ {alert.daily.toFixed(1)}/d√≠a</div>
                           <div style={{marginTop:8,width:160}}><StockBar stock={stock} r={alert.rop} ss={alert.ss} max={Math.max(stock*1.6,alert.rop*2.5)}/></div>
                         </div>
                         <AlertPill level={alert.level}/>
@@ -2410,7 +2410,7 @@ export default function AryesApp(){
                         </div>
                         <div style={{textAlign:"right",minWidth:80}}>
                           <Cap>EOQ sugerido</Cap>
-                          <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:T.text,marginTop:3}}>{alert.eoq||"—"} {unit}</div>
+                          <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:T.text,marginTop:3}}>{alert.eoq||"‚Äî"} {unit}</div>
                         </div>
                         <Btn small onClick={()=>setModal({type:"order",product:products.find(p=>p.id===id)})}>Generar pedido</Btn>
                       </div>
@@ -2420,7 +2420,7 @@ export default function AryesApp(){
               </div>
             ):(
               <div style={{background:T.okBg,border:`1px solid ${T.okBd}`,borderRadius:6,padding:"16px 20px"}}>
-                <p style={{fontFamily:T.sans,fontSize:13,color:T.ok,fontWeight:500}}>✓ Todo el inventario está dentro de parámetros. No hay acciones requeridas.</p>
+                <p style={{fontFamily:T.sans,fontSize:13,color:T.ok,fontWeight:500}}>‚úì Todo el inventario est√° dentro de par√°metros. No hay acciones requeridas.</p>
               </div>
             )}
 
@@ -2443,10 +2443,10 @@ export default function AryesApp(){
                         {Object.values(sup.times).map((v,i)=><div key={i} style={{flex:v||.1,background:tfCols[i],opacity:.65}}/>)}
                       </div>
                       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                        {now>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.danger,fontWeight:600}}>● {now} pedir ya</span>}
-                        {soon>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.warning,fontWeight:600}}>● {soon} pedir pronto</span>}
-                        {pend>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.watch,fontWeight:600}}>● {pend} en tránsito</span>}
-                        {!now&&!soon&&!pend&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>✓ Normal</span>}
+                        {now>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.danger,fontWeight:600}}>‚óè {now} pedir ya</span>}
+                        {soon>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.warning,fontWeight:600}}>‚óè {soon} pedir pronto</span>}
+                        {pend>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.watch,fontWeight:600}}>‚óè {pend} en tr√°nsito</span>}
+                        {!now&&!soon&&!pend&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>‚úì Normal</span>}
                       </div>
                     </div>
                   );
@@ -2456,36 +2456,36 @@ export default function AryesApp(){
           </div>
         )}
 
-        {/* ══ INVENTORY ══ */}
+        {/* ‚ïê‚ïê INVENTORY ‚ïê‚ïê */}
         {tab==="products"&&(
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
               <div style={{display:"flex",gap:10}}>
-                <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
+                <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">‚Üë Importar Excel</Btn>
                 <Btn onClick={()=>{setEditProd(null);setModal({type:"product"});}}>+ Nuevo producto</Btn>
               </div>
             </div>
             <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
-                  {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/día","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"10px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>)}
+                  {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/d√≠a","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"10px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {enriched.map(p=>(
                     <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`}}
                       onMouseEnter={e=>e.currentTarget.style.background=T.cardWarm}
                       onMouseLeave={e=>e.currentTarget.style.background=T.card}>
-                      <td style={{padding:"11px 13px"}}><div style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{p.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:T.textXs}}>{p.barcode||"—"}</div></td>
+                      <td style={{padding:"11px 13px"}}><div style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{p.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:T.textXs}}>{p.barcode||"‚Äî"}</div></td>
                       <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>[{p.sup?.flag}] {p.sup?.name}</td>
                       <td style={{padding:"11px 13px"}}>
                         <div style={{fontFamily:T.sans,fontSize:13,fontWeight:700,color:p.stock<=(p.alert.rop||0)?T.danger:T.text}}>{p.stock} <span style={{fontWeight:400,color:T.textXs,fontSize:11}}>{p.unit}</span></div>
                         <div style={{marginTop:5,width:72}}><StockBar stock={p.stock} r={p.alert.rop} ss={p.alert.ss} max={Math.max(p.stock*1.6,p.alert.rop*2.5)}/></div>
                       </td>
-                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.textMd}}>{p.alert.rop>0?`${p.alert.rop} ${p.unit}`:"—"}</td>
-                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.ss>0?`${p.alert.ss} ${p.unit}`:"—"}</td>
-                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.eoq>0?`${p.alert.eoq} ${p.unit}`:"—"}</td>
-                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.daily>0?`${p.alert.daily.toFixed(1)}`:"—"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.textMd}}>{p.alert.rop>0?`${p.alert.rop} ${p.unit}`:"‚Äî"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.ss>0?`${p.alert.ss} ${p.unit}`:"‚Äî"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.eoq>0?`${p.alert.eoq} ${p.unit}`:"‚Äî"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.daily>0?`${p.alert.daily.toFixed(1)}`:"‚Äî"}</td>
                       <td style={{padding:"11px 13px"}}><Spark history={p.history} color={p.sup?.color||T.textXs}/></td>
                       <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{totalLead(p.sup)}d</td>
                       <td style={{padding:"11px 13px"}}><AlertPill level={p.alert.level}/></td>
@@ -2493,7 +2493,7 @@ export default function AryesApp(){
                         <div style={{display:"flex",gap:6}}>
                           <Btn small variant="ghost" onClick={()=>{setEditProd(products.find(x=>x.id===p.id));setModal({type:"product"});}}>Editar</Btn>
                           <Btn small onClick={()=>setModal({type:"order",product:products.find(x=>x.id===p.id)})}>Pedir</Btn>
-                          <Btn small variant="danger" onClick={()=>setProducts(ps=>ps.filter(x=>x.id!==p.id))}>×</Btn>
+                          <Btn small variant="danger" onClick={()=>setProducts(ps=>ps.filter(x=>x.id!==p.id))}>√ó</Btn>
                         </div>
                       </td>
                     </tr>
@@ -2504,13 +2504,13 @@ export default function AryesApp(){
           </div>
         )}
 
-        {/* ══ ORDERS ══ */}
+        {/* ‚ïê‚ïê ORDERS ‚ïê‚ïê */}
         {tab==="orders"&&(
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
             {!orders.length?(
               <div style={{border:`1px solid ${T.border}`,borderRadius:8,padding:"48px 32px",textAlign:"center",background:T.card}}>
-                <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm}}>Sin pedidos aún. Generá uno desde el panel o el inventario.</p>
+                <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm}}>Sin pedidos a√∫n. Gener√° uno desde el panel o el inventario.</p>
               </div>
             ):(
               <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
@@ -2533,7 +2533,7 @@ export default function AryesApp(){
                           <td style={{padding:"11px 13px"}}>{bd&&<div style={{display:"flex",gap:1,height:6,width:72,borderRadius:2,overflow:"hidden"}}>{Object.values(bd).map((v,i)=><div key={i} style={{flex:v||.1,background:tfCols[i],opacity:.7}}/>)}</div>}</td>
                           <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:13}}>USD {o.totalCost}</td>
                           <td style={{padding:"11px 13px"}}><AlertPill level={pending?"watch":"ok"}/></td>
-                          <td style={{padding:"11px 13px"}}>{pending&&<Btn small variant="success" onClick={()=>markDelivered(o.id)}>✓ Recibido</Btn>}</td>
+                          <td style={{padding:"11px 13px"}}>{pending&&<Btn small variant="success" onClick={()=>markDelivered(o.id)}>‚úì Recibido</Btn>}</td>
                         </tr>
                       );
                     })}
@@ -2544,12 +2544,12 @@ export default function AryesApp(){
           </div>
         )}
 
-        {/* ══ SUPPLIERS ══ */}
+        {/* ‚ïê‚ïê SUPPLIERS ‚ïê‚ïê */}
         {tab==="suppliers"&&(
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div>
-                <Cap style={{color:T.green}}>Gestión</Cap>
+                <Cap style={{color:T.green}}>Gesti√≥n</Cap>
                 <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Proveedores</h1>
               </div>
               <Btn onClick={()=>{setEditSup(null);setModal({type:"supplierForm"});}}>+ Nuevo proveedor</Btn>
@@ -2578,11 +2578,11 @@ export default function AryesApp(){
                           <span style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:T.text}}>{sup.name}</span>
                         </div>
                         {sup.company&&<p style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.company}</p>}
-                        {sup.contact&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:1}}>👤 {sup.contact}</p>}
+                        {sup.contact&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:1}}>üë§ {sup.contact}</p>}
                       </div>
                       <div style={{textAlign:"right"}}>
                         <Stars value={sup.rating||3}/>
-                        <div style={{fontFamily:T.sans,fontSize:10,color:sup.active?T.ok:T.textXs,fontWeight:600,marginTop:4}}>{sup.active?"● Activo":"○ Inactivo"}</div>
+                        <div style={{fontFamily:T.sans,fontSize:10,color:sup.active?T.ok:T.textXs,fontWeight:600,marginTop:4}}>{sup.active?"‚óè Activo":"‚óã Inactivo"}</div>
                       </div>
                     </div>
 
@@ -2590,7 +2590,7 @@ export default function AryesApp(){
                     <div style={{padding:"10px 18px",background:T.cardWarm,borderBottom:`1px solid ${T.border}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
                         <Cap>Lead time</Cap>
-                        <Cap style={{color:sup.color}}>{totalLead(sup)} días totales</Cap>
+                        <Cap style={{color:sup.color}}>{totalLead(sup)} d√≠as totales</Cap>
                       </div>
                       <div style={{display:"flex",gap:2,height:6,borderRadius:3,overflow:"hidden"}}>
                         {tfs.map((k,i)=><div key={k} style={{flex:sup.times[k]||0.1,background:tfCols[i],opacity:.75}}/>)}
@@ -2601,7 +2601,7 @@ export default function AryesApp(){
                     <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border}}>
                       {[
                         {l:"Productos",v:supProds.length},
-                        {l:"En tránsito",v:pending.length,c:pending.length>0?T.watch:T.textSm},
+                        {l:"En tr√°nsito",v:pending.length,c:pending.length>0?T.watch:T.textSm},
                         {l:"Comprado",v:`${sup.currency||"USD"} ${totalSpent.toFixed(0)}`},
                       ].map((s,i)=>(
                         <div key={i} style={{background:T.card,padding:"10px 12px",textAlign:"center"}}>
@@ -2615,25 +2615,25 @@ export default function AryesApp(){
                     {criticals.length>0&&(
                       <div style={{padding:"8px 18px",background:T.dangerBg,borderTop:`1px solid ${T.dangerBd}`}}>
                         <p style={{fontFamily:T.sans,fontSize:11,color:T.danger,fontWeight:600}}>
-                          ● {criticals.length} producto{criticals.length>1?"s requieren":"requiere"} pedido inmediato: {criticals.map(p=>p.name).join(", ")}
+                          ‚óè {criticals.length} producto{criticals.length>1?"s requieren":"requiere"} pedido inmediato: {criticals.map(p=>p.name).join(", ")}
                         </p>
                       </div>
                     )}
 
                     {/* Commercial conditions summary */}
                     <div style={{padding:"10px 18px",borderTop:`1px solid ${T.border}`,display:"flex",gap:12,flexWrap:"wrap"}}>
-                      {sup.paymentTerms&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>💳 {sup.paymentTerms}d pago</span>}
-                      {sup.minOrder>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>📦 Min. {sup.currency||"USD"} {sup.minOrder}</span>}
-                      {sup.discount>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>🏷️ {sup.discount}% dto.</span>}
-                      {sup.email&&<a href={"mailto:"+sup.email} style={{fontFamily:T.sans,fontSize:11,color:T.green,textDecoration:"none"}}>✉️ Email</a>}
-                      {sup.whatsapp&&<a href={"https://wa.me/"+sup.whatsapp.replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{fontFamily:T.sans,fontSize:11,color:"#16a34a",textDecoration:"none"}}>💬 WhatsApp</a>}
+                      {sup.paymentTerms&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>üí≥ {sup.paymentTerms}d pago</span>}
+                      {sup.minOrder>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>üì¶ Min. {sup.currency||"USD"} {sup.minOrder}</span>}
+                      {sup.discount>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>üè∑Ô∏è {sup.discount}% dto.</span>}
+                      {sup.email&&<a href={"mailto:"+sup.email} style={{fontFamily:T.sans,fontSize:11,color:T.green,textDecoration:"none"}}>‚úâÔ∏è Email</a>}
+                      {sup.whatsapp&&<a href={"https://wa.me/"+sup.whatsapp.replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{fontFamily:T.sans,fontSize:11,color:"#16a34a",textDecoration:"none"}}>üí¨ WhatsApp</a>}
                     </div>
 
                     {/* Actions */}
                     <div style={{padding:"12px 18px",borderTop:`1px solid ${T.border}`,display:"flex",gap:8}}>
                       <Btn small full onClick={()=>setViewSup(sup)}>Ver detalle</Btn>
                       <Btn small variant="ghost" onClick={()=>{setEditSup(sup);setModal({type:"supplierForm"});}}>Editar</Btn>
-                      <Btn small variant="danger" onClick={()=>deleteSupplier(sup.id)}>×</Btn>
+                      <Btn small variant="danger" onClick={()=>deleteSupplier(sup.id)}>√ó</Btn>
                     </div>
                   </div>
                 );
@@ -2646,7 +2646,7 @@ export default function AryesApp(){
               <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
-                    {["Proveedor","Prep.","Aduana","Flete","Depósito","Total","Moneda","Pago","Mín.","Dto.","Calif."].map(h=>(
+                    {["Proveedor","Prep.","Aduana","Flete","Dep√≥sito","Total","Moneda","Pago","M√≠n.","Dto.","Calif."].map(h=>(
                       <th key={h} style={{padding:"9px 12px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>
                     ))}
                   </tr></thead>
@@ -2667,9 +2667,9 @@ export default function AryesApp(){
                         ))}
                         <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:13,fontWeight:700,color:sup.color,textAlign:"center"}}>{totalLead(sup)}d</td>
                         <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.currency||"USD"}</td>
-                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.paymentTerms||"—"}d</td>
-                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.minOrder>0?`${sup.minOrder}`:"—"}</td>
-                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:sup.discount>0?T.ok:T.textSm,fontWeight:sup.discount>0?600:400}}>{sup.discount>0?`${sup.discount}%`:"—"}</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.paymentTerms||"‚Äî"}d</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.minOrder>0?`${sup.minOrder}`:"‚Äî"}</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:sup.discount>0?T.ok:T.textSm,fontWeight:sup.discount>0?600:400}}>{sup.discount>0?`${sup.discount}%`:"‚Äî"}</td>
                         <td style={{padding:"10px 12px"}}><Stars value={sup.rating||3}/></td>
                       </tr>
                     ))}
@@ -2680,14 +2680,14 @@ export default function AryesApp(){
           </div>
         )}
 
-        {/* ══ PLANNING ══ */}
+        {/* ‚ïê‚ïê PLANNING ‚ïê‚ïê */}
         {tab==="planning"&&(
           <div className="au">
             <PlanningView products={products} suppliers={suppliers} orders={orders} plans={plans} setPlans={setPlans}/>
           </div>
         )}
 
-        {/* ══ MOVEMENTS ══ */}
+        {/* ‚ïê‚ïê MOVEMENTS ‚ïê‚ïê */}
         {tab==="movements"&&(
           <div className="au">
             <MovementsView
@@ -2703,14 +2703,14 @@ export default function AryesApp(){
           </div>
         )}
 
-        {/* ══ SCANNER ══ */}
+        {/* ‚ïê‚ïê SCANNER ‚ïê‚ïê */}
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
-        {/* ══ SETTINGS ══ */}
+        {/* ‚ïê‚ïê SETTINGS ‚ïê‚ïê */}
         {tab==="settings"&&(
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
-              <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1></div>
+              <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuraci√≥n</h1></div>
             </div>
             {/* Settings sub-tabs */}
             {(()=>{
@@ -2728,16 +2728,16 @@ export default function AryesApp(){
                   </div>
                   {settingsTab==="freight"&&(
                     <div style={{maxWidth:680}}>
-                      <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginBottom:16,lineHeight:1.6}}>Estos valores determinan el ROP (punto de pedido). Actualizalos cuando cambien las condiciones logísticas.</p>
+                      <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginBottom:16,lineHeight:1.6}}>Estos valores determinan el ROP (punto de pedido). Actualizalos cuando cambien las condiciones log√≠sticas.</p>
                       {suppliers.map(sup=>(
                         <div key={sup.id} style={{border:`1px solid ${T.border}`,borderRadius:8,marginBottom:8,overflow:"hidden"}}>
                           <div style={{padding:"12px 18px",background:T.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                             <Cap style={{color:sup.color}}>[{sup.flag}] {sup.name}</Cap>
-                            <Cap>Total: {totalLead(sup)} días</Cap>
+                            <Cap>Total: {totalLead(sup)} d√≠as</Cap>
                           </div>
                           <div style={{padding:"14px 18px",background:T.card}}>
                             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14}}>
-                              {[["preparation","Preparación"],["customs","Aduana"],["freight","Flete"],["warehouse","Depósito"]].map(([k,l])=>(
+                              {[["preparation","Preparaci√≥n"],["customs","Aduana"],["freight","Flete"],["warehouse","Dep√≥sito"]].map(([k,l])=>(
                                 <Field key={k} label={l}>
                                   <div style={{display:"flex",gap:6,alignItems:"center",marginTop:5}}>
                                     <Inp type="number" min="0" value={sup.times[k]} onChange={e=>setSuppliers(ss=>ss.map(s=>s.id===sup.id?{...s,times:{...s.times,[k]:Math.max(0,+e.target.value)}}:s))} style={{textAlign:"center"}}/>
@@ -2769,11 +2769,11 @@ export default function AryesApp(){
           </div>
         )}
 
-        {/* ══ IMPORTER ══ */}
+        {/* ‚ïê‚ïê IMPORTER ‚ïê‚ïê */}
         {tab==="importer"&&<ImporterTab onDone={()=>{setProducts(LS.get("aryes6-products",[]));setTab("products");}}/>}
       </main>
 
-      {/* ══ MODALS ══ */}
+      {/* ‚ïê‚ïê MODALS ‚ïê‚ïê */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
       {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}
       {modal?.type==="orderDone"&&(
@@ -2807,3 +2807,4 @@ export default function AryesApp(){
     </div>
   );
 }
+
