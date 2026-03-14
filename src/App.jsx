@@ -1760,8 +1760,7 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
         <div style={{display:"flex",justifyContent:"flex-end"}}>
           <button onClick={()=>{
             const rows=[["Fecha","Hora","Tipo","Producto","Proveedor","Cantidad","Unidad","Nota"],...filtered.map(m=>{const d=new Date(m.ts);return[d.toLocaleDateString("es-UY"),d.toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"}),(MOV_CFG[m.type]||{label:m.type}).label,m.productName,m.supplierName||"",m.qty,m.unit,m.note||""];})];
-            const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("
-");
+            const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("");
             const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);a.download=`aryes-movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
           }} style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.green,background:T.greenBg,border:`1px solid ${T.greenBd}`,padding:"8px 16px",borderRadius:4,cursor:"pointer"}}>
             ↓ Exportar CSV ({filtered.length} registros)
