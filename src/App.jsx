@@ -1017,7 +1017,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             <Cap style={{color:T.green}}>Condiciones comerciales</Cap>
             <div style={{marginTop:10,display:"grid",gap:8}}>
               {[
-                {l:"Moneda",supplier.currency},
+                {l:"Moneda",v:supplier.currency},
                 {l:"Plazo de pago",v:`${supplier.paymentTerms||"—"} días`},
                 {l:"Forma de pago",v:supplier.paymentMethod||"—"},
                 {l:"Pedido mínimo",v:supplier.minOrder>0?`${supplier.currency||"USD"} ${supplier.minOrder}`:"Sin mínimo"},
