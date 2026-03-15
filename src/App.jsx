@@ -2738,15 +2738,6 @@ const ExcelImportTab=({products,setProducts,session})=>{
     const newProds=rows.map((r,i)=>({...r,id:maxId+i+1,history:[]}));
     const updated=[...products,...newProds];
     LS.set('aryes6-products',updated);
-    // Record price change in history
-    if(editForm && editForm.id) {
-      const oldProd = products.find(p=>p.id===editForm.id);
-      if(oldProd && oldProd.unitCost !== editForm.unitCost) {
-        const hist = LS.get('aryes-price-history',[]);
-        hist.push({productId:editForm.id,productName:editForm.name,brand:editForm.brand||'',cost:editForm.unitCost,prevCost:oldProd.unitCost,date:new Date().toISOString(),user:session?.name||''});
-        LS.set('aryes-price-history',hist);
-      }
-    }
     setProducts(updated);
     // Sync to Supabase
     const dbRows=newProds.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplier_id:p.supplierId,unit:p.unit,stock:p.stock,unit_cost:p.unitCost,min_stock:p.minStock,daily_usage:p.dailyUsage,category:p.category,brand:p.brand,history:[]}));
@@ -2971,7 +2962,6 @@ const generateOrderPDF = (order, suppliers, products) => {
   }
 };
 
-
 // ── Dashboard Charts Components ─────────────────────────────────────────
 const MiniBar=({value,max,color='#3a7d1e'})=>{
   const pct=max>0?Math.min(100,Math.round(value/max*100)):0;
@@ -3139,6 +3129,7 @@ const DashboardExtra=({products,suppliers,orders})=>{
 };
 
 
+
 // ── Price History Tab ────────────────────────────────────────────────────
 const PriceHistoryTab=({products,session})=>{
   const [priceHistory,setPriceHistory]=useState(()=>LS.get('aryes-price-history',[]));
@@ -3249,6 +3240,7 @@ const PriceHistoryTab=({products,session})=>{
     </div>
   );
 };
+
 
 
 // ── Clients Tab ──────────────────────────────────────────────────────────
@@ -3443,7 +3435,14 @@ const ClientsTab=({products,session})=>{
   );
 };
 
+
 export default function AryesApp(){
+  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
+  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
+  const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
+  if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  const canEdit=session.role==='admin'||session.role==='operador';
+
   const [dbReady,setDbReady]=useState(false);
   const [syncStatus,setSyncStatus]=useState('');
   useEffect(()=>{
@@ -3464,13 +3463,6 @@ export default function AryesApp(){
       }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
     })();
   },[session]);
-
-  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
-  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
-  const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
-  if(!session) return <LoginScreen onLogin={handleLogin}/>;
-  const canEdit=session.role==='admin'||session.role==='operador';
-
 
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
