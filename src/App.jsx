@@ -25,6 +25,39 @@ const LS = {
   get:(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch{return d;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
 };
+const SUPA_URL='https://mrotnqybqvmvlexncvno.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+const db={
+  headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+  async get(table,query=''){
+    const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+query,{headers:this.headers});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async upsert(table,data){
+    const r=await fetch(SUPA_URL+'/rest/v1/'+table,{method:'POST',headers:{...this.headers,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async update(table,data,match){
+    const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
+    const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+q,{method:'PATCH',headers:{...this.headers,'Prefer':'return=representation'},body:JSON.stringify(data)});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async delete(table,match){
+    const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
+    const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+q,{method:'DELETE',headers:this.headers});
+    if(!r.ok) throw new Error(await r.text());
+    return true;
+  },
+  async insert(table,data){
+    const r=await fetch(SUPA_URL+'/rest/v1/'+table,{method:'POST',headers:{...this.headers,'Prefer':'return=representation'},body:JSON.stringify(data)});
+    if(!r.ok) throw new Error(await r.text());
+    return r.json();
+  }
+};
+
 const USERS=[
   {username:"admin",    password:"aryes2024", role:"admin",    name:"Administrador"},
   {username:"operador", password:"stock123",  role:"operador", name:"Operador"},
@@ -2582,6 +2615,70 @@ export default function AryesApp(){
   const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   const canEdit=session.role==='admin'||session.role==='operador';
+  // ── Supabase data loading ────────────────────────────────────────────────
+  const [dbReady,setDbReady]=React.useState(false);
+  const [syncStatus,setSyncStatus]=React.useState('');
+
+  const loadFromSupabase=React.useCallback(async()=>{
+    try{
+      setSyncStatus('sync');
+      // Load products
+      const prods=await db.get('products','order=id.asc&limit=1000');
+      if(prods&&prods.length>0){
+        const mapped=prods.map(p=>({
+          id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',
+          unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,
+          minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,
+          category:p.category||'',brand:p.brand||'',
+          history:p.history||[]
+        }));
+        LS.set('aryes6-products',mapped);
+    // Sync to Supabase in background
+    if(dbReady){
+      const toSync=updated.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplier_id:p.supplierId||'arg',unit:p.unit||'kg',stock:p.stock||0,unit_cost:p.unitCost||0,min_stock:p.minStock||5,daily_usage:p.dailyUsage||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
+      db.upsert('products',toSync).catch(e=>console.warn('Sync warn:',e));
+    }
+      }
+      // Load suppliers
+      const sups=await db.get('suppliers','order=name.asc');
+      if(sups&&sups.length>0){
+        const mapped=sups.map(s=>({
+          id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',
+          times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},
+          company:s.company||'',contact:s.contact||'',email:s.email||'',
+          phone:s.phone||'',whatsapp:s.whatsapp||'',country:s.country||'',city:s.city||'',
+          currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',
+          paymentMethod:s.payment_method||'',minOrder:s.min_order||'',
+          discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''
+        }));
+        LS.set('aryes6-suppliers',mapped);
+      }
+      // Load movements
+      const movs=await db.get('movements','order=created_at.desc&limit=500');
+      if(movs) LS.set('aryes8-movements',movs.map(m=>({
+        id:m.id,productId:m.product_id,productName:m.product_name,
+        type:m.type,qty:Number(m.qty),note:m.note||'',
+        user:m.user_name||'',date:m.created_at
+      })));
+      // Load users
+      const usrs=await db.get('users','order=id.asc');
+      if(usrs&&usrs.length>0) LS.set('aryes-users',usrs.map(u=>({
+        username:u.username,password:u.password,name:u.name,role:u.role,active:u.active
+      })));
+      setDbReady(true);
+      setSyncStatus('ok');
+      setTimeout(()=>setSyncStatus(''),3000);
+    }catch(e){
+      console.error('Supabase load error:',e);
+      setSyncStatus('error');
+      setDbReady(true); // fall back to localStorage
+      setTimeout(()=>setSyncStatus(''),4000);
+    }
+  },[]);
+
+  React.useEffect(()=>{ if(session) loadFromSupabase(); },[session]);
+  // ────────────────────────────────────────────────────────────────────────
+
 
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
@@ -2741,6 +2838,9 @@ export default function AryesApp(){
         {/* Logo */}
         <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
           <AryesLogo height={34}/>
+          {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:4,display:'flex',alignItems:'center',gap:4}}><span style={{animation:'spin 1s linear infinite',display:'inline-block'}}>↻</span> Sincronizando...</div>}
+          {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:4}}>✓ Sincronizado con nube</div>}
+          {syncStatus==='error'&&<div style={{fontSize:10,color:'#dc2626',marginTop:4}}>⚠ Sin conexión — modo local</div>}
           <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gestión de stock · UY</Cap></div>
         </div>
 
