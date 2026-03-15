@@ -164,256 +164,256 @@ const gh=(base,v)=>Array.from({length:6},(_,i)=>{
 });
 
 const DEFAULT_PRODUCTS = [
-  {id:1,name:"Chocolate Cobertura Confeiteiro con Leche 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:336.07,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:2,name:"Chocolate Cobertura Confeiteiro Semiamargo 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:336.07,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:3,name:"Chocolate Cobertura Confeiteiro Blanco 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:336.07,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:4,name:"Chocolate Cobertura Supreme Amargo 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:5,name:"Chocolate Gotas Supreme con Leche 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:6,name:"Chocolate Gotas Supreme Semiamargo 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:7,name:"Chocolate Gotas Supreme Blanco 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:8,name:"Chocolate Ganache con Leche 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:9,name:"Chocolate Ganache Semiamargo 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:10,name:"Chocolate Ganache Blanco 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:11,name:"Chocolate Chips Negro 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:12,name:"Chocolate Chips Blanco 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:13,name:"Cacao polvo Namur 500 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:659.84,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:14,name:"Cacao polvo Namur 10 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:459.02,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:15,name:"Chocolate Granizado (mini gotas) semiamargo 8 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:282.79,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:16,name:"Microgalletitas b/chocolate 7 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:680.33,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:17,name:"Relleno y Cobertura Chantilly 4,7 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:18,name:"Relleno y Cobertura Vainilla 4,7 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:19,name:"Relleno y Cobertura Frutilla 4,7 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:20,name:"Relleno y Cobertura Chantilly 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:21,name:"Relleno y Cobertura Vainilla 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:22,name:"Relleno y Cobertura Frutilla 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:23,name:"Relleno y Cobertura Chantilly 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:303.28,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:24,name:"Relleno y Cobertura Vainilla 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:303.28,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:25,name:"Relleno y Cobertura Frutilla 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:303.28,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:26,name:"Relleno y Cobertura Sabor Chocolate por 4,5 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:27,name:"Relleno y Cobertura Sabor Chocolate  por 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:327.87,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:28,name:"Relleno y Cobertura Sabor Chocolate  por 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:360.66,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:29,name:"Merengue en polvo por 250 grs. (1 kg. polvo + 400 cc.agua+12 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:385.25,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:30,name:"Merengue en polvo por 4 kgs. ( 1 kg. polvo + 400 cc.agua+12 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:31,name:"Crema pastelera por 250 grs. (750 cc. agua + 250 gr.polvo + 5 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:418.03,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:32,name:"Crema pastelera por 4 Kg. (750 cc. agua + 250 gr.polvo + 5 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:319.67,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:33,name:"Mousse Chantilly 250 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:627.05,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:34,name:"Mousse Frutilla 250 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:627.05,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:35,name:"Mousse Chocolate 250 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:627.05,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:36,name:"Mousse Chantilly 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:602.46,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:37,name:"Mousse Frutilla 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:602.46,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:38,name:"Mousse Chocolate 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:602.46,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:39,name:"Gel de Brillo Neutro 310 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:237.7,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:40,name:"Gel de Brillo Frutilla 310 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:237.7,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:41,name:"Destello Neutro 4,4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:159.84,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:42,name:"Destello Frutilla 4,4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:159.84,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:43,name:"Gel de Brillo Neutro en Caliente por 10 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:131.15,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:44,name:"Crema Paris (cubretortas chocolate intenso) por 280 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:401.64,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:45,name:"Crema Paris (baño tipo ganache) por 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:327.89,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",history:gh(180,0.5)},
-  {id:46,name:"Mix Cupcake vainilla 500 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:233.61,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:47,name:"Mix Brownie 470 grs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:258.2,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:48,name:"Mix Brownie 4 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:49,name:"Mix Budín vainilla 500 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:213.11,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:50,name:"Mix Macarrones 250 grs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:532.79,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:51,name:"Mix Macarron 3,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:422.13,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:52,name:"Azúcar impalpable 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:176.23,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:53,name:"Glacé Real 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:213.11,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:54,name:"Fondant 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:196.72,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:55,name:"Pastamix 800 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:307.38,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:56,name:"Pastamix 3 kgs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:1020.49,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:57,name:"Pasta Americana Colorful 800 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:315.57,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:58,name:"Rendamix 100 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:155.74,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:59,name:"Pasta Americana Mix 4,5 kgs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:1536.89,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:60,name:"Azúcar Colores 80 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:45.08,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:61,name:"Azúcar Colores 500 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:131.15,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:62,name:"Granas Colores 120 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:45.08,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:63,name:"Granas Colores 500 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:131.15,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:64,name:"Grageas Colores 100 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:53.27,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:65,name:"Grageas Colores 500 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:159.84,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:66,name:"Granas Colores 5 kgrs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:163.93,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:67,name:"Aromatizante Limón 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:68,name:"Aromatizante Nuez 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:69,name:"Aromatizante Chocolate 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:70,name:"Aromatizante Naranja 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:71,name:"Aromatizante Vainilla 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:72,name:"Aromatizante Vainilla Blanca 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:73,name:"Aromatizante Chocolate 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:74,name:"Aromatizante Coco 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:75,name:"Aromatizante Manteca 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:76,name:"Aromatizante Frutilla 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:77,name:"Aromatizante Queso 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:78,name:"Aromatizante Panettone 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:79,name:"Aromatizante Naranja 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:80,name:"Aromatizante Limón 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:81,name:"Aromatizante Menta 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:82,name:"Color gel 15 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:65.57,minStock:5,dailyUsage:0.5,category:"Colorantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:83,name:"Color softgel 25 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:110.66,minStock:5,dailyUsage:0.5,category:"Colorantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:84,name:"Color softgel Big 150 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:352.46,minStock:5,dailyUsage:0.5,category:"Colorantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:85,name:"Color polvo esfumado 3 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:139.34,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:86,name:"Color pen 60 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:135.25,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:87,name:"Color líquido 10 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:45.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:88,name:"Colorante liquido 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:155.74,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:89,name:"Acido Cítrico 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:90,name:"Agar Agar 30 g",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:299.18,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:91,name:"CMC (Carbometil Celulosa) 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:110.65,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:92,name:"Cremor Tártaro por 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:93,name:"Gel Confitero 50 grs",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:94,name:"Glucosa jarabe 150 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:98.36,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:95,name:"Glucosa jarabe 500 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:163.93,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:96,name:"Glucosa jarabe 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:97,name:"Glucosa polvo (dextrosa) 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:98,name:"Emustab (Emulsificante) 200 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:121.32,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:99,name:"Emustab por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:418.03,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:100,name:"Gelatina neutra por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:101,name:"CHOCOLATE AMARGO DARK 70% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1385.25,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:102,name:"CHOCOLATE AMARGO DARK 70% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1295.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:103,name:"CHOCOLATE AMARGO BLACK 65% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1229.51,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:104,name:"CHOCOLATE AMARGO BLACK 65% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1200.82,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:105,name:"CHOCOLATE FLUIDO 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1217.21,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:106,name:"CHOCOLATE FLUIDO 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1192.62,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:107,name:"CHOCOLATE S/AMARGO 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1118.85,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:108,name:"CHOCOLATE S/AMARGO 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1045.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:109,name:"CHOCOLATE C/LECHE CARAMELIZADO 40% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:110,name:"CHOCOLATE C/LECHE BLEND 35% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:111,name:"CHOCOLATE C/LECHE BLEND 35% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1045.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:112,name:"CHOCOLATE BLANCO C/MAIZ 33% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1270.49,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:113,name:"CHOCOLATE BLANCO 31% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:114,name:"CHOCOLATE BLANCO 31% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1045.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:115,name:"CACAO POLVO 22-24% 2,25 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:116,name:"NIBS CACAO 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2049.18,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:117,name:"LICOR CACAO 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2000,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:118,name:"CHOCOLATE S/AMARGO TRONADOR 55%",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:119,name:"CHOCOLATE C/LECHE TRONADOR",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:120,name:"CHOCOLATE BLANCO",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:121,name:"CHOCOLATE AMARGO 71%",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1135.25,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:122,name:"Preparado selecta top 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:286.88,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:123,name:"Crema Chocolat 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:442.62,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:124,name:"Variegato Frutales 2 Kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:565.57,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:125,name:"Variegato Frutales 12 Kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:528.69,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:126,name:"Variegato Frutales Zero 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:655.74,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:127,name:"Veteado Chocolat 2 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:545.08,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:128,name:"Veteado Chocolat 12 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:631.15,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:129,name:"Super liga Neutra por 20 kgs. estabilizante en frío ó caliente",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",history:gh(180,0.5)},
-  {id:130,name:"Emustab por 10 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:282.79,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",history:gh(180,0.5)},
-  {id:131,name:"Emustab por 3 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:327.86,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",history:gh(180,0.5)},
-  {id:132,name:"Estabilizante Aqua 5 por 1 kg. en frio",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:549.18,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",history:gh(180,0.5)},
-  {id:133,name:"Emulsificante y Estabilizante Laqua 10 por 500 grs. en frio",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:491.8,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",history:gh(180,0.5)},
-  {id:134,name:"Base Zero Aqua 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:549.18,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",history:gh(180,0.5)},
-  {id:135,name:"Cobertura Clásicas  1,3 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:172.13,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:136,name:"Cobertura premium 1,3 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:225.41,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:137,name:"Cobertura Clásicas  300 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:138,name:"Soft Vainilla 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Food Service",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:139,name:"Soft Chocolate 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Food Service",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:140,name:"Chocolate caliente por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:327.87,minStock:5,dailyUsage:0.5,category:"Food Service",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:141,name:"Desmoldante Aerosol Lisse 600 ml",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:368.85,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",history:gh(180,0.5)},
-  {id:142,name:"Mejorador Enzipan 250",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:73.77,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",history:gh(180,0.5)},
-  {id:143,name:"Mix Pao de queijo por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:172.13,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",history:gh(180,0.5)},
-  {id:144,name:"Caramelo Liquido 7 kg",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:139.34,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",history:gh(180,0.5)},
-  {id:145,name:"Lactofil Premium 1 L",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",history:gh(180,0.5)},
-  {id:146,name:"Aceite Doratta 15,8 L (14, kgs)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:2250,minStock:5,dailyUsage:0.5,category:"Aceites y Grasas",brand:"Agropalma",history:gh(180,0.5)},
-  {id:147,name:"Grasa Palma 20 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:122.73,minStock:5,dailyUsage:0.5,category:"Aceites y Grasas",brand:"Agropalma",history:gh(180,0.5)},
-  {id:148,name:"Anana 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:149,name:"Banana  3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:150,name:"Frambuesa 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:151,name:"Frutilla  3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:152,name:"Mango  3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:153,name:"Maracuyá 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:154,name:"Limón 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:155,name:"Azurro Cielo 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:799.18,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:156,name:"Bubbly 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1213.11,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:157,name:"Biscottino 4,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:995.9,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:158,name:"Biancocioc 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:159,name:"Cherry 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:160,name:"Cocco 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1032.79,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:161,name:"Caffe por 1 kg.",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:162,name:"Chantilly (pasta per cookies black) 4,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1086.07,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:163,name:"Cheese Cake en polvo 1 kg",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1295.083,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:164,name:"Limoncello en polvo con estabilizante 2,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:165,name:"Mascarpone en polvo 2 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1500,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:166,name:"Yoghin yogurth en polvo 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1196.72,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:167,name:"Limone 50 en polvo con estabilizante 2,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1155.74,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:168,name:"Menta 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:952.82,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:169,name:"Mister Nico Pasta mani 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1180.33,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:170,name:"Pistacho California 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:4147.54,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:171,name:"Pistacho Pesto c/trozos 2,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:3581.97,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:172,name:"Nocciola Prima Fine (avellana) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2151.64,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:173,name:"Nocciola Selection (avellana) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1491.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:174,name:"Nocciola Oscura (avellana) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1627.05,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:175,name:"Nocciola Máxima (kinder) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2340.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:176,name:"Sinfonía Italiana KIT 12,7 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:177,name:"Tiramisu 4,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1040.98,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:178,name:"Vainilla French 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1159.84,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:179,name:"Zabaione 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:180,name:"Cookie Black Oreo 6 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:181,name:"Cookie Lemon 6 kg.",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:182,name:"Fiordibosco 3 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:183,name:"Mamá que buena kinder 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:967.21,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:184,name:"Mecralph 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1254.1,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:185,name:"Mecrock 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1282.79,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:186,name:"Mecrock Plus 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1176,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:187,name:"Mister Nico Snickers 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:877.05,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:188,name:"Quello Caramelo 6 kg.",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:189,name:"Wafer 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1073.77,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",history:gh(180,0.5)},
-  {id:190,name:"Base Soave 2 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:831.97,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:191,name:"Base Elena 1,8 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:840.16,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:192,name:"Supergelmix 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:938.52,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:193,name:"Cioki 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:655.74,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:194,name:"Cremfix 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:643.44,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:195,name:"Cacao polvo 20-22",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:926.23,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:196,name:"Stracciatella",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:606.56,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:197,name:"Gianduia 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1311.48,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:198,name:"Torrone Rustico 4,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1491.8,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:199,name:"Frollino 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:926.23,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:200,name:"Amore Nocciola 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:950.82,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:201,name:"Arancio Variegato 3,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:778.68,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:202,name:"Pistacho al Gusto 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1729.51,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:203,name:"Pistacho Natura 2,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:3950.82,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:204,name:"Pistacho Maestro 2,5",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2983.61,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:205,name:"Morettina Clásica 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:696.72,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:206,name:"Morettina Blanca 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:696.72,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:207,name:"Morettina Pepita Clásica 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1172.13,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:208,name:"Morettina Pepita Blanca ,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1172.13,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:209,name:"Morettina Pistacho 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1721.31,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:210,name:"Morettina Pastelera Clásica 12 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:614.75,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:211,name:"Morettina Pastelera Pistacho 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:942.62,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",history:gh(180,0.5)},
-  {id:212,name:"Cacao polvo Namur 10 Kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:491.8,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:213,name:"Pasta Saborizante 2 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:491.8,minStock:5,dailyUsage:0.5,category:"Pastas Saborizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:214,name:"Dia & Light Vaniglia 1,25 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1159.84,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:215,name:"Dia & Light Fiordilatte 1,25 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1180.33,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:216,name:"Dia & Light Fuit 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1098.36,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:217,name:"Dia & Light Cioccolatto 1,25 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1295.08,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",history:gh(180,0.5)},
-  {id:218,name:"Chocolate Amargo Dark 70% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:844.26,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:219,name:"Chocolate Amargo Dark 70%  70% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:220,name:"Chocolate Amargo Black 65% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:844.26,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:221,name:"Chocolate s/Amargo 56% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:762.29,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:222,name:"Chocolate s/Amargo 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:688.52,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:223,name:"Chocolate s/Amargo 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:663.3,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:224,name:"Chocolate Fluido 56% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:225,name:"Chocolate Fluido 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:717.21,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:226,name:"Chocolate Fluido 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:696.72,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:227,name:"Chocolate c/Leche Caramelizado 40% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:228,name:"Chocolate c/Leche 35% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:872.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:229,name:"Chocolate c/Leche 35% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:230,name:"Chocolate c/Leche 35% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:786.89,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:231,name:"Chocolate Blanco c/Maiz 33% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:844.26,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:232,name:"Chocolate Blanco 31% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:946.72,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:233,name:"Chocolate Blanco 31% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:234,name:"Chocolate Blanco 31% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:786.9,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:235,name:"Cacao Polvo 22-24% 2,25 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:926.23,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:236,name:"Nibs Cacao 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",history:gh(180,0.5)},
-  {id:237,name:"Palitos Clásico enfajados 114x10x2mm por 10.000 (200x50 pcs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2700.82,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:238,name:"Palitos Hélice enfajados 200x50 pcs 94x17-11x2 por 5.000 (100x50 pcs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2573.77,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:239,name:"Palitos Redondo 160 x 6 mm  por 5.000",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:3565.57,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",history:gh(180,0.5)},
-  {id:240,name:"Mix Cupcake vainilla 500 grs. (6 kgs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:233.61,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:241,name:"Mix Budín vainilla 500 grs. (6 kgs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:213.11,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",history:gh(180,0.5)},
-  {id:242,name:"Cobertura Premium 1,3 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:225.41,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:243,name:"Mousse Chantilly 1 kg. (Ledevit)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:573.77,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:244,name:"Mousse Frutilla 1 kg. (Ledevit)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:573.77,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:245,name:"Mousse Chocolate por 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:598.36,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",history:gh(180,0.5)},
-  {id:246,name:"AROMATIZANTES  1 lt. Chocolate, Coco, Manteca, Frutilla, Queso,Banana,Panettone",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:247,name:"Aromatizante Naranja 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:248,name:"Aromatizante Limón 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:249,name:"Aromatizante Menta 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
-  {id:250,name:"Aromatizante Banana 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",history:gh(180,0.5)},
+  {id:1,name:"Chocolate Cobertura Confeiteiro con Leche 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:336.07,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:2,name:"Chocolate Cobertura Confeiteiro Semiamargo 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:336.07,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:3,name:"Chocolate Cobertura Confeiteiro Blanco 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:336.07,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:4,name:"Chocolate Cobertura Supreme Amargo 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:5,name:"Chocolate Gotas Supreme con Leche 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:6,name:"Chocolate Gotas Supreme Semiamargo 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:7,name:"Chocolate Gotas Supreme Blanco 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:8,name:"Chocolate Ganache con Leche 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:9,name:"Chocolate Ganache Semiamargo 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:10,name:"Chocolate Ganache Blanco 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:11,name:"Chocolate Chips Negro 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:12,name:"Chocolate Chips Blanco 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:13,name:"Cacao polvo Namur 500 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:659.84,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:14,name:"Cacao polvo Namur 10 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:459.02,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:15,name:"Chocolate Granizado (mini gotas) semiamargo 8 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:282.79,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:16,name:"Microgalletitas b/chocolate 7 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:680.33,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:17,name:"Relleno y Cobertura Chantilly 4,7 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:18,name:"Relleno y Cobertura Vainilla 4,7 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:19,name:"Relleno y Cobertura Frutilla 4,7 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:20,name:"Relleno y Cobertura Chantilly 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:21,name:"Relleno y Cobertura Vainilla 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:22,name:"Relleno y Cobertura Frutilla 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:23,name:"Relleno y Cobertura Chantilly 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:303.28,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:24,name:"Relleno y Cobertura Vainilla 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:303.28,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:25,name:"Relleno y Cobertura Frutilla 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:303.28,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:26,name:"Relleno y Cobertura Sabor Chocolate por 4,5 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:27,name:"Relleno y Cobertura Sabor Chocolate  por 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:327.87,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:28,name:"Relleno y Cobertura Sabor Chocolate  por 500 g.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:360.66,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:29,name:"Merengue en polvo por 250 grs. (1 kg. polvo + 400 cc.agua+12 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:385.25,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:30,name:"Merengue en polvo por 4 kgs. ( 1 kg. polvo + 400 cc.agua+12 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:31,name:"Crema pastelera por 250 grs. (750 cc. agua + 250 gr.polvo + 5 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:418.03,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:32,name:"Crema pastelera por 4 Kg. (750 cc. agua + 250 gr.polvo + 5 min batido)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:319.67,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:33,name:"Mousse Chantilly 250 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:627.05,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:34,name:"Mousse Frutilla 250 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:627.05,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:35,name:"Mousse Chocolate 250 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:627.05,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:36,name:"Mousse Chantilly 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:602.46,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:37,name:"Mousse Frutilla 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:602.46,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:38,name:"Mousse Chocolate 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:602.46,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:39,name:"Gel de Brillo Neutro 310 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:237.7,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:40,name:"Gel de Brillo Frutilla 310 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:237.7,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:41,name:"Destello Neutro 4,4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:159.84,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:42,name:"Destello Frutilla 4,4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:159.84,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:43,name:"Gel de Brillo Neutro en Caliente por 10 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:131.15,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:44,name:"Crema Paris (cubretortas chocolate intenso) por 280 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:401.64,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:45,name:"Crema Paris (baño tipo ganache) por 4 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:327.89,minStock:5,dailyUsage:0.5,category:"Brillos",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:46,name:"Mix Cupcake vainilla 500 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:233.61,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:47,name:"Mix Brownie 470 grs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:258.2,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:48,name:"Mix Brownie 4 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:49,name:"Mix Budín vainilla 500 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:213.11,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:50,name:"Mix Macarrones 250 grs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:532.79,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:51,name:"Mix Macarron 3,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:422.13,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:52,name:"Azúcar impalpable 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:176.23,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:53,name:"Glacé Real 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:213.11,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:54,name:"Fondant 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:196.72,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:55,name:"Pastamix 800 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:307.38,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:56,name:"Pastamix 3 kgs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:1020.49,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:57,name:"Pasta Americana Colorful 800 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:315.57,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:58,name:"Rendamix 100 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:155.74,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:59,name:"Pasta Americana Mix 4,5 kgs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:1536.89,minStock:5,dailyUsage:0.5,category:"Decoración",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:60,name:"Azúcar Colores 80 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:45.08,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:61,name:"Azúcar Colores 500 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:131.15,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:62,name:"Granas Colores 120 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:45.08,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:63,name:"Granas Colores 500 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:131.15,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:64,name:"Grageas Colores 100 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:53.27,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:65,name:"Grageas Colores 500 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:159.84,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:66,name:"Granas Colores 5 kgrs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:163.93,minStock:5,dailyUsage:0.5,category:"Confites",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:67,name:"Aromatizante Limón 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:68,name:"Aromatizante Nuez 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:69,name:"Aromatizante Chocolate 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:70,name:"Aromatizante Naranja 30 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:61.48,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:71,name:"Aromatizante Vainilla 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:72,name:"Aromatizante Vainilla Blanca 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:217.21,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:73,name:"Aromatizante Chocolate 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:74,name:"Aromatizante Coco 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:75,name:"Aromatizante Manteca 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:76,name:"Aromatizante Frutilla 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:77,name:"Aromatizante Queso 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:78,name:"Aromatizante Panettone 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:79,name:"Aromatizante Naranja 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:80,name:"Aromatizante Limón 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:81,name:"Aromatizante Menta 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:82,name:"Color gel 15 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:65.57,minStock:5,dailyUsage:0.5,category:"Colorantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:83,name:"Color softgel 25 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:110.66,minStock:5,dailyUsage:0.5,category:"Colorantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:84,name:"Color softgel Big 150 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:352.46,minStock:5,dailyUsage:0.5,category:"Colorantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:85,name:"Color polvo esfumado 3 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:139.34,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:86,name:"Color pen 60 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:135.25,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:87,name:"Color líquido 10 ml.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:45.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:88,name:"Colorante liquido 1 lt.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:155.74,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:89,name:"Acido Cítrico 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:90,name:"Agar Agar 30 g",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:299.18,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:91,name:"CMC (Carbometil Celulosa) 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:110.65,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:92,name:"Cremor Tártaro por 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:93,name:"Gel Confitero 50 grs",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:94,name:"Glucosa jarabe 150 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:98.36,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:95,name:"Glucosa jarabe 500 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:163.93,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:96,name:"Glucosa jarabe 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:97,name:"Glucosa polvo (dextrosa) 50 g.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:81.97,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:98,name:"Emustab (Emulsificante) 200 grs.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:121.32,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:99,name:"Emustab por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:418.03,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:100,name:"Gelatina neutra por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Aditivos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:101,name:"CHOCOLATE AMARGO DARK 70% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1385.25,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:102,name:"CHOCOLATE AMARGO DARK 70% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1295.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:103,name:"CHOCOLATE AMARGO BLACK 65% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1229.51,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:104,name:"CHOCOLATE AMARGO BLACK 65% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1200.82,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:105,name:"CHOCOLATE FLUIDO 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1217.21,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:106,name:"CHOCOLATE FLUIDO 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1192.62,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:107,name:"CHOCOLATE S/AMARGO 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1118.85,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:108,name:"CHOCOLATE S/AMARGO 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1045.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:109,name:"CHOCOLATE C/LECHE CARAMELIZADO 40% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:110,name:"CHOCOLATE C/LECHE BLEND 35% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:111,name:"CHOCOLATE C/LECHE BLEND 35% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1045.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:112,name:"CHOCOLATE BLANCO C/MAIZ 33% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1270.49,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:113,name:"CHOCOLATE BLANCO 31% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:114,name:"CHOCOLATE BLANCO 31% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1045.08,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:115,name:"CACAO POLVO 22-24% 2,25 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1311.48,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:116,name:"NIBS CACAO 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2049.18,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:117,name:"LICOR CACAO 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2000,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:118,name:"CHOCOLATE S/AMARGO TRONADOR 55%",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:119,name:"CHOCOLATE C/LECHE TRONADOR",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:120,name:"CHOCOLATE BLANCO",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:121,name:"CHOCOLATE AMARGO 71%",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1135.25,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:122,name:"Preparado selecta top 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:286.88,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:123,name:"Crema Chocolat 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:442.62,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:124,name:"Variegato Frutales 2 Kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:565.57,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:125,name:"Variegato Frutales 12 Kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:528.69,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:126,name:"Variegato Frutales Zero 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:655.74,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:127,name:"Veteado Chocolat 2 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:545.08,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:128,name:"Veteado Chocolat 12 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:631.15,minStock:5,dailyUsage:0.5,category:"Variagatos",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:129,name:"Super liga Neutra por 20 kgs. estabilizante en frío ó caliente",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:130,name:"Emustab por 10 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:282.79,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:131,name:"Emustab por 3 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:327.86,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:132,name:"Estabilizante Aqua 5 por 1 kg. en frio",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:549.18,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:133,name:"Emulsificante y Estabilizante Laqua 10 por 500 grs. en frio",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:491.8,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:134,name:"Base Zero Aqua 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:549.18,minStock:5,dailyUsage:0.5,category:"Estabilizantes",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:135,name:"Cobertura Clásicas  1,3 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:172.13,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:136,name:"Cobertura premium 1,3 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:225.41,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:137,name:"Cobertura Clásicas  300 grs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:377.05,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:138,name:"Soft Vainilla 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Food Service",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:139,name:"Soft Chocolate 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:270.49,minStock:5,dailyUsage:0.5,category:"Food Service",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:140,name:"Chocolate caliente por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:327.87,minStock:5,dailyUsage:0.5,category:"Food Service",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:141,name:"Desmoldante Aerosol Lisse 600 ml",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:368.85,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",salePrice:0,history:gh(180,0.5)},
+  {id:142,name:"Mejorador Enzipan 250",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:73.77,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",salePrice:0,history:gh(180,0.5)},
+  {id:143,name:"Mix Pao de queijo por 1 kg.",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:172.13,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",salePrice:0,history:gh(180,0.5)},
+  {id:144,name:"Caramelo Liquido 7 kg",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:139.34,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",salePrice:0,history:gh(180,0.5)},
+  {id:145,name:"Lactofil Premium 1 L",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:250,minStock:5,dailyUsage:0.5,category:"Complementos Panadería",brand:"Adimix",salePrice:0,history:gh(180,0.5)},
+  {id:146,name:"Aceite Doratta 15,8 L (14, kgs)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:2250,minStock:5,dailyUsage:0.5,category:"Aceites y Grasas",brand:"Agropalma",salePrice:0,history:gh(180,0.5)},
+  {id:147,name:"Grasa Palma 20 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:122.73,minStock:5,dailyUsage:0.5,category:"Aceites y Grasas",brand:"Agropalma",salePrice:0,history:gh(180,0.5)},
+  {id:148,name:"Anana 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:149,name:"Banana  3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:150,name:"Frambuesa 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:151,name:"Frutilla  3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:918.03,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:152,name:"Mango  3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:153,name:"Maracuyá 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:154,name:"Limón 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:155,name:"Azurro Cielo 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:799.18,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:156,name:"Bubbly 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1213.11,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:157,name:"Biscottino 4,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:995.9,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:158,name:"Biancocioc 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1090.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:159,name:"Cherry 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1122.95,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:160,name:"Cocco 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1032.79,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:161,name:"Caffe por 1 kg.",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:162,name:"Chantilly (pasta per cookies black) 4,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1086.07,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:163,name:"Cheese Cake en polvo 1 kg",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1295.083,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:164,name:"Limoncello en polvo con estabilizante 2,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:165,name:"Mascarpone en polvo 2 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1500,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:166,name:"Yoghin yogurth en polvo 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1196.72,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:167,name:"Limone 50 en polvo con estabilizante 2,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1155.74,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:168,name:"Menta 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:952.82,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:169,name:"Mister Nico Pasta mani 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1180.33,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:170,name:"Pistacho California 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:4147.54,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:171,name:"Pistacho Pesto c/trozos 2,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:3581.97,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:172,name:"Nocciola Prima Fine (avellana) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2151.64,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:173,name:"Nocciola Selection (avellana) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1491.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:174,name:"Nocciola Oscura (avellana) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1627.05,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:175,name:"Nocciola Máxima (kinder) 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2340.16,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:176,name:"Sinfonía Italiana KIT 12,7 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:177,name:"Tiramisu 4,5 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1040.98,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:178,name:"Vainilla French 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:1159.84,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:179,name:"Zabaione 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:180,name:"Cookie Black Oreo 6 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:181,name:"Cookie Lemon 6 kg.",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:182,name:"Fiordibosco 3 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:183,name:"Mamá que buena kinder 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:967.21,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:184,name:"Mecralph 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1254.1,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:185,name:"Mecrock 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1282.79,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:186,name:"Mecrock Plus 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1176,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:187,name:"Mister Nico Snickers 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:877.05,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:188,name:"Quello Caramelo 6 kg.",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:189,name:"Wafer 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1073.77,minStock:5,dailyUsage:0.5,category:"Pastas",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:190,name:"Base Soave 2 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:831.97,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:191,name:"Base Elena 1,8 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:840.16,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:192,name:"Supergelmix 3 kgs",barcode:"",supplierId:"eur",unit:"lt",stock:0,unitCost:938.52,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:193,name:"Cioki 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:655.74,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:194,name:"Cremfix 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:643.44,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:195,name:"Cacao polvo 20-22",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:926.23,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:196,name:"Stracciatella",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:606.56,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:197,name:"Gianduia 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1311.48,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:198,name:"Torrone Rustico 4,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1491.8,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:199,name:"Frollino 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:926.23,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:200,name:"Amore Nocciola 5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:950.82,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:201,name:"Arancio Variegato 3,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:778.68,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:202,name:"Pistacho al Gusto 4 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1729.51,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:203,name:"Pistacho Natura 2,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:3950.82,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:204,name:"Pistacho Maestro 2,5",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:2983.61,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:205,name:"Morettina Clásica 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:696.72,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:206,name:"Morettina Blanca 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:696.72,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:207,name:"Morettina Pepita Clásica 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1172.13,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:208,name:"Morettina Pepita Blanca ,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1172.13,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:209,name:"Morettina Pistacho 6 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1721.31,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:210,name:"Morettina Pastelera Clásica 12 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:614.75,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:211,name:"Morettina Pastelera Pistacho 5,5 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:942.62,minStock:5,dailyUsage:0.5,category:"Chocolates Gelatieri",brand:"Pernigotti",salePrice:0,history:gh(180,0.5)},
+  {id:212,name:"Cacao polvo Namur 10 Kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:491.8,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:213,name:"Pasta Saborizante 2 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:491.8,minStock:5,dailyUsage:0.5,category:"Pastas Saborizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:214,name:"Dia & Light Vaniglia 1,25 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1159.84,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:215,name:"Dia & Light Fiordilatte 1,25 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1180.33,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:216,name:"Dia & Light Fuit 1 kg",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1098.36,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:217,name:"Dia & Light Cioccolatto 1,25 kgs",barcode:"",supplierId:"eur",unit:"kg",stock:0,unitCost:1295.08,minStock:5,dailyUsage:0.5,category:"Bases",brand:"MEC3",salePrice:0,history:gh(180,0.5)},
+  {id:218,name:"Chocolate Amargo Dark 70% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:844.26,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:219,name:"Chocolate Amargo Dark 70%  70% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:220,name:"Chocolate Amargo Black 65% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:844.26,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:221,name:"Chocolate s/Amargo 56% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:762.29,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:222,name:"Chocolate s/Amargo 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:688.52,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:223,name:"Chocolate s/Amargo 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:663.3,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:224,name:"Chocolate Fluido 56% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:991.8,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:225,name:"Chocolate Fluido 56% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:717.21,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:226,name:"Chocolate Fluido 56% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:696.72,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:227,name:"Chocolate c/Leche Caramelizado 40% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:228,name:"Chocolate c/Leche 35% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:872.95,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:229,name:"Chocolate c/Leche 35% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:230,name:"Chocolate c/Leche 35% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:786.89,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:231,name:"Chocolate Blanco c/Maiz 33% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:844.26,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:232,name:"Chocolate Blanco 31% 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:946.72,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:233,name:"Chocolate Blanco 31% 2,5 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:827.87,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:234,name:"Chocolate Blanco 31% 15 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:786.9,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:235,name:"Cacao Polvo 22-24% 2,25 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:926.23,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:236,name:"Nibs Cacao 1 kgs",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:1065.57,minStock:5,dailyUsage:0.5,category:"Chocolates",brand:"Selecta",salePrice:0,history:gh(180,0.5)},
+  {id:237,name:"Palitos Clásico enfajados 114x10x2mm por 10.000 (200x50 pcs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2700.82,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:238,name:"Palitos Hélice enfajados 200x50 pcs 94x17-11x2 por 5.000 (100x50 pcs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:2573.77,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:239,name:"Palitos Redondo 160 x 6 mm  por 5.000",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:3565.57,minStock:5,dailyUsage:0.5,category:"Rellenos y Coberturas",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:240,name:"Mix Cupcake vainilla 500 grs. (6 kgs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:233.61,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:241,name:"Mix Budín vainilla 500 grs. (6 kgs)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:213.11,minStock:5,dailyUsage:0.5,category:"Premezclas Horneables",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:242,name:"Cobertura Premium 1,3 kgs.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:225.41,minStock:5,dailyUsage:0.5,category:"Salsas y Coberturas",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:243,name:"Mousse Chantilly 1 kg. (Ledevit)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:573.77,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:244,name:"Mousse Frutilla 1 kg. (Ledevit)",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:573.77,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:245,name:"Mousse Chocolate por 1 kg.",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:598.36,minStock:5,dailyUsage:0.5,category:"Premezclas Pasteleras",brand:"Ledevit",salePrice:0,history:gh(180,0.5)},
+  {id:246,name:"AROMATIZANTES  1 lt. Chocolate, Coco, Manteca, Frutilla, Queso,Banana,Panettone",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:245.9,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:247,name:"Aromatizante Naranja 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:248,name:"Aromatizante Limón 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:249,name:"Aromatizante Menta 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
+  {id:250,name:"Aromatizante Banana 1 lt. (Duas Rodas)",barcode:"",supplierId:"arg",unit:"un",stock:0,unitCost:360.65,minStock:5,dailyUsage:0.5,category:"Aromatizantes",brand:"Duas Rodas",salePrice:0,history:gh(180,0.5)},
 ];
 
 const ALERT_CFG = {
@@ -2422,6 +2422,7 @@ function ImporterTab({onDone}){
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <div style={{fontSize:12,fontWeight:600,color:T.text}}>{prod.unitCost>0?`$${prod.unitCost.toFixed(0)} / ${prod.unit}`:"—"}</div>
+              {p.salePrice>0&&<span style={{fontSize:11,color:'#16a34a',marginLeft:8}}>Venta: $${p.salePrice.toFixed(2)} · <strong>${p.unitCost>0?Math.round((p.salePrice-p.unitCost)/p.salePrice*100):0}% margen</strong></span>}
                   <div style={{fontSize:11,color:IMP_SUP_COLOR[prod.supplierId],fontWeight:500}}>{IMP_SUP_LABEL[prod.supplierId]}</div>
                 </div>
               </div>
@@ -2831,6 +2832,136 @@ const ExcelImportTab=({products,setProducts,session})=>{
   );
 };
 
+
+// ── Generar PDF de Orden de Compra ───────────────────────────────────────
+const generateOrderPDF = (order, suppliers, products) => {
+  const sup = suppliers.find(s => s.id === order.supplierId) || {};
+  const today = new Date().toLocaleDateString('es-UY');
+  const orderNum = 'OC-' + Date.now().toString().slice(-6);
+
+  const rows = (order.items || []).map(item => {
+    const prod = products.find(p => p.id === item.productId) || {};
+    const subtotal = (item.qty * (prod.unitCost || 0)).toFixed(2);
+    return `<tr style="border-bottom:1px solid #eee">
+      <td style="padding:10px 12px">${prod.name || item.productName || ''}</td>
+      <td style="padding:10px 12px;text-align:center">${item.qty} ${prod.unit || ''}</td>
+      <td style="padding:10px 12px;text-align:right">$ ${(prod.unitCost || 0).toFixed(2)}</td>
+      <td style="padding:10px 12px;text-align:right">$ ${subtotal}</td>
+    </tr>`;
+  }).join('');
+
+  const total = (order.items || []).reduce((sum, item) => {
+    const prod = products.find(p => p.id === item.productId) || {};
+    return sum + item.qty * (prod.unitCost || 0);
+  }, 0);
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Orden de Compra ${orderNum}</title>
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a18; margin: 0; padding: 40px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #3a7d1e; padding-bottom: 24px; }
+    .logo-area h1 { font-size: 28px; color: #3a7d1e; margin: 0 0 4px; font-weight: 700; }
+    .logo-area p { color: #6a6a68; margin: 0; font-size: 13px; }
+    .oc-info { text-align: right; }
+    .oc-info .num { font-size: 22px; font-weight: 700; color: #1a1a18; }
+    .oc-info .date { color: #6a6a68; font-size: 13px; margin-top: 4px; }
+    .section { margin-bottom: 28px; }
+    .section-title { font-size: 11px; font-weight: 700; color: #9a9a98; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+    .sup-box { background: #f9f9f7; border: 1px solid #e2e2de; border-radius: 8px; padding: 16px 20px; }
+    .sup-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .sup-detail { font-size: 13px; color: #6a6a68; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    thead { background: #f9f9f7; }
+    thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; color: #6a6a68; text-transform: uppercase; letter-spacing: .07em; }
+    thead th:last-child, thead th:nth-child(3), thead th:nth-child(2) { text-align: right; }
+    .total-row { background: #f0f7ec; }
+    .total-row td { padding: 14px 12px; font-weight: 700; font-size: 15px; }
+    .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid #e2e2de; display: flex; justify-content: space-between; }
+    .sign-box { text-align: center; }
+    .sign-line { width: 180px; border-top: 1px solid #3a3a38; margin: 40px auto 8px; }
+    .sign-label { font-size: 12px; color: #6a6a68; }
+    .notes { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 18px; margin-top: 16px; font-size: 13px; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-area">
+      <h1>ARYES</h1>
+      <p>Distribuidora de Insumos Gastronómicos</p>
+      <p>Montevideo, Uruguay</p>
+    </div>
+    <div class="oc-info">
+      <div class="num">Orden de Compra</div>
+      <div class="num" style="color:#3a7d1e">${orderNum}</div>
+      <div class="date">Fecha: ${today}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Proveedor</div>
+    <div class="sup-box">
+      <div class="sup-name">${sup.name || order.supplierId || ''}</div>
+      ${sup.company ? `<div class="sup-detail">${sup.company}</div>` : ''}
+      ${sup.contact ? `<div class="sup-detail">Contacto: ${sup.contact}</div>` : ''}
+      ${sup.email ? `<div class="sup-detail">Email: ${sup.email}</div>` : ''}
+      ${sup.phone ? `<div class="sup-detail">Tel: ${sup.phone}</div>` : ''}
+      <div class="sup-detail" style="margin-top:6px">
+        Plazo de pago: ${sup.paymentTerms || '30'} días · Moneda: ${sup.currency || 'USD'}
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Detalle de productos</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th style="text-align:center">Cantidad</th>
+          <th style="text-align:right">Precio unit.</th>
+          <th style="text-align:right">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row">
+          <td colspan="3" style="text-align:right;padding:14px 12px;font-weight:700">TOTAL ESTIMADO</td>
+          <td style="text-align:right;padding:14px 12px;font-weight:700;color:#3a7d1e">$ ${total.toFixed(2)} ${sup.currency || 'USD'}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  ${order.notes ? `<div class="notes">📝 <strong>Notas:</strong> ${order.notes}</div>` : ''}
+
+  <div class="footer">
+    <div class="sign-box">
+      <div class="sign-line"></div>
+      <div class="sign-label">Solicitado por</div>
+    </div>
+    <div class="sign-box">
+      <div class="sign-line"></div>
+      <div class="sign-label">Autorizado por</div>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#9a9a98;align-self:flex-end">
+      <div>Aryes — Gestión de Stock</div>
+      <div>Generado el ${today}</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  }
+};
+
 export default function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
@@ -3038,11 +3169,11 @@ export default function AryesApp(){
 
         {/* Excel button */}
         <div style={{padding:"14px 16px",borderTop:`1px solid ${T.border}`}}>
-          <button onClick={()=>setModal({type:"excel"})}
+          {canEdit&&(<button onClick={()=>setModal({type:"excel"})}
             style={{width:"100%",background:T.greenBg,border:`1px solid ${T.greenBd}`,borderRadius:4,padding:"9px 14px",fontFamily:T.sans,fontSize:11,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:T.green,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:6}}>
             ↑ Actualizar stock
             <span style={{fontSize:10,color:T.greenLt,fontWeight:400}}>Excel</span>
-          </button>
+          </button>)}
         </div>
       
         <div style={{marginTop:'auto',borderTop:'1px solid #e2e2de',padding:'12px 16px 8px'}}>
