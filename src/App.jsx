@@ -2241,13 +2241,13 @@ const IMP_SUP_LABEL = {"arg":"🇦🇷 Argentina / Brasil","ecu":"🇪🇨 Ecuad
 const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 
 function ImporterTab({onDone}){
-  const [step,setStep]=React.useState("select");
-  const [sel,setSel]=React.useState(()=>Object.fromEntries(LOVABLE_CATALOG.map(p=>[p.id,true])));
-  const [fb,setFb]=React.useState("all");
-  const [fs,setFs]=React.useState("all");
-  const [search,setSearch]=React.useState("");
-  const [progress,setProgress]=React.useState(0);
-  const [result,setResult]=React.useState(null);
+  const [step,setStep]=useState("select");
+  const [sel,setSel]=useState(()=>Object.fromEntries(LOVABLE_CATALOG.map(p=>[p.id,true])));
+  const [fb,setFb]=useState("all");
+  const [fs,setFs]=useState("all");
+  const [search,setSearch]=useState("");
+  const [progress,setProgress]=useState(0);
+  const [result,setResult]=useState(null);
   const existingCount=LS.get("aryes6-products",[]).length;
 
   const brands=["all",...Object.keys(IMP_BRAND_COLORS)];
@@ -2426,10 +2426,10 @@ function ImporterTab({onDone}){
 
 
 const LoginScreen=({onLogin})=>{
-  const [user,setUser]=React.useState('');
-  const [pass,setPass]=React.useState('');
-  const [err,setErr]=React.useState('');
-  const [loading,setLoading]=React.useState(false);
+  const [user,setUser]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
   const go=()=>{
     if(!user||!pass) return;
     setLoading(true);setErr('');
@@ -2472,7 +2472,7 @@ const LoginScreen=({onLogin})=>{
 };
 
 export default function AryesApp(){
-  const [session,setSession]=React.useState(()=>LS.get('aryes-session',null));
+  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
   const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
@@ -3025,7 +3025,7 @@ export default function AryesApp(){
             </div>
             {/* Settings sub-tabs */}
             {(()=>{
-              const [settingsTab,setSettingsTab]=React.useState("freight");
+              const [settingsTab,setSettingsTab]=useState("freight");
               return(
                 <div>
                   <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:400,marginBottom:24}}>
