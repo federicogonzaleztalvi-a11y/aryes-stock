@@ -2609,6 +2609,221 @@ const UsersTab=({session})=>{
   );
 };
 
+
+const LotsTab=({products,session})=>{
+  const [lots,setLots]=React.useState(()=>LS.get('aryes-lots',[]));
+  const [filter,setFilter]=React.useState('all'); // all | expiring | expired
+  const [selProduct,setSelProduct]=React.useState('');
+  const [form,setForm]=React.useState({lotNumber:'',quantity:'',expiryDate:'',notes:''});
+  const [editing,setEditing]=React.useState(null);
+  const [msg,setMsg]=React.useState('');
+  const canEdit=session.role==='admin'||session.role==='operador';
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const days=(d)=>Math.floor((new Date(d)-today)/(1000*60*60*24));
+
+  const status=(lot)=>{
+    if(!lot.expiryDate) return 'ok';
+    const d=days(lot.expiryDate);
+    if(d<0) return 'expired';
+    if(d<=30) return 'expiring';
+    return 'ok';
+  };
+
+  const statusLabel=(s)=>s==='expired'?'VENCIDO':s==='expiring'?'POR VENCER':'OK';
+  const statusColor=(s)=>s==='expired'?'#dc2626':s==='expiring'?'#d97706':'#16a34a';
+  const statusBg=(s)=>s==='expired'?'#fef2f2':s==='expiring'?'#fffbeb':'#f0fdf4';
+
+  const filtered=lots.filter(l=>{
+    const st=status(l);
+    if(filter==='expiring') return st==='expiring'||st==='expired';
+    if(filter==='expired') return st==='expired';
+    return true;
+  });
+
+  const expiredCount=lots.filter(l=>status(l)==='expired').length;
+  const expiringCount=lots.filter(l=>status(l)==='expiring').length;
+
+  const saveLot=async()=>{
+    if(!selProduct||!form.lotNumber||!form.quantity){setMsg('Completá producto, lote y cantidad');return;}
+    const prod=products.find(p=>String(p.id)===String(selProduct));
+    const newLot={
+      id:editing||('lot-'+Date.now()),
+      productId:Number(selProduct),
+      productName:prod?.name||'',
+      lotNumber:form.lotNumber,
+      quantity:Number(form.quantity),
+      expiryDate:form.expiryDate||null,
+      entryDate:new Date().toISOString().split('T')[0],
+      notes:form.notes
+    };
+    let updated;
+    if(editing){
+      updated=lots.map(l=>l.id===editing?newLot:l);
+    } else {
+      updated=[...lots,newLot];
+    }
+    LS.set('aryes-lots',updated); setLots(updated);
+    // Sync to Supabase
+    try{
+      await db.upsert('lots',{
+        id:newLot.id==='lot-'+Date.now()?undefined:undefined,
+        product_id:newLot.productId,
+        lot_number:newLot.lotNumber,
+        quantity:newLot.quantity,
+        expiry_date:newLot.expiryDate||null,
+        entry_date:newLot.entryDate,
+        notes:newLot.notes
+      });
+    }catch(e){console.warn('Lots sync:',e);}
+    setEditing(null); setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''}); setSelProduct('');
+    setMsg('Lote guardado ✓'); setTimeout(()=>setMsg(''),2000);
+  };
+
+  const delLot=(id)=>{
+    if(!confirm('¿Eliminar este lote?')) return;
+    const updated=lots.filter(l=>l.id!==id);
+    LS.set('aryes-lots',updated); setLots(updated);
+  };
+
+  const startEdit=(l)=>{
+    setSelProduct(String(l.productId));
+    setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});
+    setEditing(l.id);
+  };
+
+  return(
+    <div style={{padding:'32px 40px',maxWidth:900}}>
+      {/* Header */}
+      <div style={{marginBottom:24,display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+        <div>
+          <div style={{fontSize:11,letterSpacing:'.1em',color:'#9a9a98',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Control de calidad</div>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:500,color:'#1a1a18',margin:0}}>Lotes y Vencimientos</h1>
+        </div>
+        {canEdit&&<button onClick={()=>{setEditing('new');setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProduct('');}}
+          style={{padding:'9px 18px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+          + Registrar lote
+        </button>}
+      </div>
+
+      {/* Alert summary */}
+      {(expiredCount>0||expiringCount>0)&&(
+        <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
+          {expiredCount>0&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 18px',display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:20}}>🚨</span>
+            <div><div style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>{expiredCount} lote{expiredCount>1?'s':''} vencido{expiredCount>1?'s':''}</div>
+            <div style={{fontSize:11,color:'#9a9a98'}}>Revisar y dar de baja</div></div>
+          </div>}
+          {expiringCount>0&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 18px',display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontSize:20}}>⚠️</span>
+            <div><div style={{fontSize:13,fontWeight:700,color:'#d97706'}}>{expiringCount} lote{expiringCount>1?'s':''} por vencer (≤30 días)</div>
+            <div style={{fontSize:11,color:'#9a9a98'}}>Priorizar salida (FEFO)</div></div>
+          </div>}
+        </div>
+      )}
+
+      {/* Filter tabs */}
+      <div style={{display:'flex',gap:8,marginBottom:20}}>
+        {[['all','Todos',lots.length],['expiring','Por vencer / Vencidos',expiredCount+expiringCount],['expired','Solo vencidos',expiredCount]].map(([v,l,c])=>(
+          <button key={v} onClick={()=>setFilter(v)}
+            style={{padding:'7px 14px',background:filter===v?'#1a1a18':'#f0f0ec',color:filter===v?'#fff':'#6a6a68',border:'none',borderRadius:20,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>
+            {l} {c>0&&<span style={{background:filter===v?'rgba(255,255,255,.2)':'#e0e0dc',borderRadius:10,padding:'1px 6px',marginLeft:4}}>{c}</span>}
+          </button>
+        ))}
+      </div>
+
+      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#3a7d1e':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
+
+      {/* Form */}
+      {editing&&(
+        <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:24,marginBottom:20}}>
+          <h3 style={{fontSize:15,fontWeight:600,margin:'0 0 16px',color:'#1a1a18'}}>{editing==='new'?'Registrar nuevo lote':'Editar lote'}</h3>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+            <div style={{gridColumn:'1/-1'}}>
+              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Producto</label>
+              <select value={selProduct} onChange={e=>setSelProduct(e.target.value)}
+                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,fontFamily:'inherit',background:'#fff'}}>
+                <option value=''>Seleccionar producto...</option>
+                {products.sort((a,b)=>a.name.localeCompare(b.name)).map(p=>(
+                  <option key={p.id} value={p.id}>{p.brand?p.brand+' — ':''}{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Número de lote</label>
+              <input value={form.lotNumber} onChange={e=>setForm(f=>({...f,lotNumber:e.target.value}))} placeholder="Ej: LOT-2024-001"
+                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Cantidad</label>
+              <input type="number" value={form.quantity} onChange={e=>setForm(f=>({...f,quantity:e.target.value}))} placeholder="0"
+                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Fecha de vencimiento</label>
+              <input type="date" value={form.expiryDate} onChange={e=>setForm(f=>({...f,expiryDate:e.target.value}))}
+                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Notas</label>
+              <input value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Opcional"
+                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={saveLot} style={{padding:'9px 20px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
+            <button onClick={()=>setEditing(null)} style={{padding:'9px 20px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Lots list */}
+      {filtered.length===0?(
+        <div style={{textAlign:'center',padding:'48px 0',color:'#9a9a98'}}>
+          <div style={{fontSize:40,marginBottom:12}}>📦</div>
+          <div style={{fontSize:15}}>{lots.length===0?'No hay lotes registrados todavía':'No hay lotes en este filtro'}</div>
+          {lots.length===0&&canEdit&&<div style={{fontSize:13,marginTop:6}}>Registrá el primer lote con el botón de arriba</div>}
+        </div>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {filtered.sort((a,b)=>{
+            if(!a.expiryDate) return 1; if(!b.expiryDate) return -1;
+            return new Date(a.expiryDate)-new Date(b.expiryDate);
+          }).map(l=>{
+            const st=status(l);
+            const d=l.expiryDate?days(l.expiryDate):null;
+            return(
+              <div key={l.id} style={{background:'#fff',border:`1px solid ${st==='ok'?'#e2e2de':statusColor(st)+'40'}`,borderLeft:`4px solid ${statusColor(st)}`,borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+                    <span style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{l.productName}</span>
+                    <span style={{fontSize:11,background:statusBg(st),color:statusColor(st),padding:'2px 8px',borderRadius:10,fontWeight:600}}>{statusLabel(st)}</span>
+                  </div>
+                  <div style={{display:'flex',gap:16,fontSize:12,color:'#6a6a68',flexWrap:'wrap'}}>
+                    <span>Lote: <strong style={{color:'#3a3a38'}}>{l.lotNumber}</strong></span>
+                    <span>Cantidad: <strong style={{color:'#3a3a38'}}>{l.quantity}</strong></span>
+                    <span>Ingreso: <strong style={{color:'#3a3a38'}}>{l.entryDate}</strong></span>
+                    {l.expiryDate&&<span>Vence: <strong style={{color:statusColor(st)}}>{l.expiryDate} {d!==null&&`(${d<0?Math.abs(d)+' días vencido':d+' días'}`+')'}</strong></span>}
+                    {l.notes&&<span>Nota: {l.notes}</span>}
+                  </div>
+                </div>
+                {canEdit&&<div style={{display:'flex',gap:8,flexShrink:0}}>
+                  <button onClick={()=>startEdit(l)} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
+                  <button onClick={()=>delLot(l.id)} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
+                </div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{marginTop:20,padding:'12px 16px',background:'#f0f7ec',borderRadius:10,fontSize:12,color:'#5a7a4a'}}>
+        <strong>FEFO activo:</strong> Al registrar salidas de stock, priorizá los lotes con fecha de vencimiento más próxima.
+      </div>
+    </div>
+  );
+};
+
 export default function AryesApp(){
   const [session,setSession]=React.useState(()=>LS.get('aryes-session',null));
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
@@ -2826,7 +3041,8 @@ export default function AryesApp(){
   };
 
   const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"movements",label:"Movimientos"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"},
-  {id:"usuarios",label:"Usuarios",icon:"👤"}];
+  {id:"usuarios",label:"Usuarios",icon:"👤"},
+  {id:"lotes",label:"Lotes / Venc.",icon:"📅"}];
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
@@ -2849,7 +3065,7 @@ export default function AryesApp(){
           {NAV.filter(n=>n.id!=="usuarios"||session.role==="admin").map(n=>(
             <button key={n.id} onClick={()=>setTab(n.id)}
               style={{width:"100%",textAlign:"left",padding:"10px 22px",background:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:"3px solid transparent",fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              {n.label}
+              {n.label}{(n.id==='lotes'&&(()=>{const ls=LS.get('aryes-lots',[]);const today=new Date();today.setHours(0,0,0,0);const bad=ls.filter(l=>l.expiryDate&&(new Date(l.expiryDate)-today)/(86400000)<=30).length;return bad>0?<span style={{background:'#dc2626',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:10,marginLeft:4}}>{bad}</span>:null;})())}
               {n.id==="dashboard"&&critN>0&&<span style={{background:T.danger,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10}}>{critN}</span>}
             </button>
           ))}
