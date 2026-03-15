@@ -25,6 +25,12 @@ const LS = {
   get:(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch{return d;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
 };
+const USERS = [
+  {username:"admin",    password:"aryes2024", role:"admin",    name:"Administrador"},
+  {username:"operador", password:"stock123",  role:"operador", name:"Operador"},
+  {username:"vendedor", password:"ventas123", role:"vendedor", name:"Vendedor"},
+];
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS — Aryes palette
@@ -2418,7 +2424,53 @@ function ImporterTab({onDone}){
   );
 }
 
+const LoginScreen = ({onLogin}) => {
+  const [user,setUser]=React.useState('');
+  const [pass,setPass]=React.useState('');
+  const [err,setErr]=React.useState('');
+  const [loading,setLoading]=React.useState(false);
+  const go = () => {
+    if(!user||!pass) return;
+    setLoading(true); setErr('');
+    setTimeout(() => {
+      const found = USERS.find(u=>u.username===user.trim()&&u.password===pass);
+      if(found){onLogin(found);}else{setErr('Usuario o contraseña incorrectos');setLoading(false);}
+    },400);
+  };
+  return (
+    <div style={{minHeight:'100vh',background:'#f9f9f7',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Inter',system-ui,sans-serif"}}>
+      <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:16,padding:'48px 40px',width:360,boxShadow:'0 4px 24px rgba(0,0,0,.07)'}}>
+        <div style={{textAlign:'center',marginBottom:32}}>
+          <img src={ARYES_LOGO_B64} height={48} alt="Aryes" style={{display:'block',margin:'0 auto 16px'}}/>
+          <div style={{fontSize:11,letterSpacing:'.12em',color:'#6a6a68',fontWeight:600,textTransform:'uppercase'}}>Gestión de Stock · UY</div>
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={{fontSize:12,fontWeight:600,color:'#3a3a38',display:'block',marginBottom:6}}>USUARIO</label>
+          <input value={user} onChange={e=>setUser(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()} placeholder="usuario" autoFocus
+            style={{width:'100%',padding:'10px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',outline:'none'}}/>
+        </div>
+        <div style={{marginBottom:24}}>
+          <label style={{fontSize:12,fontWeight:600,color:'#3a3a38',display:'block',marginBottom:6}}>CONTRASEÑA</label>
+          <input type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()} placeholder="••••••••"
+            style={{width:'100%',padding:'10px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',outline:'none'}}/>
+        </div>
+        {err&&<div style={{color:'#dc2626',fontSize:13,marginBottom:16,textAlign:'center'}}>{err}</div>}
+        <button onClick={go} disabled={loading||!user||!pass}
+          style={{width:'100%',padding:12,background:(!user||!pass)?'#d0d0cc':'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:(!user||!pass)?'not-allowed':'pointer'}}>
+          {loading?'Ingresando...':'Ingresar'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export default function AryesApp(){
+  const [session,setSession]=React.useState(()=>LS.get('aryes-session',null));
+  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
+  const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
+  if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  const canEdit=session.role==='admin'||session.role==='operador';
+
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
@@ -2597,6 +2649,12 @@ export default function AryesApp(){
             ↑ Actualizar stock
             <span style={{fontSize:10,color:T.greenLt,fontWeight:400}}>Excel</span>
           </button>
+        </div>
+      
+        <div style={{borderTop:'1px solid #e2e2de',padding:'12px 16px 16px'}}>
+          <div style={{fontSize:11,color:'#9a9a98',marginBottom:2}}>{session.name}</div>
+          <div style={{fontSize:11,color:'#9a9a98',marginBottom:8,textTransform:'capitalize',background:'#f0f0ec',display:'inline-block',padding:'2px 8px',borderRadius:4}}>{session.role}</div>
+          <button onClick={handleLogout} style={{display:'block',width:'100%',textAlign:'left',padding:'7px 0',background:'none',border:'none',fontSize:13,color:'#dc2626',cursor:'pointer',fontFamily:'inherit',fontWeight:500}}>↩ Cerrar sesión</button>
         </div>
       </aside>
 
