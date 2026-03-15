@@ -3444,12 +3444,6 @@ const ClientsTab=({products,session})=>{
 };
 
 export default function AryesApp(){
-  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
-  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
-  const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
-  if(!session) return <LoginScreen onLogin={handleLogin}/>;
-  const canEdit=session.role==='admin'||session.role==='operador';
-
   const [dbReady,setDbReady]=useState(false);
   const [syncStatus,setSyncStatus]=useState('');
   useEffect(()=>{
@@ -3470,6 +3464,13 @@ export default function AryesApp(){
       }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
     })();
   },[session]);
+
+  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
+  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
+  const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
+  if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  const canEdit=session.role==='admin'||session.role==='operador';
+
 
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
