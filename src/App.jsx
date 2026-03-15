@@ -25,7 +25,7 @@ const LS = {
   get:(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch{return d;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
 };
-const USERS = [
+const USERS=[
   {username:"admin",    password:"aryes2024", role:"admin",    name:"Administrador"},
   {username:"operador", password:"stock123",  role:"operador", name:"Operador"},
   {username:"vendedor", password:"ventas123", role:"vendedor", name:"Vendedor"},
@@ -2424,41 +2424,48 @@ function ImporterTab({onDone}){
   );
 }
 
-const LoginScreen = ({onLogin}) => {
+
+const LoginScreen=({onLogin})=>{
   const [user,setUser]=React.useState('');
   const [pass,setPass]=React.useState('');
   const [err,setErr]=React.useState('');
   const [loading,setLoading]=React.useState(false);
-  const go = () => {
+  const go=()=>{
     if(!user||!pass) return;
-    setLoading(true); setErr('');
-    setTimeout(() => {
-      const found = USERS.find(u=>u.username===user.trim()&&u.password===pass);
+    setLoading(true);setErr('');
+    setTimeout(()=>{
+      const found=USERS.find(u=>u.username===user.trim()&&u.password===pass);
       if(found){onLogin(found);}else{setErr('Usuario o contraseña incorrectos');setLoading(false);}
-    },400);
+    },350);
   };
-  return (
+  return(
     <div style={{minHeight:'100vh',background:'#f9f9f7',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Inter',system-ui,sans-serif"}}>
-      <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:16,padding:'48px 40px',width:360,boxShadow:'0 4px 24px rgba(0,0,0,.07)'}}>
-        <div style={{textAlign:'center',marginBottom:32}}>
-          <img src={ARYES_LOGO_B64} height={48} alt="Aryes" style={{display:'block',margin:'0 auto 16px'}}/>
+      <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:16,padding:'44px 40px',width:340,boxShadow:'0 4px 24px rgba(0,0,0,.07)'}}>
+        <div style={{textAlign:'center',marginBottom:28}}>
+          <img src={ARYES_LOGO_B64} height={44} alt="Aryes" style={{display:'block',margin:'0 auto 14px'}}/>
           <div style={{fontSize:11,letterSpacing:'.12em',color:'#6a6a68',fontWeight:600,textTransform:'uppercase'}}>Gestión de Stock · UY</div>
         </div>
-        <div style={{marginBottom:16}}>
-          <label style={{fontSize:12,fontWeight:600,color:'#3a3a38',display:'block',marginBottom:6}}>USUARIO</label>
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,letterSpacing:'.08em',textTransform:'uppercase'}}>Usuario</label>
           <input value={user} onChange={e=>setUser(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()} placeholder="usuario" autoFocus
-            style={{width:'100%',padding:'10px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',outline:'none'}}/>
+            style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
         </div>
-        <div style={{marginBottom:24}}>
-          <label style={{fontSize:12,fontWeight:600,color:'#3a3a38',display:'block',marginBottom:6}}>CONTRASEÑA</label>
+        <div style={{marginBottom:20}}>
+          <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,letterSpacing:'.08em',textTransform:'uppercase'}}>Contraseña</label>
           <input type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()} placeholder="••••••••"
-            style={{width:'100%',padding:'10px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',outline:'none'}}/>
+            style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
         </div>
-        {err&&<div style={{color:'#dc2626',fontSize:13,marginBottom:16,textAlign:'center'}}>{err}</div>}
+        {err&&<div style={{color:'#dc2626',fontSize:12,marginBottom:14,textAlign:'center'}}>{err}</div>}
         <button onClick={go} disabled={loading||!user||!pass}
-          style={{width:'100%',padding:12,background:(!user||!pass)?'#d0d0cc':'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:(!user||!pass)?'not-allowed':'pointer'}}>
-          {loading?'Ingresando...':'Ingresar'}
+          style={{width:'100%',padding:'11px',background:(!user||!pass)?'#d0d0cc':'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:(!user||!pass)?'not-allowed':'pointer',fontFamily:'inherit',transition:'background .15s'}}>
+          {loading?'Ingresando…':'Ingresar'}
         </button>
+        <div style={{marginTop:20,padding:'12px',background:'#f0f7ec',borderRadius:8,fontSize:11,color:'#5a7a4a'}}>
+          <div style={{fontWeight:600,marginBottom:4}}>Usuarios disponibles:</div>
+          <div>admin / aryes2024 → Administrador</div>
+          <div>operador / stock123 → Operador</div>
+          <div>vendedor / ventas123 → Solo lectura</div>
+        </div>
       </div>
     </div>
   );
@@ -2651,10 +2658,12 @@ export default function AryesApp(){
           </button>
         </div>
       
-        <div style={{borderTop:'1px solid #e2e2de',padding:'12px 16px 16px'}}>
-          <div style={{fontSize:11,color:'#9a9a98',marginBottom:2}}>{session.name}</div>
-          <div style={{fontSize:11,color:'#9a9a98',marginBottom:8,textTransform:'capitalize',background:'#f0f0ec',display:'inline-block',padding:'2px 8px',borderRadius:4}}>{session.role}</div>
-          <button onClick={handleLogout} style={{display:'block',width:'100%',textAlign:'left',padding:'7px 0',background:'none',border:'none',fontSize:13,color:'#dc2626',cursor:'pointer',fontFamily:'inherit',fontWeight:500}}>↩ Cerrar sesión</button>
+        <div style={{marginTop:'auto',borderTop:'1px solid #e2e2de',padding:'12px 16px 8px'}}>
+          <div style={{fontSize:12,color:'#3a3a38',fontWeight:600,marginBottom:2}}>{session.name}</div>
+          <div style={{fontSize:11,color:'#9a9a98',marginBottom:8,textTransform:'capitalize'}}>{session.role==='admin'?'Administrador':session.role==='operador'?'Operador':'Vendedor'}</div>
+          <button onClick={handleLogout} style={{background:'none',border:'none',padding:0,fontSize:12,color:'#dc2626',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+            ↩ Cerrar sesión
+          </button>
         </div>
       </aside>
 
