@@ -25,37 +25,14 @@ const LS = {
   get:(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch{return d;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
 };
-const SUPA_URL='https://mrotnqybqvmvlexncvno.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
 const db={
-  headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
-  async get(table,query=''){
-    const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+query,{headers:this.headers});
-    if(!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async upsert(table,data){
-    const r=await fetch(SUPA_URL+'/rest/v1/'+table,{method:'POST',headers:{...this.headers,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});
-    if(!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async update(table,data,match){
-    const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
-    const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+q,{method:'PATCH',headers:{...this.headers,'Prefer':'return=representation'},body:JSON.stringify(data)});
-    if(!r.ok) throw new Error(await r.text());
-    return r.json();
-  },
-  async delete(table,match){
-    const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
-    const r=await fetch(SUPA_URL+'/rest/v1/'+table+'?'+q,{method:'DELETE',headers:this.headers});
-    if(!r.ok) throw new Error(await r.text());
-    return true;
-  },
-  async insert(table,data){
-    const r=await fetch(SUPA_URL+'/rest/v1/'+table,{method:'POST',headers:{...this.headers,'Prefer':'return=representation'},body:JSON.stringify(data)});
-    if(!r.ok) throw new Error(await r.text());
-    return r.json();
-  }
+  async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:SH});return r.ok?r.json():[];},
+  async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:{...SH,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:SH,body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:SH});}
 };
 
 const USERS=[
@@ -2610,216 +2587,246 @@ const UsersTab=({session})=>{
 };
 
 
+// ── Lotes Tab ────────────────────────────────────────────────────────────
 const LotsTab=({products,session})=>{
   const [lots,setLots]=useState(()=>LS.get('aryes-lots',[]));
-  const [filter,setFilter]=useState('all'); // all | expiring | expired
-  const [selProduct,setSelProduct]=useState('');
-  const [form,setForm]=useState({lotNumber:'',quantity:'',expiryDate:'',notes:''});
+  const [filter,setFilter]=useState('all');
   const [editing,setEditing]=useState(null);
+  const [selProd,setSelProd]=useState('');
+  const [form,setForm]=useState({lotNumber:'',quantity:'',expiryDate:'',notes:''});
   const [msg,setMsg]=useState('');
   const canEdit=session.role==='admin'||session.role==='operador';
-
   const today=new Date(); today.setHours(0,0,0,0);
-  const days=(d)=>Math.floor((new Date(d)-today)/(1000*60*60*24));
+  const daysTo=d=>Math.floor((new Date(d)-today)/86400000);
+  const st=l=>!l.expiryDate?'ok':daysTo(l.expiryDate)<0?'expired':daysTo(l.expiryDate)<=30?'expiring':'ok';
+  const stColor=s=>s==='expired'?'#dc2626':s==='expiring'?'#d97706':'#16a34a';
+  const stBg=s=>s==='expired'?'#fef2f2':s==='expiring'?'#fffbeb':'#f0fdf4';
+  const stLabel=s=>s==='expired'?'VENCIDO':s==='expiring'?'POR VENCER':'OK';
+  const expired=lots.filter(l=>st(l)==='expired').length;
+  const expiring=lots.filter(l=>st(l)==='expiring').length;
+  const filtered=lots.filter(l=>filter==='all'?true:filter==='expiring'?st(l)!=='ok':st(l)==='expired');
 
-  const status=(lot)=>{
-    if(!lot.expiryDate) return 'ok';
-    const d=days(lot.expiryDate);
-    if(d<0) return 'expired';
-    if(d<=30) return 'expiring';
-    return 'ok';
-  };
-
-  const statusLabel=(s)=>s==='expired'?'VENCIDO':s==='expiring'?'POR VENCER':'OK';
-  const statusColor=(s)=>s==='expired'?'#dc2626':s==='expiring'?'#d97706':'#16a34a';
-  const statusBg=(s)=>s==='expired'?'#fef2f2':s==='expiring'?'#fffbeb':'#f0fdf4';
-
-  const filtered=lots.filter(l=>{
-    const st=status(l);
-    if(filter==='expiring') return st==='expiring'||st==='expired';
-    if(filter==='expired') return st==='expired';
-    return true;
-  });
-
-  const expiredCount=lots.filter(l=>status(l)==='expired').length;
-  const expiringCount=lots.filter(l=>status(l)==='expiring').length;
-
-  const saveLot=async()=>{
-    if(!selProduct||!form.lotNumber||!form.quantity){setMsg('Completá producto, lote y cantidad');return;}
-    const prod=products.find(p=>String(p.id)===String(selProduct));
-    const newLot={
-      id:editing||('lot-'+Date.now()),
-      productId:Number(selProduct),
-      productName:prod?.name||'',
-      lotNumber:form.lotNumber,
-      quantity:Number(form.quantity),
-      expiryDate:form.expiryDate||null,
-      entryDate:new Date().toISOString().split('T')[0],
-      notes:form.notes
-    };
-    let updated;
-    if(editing){
-      updated=lots.map(l=>l.id===editing?newLot:l);
-    } else {
-      updated=[...lots,newLot];
-    }
-    LS.set('aryes-lots',updated); setLots(updated);
-    // Sync to Supabase
-    try{
-      await db.upsert('lots',{
-        id:newLot.id==='lot-'+Date.now()?undefined:undefined,
-        product_id:newLot.productId,
-        lot_number:newLot.lotNumber,
-        quantity:newLot.quantity,
-        expiry_date:newLot.expiryDate||null,
-        entry_date:newLot.entryDate,
-        notes:newLot.notes
-      });
-    }catch(e){console.warn('Lots sync:',e);}
-    setEditing(null); setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''}); setSelProduct('');
-    setMsg('Lote guardado ✓'); setTimeout(()=>setMsg(''),2000);
-  };
-
-  const delLot=(id)=>{
-    if(!confirm('¿Eliminar este lote?')) return;
-    const updated=lots.filter(l=>l.id!==id);
-    LS.set('aryes-lots',updated); setLots(updated);
-  };
-
-  const startEdit=(l)=>{
-    setSelProduct(String(l.productId));
-    setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});
-    setEditing(l.id);
+  const save=()=>{
+    if(!selProd||!form.lotNumber||!form.quantity){setMsg('Completá producto, lote y cantidad');return;}
+    const prod=products.find(p=>String(p.id)===String(selProd));
+    const lot={id:editing&&editing!=='new'?editing:'lot-'+Date.now(),productId:Number(selProd),productName:prod?.name||'',lotNumber:form.lotNumber,quantity:Number(form.quantity),expiryDate:form.expiryDate||null,entryDate:new Date().toISOString().split('T')[0],notes:form.notes};
+    const updated=editing&&editing!=='new'?lots.map(l=>l.id===editing?lot:l):[...lots,lot];
+    LS.set('aryes-lots',updated);setLots(updated);setEditing(null);setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');
+    setMsg('Guardado ✓');setTimeout(()=>setMsg(''),2000);
   };
 
   return(
-    <div style={{padding:'32px 40px',maxWidth:900}}>
-      {/* Header */}
-      <div style={{marginBottom:24,display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+    <div style={{padding:'32px 40px',maxWidth:860}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:24}}>
         <div>
           <div style={{fontSize:11,letterSpacing:'.1em',color:'#9a9a98',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Control de calidad</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:500,color:'#1a1a18',margin:0}}>Lotes y Vencimientos</h1>
         </div>
-        {canEdit&&<button onClick={()=>{setEditing('new');setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProduct('');}}
-          style={{padding:'9px 18px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
-          + Registrar lote
-        </button>}
+        {canEdit&&<button onClick={()=>{setEditing('new');setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');}} style={{padding:'9px 18px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Registrar lote</button>}
       </div>
-
-      {/* Alert summary */}
-      {(expiredCount>0||expiringCount>0)&&(
-        <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
-          {expiredCount>0&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 18px',display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontSize:20}}>🚨</span>
-            <div><div style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>{expiredCount} lote{expiredCount>1?'s':''} vencido{expiredCount>1?'s':''}</div>
-            <div style={{fontSize:11,color:'#9a9a98'}}>Revisar y dar de baja</div></div>
-          </div>}
-          {expiringCount>0&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 18px',display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontSize:20}}>⚠️</span>
-            <div><div style={{fontSize:13,fontWeight:700,color:'#d97706'}}>{expiringCount} lote{expiringCount>1?'s':''} por vencer (≤30 días)</div>
-            <div style={{fontSize:11,color:'#9a9a98'}}>Priorizar salida (FEFO)</div></div>
-          </div>}
-        </div>
-      )}
-
-      {/* Filter tabs */}
+      {(expired>0||expiring>0)&&<div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
+        {expired>0&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 18px',display:'flex',gap:10,alignItems:'center'}}><span style={{fontSize:20}}>🚨</span><div><div style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>{expired} lote{expired>1?'s':''} vencido{expired>1?'s':''}</div><div style={{fontSize:11,color:'#9a9a98'}}>Revisar y dar de baja</div></div></div>}
+        {expiring>0&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 18px',display:'flex',gap:10,alignItems:'center'}}><span style={{fontSize:20}}>⚠️</span><div><div style={{fontSize:13,fontWeight:700,color:'#d97706'}}>{expiring} lote{expiring>1?'s':''} por vencer</div><div style={{fontSize:11,color:'#9a9a98'}}>Priorizar salida (FEFO)</div></div></div>}
+      </div>}
       <div style={{display:'flex',gap:8,marginBottom:20}}>
-        {[['all','Todos',lots.length],['expiring','Por vencer / Vencidos',expiredCount+expiringCount],['expired','Solo vencidos',expiredCount]].map(([v,l,c])=>(
-          <button key={v} onClick={()=>setFilter(v)}
-            style={{padding:'7px 14px',background:filter===v?'#1a1a18':'#f0f0ec',color:filter===v?'#fff':'#6a6a68',border:'none',borderRadius:20,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>
-            {l} {c>0&&<span style={{background:filter===v?'rgba(255,255,255,.2)':'#e0e0dc',borderRadius:10,padding:'1px 6px',marginLeft:4}}>{c}</span>}
-          </button>
+        {[['all','Todos',lots.length],['expiring','Por vencer',expired+expiring],['expired','Vencidos',expired]].map(([v,l,c])=>(
+          <button key={v} onClick={()=>setFilter(v)} style={{padding:'7px 14px',background:filter===v?'#1a1a18':'#f0f0ec',color:filter===v?'#fff':'#6a6a68',border:'none',borderRadius:20,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>{l}{c>0&&' ('+c+')'}</button>
         ))}
       </div>
-
       {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#3a7d1e':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
-
-      {/* Form */}
       {editing&&(
         <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:24,marginBottom:20}}>
-          <h3 style={{fontSize:15,fontWeight:600,margin:'0 0 16px',color:'#1a1a18'}}>{editing==='new'?'Registrar nuevo lote':'Editar lote'}</h3>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
+          <h3 style={{fontSize:15,fontWeight:600,margin:'0 0 16px'}}>{editing==='new'?'Nuevo lote':'Editar lote'}</h3>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
             <div style={{gridColumn:'1/-1'}}>
-              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Producto</label>
-              <select value={selProduct} onChange={e=>setSelProduct(e.target.value)}
-                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,fontFamily:'inherit',background:'#fff'}}>
-                <option value=''>Seleccionar producto...</option>
-                {products.sort((a,b)=>a.name.localeCompare(b.name)).map(p=>(
-                  <option key={p.id} value={p.id}>{p.brand?p.brand+' — ':''}{p.name}</option>
-                ))}
+              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:4,textTransform:'uppercase'}}>Producto</label>
+              <select value={selProd} onChange={e=>setSelProd(e.target.value)} style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,fontFamily:'inherit',background:'#fff'}}>
+                <option value=''>Seleccionar...</option>
+                {products.sort((a,b)=>a.name.localeCompare(b.name)).map(p=><option key={p.id} value={p.id}>{p.brand?p.brand+' — ':''}{p.name}</option>)}
               </select>
             </div>
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Número de lote</label>
-              <input value={form.lotNumber} onChange={e=>setForm(f=>({...f,lotNumber:e.target.value}))} placeholder="Ej: LOT-2024-001"
-                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
-            </div>
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Cantidad</label>
-              <input type="number" value={form.quantity} onChange={e=>setForm(f=>({...f,quantity:e.target.value}))} placeholder="0"
-                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
-            </div>
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Fecha de vencimiento</label>
-              <input type="date" value={form.expiryDate} onChange={e=>setForm(f=>({...f,expiryDate:e.target.value}))}
-                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
-            </div>
-            <div>
-              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,textTransform:'uppercase',letterSpacing:'.07em'}}>Notas</label>
-              <input value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Opcional"
-                style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
-            </div>
+            {[['Nº de lote','lotNumber','text','Ej: LOT-2024-001'],['Cantidad','quantity','number','0'],['Fecha vencimiento','expiryDate','date',''],['Notas','notes','text','Opcional']].map(([label,key,type,ph])=>(
+              <div key={key}>
+                <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:4,textTransform:'uppercase'}}>{label}</label>
+                <input type={type} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} placeholder={ph}
+                  style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+              </div>
+            ))}
           </div>
           <div style={{display:'flex',gap:10}}>
-            <button onClick={saveLot} style={{padding:'9px 20px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
+            <button onClick={save} style={{padding:'9px 20px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
             <button onClick={()=>setEditing(null)} style={{padding:'9px 20px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancelar</button>
           </div>
         </div>
       )}
-
-      {/* Lots list */}
-      {filtered.length===0?(
-        <div style={{textAlign:'center',padding:'48px 0',color:'#9a9a98'}}>
-          <div style={{fontSize:40,marginBottom:12}}>📦</div>
-          <div style={{fontSize:15}}>{lots.length===0?'No hay lotes registrados todavía':'No hay lotes en este filtro'}</div>
-          {lots.length===0&&canEdit&&<div style={{fontSize:13,marginTop:6}}>Registrá el primer lote con el botón de arriba</div>}
-        </div>
-      ):(
+      {filtered.length===0?<div style={{textAlign:'center',padding:'48px 0',color:'#9a9a98'}}><div style={{fontSize:40,marginBottom:12}}>📦</div><div>{lots.length===0?'No hay lotes registrados':'Sin resultados en este filtro'}</div></div>:(
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {filtered.sort((a,b)=>{
-            if(!a.expiryDate) return 1; if(!b.expiryDate) return -1;
-            return new Date(a.expiryDate)-new Date(b.expiryDate);
-          }).map(l=>{
-            const st=status(l);
-            const d=l.expiryDate?days(l.expiryDate):null;
-            return(
-              <div key={l.id} style={{background:'#fff',border:`1px solid ${st==='ok'?'#e2e2de':statusColor(st)+'40'}`,borderLeft:`4px solid ${statusColor(st)}`,borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
-                <div style={{flex:1}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{l.productName}</span>
-                    <span style={{fontSize:11,background:statusBg(st),color:statusColor(st),padding:'2px 8px',borderRadius:10,fontWeight:600}}>{statusLabel(st)}</span>
-                  </div>
-                  <div style={{display:'flex',gap:16,fontSize:12,color:'#6a6a68',flexWrap:'wrap'}}>
-                    <span>Lote: <strong style={{color:'#3a3a38'}}>{l.lotNumber}</strong></span>
-                    <span>Cantidad: <strong style={{color:'#3a3a38'}}>{l.quantity}</strong></span>
-                    <span>Ingreso: <strong style={{color:'#3a3a38'}}>{l.entryDate}</strong></span>
-                    {l.expiryDate&&<span>Vence: <strong style={{color:statusColor(st)}}>{l.expiryDate} {d!==null&&`(${d<0?Math.abs(d)+' días vencido':d+' días'}`+')'}</strong></span>}
-                    {l.notes&&<span>Nota: {l.notes}</span>}
-                  </div>
+          {filtered.sort((a,b)=>(!a.expiryDate?1:!b.expiryDate?-1:new Date(a.expiryDate)-new Date(b.expiryDate))).map(l=>{
+            const s=st(l),d=l.expiryDate?daysTo(l.expiryDate):null;
+            return <div key={l.id} style={{background:'#fff',border:'1px solid '+stColor(s)+'40',borderLeft:'4px solid '+stColor(s),borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{l.productName}</span>
+                  <span style={{fontSize:11,background:stBg(s),color:stColor(s),padding:'2px 8px',borderRadius:10,fontWeight:600}}>{stLabel(s)}</span>
                 </div>
-                {canEdit&&<div style={{display:'flex',gap:8,flexShrink:0}}>
-                  <button onClick={()=>startEdit(l)} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
-                  <button onClick={()=>delLot(l.id)} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
-                </div>}
+                <div style={{display:'flex',gap:16,fontSize:12,color:'#6a6a68',flexWrap:'wrap'}}>
+                  <span>Lote: <strong>{l.lotNumber}</strong></span>
+                  <span>Cant: <strong>{l.quantity}</strong></span>
+                  {l.expiryDate&&<span style={{color:stColor(s)}}>Vence: <strong>{l.expiryDate} ({d<0?Math.abs(d)+' días vencido':d+' días'})</strong></span>}
+                  {l.notes&&<span>{l.notes}</span>}
+                </div>
               </div>
-            );
+              {canEdit&&<div style={{display:'flex',gap:8}}>
+                <button onClick={()=>{setSelProd(String(l.productId));setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
+                <button onClick={()=>{if(!confirm('¿Eliminar?'))return;const u=lots.filter(x=>x.id!==l.id);LS.set('aryes-lots',u);setLots(u);}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
+              </div>}
+            </div>;
           })}
         </div>
       )}
+    </div>
+  );
+};
 
-      <div style={{marginTop:20,padding:'12px 16px',background:'#f0f7ec',borderRadius:10,fontSize:12,color:'#5a7a4a'}}>
-        <strong>FEFO activo:</strong> Al registrar salidas de stock, priorizá los lotes con fecha de vencimiento más próxima.
+// ── Excel Importer Tab ───────────────────────────────────────────────────
+const ExcelImportTab=({products,setProducts,session})=>{
+  const [step,setStep]=useState('upload'); // upload | preview | done
+  const [rows,setRows]=useState([]);
+  const [msg,setMsg]=useState('');
+  const [loading,setLoading]=useState(false);
+
+  const parseCSV=(text)=>{
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length<2) return [];
+    const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/['"]/g,''));
+    return lines.slice(1).map(line=>{
+      const vals=line.split(',').map(v=>v.trim().replace(/['"]/g,''));
+      const obj={};
+      headers.forEach((h,i)=>obj[h]=vals[i]||'');
+      return obj;
+    }).filter(r=>r.nombre||r.name||r.producto);
+  };
+
+  const mapRow=(r)=>({
+    name: r.nombre||r.name||r.producto||'',
+    brand: r.marca||r.brand||'',
+    category: r.categoria||r.category||'',
+    supplierId: (r.proveedor||r.supplier||'arg').toLowerCase().includes('ecu')?'ecu':(r.proveedor||r.supplier||'').toLowerCase().includes('eur')?'eur':'arg',
+    unit: r.unidad||r.unit||'kg',
+    stock: Number(r.stock||r.cantidad||0)||0,
+    unitCost: Number((r.costo||r.precio_costo||r.price||r['precio costo']||'0').replace(/[^\d.]/g,''))||0,
+    barcode: r.barcode||r.codigo||r['código']||'',
+    minStock: Number(r.min_stock||r.stock_minimo||5)||5,
+    dailyUsage: Number(r.uso_diario||r.daily_usage||0.5)||0.5,
+  });
+
+  const handleFile=async(e)=>{
+    const file=e.target.files[0];
+    if(!file) return;
+    setLoading(true);
+    const text=await file.text();
+    const parsed=parseCSV(text).map(mapRow).filter(r=>r.name);
+    setRows(parsed);
+    setStep(parsed.length>0?'preview':'upload');
+    if(parsed.length===0) setMsg('No se encontraron productos. Verificá que el archivo sea CSV con columnas: nombre, marca, categoria, stock, costo');
+    setLoading(false);
+  };
+
+  const applyImport=()=>{
+    const maxId=products.reduce((m,p)=>Math.max(m,p.id),0);
+    const newProds=rows.map((r,i)=>({...r,id:maxId+i+1,history:[]}));
+    const updated=[...products,...newProds];
+    LS.set('aryes6-products',updated);
+    setProducts(updated);
+    // Sync to Supabase
+    const dbRows=newProds.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplier_id:p.supplierId,unit:p.unit,stock:p.stock,unit_cost:p.unitCost,min_stock:p.minStock,daily_usage:p.dailyUsage,category:p.category,brand:p.brand,history:[]}));
+    db.upsert('products',dbRows).catch(e=>console.warn('sync:',e));
+    setStep('done');
+    setMsg(newProds.length+' productos importados correctamente ✓');
+  };
+
+  const downloadTemplate=()=>{
+    const csv='nombre,marca,categoria,proveedor,unidad,stock,costo,barcode\nChocolate Cobertura Leche 1kg,Selecta,Chocolates,arg,kg,0,336.07,\nPasta Pistacho 1.5kg,MEC3,Gelato,eur,kg,0,1250,';
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='template_aryes.csv';a.click();
+  };
+
+  return(
+    <div style={{padding:'32px 40px',maxWidth:800}}>
+      <div style={{marginBottom:28}}>
+        <div style={{fontSize:11,letterSpacing:'.1em',color:'#9a9a98',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Carga masiva</div>
+        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:500,color:'#1a1a18',margin:0}}>Importar Excel / CSV</h1>
       </div>
+
+      {step==='upload'&&(
+        <div>
+          <div style={{background:'#fff',border:'2px dashed #e2e2de',borderRadius:12,padding:40,textAlign:'center',marginBottom:20}}>
+            <div style={{fontSize:48,marginBottom:12}}>📂</div>
+            <div style={{fontSize:15,fontWeight:600,color:'#3a3a38',marginBottom:8}}>Subí tu archivo CSV</div>
+            <div style={{fontSize:13,color:'#9a9a98',marginBottom:20}}>Exportá desde Excel como CSV y subilo acá</div>
+            <label style={{padding:'10px 24px',background:'#3a7d1e',color:'#fff',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',display:'inline-block'}}>
+              Elegir archivo
+              <input type="file" accept=".csv,.txt" onChange={handleFile} style={{display:'none'}}/>
+            </label>
+            {loading&&<div style={{marginTop:16,color:'#9a9a98',fontSize:13}}>Procesando...</div>}
+          </div>
+          <div style={{background:'#f0f7ec',borderRadius:10,padding:'16px 20px',marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:600,color:'#3a7d1e',marginBottom:8}}>Columnas aceptadas en el CSV:</div>
+            <div style={{fontSize:12,color:'#5a7a4a',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 24px'}}>
+              <span><strong>nombre</strong> — nombre del producto</span>
+              <span><strong>marca</strong> — ej: Selecta, MEC3</span>
+              <span><strong>categoria</strong> — ej: Chocolates</span>
+              <span><strong>proveedor</strong> — arg / ecu / eur</span>
+              <span><strong>unidad</strong> — kg / lt / u</span>
+              <span><strong>stock</strong> — cantidad actual</span>
+              <span><strong>costo</strong> — precio de costo</span>
+              <span><strong>barcode</strong> — código de barras</span>
+            </div>
+          </div>
+          <button onClick={downloadTemplate} style={{padding:'8px 16px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>⬇ Descargar template de ejemplo</button>
+          {msg&&<div style={{marginTop:12,padding:'10px 14px',background:'#fef2f2',color:'#dc2626',borderRadius:8,fontSize:13}}>{msg}</div>}
+        </div>
+      )}
+
+      {step==='preview'&&(
+        <div>
+          <div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'12px 16px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span style={{fontSize:14,color:'#3a7d1e',fontWeight:600}}>✓ {rows.length} productos detectados</span>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>setStep('upload')} style={{padding:'7px 14px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>← Volver</button>
+              <button onClick={applyImport} style={{padding:'7px 18px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Importar {rows.length} productos</button>
+            </div>
+          </div>
+          <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:10,overflow:'hidden'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+              <thead><tr style={{background:'#f9f9f7'}}>
+                {['Nombre','Marca','Categoría','Proveedor','Unidad','Stock','Costo'].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:'#6a6a68',fontSize:11,textTransform:'uppercase',letterSpacing:'.07em'}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {rows.slice(0,20).map((r,i)=><tr key={i} style={{borderTop:'1px solid #f0f0ec'}}>
+                  <td style={{padding:'9px 14px',color:'#1a1a18',fontWeight:500}}>{r.name}</td>
+                  <td style={{padding:'9px 14px',color:'#6a6a68'}}>{r.brand||'—'}</td>
+                  <td style={{padding:'9px 14px',color:'#6a6a68'}}>{r.category||'—'}</td>
+                  <td style={{padding:'9px 14px',color:'#6a6a68'}}>{r.supplierId}</td>
+                  <td style={{padding:'9px 14px',color:'#6a6a68'}}>{r.unit}</td>
+                  <td style={{padding:'9px 14px',color:'#6a6a68'}}>{r.stock}</td>
+                  <td style={{padding:'9px 14px',color:'#6a6a68'}}>{r.unitCost}</td>
+                </tr>)}
+                {rows.length>20&&<tr><td colSpan={7} style={{padding:'9px 14px',color:'#9a9a98',fontSize:12,textAlign:'center'}}>... y {rows.length-20} más</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {step==='done'&&(
+        <div style={{textAlign:'center',padding:'48px 0'}}>
+          <div style={{fontSize:56,marginBottom:16}}>✅</div>
+          <div style={{fontSize:22,fontWeight:600,color:'#3a7d1e',marginBottom:8}}>{msg}</div>
+          <div style={{fontSize:14,color:'#9a9a98',marginBottom:32}}>Los productos ya están disponibles en el inventario</div>
+          <button onClick={()=>{setStep('upload');setRows([]);setMsg('');}} style={{padding:'10px 24px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>Importar otro archivo</button>
+        </div>
+      )}
     </div>
   );
 };
@@ -2830,70 +2837,27 @@ export default function AryesApp(){
   const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   const canEdit=session.role==='admin'||session.role==='operador';
-  // ── Supabase data loading ────────────────────────────────────────────────
+
   const [dbReady,setDbReady]=useState(false);
   const [syncStatus,setSyncStatus]=useState('');
-
-  const loadFromSupabase=useCallback(async()=>{
-    try{
-      setSyncStatus('sync');
-      // Load products
-      const prods=await db.get('products','order=id.asc&limit=1000');
-      if(prods&&prods.length>0){
-        const mapped=prods.map(p=>({
-          id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',
-          unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,
-          minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,
-          category:p.category||'',brand:p.brand||'',
-          history:p.history||[]
-        }));
-        LS.set('aryes6-products',mapped);
-    // Sync to Supabase in background
-    if(dbReady){
-      const toSync=updated.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplier_id:p.supplierId||'arg',unit:p.unit||'kg',stock:p.stock||0,unit_cost:p.unitCost||0,min_stock:p.minStock||5,daily_usage:p.dailyUsage||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
-      db.upsert('products',toSync).catch(e=>console.warn('Sync warn:',e));
-    }
-      }
-      // Load suppliers
-      const sups=await db.get('suppliers','order=name.asc');
-      if(sups&&sups.length>0){
-        const mapped=sups.map(s=>({
-          id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',
-          times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},
-          company:s.company||'',contact:s.contact||'',email:s.email||'',
-          phone:s.phone||'',whatsapp:s.whatsapp||'',country:s.country||'',city:s.city||'',
-          currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',
-          paymentMethod:s.payment_method||'',minOrder:s.min_order||'',
-          discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''
-        }));
-        LS.set('aryes6-suppliers',mapped);
-      }
-      // Load movements
-      const movs=await db.get('movements','order=created_at.desc&limit=500');
-      if(movs) LS.set('aryes8-movements',movs.map(m=>({
-        id:m.id,productId:m.product_id,productName:m.product_name,
-        type:m.type,qty:Number(m.qty),note:m.note||'',
-        user:m.user_name||'',date:m.created_at
-      })));
-      // Load users
-      const usrs=await db.get('users','order=id.asc');
-      if(usrs&&usrs.length>0) LS.set('aryes-users',usrs.map(u=>({
-        username:u.username,password:u.password,name:u.name,role:u.role,active:u.active
-      })));
-      setDbReady(true);
-      setSyncStatus('ok');
-      setTimeout(()=>setSyncStatus(''),3000);
-    }catch(e){
-      console.error('Supabase load error:',e);
-      setSyncStatus('error');
-      setDbReady(true); // fall back to localStorage
-      setTimeout(()=>setSyncStatus(''),4000);
-    }
-  },[]);
-
-  useEffect(()=>{ if(session) loadFromSupabase(); },[session]);
-  // ────────────────────────────────────────────────────────────────────────
-
+  useEffect(()=>{
+    if(!session) return;
+    setSyncStatus('sync');
+    (async()=>{
+      try{
+        const prods=await db.get('products','order=id.asc&limit=1000');
+        if(prods?.length>0){
+          const mapped=prods.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
+          LS.set('aryes6-products',mapped);
+        }
+        const sups=await db.get('suppliers','order=name.asc');
+        if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);}
+        const usrs=await db.get('users','order=id.asc');
+        if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,password:u.password,name:u.name,role:u.role,active:u.active})));
+        setDbReady(true);setSyncStatus('ok');setTimeout(()=>setSyncStatus(''),3000);
+      }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
+    })();
+  },[session]);
 
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
@@ -3041,8 +3005,9 @@ export default function AryesApp(){
   };
 
   const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"movements",label:"Movimientos"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"},
-  {id:"usuarios",label:"Usuarios",icon:"👤"},
-  {id:"lotes",label:"Lotes / Venc.",icon:"📅"}];
+  {id:"usuarios",label:"Usuarios",icon:"👤"}  ,{id:"lotes",label:"Lotes / Venc.",icon:"📅"}
+  ,{id:"importar-excel",label:"Importar Excel",icon:"📊"}
+];
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
@@ -3054,9 +3019,9 @@ export default function AryesApp(){
         {/* Logo */}
         <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
           <AryesLogo height={34}/>
-          {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:4,display:'flex',alignItems:'center',gap:4}}><span style={{animation:'spin 1s linear infinite',display:'inline-block'}}>↻</span> Sincronizando...</div>}
-          {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:4}}>✓ Sincronizado con nube</div>}
-          {syncStatus==='error'&&<div style={{fontSize:10,color:'#dc2626',marginTop:4}}>⚠ Sin conexión — modo local</div>}
+          {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>↻ Sincronizando...</div>}
+          {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>✓ Sincronizado</div>}
+          {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>⚠ Modo local</div>}
           <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gestión de stock · UY</Cap></div>
         </div>
 
@@ -3065,7 +3030,7 @@ export default function AryesApp(){
           {NAV.filter(n=>n.id!=="usuarios"||session.role==="admin").map(n=>(
             <button key={n.id} onClick={()=>setTab(n.id)}
               style={{width:"100%",textAlign:"left",padding:"10px 22px",background:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:"3px solid transparent",fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              {n.label}{(n.id==='lotes'&&(()=>{const ls=LS.get('aryes-lots',[]);const today=new Date();today.setHours(0,0,0,0);const bad=ls.filter(l=>l.expiryDate&&(new Date(l.expiryDate)-today)/(86400000)<=30).length;return bad>0?<span style={{background:'#dc2626',color:'#fff',borderRadius:10,padding:'1px 5px',fontSize:10,marginLeft:4}}>{bad}</span>:null;})())}
+              {n.label}
               {n.id==="dashboard"&&critN>0&&<span style={{background:T.danger,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10}}>{critN}</span>}
             </button>
           ))}
