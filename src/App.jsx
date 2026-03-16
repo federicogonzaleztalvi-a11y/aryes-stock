@@ -102,7 +102,7 @@ const T = {
 // ─────────────────────────────────────────────────────────────────────────────
 const ARYES_LOGO_B64 = "/aryes-logo.png";
 
-const AryesLogo = ({ height = 36 }) => (
+const AryesLogo = ({ height = 72 }) => (
   <img src={ARYES_LOGO_B64} height={height} alt="Aryes" style={{display:"block"}}/>
 );
 
