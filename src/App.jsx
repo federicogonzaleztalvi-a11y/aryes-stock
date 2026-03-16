@@ -1787,7 +1787,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
               <div style={{display:"grid",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
                 {suppliers.map(sup=>{
                   const supNeeds = needsOrder.filter(p=>p.supplierId===sup.id);
-                  if(!supNeeds.length) return null;
+                  if(!supNeeds.length) return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f9f9f7"}}><div style={{textAlign:"center",fontFamily:"sans-serif"}}><div style={{fontSize:40,marginBottom:12}}>🌿</div><p style={{color:"#666",fontSize:14}}>Cargando...</p></div></div>);
                   const totalCost = supNeeds.reduce((s,p)=>s+(p.qtyNeeded*(p.unitCost||0)),0);
                   const minOrder = +(sup.minOrder||0);
                   const meetsMin = totalCost >= minOrder || minOrder===0;
@@ -3306,7 +3306,7 @@ const ClientsTab=({products,session})=>{
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
           {detail.products.map(pid=>{
             const p=products.find(x=>x.id===pid||String(x.id)===String(pid));
-            if(!p) return null;
+            if(!p) return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f9f9f7"}}><div style={{textAlign:"center",fontFamily:"sans-serif"}}><div style={{fontSize:40,marginBottom:12}}>🌿</div><p style={{color:"#666",fontSize:14}}>Cargando...</p></div></div>);
             return <div key={pid} style={{display:'flex',justifyContent:'space-between',padding:'8px 12px',background:'#f9f9f7',borderRadius:8,fontSize:13}}>
               <span style={{color:'#3a3a38',fontWeight:500}}>{p.name}</span>
               <span style={{color:'#9a9a98'}}>{p.brand} · {p.unit}</span>
@@ -3987,7 +3987,7 @@ export default function AryesApp(){
     }
   };
 
-  const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"movements",label:"Movimientos"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"},
+  const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"},
   {id:"usuarios",label:"Usuarios",icon:"👤"}  ,{id:"lotes",label:"Lotes / Venc.",icon:"📅"}
   ,{id:"importar-excel",label:"Importar Excel",icon:"📊"}
   ,{id:"precios",label:"Hist. Precios",icon:"📈"}
@@ -4002,7 +4002,7 @@ export default function AryesApp(){
       <style>{CSS}</style>
 
       {/* ── SIDEBAR ── */}
-      <aside style={{width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
+      <aside style={{overflowY:"auto",width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
         {/* Logo */}
         <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
           <AryesLogo height={34}/>
@@ -4456,6 +4456,14 @@ export default function AryesApp(){
 
         {/* ══ IMPORTER ══ */}
         {tab==="importer"&&<ImporterTab onDone={()=>{setProducts(LS.get("aryes6-products",[]));setTab("products");}}/>}
+      
+      {tab==="usuarios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Usuarios</h2><p style={{color:"#888"}}>Gestión de usuarios del sistema.</p></section>}
+      {tab==="lotes"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Lotes / Vencimientos</h2><p style={{color:"#888"}}>Control de lotes y fechas de vencimiento.</p></section>}
+      {tab==="importar-excel"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Importar Excel</h2><p style={{color:"#888"}}>Importación masiva de productos por Excel.</p></section>}
+      {tab==="precios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Historial de Precios</h2><p style={{color:"#888"}}>Registro histórico de cambios de precios.</p></section>}
+      {tab==="clientes"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Clientes</h2><p style={{color:"#888"}}>Fichas de clientes: panaderías, heladerías, HORECA.</p></section>}
+      {tab==="movimientos"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Movimientos de Stock</h2><p style={{color:"#888"}}>Entradas y salidas de stock con trazabilidad.</p></section>}
+      {tab==="alertas"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Alertas Email</h2><p style={{color:"#888"}}>Configuración de alertas automáticas por email.</p></section>}
       </main>
 
       {/* ══ MODALS ══ */}
