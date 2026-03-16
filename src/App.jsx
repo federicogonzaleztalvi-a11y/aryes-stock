@@ -3816,7 +3816,7 @@ const EmailConfigTab=({products,session})=>{
 
 export default function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
-  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);};
+  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
   const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   const canEdit=session.role==='admin'||session.role==='operador';
