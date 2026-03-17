@@ -4732,8 +4732,8 @@ function AryesApp(){
       {tab==="lotes"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Lotes / Vencimientos</h2><p style={{color:"#888"}}>Control de lotes y fechas de vencimiento.</p></section>}
       {tab==="importar-excel"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Importar Excel</h2><p style={{color:"#888"}}>Importación masiva de productos por Excel.</p></section>}
       {tab==="precios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Historial de Precios</h2><p style={{color:"#888"}}>Registro histórico de cambios de precios.</p></section>}
-      {{tab==="clientes"&&<ClientesTab />}
-      {{tab==="movimientos"&&<MovimientosTab />}
+      {tab==="clientes"&&<ClientesTab />}
+      {tab==="movimientos"&&<MovimientosTab />}
       {tab==="alertas"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Alertas Email</h2><p style={{color:"#888"}}>Configuración de alertas automáticas por email.</p></section>}
       </main>
 
