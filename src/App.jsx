@@ -4908,7 +4908,7 @@ function AryesApp(){
         {tab==="importer"&&<ImporterTab onDone={()=>{setProducts(LS.get("aryes6-products",[]));setTab("products");}}/>}
       
       {tab==="usuarios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Usuarios</h2><p style={{color:"#888"}}>Gestión de usuarios del sistema.</p></section>}
-      {{tab==="lotes"&&<LotesTab />}
+      {tab==="lotes"&&<LotesTab />}
       {tab==="importar-excel"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Importar Excel</h2><p style={{color:"#888"}}>Importación masiva de productos por Excel.</p></section>}
       {tab==="precios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Historial de Precios</h2><p style={{color:"#888"}}>Registro histórico de cambios de precios.</p></section>}
       {tab==="clientes"&&<ClientesTab />}
