@@ -21,10 +21,11 @@ input[type=range]{accent-color:#3a7d1e;}
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE
 // ─────────────────────────────────────────────────────────────────────────────
-const LS = {
-  get:(k,d)=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):d;}catch{return d;}},
-  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}},
-};
+const SUPA_URL="https://mrotnqybqvmvlexncvno.supabase.co";
+const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
+const _supaSync=async(key,value)=>{try{await fetch(SUPA_URL+"/rest/v1/aryes_data",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});}catch(e){}};
+const _supaLoad=async(key,def)=>{try{const r=await fetch(SUPA_URL+"/rest/v1/aryes_data?key=eq."+encodeURIComponent(key),{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});const d=await r.json();if(d&&d[0]&&d[0].value!==undefined){localStorage.setItem(key,JSON.stringify(d[0].value));return d[0].value;}}catch(e){}return def;};
+const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v!=null?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));_supaSync(k,v);}catch{}},load:_supaLoad};
 const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
 const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
@@ -3816,6 +3817,11 @@ const EmailConfigTab=({products,session})=>{
 
 export default function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
+  // Sync from Supabase on mount
+  React.useEffect(()=>{
+    const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
+    keys.forEach(k=>LS.load(k,[]).then(()=>{}));
+  },[]);
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
   const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
