@@ -3822,14 +3822,14 @@ function ClientesTab(){
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
   const emptyForm={nombre:'',tipo:'Panadería',rut:'',telefono:'',email:'',direccion:'',ciudad:'',contacto:'',notas:''};
-  const [items,setItems]=React.useState(()=>LS.get(KCLI,[]));
-  const [form,setForm]=React.useState(emptyForm);
-  const [editId,setEditId]=React.useState(null);
-  const [q,setQ]=React.useState('');
-  const [filtro,setFiltro]=React.useState('Todos');
-  const [vista,setVista]=React.useState('lista');
-  const [selId,setSelId]=React.useState(null);
-  const [msg,setMsg]=React.useState('');
+  const [items,setItems]=useState(()=>LS.get(KCLI,[]));
+  const [form,setForm]=useState(emptyForm);
+  const [editId,setEditId]=useState(null);
+  const [q,setQ]=useState('');
+  const [filtro,setFiltro]=useState('Todos');
+  const [vista,setVista]=useState('lista');
+  const [selId,setSelId]=useState(null);
+  const [msg,setMsg]=useState('');
   const sel=items.find(x=>x.id===selId);
   const save=()=>{
     if(!form.nombre.trim()){setMsg('Nombre obligatorio');return;}
@@ -3926,14 +3926,14 @@ function MovimientosTab(){
   const TIPOS=["Entrada","Salida","Ajuste","Devolucion","Transferencia"];
   const TCOLOR={"Entrada":"#10b981","Salida":"#ef4444","Ajuste":"#f59e0b","Devolucion":"#3b82f6","Transferencia":"#8b5cf6"};
   const emptyForm={tipo:"Entrada",productoId:'',cantidad:1,referencia:'',notas:'',fecha:new Date().toISOString().split('T')[0]};
-  const [movs,setMovs]=React.useState(()=>LS.get(KMOV,[]));
-  const [prods,setProds]=React.useState(()=>LS.get(KPROD,[]));
-  const [form,setForm]=React.useState(emptyForm);
-  const [vista,setVista]=React.useState('lista');
-  const [filtroTipo,setFiltroTipo]=React.useState('Todos');
-  const [filtroProd,setFiltroProd]=React.useState('');
-  const [msg,setMsg]=React.useState('');
-  const [pag,setPag]=React.useState(0);
+  const [movs,setMovs]=useState(()=>LS.get(KMOV,[]));
+  const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
+  const [form,setForm]=useState(emptyForm);
+  const [vista,setVista]=useState('lista');
+  const [filtroTipo,setFiltroTipo]=useState('Todos');
+  const [filtroProd,setFiltroProd]=useState('');
+  const [msg,setMsg]=useState('');
+  const [pag,setPag]=useState(0);
   const POR_PAG=25;
   const prodNombre=(id)=>{const p=prods.find(x=>String(x.id)===String(id));return p?p.nombre:id;};
   const registrar=()=>{
@@ -4086,14 +4086,14 @@ function LotesTab(){
   const KLOTES="aryes-lots";
   const KPROD="aryes6-products";
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
-  const [lotes,setLotes]=React.useState(()=>LS.get(KLOTES,[]));
-  const [prods,setProds]=React.useState(()=>LS.get(KPROD,[]));
-  const [form,setForm]=React.useState(emptyForm);
-  const [editId,setEditId]=React.useState(null);
-  const [vista,setVista]=React.useState('lista');
-  const [filtro,setFiltro]=React.useState('todos');
-  const [q,setQ]=React.useState('');
-  const [msg,setMsg]=React.useState('');
+  const [lotes,setLotes]=useState(()=>LS.get(KLOTES,[]));
+  const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
+  const [form,setForm]=useState(emptyForm);
+  const [editId,setEditId]=useState(null);
+  const [vista,setVista]=useState('lista');
+  const [filtro,setFiltro]=useState('todos');
+  const [q,setQ]=useState('');
+  const [msg,setMsg]=useState('');
 
   const hoy=new Date();
   const enXDias=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return d;};
@@ -4262,7 +4262,7 @@ function LotesTab(){
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
-  React.useEffect(()=>{
+  useEffect(()=>{
     const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
     keys.forEach(k=>LS.load(k,[]).then(()=>{}));
   },[]);
