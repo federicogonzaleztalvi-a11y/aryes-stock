@@ -4836,7 +4836,7 @@ function RutasTab(){
                     {!e.direccion&&e.ciudad&&<span>&#128205; {e.ciudad}</span>}
                     {e.telefono&&<span style={{marginLeft:12}}>&#128222; {e.telefono}</span>}
                   </div>
-                  {(isEntregado||isNoEntregado)&&<div style={{fontSize:11,color:isEntregado?G:'#ef4444',marginTop:4,fontWeight:600}}>{isEntregado?'Entregado':'No entregado'} {e.hora&&'a las '+e.hora}</div>}{isEntregado&&e.foto&&<img src={e.foto} alt="prueba" style={{width:72,height:54,objectFit:'cover',borderRadius:6,marginTop:4,border:'2px solid '+G}} />}
+                  {(isEntregado||isNoEntregado)&&<div style={{fontSize:11,color:isEntregado?G:'#ef4444',marginTop:4,fontWeight:600}}>{isEntregado?'Entregado':'No entregado'} {e.hora&&'a las '+e.hora}</div>}{isEntregado&&e.foto&&<img src={e.foto} alt="prueba entrega" style={{width:80,height:60,objectFit:'cover',borderRadius:6,marginTop:6,border:'2px solid #3a7d1e'}} />}{isEntregado&&e.foto&&<img src={e.foto} alt="prueba" style={{width:72,height:54,objectFit:'cover',borderRadius:6,marginTop:4,border:'2px solid '+G}} />}
                 </div>
                 {!isEntregado&&!isNoEntregado&&(
                   <div style={{display:'flex',gap:6}}>
@@ -4946,7 +4946,7 @@ upd);LS.set(KRUTAS,upd);}} style={{padding:'5px 10px',border:'1px solid #e5e7eb'
             <textarea placeholder="Nota (opcional): firmado por Juan, dejado en porteria..." value={notaInput} onChange={e=>setNotaInput(e.target.value)} rows={2} style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,marginBottom:14,resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
               <button onClick={async()=>{const f=await tomarFoto();confirmarEntrega(fotoModal.rutaId,fotoModal.clienteId,f,notaInput);setFotoModal(null);}} style={{padding:'11px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:700}}>Foto + Confirmar</button>
-              <button onClick={()=>{confirmarEntrega(fotoModal.rutaId,fotoModal.clienteId,'',notaInput);setFotoModal(null);}} style={{padding:'11px',border:'2px solid #3a7d1e',color:'#3a7d1e',background:'#fff',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>Sin foto</button>
+              <button onClick={()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';inp.onchange=(ev)=>{const f=ev.target.files[0];if(f){const fr=new FileReader();fr.onload=(re)=>confirmarEntrega(ruta.id,e.clienteId,re.result);fr.readAsDataURL(f);}else{confirmarEntrega(ruta.id,e.clienteId);}};inp.click();}} style={{padding:'11px',border:'2px solid #3a7d1e',color:'#3a7d1e',background:'#fff',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>Sin foto</button>
             </div>
             <button onClick={()=>setFotoModal(null)} style={{width:'100%',padding:'8px',border:'1px solid #e5e7eb',borderRadius:8,background:'#f9fafb',cursor:'pointer',fontSize:12,color:'#888'}}>Cancelar</button>
           </div>
