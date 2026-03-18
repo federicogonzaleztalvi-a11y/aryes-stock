@@ -5168,6 +5168,247 @@ function KPITab(){
     </section>
   );
 }
+
+function TrackingTab(){
+  const G="#3a7d1e";
+  const KRUTAS="aryes-rutas";
+  const SUPABASE_URL="https://mrotnqybqvmvlexncvno.supabase.co";
+  const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
+  const DIAS=["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
+  const diaHoy=DIAS[new Date().getDay()-1]||"Lunes";
+  const [rutas]=useState(()=>LS.get(KRUTAS,[]));
+  const [vista,setVista]=useState('admin');
+  const [vehiculo,setVehiculo]=useState('Vehiculo 1');
+  const [tracking,setTracking]=useState(false);
+  const [posicion,setPosicion]=useState(null);
+  const [posiciones,setPosiciones]=useState({});
+  const [watchId,setWatchId]=useState(null);
+  const [msg,setMsg]=useState('');
+  const [lastUpdate,setLastUpdate]=useState(null);
+  const rutasHoy=rutas.filter(r=>r.dia===diaHoy);
+
+  // Subir posicion a Supabase
+  const subirPosicion=async(lat,lng,veh)=>{
+    try{
+      await fetch(SUPABASE_URL+"/rest/v1/aryes_data",{
+        method:"POST",
+        headers:{
+          "apikey":SUPABASE_KEY,
+          "Authorization":"Bearer "+SUPABASE_KEY,
+          "Content-Type":"application/json",
+          "Prefer":"resolution=merge-duplicates"
+        },
+        body:JSON.stringify({
+          key:"tracking-"+veh,
+          value:{lat,lng,veh,ts:new Date().toISOString()},
+          updated_at:new Date().toISOString()
+        })
+      });
+    }catch(e){console.log('tracking error',e);}
+  };
+
+  // Leer posiciones de todos los vehiculos
+  const leerPosiciones=async()=>{
+    try{
+      const r=await fetch(SUPABASE_URL+"/rest/v1/aryes_data?key=like.tracking-*",{
+        headers:{
+          "apikey":SUPABASE_KEY,
+          "Authorization":"Bearer "+SUPABASE_KEY
+        }
+      });
+      const data=await r.json();
+      const pos={};
+      (data||[]).forEach(row=>{
+        if(row.value&&row.value.veh){
+          const mins=Math.round((Date.now()-new Date(row.value.ts).getTime())/60000);
+          pos[row.value.veh]={...row.value,mins};
+        }
+      });
+      setPosiciones(pos);
+    }catch(e){}
+  };
+
+  // Auto-refrescar posiciones cada 15 seg en vista admin
+  useEffect(()=>{
+    if(vista!=='admin')return;
+    leerPosiciones();
+    const int=setInterval(leerPosiciones,15000);
+    return()=>clearInterval(int);
+  },[vista]);
+
+  // Iniciar tracking GPS
+  const iniciarTracking=()=>{
+    if(!navigator.geolocation){setMsg('Tu navegador no soporta GPS');return;}
+    const id=navigator.geolocation.watchPosition(
+      (pos)=>{
+        const{latitude:lat,longitude:lng}=pos.coords;
+        setPosicion({lat,lng});
+        setLastUpdate(new Date());
+        subirPosicion(lat,lng,vehiculo);
+      },
+      (err)=>setMsg('Error GPS: '+err.message),
+      {enableHighAccuracy:true,maximumAge:10000,timeout:10000}
+    );
+    setWatchId(id);
+    setTracking(true);
+    setMsg('Tracking activo — tu posicion se actualiza automaticamente');
+  };
+
+  const detenerTracking=()=>{
+    if(watchId)navigator.geolocation.clearWatch(watchId);
+    setTracking(false);
+    setWatchId(null);
+    setPosicion(null);
+    setMsg('Tracking detenido');
+    setTimeout(()=>setMsg(''),3000);
+  };
+
+  const VCOLOR={"Vehiculo 1":"#3b82f6","Vehiculo 2":"#8b5cf6","Vehiculo 3":"#f59e0b"};
+
+  // Google Maps URL de un vehiculo
+  const mapsUrlVeh=(pos)=>{
+    if(!pos)return null;
+    return "https://www.google.com/maps?q="+pos.lat+","+pos.lng+"&z=15";
+  };
+  // Vista repartidor (celular)
+  if(vista==='repartidor')return(
+    <section style={{padding:'20px',maxWidth:420,margin:'0 auto'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
+        <button onClick={()=>{detenerTracking();setVista('admin');}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
+        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:22,color:'#1a1a1a',margin:0}}>Vista Repartidor</h2>
+      </div>
+      {msg&&<div style={{background:tracking?'#f0fdf4':'#fff7ed',border:'1px solid '+(tracking?'#bbf7d0':'#fed7aa'),borderRadius:8,padding:'10px 14px',marginBottom:16,color:tracking?G:'#c2410c',fontSize:13}}>{msg}</div>}
+      <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 2px 8px rgba(0,0,0,.08)',marginBottom:16}}>
+        <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:8}}>Soy el operador de:</label>
+        <select value={vehiculo} onChange={e=>setVehiculo(e.target.value)} disabled={tracking} style={{width:'100%',padding:'10px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:15,fontFamily:'inherit',background:'#fff',marginBottom:16}}>
+          {['Vehiculo 1','Vehiculo 2','Vehiculo 3'].map(v=><option key={v}>{v}</option>)}
+        </select>
+        {!tracking?(
+          <button onClick={iniciarTracking} style={{width:'100%',padding:'14px',background:G,color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:16}}>
+            &#128204; Iniciar tracking GPS
+          </button>
+        ):(
+          <>
+            <div style={{background:'#f0fdf4',borderRadius:8,padding:'12px 16px',marginBottom:12,textAlign:'center'}}>
+              <div style={{fontSize:12,color:'#666',marginBottom:4}}>Tu posicion actual</div>
+              {posicion&&<div style={{fontSize:13,fontFamily:'monospace',color:G,fontWeight:700}}>{posicion.lat.toFixed(5)}, {posicion.lng.toFixed(5)}</div>}
+              {lastUpdate&&<div style={{fontSize:11,color:'#888',marginTop:4}}>Actualizado: {lastUpdate.toLocaleTimeString('es-UY')}</div>}
+              <div style={{marginTop:8}}>
+                <span style={{display:'inline-block',width:10,height:10,borderRadius:'50%',background:'#22c55e',marginRight:6,animation:'pulse 1.5s infinite'}} />
+                <span style={{fontSize:12,color:G,fontWeight:600}}>En vivo</span>
+              </div>
+            </div>
+            <button onClick={detenerTracking} style={{width:'100%',padding:'12px',background:'#ef4444',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:15}}>
+              &#9209;&#65039; Detener tracking
+            </button>
+          </>
+        )}
+      </div>
+      {/* Ruta del dia */}
+      {rutasHoy.filter(r=>r.vehiculo===vehiculo).map(ruta=>(
+        <div key={ruta.id} style={{background:'#fff',borderRadius:12,padding:16,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:10}}>
+          <div style={{fontWeight:700,fontSize:14,color:'#1a1a1a',marginBottom:10}}>Tu ruta hoy — {ruta.zona}</div>
+          {ruta.entregas.map((e,i)=>(
+            <div key={e.clienteId} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #f3f4f6'}}>
+              <div style={{width:24,height:24,borderRadius:'50%',background:e.estado==='entregado'?G:e.estado==='no-entregado'?'#ef4444':'#e5e7eb',color:e.estado==='pendiente'?'#666':'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:600,color:'#1a1a1a'}}>{e.clienteNombre}</div>
+                {e.ciudad&&<div style={{fontSize:11,color:'#888'}}>{e.ciudad}</div>}
+              </div>
+              <span style={{fontSize:10,fontWeight:700,color:e.estado==='entregado'?G:e.estado==='no-entregado'?'#ef4444':'#6b7280',background:e.estado==='entregado'?'#f0fdf4':e.estado==='no-entregado'?'#fef2f2':'#f3f4f6',padding:'2px 8px',borderRadius:20}}>
+                {e.estado==='entregado'?'OK':e.estado==='no-entregado'?'FALLO':'PEND'}
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </section>
+  );
+
+  // Vista admin — panel de control
+  return(
+    <section style={{padding:'28px 36px',maxWidth:1100,margin:'0 auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+        <div>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Tracking en Tiempo Real</h2>
+          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Posicion actual de los repartidores — se actualiza cada 15 seg</p>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={leerPosiciones} style={{padding:'8px 16px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151'}}>&#8635; Actualizar</button>
+          <button onClick={()=>setVista('repartidor')} style={{padding:'8px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>&#128204; Modo repartidor</button>
+        </div>
+      </div>
+
+      {/* Tarjetas por vehiculo */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:24}}>
+        {['Vehiculo 1','Vehiculo 2','Vehiculo 3'].map(veh=>{
+          const pos=posiciones[veh];
+          const rutaVeh=rutasHoy.find(r=>r.vehiculo===veh);
+          const entregasVeh=rutaVeh?rutaVeh.entregas:[];
+          const ok=entregasVeh.filter(e=>e.estado==='entregado').length;
+          const activo=pos&&pos.mins<5;
+          return(
+            <div key={veh} style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'2px solid '+(activo?G:'#e5e7eb')}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                <span style={{background:VCOLOR[veh],color:'#fff',fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20}}>{veh}</span>
+                <span style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:activo?G:'#9ca3af',fontWeight:600}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:activo?'#22c55e':'#d1d5db',display:'inline-block'}} />
+                  {activo?'En linea':'Sin senial'}
+                </span>
+              </div>
+              {pos?(
+                <>
+                  <div style={{fontSize:12,color:'#666',marginBottom:4}}>Ultima posicion: <strong style={{color:'#1a1a1a'}}>{pos.mins===0?'ahora mismo':pos.mins+' min atras'}</strong></div>
+                  <div style={{fontSize:11,color:'#888',fontFamily:'monospace',marginBottom:10}}>{Number(pos.lat).toFixed(4)}, {Number(pos.lng).toFixed(4)}</div>
+                  <a href={mapsUrlVeh(pos)} target='_blank' rel='noreferrer' style={{display:'block',textAlign:'center',padding:'7px',background:'#4285f4',color:'#fff',borderRadius:8,fontSize:12,fontWeight:700,textDecoration:'none'}}>
+                    &#128506; Ver en Google Maps
+                  </a>
+                </>
+              ):(
+                <div style={{textAlign:'center',padding:'16px 0',color:'#9ca3af',fontSize:13}}>Sin datos de GPS<br/><span style={{fontSize:11}}>El repartidor debe activar el modo repartidor</span></div>
+              )}
+              {rutaVeh&&(
+                <div style={{marginTop:12,paddingTop:10,borderTop:'1px solid #f3f4f6'}}>
+                  <div style={{fontSize:11,color:'#666',marginBottom:4}}>Ruta: {rutaVeh.zona} · {entregasVeh.length} paradas</div>
+                  <div style={{background:'#f3f4f6',borderRadius:99,height:6,overflow:'hidden'}}>
+                    <div style={{width:(entregasVeh.length>0?ok/entregasVeh.length*100:0)+'%',background:VCOLOR[veh],height:'100%',borderRadius:99}} />
+                  </div>
+                  <div style={{fontSize:11,color:'#666',marginTop:3}}>{ok}/{entregasVeh.length} entregas completadas</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Instrucciones */}
+      <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:20}}>
+        <div style={{fontWeight:700,color:'#92400e',marginBottom:10,fontSize:14}}>Como usar el tracking</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,fontSize:13,color:'#78350f'}}>
+          <div>
+            <div style={{fontWeight:600,marginBottom:4}}>Para el repartidor:</div>
+            <ol style={{margin:0,paddingLeft:16,lineHeight:1.8}}>
+              <li>Abrir la app en el celular</li>
+              <li>Ir a "Tracking" en el menu</li>
+              <li>Hacer clic en "Modo repartidor"</li>
+              <li>Seleccionar su vehiculo</li>
+              <li>Iniciar tracking GPS</li>
+            </ol>
+          </div>
+          <div>
+            <div style={{fontWeight:600,marginBottom:4}}>Para el admin:</div>
+            <ol style={{margin:0,paddingLeft:16,lineHeight:1.8}}>
+              <li>Este panel se actualiza automaticamente</li>
+              <li>Punto verde = en linea (menos de 5 min)</li>
+              <li>Punto gris = sin senial o no iniciado</li>
+              <li>Hacer clic en "Ver en Maps" para ver la ubicacion exacta</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
@@ -5350,7 +5591,7 @@ function AryesApp(){
   {id:"usuarios",label:"Usuarios",icon:"👤"}  ,{id:"lotes",label:"Lotes / Venc.",icon:"📅"},{id:"deposito",label:"Deposito",icon:"🗂️"},{id:"kpis",label:"KPIs",icon:"📊"}
   ,{id:"importar-excel",label:"Importar Excel",icon:"📊"}
   ,{id:"precios",label:"Hist. Precios",icon:"📈"}
-  ,{id:"clientes",label:"Clientes",icon:"👥"},{id:"rutas",label:"Rutas",icon:"🚛"}
+  ,{id:"clientes",label:"Clientes",icon:"👥"},{id:"rutas",label:"Rutas",icon:"🚛"},{id:"tracking",label:"Tracking",icon:"📍"}
   ,{id:"movimientos",label:"Movimientos",icon:"📋"}
   ,{id:"alertas",label:"Alertas Email",icon:"🔔"}
 ];
@@ -5829,6 +6070,8 @@ function AryesApp(){
       {tab==="rutas"&&<RutasTab />}
       
       {tab==="kpis"&&<KPITab />}
+      
+      {tab==="tracking"&&<TrackingTab />}
       </main>
 
       {/* ══ MODALS ══ */}
