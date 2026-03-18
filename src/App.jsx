@@ -3824,6 +3824,8 @@ function ClientesTab(){
   const [items,setItems]=useState(()=>LS.get(KCLI,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
+  const [fotoModal,setFotoModal]=useState(null);
+  const [notaInput,setNotaInput]=useState('');
   const [q,setQ]=useState('');
   const [filtro,setFiltro]=useState('Todos');
   const [vista,setVista]=useState('lista');
@@ -4652,12 +4654,15 @@ function RutasTab(){
     setTimeout(()=>setMsg(''),3000);
   };
 
-  const confirmarEntrega=(rutaId,clienteId)=>{
+  const confirmarEntrega=(rutaId,clienteId,foto,nota)=>{
     const upd=rutas.map(r=>{
       if(r.id!==rutaId)return r;
-      return{...r,entregas:r.entregas.map(e=>e.clienteId===clienteId?{...e,estado:'entregado',hora:new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}:e)};
+      return{...r,entregas:r.entregas.map(e=>e.clienteId===clienteId?{...e,estado:'entregado',hora:new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}),foto:foto||'',nota:nota||'',fecha:new Date().toLocaleDateString('es-UY')}:e)};
     });
     setRutas(upd);LS.set(KRUTAS,upd);
+    const ruta=rutas.find(r=>r.id===rutaId);
+    const ent=ruta?.entregas.find(e=>e.clienteId===clienteId);
+    if(ent){const h=LS.get('aryes-hist-ent',[]);h.unshift({id:Date.now(),rutaId,vehiculo:ruta.vehiculo,zona:ruta.zona,clienteId,nombre:ent.clienteNombre,ciudad:ent.ciudad||'',hora:new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}),fecha:new Date().toLocaleDateString('es-UY'),foto:foto||'',nota:nota||''});LS.set('aryes-hist-ent',h.slice(0,500));}
   };
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
@@ -4805,12 +4810,77 @@ function RutasTab(){
                 </div>
                 {!isEntregado&&!isNoEntregado&&(
                   <div style={{display:'flex',gap:6}}>
-                    <button onClick={()=>confirmarEntrega(ruta.id,e.clienteId)} style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>Entregado</button>
+                    <button onClick={()=>{setFotoModal({rutaId:ruta.id,clienteId:e.clienteId,nombre:e.clienteNombre});setNotaInput('');}} style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>Entregado</button>
                     <button onClick={()=>marcarNoEntregado(ruta.id,e.clienteId)} style={{padding:'7px 12px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>No entregado</button>
                   </div>
                 )}
                 {(isEntregado||isNoEntregado)&&(
-                  <button onClick={()=>{const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:r.entregas.map(ev=>ev.clienteId===e.clienteId?{...ev,estado:'pendiente',hora:''}:ev)}:r);setRutas(upd);LS.set(KRUTAS,upd);}} style={{padding:'5px 10px',border:'1px solid #e5e7eb',background:'#fff',color:'#666',borderRadius:6,cursor:'pointer',fontSize:11}}>Resetear</button>
+                  <button onClick={()=>{const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:r.entregas.map(ev=>ev.clienteId===e.clienteId?{...ev,estado:'pendiente',hora:''}:ev)}:r);setRutas(
+  // HISTORIAL VIEW
+  if(vista==='historial'){
+    const hist=LS.get('aryes-hist-ent',[]);
+    const exportar=()=>{
+      const rows=[['Fecha','Hora','Vehiculo','Zona','Cliente','Ciudad','Nota'],...hist.map(h=>[h.fecha,h.hora,h.vehiculo,h.zona,h.nombre,h.ciudad,h.nota||''])];
+      const csv=rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+      const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='entregas.csv';a.click();
+    };
+    return(
+      <section style={{padding:'28px 36px',maxWidth:1000,margin:'0 auto'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
+          <button onClick={()=>setVista('hoy')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Historial de Entregas</h2>
+          <span style={{fontSize:13,color:'#888'}}>({hist.length} registros)</span>
+          <button onClick={exportar} style={{marginLeft:'auto',padding:'8px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>Exportar CSV</button>
+        </div>
+        {hist.length===0?(<div style={{textAlign:'center',padding:'60px 0',color:'#888',fontSize:15}}>Aun no hay entregas confirmadas</div>):(
+          <div style={{background:'#fff',borderRadius:12,overflow:'auto',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+              <thead><tr style={{background:'#f9fafb',borderBottom:'2px solid #e5e7eb'}}>
+                {['Fecha','Hora','Vehiculo','Zona','Cliente','Nota','Foto'].map(h=>(
+                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase'}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {hist.map((h,i)=>(
+                  <tr key={h.id} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa'}}>
+                    <td style={{padding:'9px 14px',color:'#6b7280',fontSize:12}}>{h.fecha}</td>
+                    <td style={{padding:'9px 14px',fontWeight:700,color:G}}>{h.hora}</td>
+                    <td style={{padding:'9px 14px'}}><span style={{background:'#3b82f6',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20}}>{h.vehiculo}</span></td>
+                    <td style={{padding:'9px 14px',fontSize:12}}>{h.zona}</td>
+                    <td style={{padding:'9px 14px',fontWeight:500}}>{h.nombre}</td>
+                    <td style={{padding:'9px 14px',color:'#888',fontSize:12}}>{h.nota||'-'}</td>
+                    <td style={{padding:'9px 14px'}}>
+                      {h.foto?<img src={h.foto} alt="foto" style={{width:44,height:44,objectFit:'cover',borderRadius:6,cursor:'pointer',border:'1px solid #e5e7eb'}} onClick={()=>window.open(h.foto)} />:<span style={{color:'#ccc',fontSize:11}}>-</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  // FOTO MODAL
+  const tomarFoto=async()=>{
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+      const video=document.createElement('video');
+      video.srcObject=stream;video.playsInline=true;
+      await new Promise(res=>{video.onloadedmetadata=res;});
+      await video.play();
+      await new Promise(res=>setTimeout(res,500));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.min(video.videoWidth,800);
+      canvas.height=Math.round(video.videoHeight*(canvas.width/video.videoWidth));
+      canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+      stream.getTracks().forEach(t=>t.stop());
+      return canvas.toDataURL('image/jpeg',0.7);
+    }catch(e){return '';}
+  };
+
+upd);LS.set(KRUTAS,upd);}} style={{padding:'5px 10px',border:'1px solid #e5e7eb',background:'#fff',color:'#666',borderRadius:6,cursor:'pointer',fontSize:11}}>Resetear</button>
                 )}
               </div>
             );
@@ -4833,9 +4903,25 @@ function RutasTab(){
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Rutas de Reparto</h2>
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestion de entregas por vehiculo y zona</p>
         </div>
-        <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva ruta</button>
+        <div style={{display:'flex',gap:8}}><button onClick={()=>setVista('historial')} style={{padding:'9px 16px',border:'1px solid #e5e7eb',background:'#fff',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151'}}>Historial</button><button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva ruta</button></div>
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+
+      
+      {fotoModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+          <div style={{background:'#fff',borderRadius:16,padding:28,width:'100%',maxWidth:340,boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
+            <div style={{fontWeight:700,fontSize:16,color:'#1a1a1a',marginBottom:6}}>Confirmar entrega</div>
+            <div style={{fontSize:13,color:'#3a7d1e',fontWeight:600,marginBottom:14}}>{fotoModal.nombre}</div>
+            <textarea placeholder="Nota (opcional): firmado por Juan, dejado en porteria..." value={notaInput} onChange={e=>setNotaInput(e.target.value)} rows={2} style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,marginBottom:14,resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              <button onClick={async()=>{const f=await tomarFoto();confirmarEntrega(fotoModal.rutaId,fotoModal.clienteId,f,notaInput);setFotoModal(null);}} style={{padding:'11px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:700}}>Foto + Confirmar</button>
+              <button onClick={()=>{confirmarEntrega(fotoModal.rutaId,fotoModal.clienteId,'',notaInput);setFotoModal(null);}} style={{padding:'11px',border:'2px solid #3a7d1e',color:'#3a7d1e',background:'#fff',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>Sin foto</button>
+            </div>
+            <button onClick={()=>setFotoModal(null)} style={{width:'100%',padding:'8px',border:'1px solid #e5e7eb',borderRadius:8,background:'#f9fafb',cursor:'pointer',fontSize:12,color:'#888'}}>Cancelar</button>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
