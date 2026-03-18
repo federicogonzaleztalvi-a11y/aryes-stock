@@ -522,6 +522,10 @@ const Modal=({title,sub,onClose,children,wide})=>(
 const ProductForm=({product,suppliers,onSave,onClose})=>{
   const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,history:[]};
   const [f,setF]=useState(product?{...product}:blank);
+
+  // WA template in localStorage
+  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes');
+  const saveWaTpl=()=>{localStorage.setItem('aryes-wa-template',waTpl);alert('Plantilla guardada');};
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const [csv,setCsv]=useState(product?.history?.map(h=>`${h.month},${h.consumed}`).join("\n")||"");
   const bRef=useRef();
@@ -4261,6 +4265,17 @@ function LotesTab(){
   );
 }
 
+// WhatsApp notification helper
+const waLink=(telefono,mensaje)=>{
+  const num=telefono?telefono.replace(/[^0-9]/g,''):'';
+  const txt=encodeURIComponent(mensaje);
+  return num?'https://wa.me/598'+num+'?text='+txt:'https://wa.me/?text='+txt;
+};
+const waMensaje=(cliente,tipo,detalle)=>{
+  const tpl=localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes';
+  return tpl.replace('{cliente}',cliente||'cliente').replace('{detalle}',detalle||'');
+};
+
 function DepositoTab(){
   const G="#3a7d1e";
   const KDEP="aryes-deposito";
@@ -5463,8 +5478,16 @@ function VentasTab(){
     const upd=ventas.map(v=>v.id===id?{...v,estado,updatedAt:new Date().toISOString()}:v);
     setVentas(upd);LS.set(KVEN,upd);
     if(ventaSel?.id===id)setVentaSel({...ventaSel,estado});
-    setMsg('Estado actualizado: '+estado);
-    setTimeout(()=>setMsg(''),3000);
+    if(estado==='entregada'){
+      const cl=clientes.find(c=>String(c.id)===String(venta?.clienteId));
+      const tel=cl?.telefono||'';
+      const det='su pedido '+venta?.nroVenta+' fue entregado hoy '+new Date().toLocaleDateString('es-UY');
+      const link=waLink(tel,waMensaje(venta?.clienteNombre||cl?.nombre,'entrega',det));
+      setMsg('ENTREGADA:'+link+':'+venta?.clienteNombre);
+    }else{
+      setMsg('Estado actualizado: '+estado);
+      setTimeout(()=>setMsg(''),4000);
+    }
   };
 
   const ventasFiltradas=ventas.filter(v=>{
@@ -5650,7 +5673,16 @@ function VentasTab(){
         </div>
         <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
       </div>
-      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+      {msg&&(msg.startsWith('ENTREGADA:')?
+        (()=>{const[,link,nombre]=msg.split(':');return(
+          <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+            <span style={{color:G,fontSize:13,fontWeight:600}}>Venta entregada. Notificar a {nombre||'cliente'}?</span>
+            <a href={link} target='_blank' rel='noreferrer' style={{background:'#25d366',color:'#fff',padding:'8px 18px',borderRadius:8,fontWeight:700,fontSize:13,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>
+              &#128233; Enviar WhatsApp
+            </a>
+          </div>
+        );})()
+      :<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>)}
 
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
