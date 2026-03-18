@@ -5412,116 +5412,117 @@ function TrackingTab(){
 // v38
 function AryesApp(){
   const G="#3a7d1e";
-  const [user,setUser]=useState(()=>LS.get('aryes-session',null));
-  const [tab,setTab]=useState('dashboard');
-  const [loading,setLoading]=useState(true);
+  const USERS=[
+    {username:"admin",password:"aryes2024",role:"admin",name:"Administrador"},
+    {username:"operador",password:"stock123",role:"operador",name:"Operador"},
+    {username:"vendedor",password:"ventas123",role:"vendedor",name:"Vendedor"}
+  ];
+  const [user,setUser]=useState(null);
+  const [tab,setTab]=useState("dashboard");
+  const [ready,setReady]=useState(false);
 
   useEffect(()=>{
-    const init=async()=>{
-      try{await LS.init();}catch(e){}
-      const saved=LS.get('aryes-session',null);
-      if(saved)setUser(saved);
-      setLoading(false);
-    };
-    init();
+    LS.init().then(()=>{
+      const saved=LS.get("aryes-session",null);
+      if(saved&&saved.username)setUser(saved);
+      setReady(true);
+    }).catch(()=>setReady(true));
   },[]);
 
-  if(loading)return(
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#f8f9fa'}}>
-      <div style={{textAlign:'center',fontFamily:'sans-serif',color:'#888'}}>
-        <div style={{fontSize:40,marginBottom:12}}>🌿</div>
-        <div>Cargando Aryes Stock...</div>
-      </div>
-    </div>
-  );
+  if(!ready)return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"sans-serif",color:"#888",fontSize:16}},"Cargando Aryes Stock...");
 
   if(!user){
-    const CREDS=[{u:'admin',p:'aryes2024',role:'admin',name:'Administrador'},{u:'operador',p:'stock123',role:'operador',name:'Operador'},{u:'vendedor',p:'ventas123',role:'vendedor',name:'Vendedor'}];
-    const tryLogin=()=>{
-      const u=document.getElementById('_lu')?.value||'';
-      const p=document.getElementById('_lp')?.value||'';
-      const found=CREDS.find(c=>c.u===u&&c.p===p);
-      if(found){const sess={username:found.u,role:found.role,name:found.name};LS.set('aryes-session',sess);setUser(sess);}
-      else alert('Usuario o contrasena incorrectos');
+    let lu="",lp="";
+    const doLogin=()=>{
+      const found=USERS.find(x=>x.username===lu&&x.password===lp);
+      if(found){LS.set("aryes-session",found);setUser(found);}
+      else alert("Usuario o contrasena incorrectos");
     };
     return(
-      <div style={{minHeight:'100vh',background:'linear-gradient(135deg,#f0fdf4 0%,#f8f9fa 100%)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'#fff',borderRadius:20,padding:'52px 44px',boxShadow:'0 8px 40px rgba(0,0,0,.10)',width:380,textAlign:'center'}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:80,marginBottom:8,objectFit:'contain'}} onError={e=>{e.target.style.display='none';}} />
-          <h1 style={{fontFamily:'Playfair Display,Georgia,serif',fontSize:30,color:'#1a1a1a',margin:'0 0 4px'}}>Aryes Stock</h1>
-          <p style={{color:'#9ca3af',fontSize:13,margin:'0 0 36px',letterSpacing:.3}}>Sistema de gestion de inventario</p>
-          <input id="_lu" type="text" placeholder="Usuario" autoComplete="username"
-            style={{width:'100%',padding:'12px 14px',border:'1.5px solid #e5e7eb',borderRadius:10,fontSize:14,fontFamily:'inherit',boxSizing:'border-box',marginBottom:12,outline:'none'}}
-            onKeyDown={e=>e.key==='Enter'&&document.getElementById('_lp')?.focus()} />
-          <input id="_lp" type="password" placeholder="Contrasena" autoComplete="current-password"
-            style={{width:'100%',padding:'12px 14px',border:'1.5px solid #e5e7eb',borderRadius:10,fontSize:14,fontFamily:'inherit',boxSizing:'border-box',marginBottom:24,outline:'none'}}
-            onKeyDown={e=>e.key==='Enter'&&tryLogin()} />
-          <button onClick={tryLogin}
-            style={{width:'100%',padding:'13px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:'inherit',letterSpacing:.3}}>
+      <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f0 0%,#e8f0e8 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{background:"#fff",borderRadius:16,padding:"48px 40px",boxShadow:"0 8px 32px rgba(0,0,0,.10)",width:360,textAlign:"center"}}>
+          <img src="/aryes-logo.png" alt="Aryes" style={{height:72,marginBottom:12,objectFit:"contain"}} />
+          <h1 style={{fontFamily:"Playfair Display,serif",fontSize:26,color:"#1a1a1a",margin:"0 0 4px"}}>Aryes Stock</h1>
+          <p style={{color:"#888",fontSize:13,margin:"0 0 28px"}}>Sistema de gestion de insumos</p>
+          <input type="text" placeholder="Usuario" onChange={e=>{lu=e.target.value;}}
+            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:10,boxSizing:"border-box",fontFamily:"inherit"}} />
+          <input type="password" placeholder="Contrasena" onChange={e=>{lp=e.target.value;}}
+            onKeyDown={e=>{if(e.key==="Enter")doLogin();}}
+            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:20,boxSizing:"border-box",fontFamily:"inherit"}} />
+          <button onClick={doLogin}
+            style={{width:"100%",padding:"12px",background:G,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700,cursor:"pointer"}}>
             Ingresar
           </button>
-          <p style={{marginTop:20,fontSize:11,color:'#d1d5db'}}>admin / aryes2024 &nbsp;·&nbsp; operador / stock123</p>
+          <div style={{marginTop:20,fontSize:11,color:"#bbb"}}>admin/aryes2024 · operador/stock123 · vendedor/ventas123</div>
         </div>
       </div>
     );
   }
 
   const NAV=[
-    {id:'dashboard',label:'Dashboard',icon:'📊'},
-    {id:'inventory',label:'Inventario',icon:'📦'},
-    {id:'orders',label:'Pedidos',icon:'🛒'},
-    {id:'suppliers',label:'Proveedores',icon:'🏭'},
-    {id:'clientes',label:'Clientes',icon:'👥'},
-    {id:'movimientos',label:'Movimientos',icon:'🔄'},
-    {id:'lotes',label:'Lotes / Venc.',icon:'📅'},
-    {id:'deposito',label:'Deposito',icon:'🗂️'},
-    {id:'rutas',label:'Rutas',icon:'🚛'},
-    {id:'tracking',label:'Tracking',icon:'📍'},
-    {id:'kpis',label:'KPIs',icon:'📈'},
-    {id:'planning',label:'Planificacion',icon:'📋'},
-    {id:'scanner',label:'Scanner',icon:'📷'},
-    {id:'config',label:'Configuracion',icon:'⚙️'},
+    {id:"dashboard",label:"Dashboard",icon:"📊"},
+    {id:"inventory",label:"Inventario",icon:"📦"},
+    {id:"orders",label:"Pedidos",icon:"🛒"},
+    {id:"suppliers",label:"Proveedores",icon:"🏭"},
+    {id:"clientes",label:"Clientes",icon:"👥"},
+    {id:"movimientos",label:"Movimientos",icon:"🔄"},
+    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},
+    {id:"deposito",label:"Deposito",icon:"🗂️"},
+    {id:"rutas",label:"Rutas",icon:"🚛"},
+    {id:"tracking",label:"Tracking",icon:"📍"},
+    {id:"kpis",label:"KPIs",icon:"📈"},
+    {id:"planning",label:"Planificacion",icon:"📋"},
+    {id:"scanner",label:"Scanner",icon:"📷"},
+    {id:"config",label:"Config",icon:"⚙️"},
   ];
 
-  const logout=()=>{LS.set('aryes-session',null);setUser(null);setTab('dashboard');};
+  const logout=()=>{LS.set("aryes-session",null);setUser(null);setTab("dashboard");};
+  const VCOLOR={"admin":"#3a7d1e","operador":"#3b82f6","vendedor":"#8b5cf6"};
 
   return(
-    <div style={{display:'flex',minHeight:'100vh',background:'#f8f9fa'}}>
-      <aside style={{width:210,background:'#1a1a1a',display:'flex',flexDirection:'column',flexShrink:0,overflowY:'auto',position:'sticky',top:0,height:'100vh'}}>
-        <div style={{padding:'20px 16px 12px',borderBottom:'1px solid #2d2d2d',textAlign:'center'}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:48,objectFit:'contain',filter:'brightness(0) invert(1)'}} onError={e=>{e.target.style.display='none';}} />
-          <div style={{fontSize:11,color:'#666',marginTop:6,letterSpacing:.5}}>STOCK MANAGER</div>
+    <div style={{display:"flex",minHeight:"100vh",background:"#f8f9fa"}}>
+      <aside style={{width:195,minWidth:195,background:"#1c1c1c",display:"flex",flexDirection:"column",overflowY:"auto",flexShrink:0}}>
+        <div style={{padding:"18px 14px 12px",borderBottom:"1px solid #333",textAlign:"center"}}>
+          <img src="/aryes-logo.png" alt="Aryes" style={{height:48,objectFit:"contain",filter:"brightness(0) invert(1)"}} />
         </div>
-        <nav style={{flex:1,padding:'8px 0'}}>
+        <nav style={{flex:1,paddingTop:6}}>
           {NAV.map(n=>(
             <button key={n.id} onClick={()=>setTab(n.id)}
-              style={{width:'100%',display:'flex',alignItems:'center',gap:9,padding:'9px 16px',background:tab===n.id?'#3a7d1e':'transparent',color:tab===n.id?'#fff':'#aaa',border:'none',cursor:'pointer',fontSize:12.5,fontFamily:'inherit',textAlign:'left',transition:'background .15s',borderLeft:tab===n.id?'3px solid #6dbf47':'3px solid transparent'}}>
-              <span style={{fontSize:15,flexShrink:0}}>{n.icon}</span>
-              <span style={{fontWeight:tab===n.id?700:400,letterSpacing:.2}}>{n.label}</span>
+              style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 14px",
+                background:tab===n.id?"#3a7d1e":"transparent",
+                color:tab===n.id?"#fff":"#aaa",
+                border:"none",cursor:"pointer",fontSize:12,fontFamily:"inherit",textAlign:"left"}}>
+              <span>{n.icon}</span>
+              <span style={{fontWeight:tab===n.id?700:400}}>{n.label}</span>
             </button>
           ))}
         </nav>
-        <div style={{padding:'14px 16px',borderTop:'1px solid #2d2d2d'}}>
-          <div style={{fontSize:11,color:'#666',marginBottom:6}}>{user.name}</div>
-          <div style={{fontSize:10,color:'#555',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>{user.role}</div>
-          <button onClick={logout} style={{width:'100%',padding:'8px',background:'#2d2d2d',color:'#aaa',border:'none',borderRadius:8,cursor:'pointer',fontSize:11,fontFamily:'inherit'}}>Cerrar sesion</button>
+        <div style={{padding:"12px 14px",borderTop:"1px solid #333"}}>
+          <div style={{fontSize:11,color:"#777",marginBottom:6,textAlign:"center"}}>
+            <span style={{background:VCOLOR[user.role]||"#555",color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:10}}>{user.role}</span>
+            {" "}{user.name}
+          </div>
+          <button onClick={logout}
+            style={{width:"100%",padding:"7px",background:"#333",color:"#aaa",border:"none",borderRadius:6,cursor:"pointer",fontSize:11}}>
+            Cerrar sesion
+          </button>
         </div>
       </aside>
-      <main style={{flex:1,overflowY:'auto',minHeight:'100vh'}}>
-        {tab==='dashboard'&&<DashboardTab setTab={setTab} />}
-        {tab==='inventory'&&<InventoryTab />}
-        {tab==='orders'&&<OrdersTab setTab={setTab} />}
-        {tab==='suppliers'&&<SuppliersTab />}
-        {tab==='clientes'&&<ClientesTab />}
-        {tab==='movimientos'&&<MovimientosTab />}
-        {tab==='lotes'&&<LotesTab />}
-        {tab==='deposito'&&<DepositoTab />}
-        {tab==='rutas'&&<RutasTab />}
-        {tab==='tracking'&&<TrackingTab />}
-        {tab==='kpis'&&<KPITab />}
-        {tab==='planning'&&<PlanningTab />}
-        {tab==='scanner'&&<ScannerTab />}
-        {tab==='config'&&<ConfigTab />}
+      <main style={{flex:1,overflowY:"auto"}}>
+        {tab==="dashboard"&&<DashboardTab setTab={setTab} />}
+        {tab==="inventory"&&<InventoryTab />}
+        {tab==="orders"&&<OrdersTab setTab={setTab} />}
+        {tab==="suppliers"&&<SuppliersTab />}
+        {tab==="clientes"&&<ClientesTab />}
+        {tab==="movimientos"&&<MovimientosTab />}
+        {tab==="lotes"&&<LotesTab />}
+        {tab==="deposito"&&<DepositoTab />}
+        {tab==="rutas"&&<RutasTab />}
+        {tab==="tracking"&&<TrackingTab />}
+        {tab==="kpis"&&<KPITab />}
+        {tab==="planning"&&<PlanningTab />}
+        {tab==="scanner"&&<ScannerTab />}
+        {tab==="config"&&<ConfigTab />}
       </main>
     </div>
   );
