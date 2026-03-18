@@ -3815,7 +3815,6 @@ const EmailConfigTab=({products,session})=>{
   );
 };
 
-export default 
 function ClientesTab(){
   const G="#3a7d1e";
   const KCLI="aryes-clients";
