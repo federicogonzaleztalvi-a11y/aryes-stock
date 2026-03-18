@@ -4687,6 +4687,35 @@ function RutasTab(){
   // Google Maps URL con todas las paradas en orden
   const getMapsUrl=(ruta)=>{
     const stops=ruta.entregas.filter(e=>e.direccion||e.ciudad);
+
+  const optimizarRutaOSRM=async(entregas,onMsg)=>{
+    const conDir=entregas.filter(e=>e.direccion||e.ciudad);
+    if(conDir.length<2)return entregas;
+    if(onMsg)onMsg('Geocodificando '+conDir.length+' paradas...');
+    try{
+      const geoRes=await Promise.all(conDir.map(async e=>{
+        const q=encodeURIComponent((e.direccion||'')+' '+(e.ciudad||'')+' Uruguay');
+        const res=await fetch('https://nominatim.openstreetmap.org/search?q='+q+'&format=json&limit=1',{headers:{'User-Agent':'AryesStock/1.0'}});
+        const data=await res.json();
+        return data&&data[0]?{...e,lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)}:{...e,lat:null,lng:null};
+      }));
+      const valid=geoRes.filter(e=>e.lat);
+      if(valid.length<2)return entregas;
+      if(onMsg)onMsg('Optimizando orden de '+valid.length+' paradas...');
+      const coords=valid.map(e=>e.lng+','+e.lat).join(';');
+      const res=await fetch('https://router.project-osrm.org/trip/v1/driving/'+coords+'?roundtrip=false&source=first&destination=last');
+      const data=await res.json();
+      if(data.code==='Ok'&&data.waypoints){
+        const ordered=data.waypoints.sort((a,b)=>a.waypoint_index-b.waypoint_index).map(wp=>valid[wp.trips_index]||valid[0]);
+        const noDir=entregas.filter(e=>!e.direccion&&!e.ciudad);
+        const km=Math.round((data.trips[0]?.distance||0)/1000);
+        const min=Math.round((data.trips[0]?.duration||0)/60);
+        if(onMsg)onMsg('Ruta optimizada: '+km+'km en aprox '+min+' min');
+        return [...ordered,...noDir];
+      }
+    }catch(err){if(onMsg)onMsg('Sin conexion. Usando orden manual.');}
+    return entregas;
+  };
     if(stops.length===0)return null;
     const base='https://www.google.com/maps/dir/';
     const waypoints=stops.map(e=>encodeURIComponent((e.direccion?e.direccion+', ':'')+e.ciudad+', Uruguay')).join('/');
@@ -4775,7 +4804,8 @@ function RutasTab(){
           </div>
           <div style={{display:'flex',gap:8}}>
             {mapsUrl&&<a href={mapsUrl} target='_blank' rel='noreferrer' style={{padding:'8px 16px',background:'#4285f4',color:'#fff',borderRadius:8,fontSize:12,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>&#128506; Abrir en Maps</a>}
-            <button onClick={()=>eliminarRuta(ruta.id)} style={{padding:'8px 14px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:12}}>Eliminar</button>
+            <button onClick={async()=>{const opt=await optimizarRutaOSRM(ruta.entregas,(m)=>setMsg(m));const upd=rutas.map(r2=>r2.id===ruta.id?{...r2,entregas:opt}:r2);setRutas(upd);LS.set(KRUTAS,upd);setTimeout(()=>setMsg(''),6000);}} style={{padding:'8px 14px',background:'#059669',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>&#129302; Optimizar orden</button>
+                    <button onClick={()=>eliminarRuta(ruta.id)} style={{padding:'8px 14px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:12}}>Eliminar</button>
           </div>
         </div>
         {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
@@ -4806,7 +4836,7 @@ function RutasTab(){
                     {!e.direccion&&e.ciudad&&<span>&#128205; {e.ciudad}</span>}
                     {e.telefono&&<span style={{marginLeft:12}}>&#128222; {e.telefono}</span>}
                   </div>
-                  {(isEntregado||isNoEntregado)&&<div style={{fontSize:11,color:isEntregado?G:'#ef4444',marginTop:4,fontWeight:600}}>{isEntregado?'Entregado':'No entregado'} {e.hora&&'a las '+e.hora}</div>}
+                  {(isEntregado||isNoEntregado)&&<div style={{fontSize:11,color:isEntregado?G:'#ef4444',marginTop:4,fontWeight:600}}>{isEntregado?'Entregado':'No entregado'} {e.hora&&'a las '+e.hora}</div>}{isEntregado&&e.foto&&<img src={e.foto} alt="prueba" style={{width:72,height:54,objectFit:'cover',borderRadius:6,marginTop:4,border:'2px solid '+G}} />}
                 </div>
                 {!isEntregado&&!isNoEntregado&&(
                   <div style={{display:'flex',gap:6}}>
