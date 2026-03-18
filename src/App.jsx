@@ -4336,9 +4336,23 @@ function DepositoTab(){
     return picks;
   };
 
-  const [pickingItems,setPickingItems]=useState([]);
+  const [pickingItems,setPickingItems]=useState(()=>{
+    const pending=LS.get('aryes-picking-pendiente',[]);
+    if(pending&&pending.length>0){
+      LS.set('aryes-picking-pendiente',[]);
+      return pending.map(p=>({
+        productoId:p.productoId||prods.find(x=>x.nombre===p.productoNombre)?.id||p.productoNombre,
+        cantidad:p.cantidad
+      }));
+    }
+    return [];
+  });
   const [pickingList,setPickingList]=useState([]);
-  const [showPicking,setShowPicking]=useState(false);
+  const [showPicking,setShowPicking]=useState(()=>{
+    const pending=JSON.parse(localStorage.getItem('aryes-picking-pendiente-check')||'false');
+    localStorage.removeItem('aryes-picking-pendiente-check');
+    return pending||LS.get('aryes-picking-pendiente',[]).length>0;
+  });
 
   const addPickingItem=(prodId,cant)=>{
     if(!prodId||!cant)return;
@@ -5010,7 +5024,7 @@ function AryesApp(){
                           <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:13}}>USD {o.totalCost}</td>
                           <td style={{padding:"11px 13px"}}><AlertPill level={pending?"watch":"ok"}/></td>
                           <td style={{padding:"11px 13px"}}>{pending&&<Btn small variant="success" onClick={()=>markDelivered(o.id)}>✓ Recibido</Btn>}</td>
-                        </tr>
+                        <td style={{padding:"8px 13px"}}><button onClick={(e)=>{e.stopPropagation();LS.set('aryes-picking-pendiente',[{productoNombre:o.productName,cantidad:o.qty,productoId:o.productId||''}]);setTab('deposito');}} style={{background:"#3a7d1e",color:"#fff",border:"none",padding:"5px 12px",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:700}}>Picking</button></td></tr>
                       );
                     })}
                   </tbody>
