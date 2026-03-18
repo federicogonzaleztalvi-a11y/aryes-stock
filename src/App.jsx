@@ -4934,613 +4934,698 @@ function RutasTab(){
     </section>
   );
 }
+function AryesApp(){
+  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
+  // Sync from Supabase on mount
+  useEffect(()=>{
+    const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
+    keys.forEach(k=>LS.load(k,[]).then(()=>{}));
+  },[]);
+  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
+  const handleLogout=()=>{LS.set('aryes-session',null);setSession(null);};
+  if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  const canEdit=session.role==='admin'||session.role==='operador';
 
-function KPITab(){
-  const G="#3a7d1e";
-  const [movs] = useState(()=>LS.get('aryes-movements',[]));
-  const [rutas] = useState(()=>LS.get('aryes-rutas',[]));
-  const [lotes] = useState(()=>LS.get('aryes-lots',[]));
-  const [prods] = useState(()=>LS.get('aryes6-products',[]));
-  const [pedidos] = useState(()=>LS.get('aryes6-orders',[]));
-  const [periodo,setPeriodo] = useState('semana');
+  const [dbReady,setDbReady]=useState(false);
+  const [syncStatus,setSyncStatus]=useState('');
+  useEffect(()=>{
+    if(!session) return;
+    setSyncStatus('sync');
+    (async()=>{
+      try{
+        const prods=await db.get('products','order=id.asc&limit=1000');
+        if(prods?.length>0){
+          const mapped=prods.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
+          LS.set('aryes6-products',mapped);
+        }
+        const sups=await db.get('suppliers','order=name.asc');
+        if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);}
+        const usrs=await db.get('users','order=id.asc');
+        if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,password:u.password,name:u.name,role:u.role,active:u.active})));
+        setDbReady(true);setSyncStatus('ok');setTimeout(()=>setSyncStatus(''),3000);
+      }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
+    })();
+  },[session]);
 
-  const hoy = new Date();
-  const startOf = (n) => { const d=new Date(); d.setDate(d.getDate()-n); d.setHours(0,0,0,0); return d; };
-  const periodoStart = periodo==='hoy'?startOf(0):periodo==='semana'?startOf(7):periodo==='mes'?startOf(30):startOf(90);
+  const [tab,setTab]=useState("dashboard");
+  const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
+  const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
+  const [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
+  const [modal,setModal]=useState(null);
+  const [editProd,setEditProd]=useState(null);
+  const [editSup,setEditSup]=useState(null);
+  const [viewSup,setViewSup]=useState(null);
+  const [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
+  const [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
+  const [emailCfg,setEmailCfg]=useState(()=>LS.get("aryes9-emailcfg",{serviceId:"",templateId:"",publicKey:"",toEmail:"",enabled:false}));
+  const [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
 
-  // Movimientos en el periodo
-  const movsP = movs.filter(m=>m.timestamp&&new Date(m.timestamp)>=periodoStart);
-  const entradasP = movsP.filter(m=>m.tipo==='Entrada');
-  const salidasP = movsP.filter(m=>m.tipo==='Salida');
-  const totalUnidadesEntradas = entradasP.reduce((a,m)=>a+Number(m.cantidad||0),0);
-  const totalUnidadesSalidas = salidasP.reduce((a,m)=>a+Number(m.cantidad||0),0);
+  useEffect(()=>LS.set("aryes6-products",products),[products]);
+  useEffect(()=>LS.set("aryes6-suppliers",suppliers),[suppliers]);
+  useEffect(()=>LS.set("aryes6-orders",orders),[orders]);
+  useEffect(()=>LS.set("aryes7-plans",plans),[plans]);
+  useEffect(()=>LS.set("aryes8-movements",movements),[movements]);
+  useEffect(()=>LS.set("aryes9-emailcfg",emailCfg),[emailCfg]);
+  useEffect(()=>LS.set("aryes9-notified",notified),[notified]);
 
-  // Rutas en el periodo
-  const DIAS=['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
-  const diaHoy = DIAS[hoy.getDay()-1]||'Lunes';
-  const rutasP = rutas;
-  const todasEntregas = rutasP.flatMap(r=>r.entregas||[]);
-  const entregasOk = todasEntregas.filter(e=>e.estado==='entregado').length;
-  const entregasFail = todasEntregas.filter(e=>e.estado==='no-entregado').length;
-  const pctEntregas = todasEntregas.length>0?Math.round(entregasOk/todasEntregas.length*100):0;
+  const getSup=id=>suppliers.find(s=>s.id===id);
 
-  // Lotes por vencer
-  const diasParaVencer=(f)=>Math.ceil((new Date(f)-hoy)/(1000*60*60*24));
-  const vencidos = lotes.filter(l=>l.fechaVenc&&diasParaVencer(l.fechaVenc)<0).length;
-  const proximos30 = lotes.filter(l=>l.fechaVenc&&diasParaVencer(l.fechaVenc)>=0&&diasParaVencer(l.fechaVenc)<=30).length;
+  const enriched=useMemo(()=>products.map(p=>{const sup=getSup(p.supplierId);return{...p,sup,alert:alertLevel(p,sup)};}), [products,suppliers]);
+  const alerts=enriched.filter(p=>p.alert.level!=="ok").sort((a,b)=>ALERT_CFG[b.alert.level].pri-ALERT_CFG[a.alert.level].pri);
+  const critN=alerts.filter(p=>p.alert.level==="order_now").length;
 
-  // Stock critico
-  const stockCritico = prods.filter(p=>{
-    const stock=Number(p.stock||0);
-    const rop=Number(p.rop||p.stockMin||0);
-    return stock<=rop&&stock>0;
-  }).length;
-  const sinStock = prods.filter(p=>Number(p.stock||0)===0).length;
-
-  // Productos mas movidos
-  const movPorProd = {};
-  salidasP.forEach(m=>{
-    if(!movPorProd[m.productoNombre])movPorProd[m.productoNombre]=0;
-    movPorProd[m.productoNombre]+=Number(m.cantidad||0);
-  });
-  const topProds = Object.entries(movPorProd).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-  // Entregas por vehiculo
-  const entXVeh = {};
-  rutasP.forEach(r=>{
-    if(!entXVeh[r.vehiculo])entXVeh[r.vehiculo]={total:0,ok:0};
-    (r.entregas||[]).forEach(e=>{
-      entXVeh[r.vehiculo].total++;
-      if(e.estado==='entregado')entXVeh[r.vehiculo].ok++;
+  const saveProduct=f=>{
+    if(editProd)setProducts(ps=>ps.map(p=>p.id===editProd.id?{...p,...f}:p));
+    else setProducts(ps=>[...ps,{...f,id:Date.now()}]);
+    setModal(null);setEditProd(null);
+  };
+  const confirmOrder=(product,qty)=>{
+    const sup=getSup(product.supplierId);const lead=totalLead(sup);
+    const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
+    const o={id:Date.now(),productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,orderedAt:new Date().toISOString(),expectedArrival:arrival.toISOString(),status:"pending",totalCost:(qty*product.unitCost).toFixed(2),leadBreakdown:{...sup.times}};
+    setOrders(os=>[o,...os]);
+    addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
+    setModal({type:"orderDone",order:o});
+  };
+  const markDelivered=id=>{
+    const o=orders.find(x=>x.id===id);if(!o)return;
+    setOrders(os=>os.map(x=>x.id===id?{...x,status:"delivered"}:x));
+    const updatedProds = products.map(p=>p.id===o.productId?{...p,stock:p.stock+o.qty}:p);
+    setProducts(()=>updatedProds);
+    setTimeout(()=>checkAndNotify(updatedProds,suppliers,emailCfg,notified),500);
+    addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercadería recibida — pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
+  };
+  const applyExcel=matches=>{
+    const excelProds = products.map(p=>{const m=matches.find(x=>x.product.id===p.id);return m?{...p,stock:m.newStock}:p;});
+    setProducts(()=>excelProds);
+    setTimeout(()=>checkAndNotify(excelProds,suppliers,emailCfg,notified),500);
+    matches.forEach(m=>{
+      const diff=m.newStock-m.product.stock;
+      addMov({type:diff>=0?"excel_in":"excel_out",productId:m.product.id,productName:m.product.name,supplierId:m.product.supplierId,supplierName:"",qty:Math.abs(diff),unit:m.product.unit,stockAfter:m.newStock,note:`Stock actualizado desde Excel (${diff>=0?"+":""}${diff})`});
     });
-  });
-
-  // Movimientos por dia (ultimos 7)
-  const movXDia = {};
-  for(let i=6;i>=0;i--){
-    const d=new Date(); d.setDate(d.getDate()-i);
-    const key=d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric'});
-    movXDia[key]={entradas:0,salidas:0};
-  }
-  movs.forEach(m=>{
-    if(!m.timestamp)return;
-    const d=new Date(m.timestamp);
-    if(d<startOf(6))return;
-    const key=d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric'});
-    if(!movXDia[key])return;
-    if(m.tipo==='Entrada')movXDia[key].entradas+=Number(m.cantidad||0);
-    if(m.tipo==='Salida')movXDia[key].salidas+=Number(m.cantidad||0);
-  });
-  const diasData=Object.entries(movXDia);
-  const maxVal=Math.max(...diasData.flatMap(([,v])=>[v.entradas,v.salidas]),1);
-  // Mini barra de grafico
-  const Bar=({val,max,color,label})=>{
-    const pct=max>0?Math.round(val/max*100):0;
-    return(
-      <div style={{marginBottom:6}}>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#666',marginBottom:2}}>
-          <span>{label}</span><span style={{fontWeight:700,color:'#1a1a1a'}}>{val}</span>
-        </div>
-        <div style={{background:'#f3f4f6',borderRadius:99,height:8,overflow:'hidden'}}>
-          <div style={{width:pct+'%',background:color,height:'100%',borderRadius:99,transition:'width .4s'}} />
-        </div>
-      </div>
-    );
+    setModal(null);
+  };
+  const saveSupplier=f=>{
+    if(editSup)setSuppliers(ss=>ss.map(s=>s.id===editSup.id?{...s,...f}:s));
+    else setSuppliers(ss=>[...ss,{...f,id:Date.now().toString()}]);
+    setModal(null);setEditSup(null);
+  };
+  const deleteSupplier=id=>{
+    if(products.some(p=>p.supplierId===id)){alert("No se puede eliminar: hay productos asociados a este proveedor.");return;}
+    setSuppliers(ss=>ss.filter(s=>s.id!==id));
   };
 
-  // Tarjeta KPI
-  const KCard=({label,value,sub,color,icon,alert})=>(
-    <div style={{background:'#fff',borderRadius:12,padding:'18px 20px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'2px solid '+(alert?'#ef4444':'transparent'),position:'relative',overflow:'hidden'}}>
-      <div style={{position:'absolute',top:12,right:14,fontSize:24,opacity:.15}}>{icon}</div>
-      <div style={{fontSize:11,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>{label}</div>
-      <div style={{fontSize:32,fontWeight:800,color:color||'#1a1a1a',lineHeight:1}}>{value}</div>
-      {sub&&<div style={{fontSize:12,color:'#888',marginTop:6}}>{sub}</div>}
-      {alert&&<div style={{fontSize:11,color:'#ef4444',marginTop:4,fontWeight:600}}>Requiere atencion</div>}
-    </div>
-  );
-
-  return(
-    <section style={{padding:'28px 36px',maxWidth:1200,margin:'0 auto'}}>
-      {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
-        <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>KPIs de Operacion</h2>
-          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Panel de control de rendimiento operativo</p>
+  const sendAlertEmail = async (alertProducts, cfg) => {
+    if(!cfg.enabled||!cfg.serviceId||!cfg.templateId||!cfg.publicKey||!cfg.toEmail) return;
+    if(!alertProducts.length) return;
+    try {
+      const rows = alertProducts.map(p=>`
+        <tr style="border-bottom:1px solid #eee;">
+          <td style="padding:10px 14px;font-weight:600;">${p.name}</td>
+          <td style="padding:10px 14px;color:#b91c1c;font-weight:700;">${p.alert.level==="order_now"?"🔴 PEDIR YA":"🟡 Pedir pronto"}</td>
+          <td style="padding:10px 14px;">${p.stock} ${p.unit}</td>
+          <td style="padding:10px 14px;">${p.alert.rop} ${p.unit}</td>
+          <td style="padding:10px 14px;font-weight:600;">${p.alert.eoq||"—"} ${p.unit}</td>
+        </tr>`).join("");
+      const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#2d5a1b;padding:20px 24px;">
+          <h1 style="color:#fff;font-size:22px;margin:0;">Aryes — Alerta de Stock</h1>
+          <p style="color:rgba(255,255,255,.75);margin:4px 0 0;font-size:13px;">${new Date().toLocaleDateString("es-UY",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
         </div>
-        <div style={{display:'flex',gap:6}}>
-          {['hoy','semana','mes','trimestre'].map(p=>(
-            <button key={p} onClick={()=>setPeriodo(p)} style={{padding:'6px 14px',borderRadius:20,border:'2px solid '+(periodo===p?G:'#e5e7eb'),background:periodo===p?G:'#fff',color:periodo===p?'#fff':'#666',fontWeight:600,fontSize:12,cursor:'pointer',textTransform:'capitalize'}}>
-              {p==='trimestre'?'90 dias':p==='mes'?'30 dias':p==='semana'?'7 dias':'Hoy'}
-            </button>
-          ))}
+        <div style="padding:20px 24px;background:#fef2f2;border-left:4px solid #b91c1c;">
+          <p style="font-size:14px;color:#b91c1c;font-weight:700;margin:0;">${alertProducts.length} producto${alertProducts.length>1?"s requieren":"requiere"} atención inmediata</p>
         </div>
-      </div>
-
-      {/* KPIs principales */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
-        <KCard label='Movimientos periodo' value={movsP.length} sub={entradasP.length+' entradas · '+salidasP.length+' salidas'} color={G} icon='📦' />
-        <KCard label='Eficiencia entregas' value={pctEntregas+'%'} sub={entregasOk+' ok · '+entregasFail+' fallidas de '+todasEntregas.length} color={pctEntregas>=90?G:pctEntregas>=70?'#f59e0b':'#ef4444'} icon='🚛' alert={pctEntregas<70&&todasEntregas.length>0} />
-        <KCard label='Lotes por vencer' value={proximos30} sub={vencidos+' ya vencidos'} color={proximos30>5?'#f59e0b':'#1a1a1a'} icon='⏰' alert={vencidos>0} />
-        <KCard label='Stock critico' value={stockCritico} sub={sinStock+' productos sin stock'} color={stockCritico>0?'#ef4444':'#1a1a1a'} icon='⚠️' alert={stockCritico>0||sinStock>0} />
-      </div>
-
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-        {/* Grafico movimientos 7 dias */}
-        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Movimientos — ultimos 7 dias</h3>
-          {diasData.every(([,v])=>v.entradas===0&&v.salidas===0)?(
-            <div style={{textAlign:'center',padding:'30px 0',color:'#aaa',fontSize:13}}>Sin movimientos registrados en este periodo</div>
-          ):(
-            <div>
-              {diasData.map(([dia,v])=>(
-                <div key={dia} style={{marginBottom:10}}>
-                  <div style={{fontSize:11,color:'#666',marginBottom:4,fontWeight:600}}>{dia}</div>
-                  <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                    <div style={{width:50,fontSize:10,color:'#3b82f6',textAlign:'right'}}>+{v.entradas}</div>
-                    <div style={{flex:1,display:'flex',gap:2}}>
-                      <div style={{height:16,borderRadius:'4px 0 0 4px',background:'#3b82f6',width:(v.entradas/maxVal*50)+'%',minWidth:v.entradas>0?2:0,transition:'width .4s'}} />
-                      <div style={{height:16,borderRadius:'0 4px 4px 0',background:G,width:(v.salidas/maxVal*50)+'%',minWidth:v.salidas>0?2:0,transition:'width .4s'}} />
-                    </div>
-                    <div style={{width:50,fontSize:10,color:G}}>-{v.salidas}</div>
-                  </div>
-                </div>
-              ))}
-              <div style={{display:'flex',gap:16,marginTop:12,fontSize:11}}>
-                <span style={{color:'#3b82f6'}}>■ Entradas</span>
-                <span style={{color:G}}>■ Salidas</span>
-              </div>
-            </div>
-          )}
+        <table style="width:100%;border-collapse:collapse;margin-top:0;">
+          <thead><tr style="background:#f5f0e8;">
+            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#7a7368;">Producto</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#7a7368;">Estado</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#7a7368;">Stock actual</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#7a7368;">Punto de pedido</th>
+            <th style="padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#7a7368;">Cantidad sugerida</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="padding:20px 24px;background:#f5f0e8;margin-top:20px;">
+          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado automáticamente por el sistema de gestión de stock de Aryes.</p>
         </div>
-
-        {/* Top productos */}
-        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Top 5 productos mas movidos</h3>
-          {topProds.length===0?(
-            <div style={{textAlign:'center',padding:'30px 0',color:'#aaa',fontSize:13}}>Sin salidas registradas en este periodo</div>
-          ):(
-            <div>
-              {topProds.map(([nombre,cant],i)=>(
-                <Bar key={nombre} label={(i+1)+'. '+nombre} val={cant} max={topProds[0][1]} color={['#3a7d1e','#4ade80','#86efac','#bbf7d0','#dcfce7'][i]} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
-        {/* Entregas por vehiculo */}
-        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Rendimiento por vehiculo</h3>
-          {Object.keys(entXVeh).length===0?(
-            <div style={{textAlign:'center',padding:'30px 0',color:'#aaa',fontSize:13}}>Sin rutas configuradas aun</div>
-          ):(
-            Object.entries(entXVeh).map(([veh,data])=>{
-              const pct=data.total>0?Math.round(data.ok/data.total*100):0;
-              const VCOLOR={"Vehiculo 1":"#3b82f6","Vehiculo 2":"#8b5cf6","Vehiculo 3":"#f59e0b"};
-              return(
-                <div key={veh} style={{marginBottom:16}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{background:VCOLOR[veh]||'#6b7280',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20}}>{veh}</span>
-                    </div>
-                    <span style={{fontSize:13,fontWeight:700,color:pct>=90?G:pct>=70?'#f59e0b':'#ef4444'}}>{pct}% ({data.ok}/{data.total})</span>
-                  </div>
-                  <div style={{background:'#f3f4f6',borderRadius:99,height:10,overflow:'hidden'}}>
-                    <div style={{width:pct+'%',background:VCOLOR[veh]||G,height:'100%',borderRadius:99,transition:'width .4s'}} />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Resumen stock */}
-        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Estado del stock</h3>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
-            {[
-              {l:'Total productos',v:prods.length,c:'#6b7280'},
-              {l:'Unidades en stock',v:prods.reduce((a,p)=>a+Number(p.stock||0),0).toLocaleString('es-UY'),c:G},
-              {l:'Stock critico',v:stockCritico,c:'#ef4444'},
-              {l:'Sin stock',v:sinStock,c:'#dc2626'},
-            ].map(s=>(
-              <div key={s.l} style={{background:'#f9fafb',borderRadius:8,padding:'12px 14px'}}>
-                <div style={{fontSize:10,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{s.l}</div>
-                <div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div>
-              </div>
-            ))}
-          </div>
-          {(stockCritico>0||sinStock>0)&&(
-            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'10px 14px'}}>
-              <div style={{fontSize:12,fontWeight:700,color:'#dc2626',marginBottom:6}}>Productos que requieren atencion:</div>
-              {prods.filter(p=>Number(p.stock||0)<=Number(p.rop||p.stockMin||0)).slice(0,5).map(p=>(
-                <div key={p.id} style={{fontSize:12,color:'#374151',padding:'3px 0',borderBottom:'1px solid #fee2e2',display:'flex',justifyContent:'space-between'}}>
-                  <span>{p.nombre}</span>
-                  <span style={{fontWeight:700,color:Number(p.stock||0)===0?'#dc2626':'#f59e0b'}}>{p.stock||0} uds</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function TrackingTab(){
-  const G="#3a7d1e";
-  const KRUTAS="aryes-rutas";
-  const SUPABASE_URL="https://mrotnqybqvmvlexncvno.supabase.co";
-  const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
-  const DIAS=["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
-  const diaHoy=DIAS[new Date().getDay()-1]||"Lunes";
-  const [rutas]=useState(()=>LS.get(KRUTAS,[]));
-  const [vista,setVista]=useState('admin');
-  const [vehiculo,setVehiculo]=useState('Vehiculo 1');
-  const [tracking,setTracking]=useState(false);
-  const [posicion,setPosicion]=useState(null);
-  const [posiciones,setPosiciones]=useState({});
-  const [watchId,setWatchId]=useState(null);
-  const [msg,setMsg]=useState('');
-  const [lastUpdate,setLastUpdate]=useState(null);
-  const rutasHoy=rutas.filter(r=>r.dia===diaHoy);
-
-  // Subir posicion a Supabase
-  const subirPosicion=async(lat,lng,veh)=>{
-    try{
-      await fetch(SUPABASE_URL+"/rest/v1/aryes_data",{
-        method:"POST",
-        headers:{
-          "apikey":SUPABASE_KEY,
-          "Authorization":"Bearer "+SUPABASE_KEY,
-          "Content-Type":"application/json",
-          "Prefer":"resolution=merge-duplicates"
-        },
-        body:JSON.stringify({
-          key:"tracking-"+veh,
-          value:{lat,lng,veh,ts:new Date().toISOString()},
-          updated_at:new Date().toISOString()
+      </div>`;
+      await fetch(`https://api.emailjs.com/api/v1.0/email/send`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          service_id: cfg.serviceId,
+          template_id: cfg.templateId,
+          user_id: cfg.publicKey,
+          template_params: {
+            to_email: cfg.toEmail,
+            subject: `Aryes Stock — ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atención"}`,
+            html_content: html,
+            alert_count: alertProducts.length,
+          }
         })
       });
-    }catch(e){console.log('tracking error',e);}
+    } catch(e){ console.warn("Email error:", e); }
   };
 
-  // Leer posiciones de todos los vehiculos
-  const leerPosiciones=async()=>{
-    try{
-      const r=await fetch(SUPABASE_URL+"/rest/v1/aryes_data?key=like.tracking-*",{
-        headers:{
-          "apikey":SUPABASE_KEY,
-          "Authorization":"Bearer "+SUPABASE_KEY
-        }
-      });
-      const data=await r.json();
-      const pos={};
-      (data||[]).forEach(row=>{
-        if(row.value&&row.value.veh){
-          const mins=Math.round((Date.now()-new Date(row.value.ts).getTime())/60000);
-          pos[row.value.veh]={...row.value,mins};
-        }
-      });
-      setPosiciones(pos);
-    }catch(e){}
-  };
+  const addMov=(m)=>setMovements(ms=>[{...m,id:Date.now(),ts:new Date().toISOString()},...ms].slice(0,2000));
 
-  // Auto-refrescar posiciones cada 15 seg en vista admin
-  useEffect(()=>{
-    if(vista!=='admin')return;
-    leerPosiciones();
-    const int=setInterval(leerPosiciones,15000);
-    return()=>clearInterval(int);
-  },[vista]);
-
-  // Iniciar tracking GPS
-  const iniciarTracking=()=>{
-    if(!navigator.geolocation){setMsg('Tu navegador no soporta GPS');return;}
-    const id=navigator.geolocation.watchPosition(
-      (pos)=>{
-        const{latitude:lat,longitude:lng}=pos.coords;
-        setPosicion({lat,lng});
-        setLastUpdate(new Date());
-        subirPosicion(lat,lng,vehiculo);
-      },
-      (err)=>setMsg('Error GPS: '+err.message),
-      {enableHighAccuracy:true,maximumAge:10000,timeout:10000}
-    );
-    setWatchId(id);
-    setTracking(true);
-    setMsg('Tracking activo — tu posicion se actualiza automaticamente');
-  };
-
-  const detenerTracking=()=>{
-    if(watchId)navigator.geolocation.clearWatch(watchId);
-    setTracking(false);
-    setWatchId(null);
-    setPosicion(null);
-    setMsg('Tracking detenido');
-    setTimeout(()=>setMsg(''),3000);
-  };
-
-  const VCOLOR={"Vehiculo 1":"#3b82f6","Vehiculo 2":"#8b5cf6","Vehiculo 3":"#f59e0b"};
-
-  // Google Maps URL de un vehiculo
-  const mapsUrlVeh=(pos)=>{
-    if(!pos)return null;
-    return "https://www.google.com/maps?q="+pos.lat+","+pos.lng+"&z=15";
-  };
-  // Vista repartidor (celular)
-  if(vista==='repartidor')return(
-    <section style={{padding:'20px',maxWidth:420,margin:'0 auto'}}>
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
-        <button onClick={()=>{detenerTracking();setVista('admin');}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
-        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:22,color:'#1a1a1a',margin:0}}>Vista Repartidor</h2>
-      </div>
-      {msg&&<div style={{background:tracking?'#f0fdf4':'#fff7ed',border:'1px solid '+(tracking?'#bbf7d0':'#fed7aa'),borderRadius:8,padding:'10px 14px',marginBottom:16,color:tracking?G:'#c2410c',fontSize:13}}>{msg}</div>}
-      <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 2px 8px rgba(0,0,0,.08)',marginBottom:16}}>
-        <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:8}}>Soy el operador de:</label>
-        <select value={vehiculo} onChange={e=>setVehiculo(e.target.value)} disabled={tracking} style={{width:'100%',padding:'10px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:15,fontFamily:'inherit',background:'#fff',marginBottom:16}}>
-          {['Vehiculo 1','Vehiculo 2','Vehiculo 3'].map(v=><option key={v}>{v}</option>)}
-        </select>
-        {!tracking?(
-          <button onClick={iniciarTracking} style={{width:'100%',padding:'14px',background:G,color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:16}}>
-            &#128204; Iniciar tracking GPS
-          </button>
-        ):(
-          <>
-            <div style={{background:'#f0fdf4',borderRadius:8,padding:'12px 16px',marginBottom:12,textAlign:'center'}}>
-              <div style={{fontSize:12,color:'#666',marginBottom:4}}>Tu posicion actual</div>
-              {posicion&&<div style={{fontSize:13,fontFamily:'monospace',color:G,fontWeight:700}}>{posicion.lat.toFixed(5)}, {posicion.lng.toFixed(5)}</div>}
-              {lastUpdate&&<div style={{fontSize:11,color:'#888',marginTop:4}}>Actualizado: {lastUpdate.toLocaleTimeString('es-UY')}</div>}
-              <div style={{marginTop:8}}>
-                <span style={{display:'inline-block',width:10,height:10,borderRadius:'50%',background:'#22c55e',marginRight:6,animation:'pulse 1.5s infinite'}} />
-                <span style={{fontSize:12,color:G,fontWeight:600}}>En vivo</span>
-              </div>
-            </div>
-            <button onClick={detenerTracking} style={{width:'100%',padding:'12px',background:'#ef4444',color:'#fff',border:'none',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:15}}>
-              &#9209;&#65039; Detener tracking
-            </button>
-          </>
-        )}
-      </div>
-      {/* Ruta del dia */}
-      {rutasHoy.filter(r=>r.vehiculo===vehiculo).map(ruta=>(
-        <div key={ruta.id} style={{background:'#fff',borderRadius:12,padding:16,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:10}}>
-          <div style={{fontWeight:700,fontSize:14,color:'#1a1a1a',marginBottom:10}}>Tu ruta hoy — {ruta.zona}</div>
-          {ruta.entregas.map((e,i)=>(
-            <div key={e.clienteId} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #f3f4f6'}}>
-              <div style={{width:24,height:24,borderRadius:'50%',background:e.estado==='entregado'?G:e.estado==='no-entregado'?'#ef4444':'#e5e7eb',color:e.estado==='pendiente'?'#666':'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:600,color:'#1a1a1a'}}>{e.clienteNombre}</div>
-                {e.ciudad&&<div style={{fontSize:11,color:'#888'}}>{e.ciudad}</div>}
-              </div>
-              <span style={{fontSize:10,fontWeight:700,color:e.estado==='entregado'?G:e.estado==='no-entregado'?'#ef4444':'#6b7280',background:e.estado==='entregado'?'#f0fdf4':e.estado==='no-entregado'?'#fef2f2':'#f3f4f6',padding:'2px 8px',borderRadius:20}}>
-                {e.estado==='entregado'?'OK':e.estado==='no-entregado'?'FALLO':'PEND'}
-              </span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </section>
-  );
-
-  // Vista admin — panel de control
-  return(
-    <section style={{padding:'28px 36px',maxWidth:1100,margin:'0 auto'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
-        <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Tracking en Tiempo Real</h2>
-          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Posicion actual de los repartidores — se actualiza cada 15 seg</p>
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          <button onClick={leerPosiciones} style={{padding:'8px 16px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151'}}>&#8635; Actualizar</button>
-          <button onClick={()=>setVista('repartidor')} style={{padding:'8px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>&#128204; Modo repartidor</button>
-        </div>
-      </div>
-
-      {/* Tarjetas por vehiculo */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:24}}>
-        {['Vehiculo 1','Vehiculo 2','Vehiculo 3'].map(veh=>{
-          const pos=posiciones[veh];
-          const rutaVeh=rutasHoy.find(r=>r.vehiculo===veh);
-          const entregasVeh=rutaVeh?rutaVeh.entregas:[];
-          const ok=entregasVeh.filter(e=>e.estado==='entregado').length;
-          const activo=pos&&pos.mins<5;
-          return(
-            <div key={veh} style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'2px solid '+(activo?G:'#e5e7eb')}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-                <span style={{background:VCOLOR[veh],color:'#fff',fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20}}>{veh}</span>
-                <span style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:activo?G:'#9ca3af',fontWeight:600}}>
-                  <span style={{width:8,height:8,borderRadius:'50%',background:activo?'#22c55e':'#d1d5db',display:'inline-block'}} />
-                  {activo?'En linea':'Sin senial'}
-                </span>
-              </div>
-              {pos?(
-                <>
-                  <div style={{fontSize:12,color:'#666',marginBottom:4}}>Ultima posicion: <strong style={{color:'#1a1a1a'}}>{pos.mins===0?'ahora mismo':pos.mins+' min atras'}</strong></div>
-                  <div style={{fontSize:11,color:'#888',fontFamily:'monospace',marginBottom:10}}>{Number(pos.lat).toFixed(4)}, {Number(pos.lng).toFixed(4)}</div>
-                  <a href={mapsUrlVeh(pos)} target='_blank' rel='noreferrer' style={{display:'block',textAlign:'center',padding:'7px',background:'#4285f4',color:'#fff',borderRadius:8,fontSize:12,fontWeight:700,textDecoration:'none'}}>
-                    &#128506; Ver en Google Maps
-                  </a>
-                </>
-              ):(
-                <div style={{textAlign:'center',padding:'16px 0',color:'#9ca3af',fontSize:13}}>Sin datos de GPS<br/><span style={{fontSize:11}}>El repartidor debe activar el modo repartidor</span></div>
-              )}
-              {rutaVeh&&(
-                <div style={{marginTop:12,paddingTop:10,borderTop:'1px solid #f3f4f6'}}>
-                  <div style={{fontSize:11,color:'#666',marginBottom:4}}>Ruta: {rutaVeh.zona} · {entregasVeh.length} paradas</div>
-                  <div style={{background:'#f3f4f6',borderRadius:99,height:6,overflow:'hidden'}}>
-                    <div style={{width:(entregasVeh.length>0?ok/entregasVeh.length*100:0)+'%',background:VCOLOR[veh],height:'100%',borderRadius:99}} />
-                  </div>
-                  <div style={{fontSize:11,color:'#666',marginTop:3}}>{ok}/{entregasVeh.length} entregas completadas</div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Instrucciones */}
-      <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:20}}>
-        <div style={{fontWeight:700,color:'#92400e',marginBottom:10,fontSize:14}}>Como usar el tracking</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,fontSize:13,color:'#78350f'}}>
-          <div>
-            <div style={{fontWeight:600,marginBottom:4}}>Para el repartidor:</div>
-            <ol style={{margin:0,paddingLeft:16,lineHeight:1.8}}>
-              <li>Abrir la app en el celular</li>
-              <li>Ir a "Tracking" en el menu</li>
-              <li>Hacer clic en "Modo repartidor"</li>
-              <li>Seleccionar su vehiculo</li>
-              <li>Iniciar tracking GPS</li>
-            </ol>
-          </div>
-          <div>
-            <div style={{fontWeight:600,marginBottom:4}}>Para el admin:</div>
-            <ol style={{margin:0,paddingLeft:16,lineHeight:1.8}}>
-              <li>Este panel se actualiza automaticamente</li>
-              <li>Punto verde = en linea (menos de 5 min)</li>
-              <li>Punto gris = sin senial o no iniciado</li>
-              <li>Hacer clic en "Ver en Maps" para ver la ubicacion exacta</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-// v38
-function AryesApp(){
-  const G="#3a7d1e";
-  const USERS=[
-    {username:"admin",password:"aryes2024",role:"admin",name:"Administrador"},
-    {username:"operador",password:"stock123",role:"operador",name:"Operador"},
-    {username:"vendedor",password:"ventas123",role:"vendedor",name:"Vendedor"}
-  ];
-
-  // Read session DIRECTLY from localStorage — no Supabase sync for auth
-  const [user,setUser]=useState(()=>{
-    try{
-      const raw=localStorage.getItem('aryes-session');
-      if(!raw)return null;
-      const parsed=JSON.parse(raw);
-      return parsed&&parsed.username?parsed:null;
-    }catch(e){return null;}
-  });
-  const [tab,setTab]=useState("dashboard");
-
-  // Init data sync (inventory, etc.) but NOT session
-  useEffect(()=>{
-    LS.init().catch(()=>{});
-  },[]);
-
-  const doLogin=(u,p)=>{
-    const found=USERS.find(x=>x.username===u&&x.password===p);
-    if(found){
-      localStorage.setItem('aryes-session',JSON.stringify(found));
-      setUser(found);
-    }else{
-      alert("Usuario o contrasena incorrectos");
+  const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
+    if(!cfg?.enabled) return;
+    const toAlert = [];
+    const newNotified = {...currentNotified};
+    currentProducts.forEach(p => {
+      const sup = currentSuppliers.find(s=>s.id===p.supplierId);
+      const al = alertLevel(p, sup);
+      const key = p.id;
+      const shouldAlert = al.level==="order_now"||al.level==="order_soon";
+      const alreadyNotified = currentNotified[key] === al.level;
+      if(shouldAlert && !alreadyNotified){
+        toAlert.push({...p, sup, alert:al});
+        newNotified[key] = al.level;
+      }
+      if(!shouldAlert && currentNotified[key]){
+        delete newNotified[key];
+      }
+    });
+    if(toAlert.length > 0){
+      setNotified(newNotified);
+      sendAlertEmail(toAlert, cfg);
     }
   };
 
-  const logout=()=>{
-    localStorage.removeItem('aryes-session');
-    setUser(null);
-    setTab("dashboard");
-  };
-
-  if(!user){
-    let lu="",lp="";
-    return(
-      <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f0,#e8f0e8)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif"}}>
-        <div style={{background:"#fff",borderRadius:16,padding:"48px 40px",boxShadow:"0 8px 32px rgba(0,0,0,.10)",width:360,textAlign:"center"}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:72,marginBottom:12,objectFit:"contain"}} />
-          <h1 style={{fontFamily:"Playfair Display,serif",fontSize:26,color:"#1a1a1a",margin:"0 0 4px"}}>Aryes Stock</h1>
-          <p style={{color:"#888",fontSize:13,margin:"0 0 28px"}}>Sistema de gestion de insumos</p>
-          <input type="text" placeholder="Usuario"
-            onChange={e=>{lu=e.target.value;}}
-            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:10,boxSizing:"border-box",fontFamily:"inherit",outline:"none"}} />
-          <input type="password" placeholder="Contrasena"
-            onChange={e=>{lp=e.target.value;}}
-            onKeyDown={e=>{if(e.key==="Enter")doLogin(lu,lp);}}
-            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:20,boxSizing:"border-box",fontFamily:"inherit",outline:"none"}} />
-          <button onClick={()=>doLogin(lu,lp)}
-            style={{width:"100%",padding:"12px",background:G,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
-            Ingresar
-          </button>
-          <div style={{marginTop:16,fontSize:11,color:"#ccc",lineHeight:1.6}}>
-            admin / aryes2024<br/>operador / stock123<br/>vendedor / ventas123
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const NAV=[
-    {id:"dashboard",label:"Dashboard",icon:"📊"},
-    {id:"inventory",label:"Inventario",icon:"📦"},
-    {id:"orders",label:"Pedidos",icon:"🛒"},
-    {id:"suppliers",label:"Proveedores",icon:"🏭"},
-    {id:"clientes",label:"Clientes",icon:"👥"},
-    {id:"movimientos",label:"Movimientos",icon:"🔄"},
-    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},
-    {id:"deposito",label:"Deposito",icon:"🗂️"},
-    {id:"rutas",label:"Rutas",icon:"🚛"},
-    {id:"tracking",label:"Tracking",icon:"📍"},
-    {id:"kpis",label:"KPIs",icon:"📈"},
-    {id:"planning",label:"Planificacion",icon:"📋"},
-    {id:"scanner",label:"Scanner",icon:"📷"},
-    {id:"config",label:"Config",icon:"⚙️"},
-  ];
-
-  const VCOLOR={"admin":"#3a7d1e","operador":"#3b82f6","vendedor":"#8b5cf6"};
+  const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"},
+  {id:"usuarios",label:"Usuarios",icon:"👤"}  ,{id:"lotes",label:"Lotes / Venc.",icon:"📅"},{id:"deposito",label:"Deposito",icon:"🗂️"}
+  ,{id:"importar-excel",label:"Importar Excel",icon:"📊"}
+  ,{id:"precios",label:"Hist. Precios",icon:"📈"}
+  ,{id:"clientes",label:"Clientes",icon:"👥"},{id:"rutas",label:"Rutas",icon:"🚛"}
+  ,{id:"movimientos",label:"Movimientos",icon:"📋"}
+  ,{id:"alertas",label:"Alertas Email",icon:"🔔"}
+];
+  const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
-    <div style={{display:"flex",minHeight:"100vh",background:"#f8f9fa",fontFamily:"Georgia,serif"}}>
-      <aside style={{width:190,minWidth:190,background:"#1c1c1c",display:"flex",flexDirection:"column",flexShrink:0}}>
-        <div style={{padding:"18px 14px 12px",borderBottom:"1px solid #2e2e2e",textAlign:"center"}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:48,objectFit:"contain",filter:"brightness(0) invert(1)"}} />
+    <div style={{display:"flex",minHeight:"100vh",background:T.bg}}>
+      <style>{CSS}</style>
+
+      {/* ── SIDEBAR ── */}
+      <aside style={{overflowY:"auto",width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
+        {/* Logo */}
+        <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
+          <AryesLogo height={34}/>
+          {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>↻ Sincronizando...</div>}
+          {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>✓ Sincronizado</div>}
+          {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>⚠ Modo local</div>}
+          <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gestión de stock · UY</Cap></div>
         </div>
-        <nav style={{flex:1,paddingTop:4,overflowY:"auto"}}>
-          {NAV.map(n=>(
+
+        {/* Nav */}
+        <nav style={{padding:"14px 0",flex:1}}>
+          {NAV.filter(n=>n.id!=="usuarios"||session.role==="admin").map(n=>(
             <button key={n.id} onClick={()=>setTab(n.id)}
-              style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 14px",
-                background:tab===n.id?"#3a7d1e":"transparent",
-                color:tab===n.id?"#fff":"#999",
-                border:"none",cursor:"pointer",fontSize:12,fontFamily:"inherit",textAlign:"left",
-                borderLeft:tab===n.id?"3px solid #5aad3a":"3px solid transparent"}}>
-              <span style={{fontSize:13}}>{n.icon}</span>
-              <span style={{fontWeight:tab===n.id?700:400}}>{n.label}</span>
+              style={{width:"100%",textAlign:"left",padding:"10px 22px",background:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:"3px solid transparent",fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              {n.label}
+              {n.id==="dashboard"&&critN>0&&<span style={{background:T.danger,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10}}>{critN}</span>}
             </button>
           ))}
         </nav>
-        <div style={{padding:"12px 14px",borderTop:"1px solid #2e2e2e"}}>
-          <div style={{fontSize:11,color:"#666",marginBottom:6,textAlign:"center"}}>
-            <span style={{background:VCOLOR[user.role]||"#555",color:"#fff",borderRadius:10,padding:"2px 8px",fontSize:10}}>{user.role}</span>
-            {" "}<span style={{color:"#888"}}>{user.name}</span>
-          </div>
-          <button onClick={logout}
-            style={{width:"100%",padding:"7px",background:"#2e2e2e",color:"#888",border:"none",borderRadius:6,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>
-            Cerrar sesion
+
+        {/* Excel button */}
+        <div style={{padding:"14px 16px",borderTop:`1px solid ${T.border}`}}>
+          {canEdit&&(<button onClick={()=>setModal({type:"excel"})}
+            style={{width:"100%",background:T.greenBg,border:`1px solid ${T.greenBd}`,borderRadius:4,padding:"9px 14px",fontFamily:T.sans,fontSize:11,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:T.green,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:6}}>
+            ↑ Actualizar stock
+            <span style={{fontSize:10,color:T.greenLt,fontWeight:400}}>Excel</span>
+          </button>)}
+        </div>
+      
+        <div style={{marginTop:'auto',borderTop:'1px solid #e2e2de',padding:'12px 16px 8px'}}>
+          <div style={{fontSize:12,color:'#3a3a38',fontWeight:600,marginBottom:2}}>{session.name}</div>
+          <div style={{fontSize:11,color:'#9a9a98',marginBottom:8,textTransform:'capitalize'}}>{session.role==='admin'?'Administrador':session.role==='operador'?'Operador':'Vendedor'}</div>
+          <button onClick={handleLogout} style={{background:'#fef2f2',border:'1px solid #fecaca',padding:'6px 12px',fontSize:12,color:'#dc2626',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:6,borderRadius:6,fontWeight:600,marginTop:4}}>
+            ↩ Cerrar sesión
           </button>
         </div>
       </aside>
-      <main style={{flex:1,overflowY:"auto",minHeight:"100vh"}}>
-        {tab==="dashboard"&&<DashboardTab setTab={setTab} />}
-        {tab==="inventory"&&<InventoryTab />}
-        {tab==="orders"&&<OrdersTab setTab={setTab} />}
-        {tab==="suppliers"&&<SuppliersTab />}
-        {tab==="clientes"&&<ClientesTab />}
-        {tab==="movimientos"&&<MovimientosTab />}
-        {tab==="lotes"&&<LotesTab />}
-        {tab==="deposito"&&<DepositoTab />}
-        {tab==="rutas"&&<RutasTab />}
-        {tab==="tracking"&&<TrackingTab />}
-        {tab==="kpis"&&<KPITab />}
-        {tab==="planning"&&<PlanningTab />}
-        {tab==="scanner"&&<ScannerTab />}
-        {tab==="config"&&<ConfigTab />}
+
+      {/* ── MAIN ── */}
+      <main style={{marginLeft:220,flex:1,padding:"36px 44px",minHeight:"100vh"}}>
+
+        {/* ══ DASHBOARD ══ */}
+        {tab==="dashboard"&&(
+          <div className="au" style={{display:"grid",gap:32}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
+              <div>
+                <Cap style={{color:T.green}}>Panel general</Cap>
+                <h1 style={{fontFamily:T.serif,fontSize:42,fontWeight:500,color:T.text,marginTop:5,letterSpacing:"-.02em",lineHeight:1}}>
+                  {new Date().toLocaleDateString("es-UY",{weekday:"long",day:"numeric",month:"long"})}
+                </h1>
+              </div>
+              {critN>0&&(
+                <div style={{background:T.dangerBg,border:`1px solid ${T.dangerBd}`,borderRadius:4,padding:"10px 16px",display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:T.danger,flexShrink:0,animation:"pulseDot 1.8s ease infinite"}}/>
+                  <span style={{fontFamily:T.sans,fontSize:12,color:T.danger,fontWeight:700}}>{critN} PRODUCTO{critN>1?"S":""} REQUIERE{critN>1?"N":""} PEDIDO INMEDIATO</span>
+                </div>
+              )}
+            </div>
+
+            {/* Stat cards */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
+              {[{l:"Total productos",v:products.length},{l:"Pedir ya",v:alerts.filter(p=>p.alert.level==="order_now").length,c:T.danger},{l:"Pedir pronto",v:alerts.filter(p=>p.alert.level==="order_soon").length,c:T.warning},{l:"En tránsito",v:orders.filter(o=>o.status==="pending").length,c:T.green}].map((s,i)=>(
+                <div key={i} style={{background:T.card,padding:"20px 24px"}}>
+                  <Cap>{s.l}</Cap>
+                  <div style={{fontFamily:T.serif,fontSize:48,fontWeight:400,color:s.c||T.text,lineHeight:1,marginTop:8}}>{s.v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Alerts */}
+            {alerts.length>0?(
+              <div>
+                <div style={{marginBottom:12}}><Cap>Acciones requeridas</Cap></div>
+                <div style={{display:"grid",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
+                  {alerts.map(({id,name,stock,unit,sup,alert})=>{
+                    const ropDate=new Date();ropDate.setDate(ropDate.getDate()+alert.daysToROP);
+                    return(
+                      <div key={id} style={{background:T.card,padding:"15px 20px",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:180}}>
+                          <div style={{fontFamily:T.sans,fontSize:14,fontWeight:600,color:T.text}}>{name}</div>
+                          <div style={{fontFamily:T.sans,fontSize:11,color:T.textSm,marginTop:2}}>[{sup?.flag}] {sup?.name} · Lead: {totalLead(sup)}d · ROP: {alert.rop} {unit} · {alert.daily.toFixed(1)}/día</div>
+                          <div style={{marginTop:8,width:160}}><StockBar stock={stock} r={alert.rop} ss={alert.ss} max={Math.max(stock*1.6,alert.rop*2.5)}/></div>
+                        </div>
+                        <AlertPill level={alert.level}/>
+                        <div style={{textAlign:"right",minWidth:120}}>
+                          <Cap>{alert.level==="order_now"?"Pedir":"Pedir antes del"}</Cap>
+                          <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:ALERT_CFG[alert.level].txt,marginTop:3}}>
+                            {alert.level==="order_now"?"HOY":fmtDate(ropDate)}
+                          </div>
+                        </div>
+                        <div style={{textAlign:"right",minWidth:80}}>
+                          <Cap>EOQ sugerido</Cap>
+                          <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:T.text,marginTop:3}}>{alert.eoq||"—"} {unit}</div>
+                        </div>
+                        <Btn small onClick={()=>setModal({type:"order",product:products.find(p=>p.id===id)})}>Generar pedido</Btn>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ):(
+              <div style={{background:T.okBg,border:`1px solid ${T.okBd}`,borderRadius:6,padding:"16px 20px"}}>
+                <p style={{fontFamily:T.sans,fontSize:13,color:T.ok,fontWeight:500}}>✓ Todo el inventario está dentro de parámetros. No hay acciones requeridas.</p>
+              </div>
+            )}
+
+            {/* Supplier overview */}
+            <div>
+              <div style={{marginBottom:12}}><Cap>Estado por proveedor</Cap></div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
+                {suppliers.map(sup=>{
+                  const prods=enriched.filter(p=>p.supplierId===sup.id);
+                  const now=prods.filter(p=>p.alert.level==="order_now").length;
+                  const soon=prods.filter(p=>p.alert.level==="order_soon").length;
+                  const pend=orders.filter(o=>o.supplierId===sup.id&&o.status==="pending").length;
+                  return(
+                    <div key={sup.id} style={{background:T.card,padding:"18px 22px"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                        <div><Cap style={{color:sup.color}}>[{sup.flag}] {sup.name}</Cap><div style={{fontFamily:T.serif,fontSize:22,fontWeight:500,color:T.text,marginTop:3}}>{prods.length} producto{prods.length!==1?"s":""}</div></div>
+                        <div style={{textAlign:"right"}}><Cap>Lead total</Cap><div style={{fontFamily:T.serif,fontSize:22,color:T.text,marginTop:3}}>{totalLead(sup)}d</div></div>
+                      </div>
+                      <div style={{display:"flex",gap:2,height:5,borderRadius:2,overflow:"hidden",marginBottom:8}}>
+                        {Object.values(sup.times).map((v,i)=><div key={i} style={{flex:v||.1,background:tfCols[i],opacity:.65}}/>)}
+                      </div>
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                        {now>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.danger,fontWeight:600}}>● {now} pedir ya</span>}
+                        {soon>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.warning,fontWeight:600}}>● {soon} pedir pronto</span>}
+                        {pend>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.watch,fontWeight:600}}>● {pend} en tránsito</span>}
+                        {!now&&!soon&&!pend&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>✓ Normal</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ INVENTORY ══ */}
+        {tab==="products"&&(
+          <div className="au" style={{display:"grid",gap:22}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
+              <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
+              <div style={{display:"flex",gap:10}}>
+                <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
+                <Btn onClick={()=>{setEditProd(null);setModal({type:"product"});}}>+ Nuevo producto</Btn>
+              </div>
+            </div>
+            <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
+                  {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/día","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"10px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {enriched.map(p=>(
+                    <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`}}
+                      onMouseEnter={e=>e.currentTarget.style.background=T.cardWarm}
+                      onMouseLeave={e=>e.currentTarget.style.background=T.card}>
+                      <td style={{padding:"11px 13px"}}><div style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{p.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:T.textXs}}>{p.barcode||"—"}</div></td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>[{p.sup?.flag}] {p.sup?.name}</td>
+                      <td style={{padding:"11px 13px"}}>
+                        <div style={{fontFamily:T.sans,fontSize:13,fontWeight:700,color:p.stock<=(p.alert.rop||0)?T.danger:T.text}}>{p.stock} <span style={{fontWeight:400,color:T.textXs,fontSize:11}}>{p.unit}</span></div>
+                        <div style={{marginTop:5,width:72}}><StockBar stock={p.stock} r={p.alert.rop} ss={p.alert.ss} max={Math.max(p.stock*1.6,p.alert.rop*2.5)}/></div>
+                      </td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.textMd}}>{p.alert.rop>0?`${p.alert.rop} ${p.unit}`:"—"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.ss>0?`${p.alert.ss} ${p.unit}`:"—"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.eoq>0?`${p.alert.eoq} ${p.unit}`:"—"}</td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{p.alert.daily>0?`${p.alert.daily.toFixed(1)}`:"—"}</td>
+                      <td style={{padding:"11px 13px"}}><Spark history={p.history} color={p.sup?.color||T.textXs}/></td>
+                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{totalLead(p.sup)}d</td>
+                      <td style={{padding:"11px 13px"}}><AlertPill level={p.alert.level}/></td>
+                      <td style={{padding:"11px 13px"}}>
+                        <div style={{display:"flex",gap:6}}>
+                          <Btn small variant="ghost" onClick={()=>{setEditProd(products.find(x=>x.id===p.id));setModal({type:"product"});}}>Editar</Btn>
+                          <Btn small onClick={()=>setModal({type:"order",product:products.find(x=>x.id===p.id)})}>Pedir</Btn>
+                          <Btn small variant="danger" onClick={()=>setProducts(ps=>ps.filter(x=>x.id!==p.id))}>×</Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ══ ORDERS ══ */}
+        {tab==="orders"&&(
+          <div className="au" style={{display:"grid",gap:22}}>
+            <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
+            {!orders.length?(
+              <div style={{border:`1px solid ${T.border}`,borderRadius:8,padding:"48px 32px",textAlign:"center",background:T.card}}>
+                <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm}}>Sin pedidos aún. Generá uno desde el panel o el inventario.</p>
+              </div>
+            ):(
+              <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
+                    {["Producto","Proveedor","Cantidad","Pedido","Llegada est.","Flete","Costo","Estado",""].map(h=><th key={h} style={{padding:"10px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {orders.map(o=>{
+                      const sup=getSup(o.supplierId);const pending=o.status==="pending";const bd=o.leadBreakdown;
+                      return(
+                        <tr key={o.id} style={{borderBottom:`1px solid ${T.border}`}}
+                          onMouseEnter={e=>e.currentTarget.style.background=T.cardWarm}
+                          onMouseLeave={e=>e.currentTarget.style.background=T.card}>
+                          <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:13,fontWeight:600}}>{o.productName}</td>
+                          <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>[{sup?.flag}] {o.supplierName}</td>
+                          <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:13}}>{o.qty} {o.unit}</td>
+                          <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{fmtShort(o.orderedAt)}</td>
+                          <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:13,fontWeight:600,color:pending?T.watch:T.ok}}>{fmtDate(o.expectedArrival)}</td>
+                          <td style={{padding:"11px 13px"}}>{bd&&<div style={{display:"flex",gap:1,height:6,width:72,borderRadius:2,overflow:"hidden"}}>{Object.values(bd).map((v,i)=><div key={i} style={{flex:v||.1,background:tfCols[i],opacity:.7}}/>)}</div>}</td>
+                          <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:13}}>USD {o.totalCost}</td>
+                          <td style={{padding:"11px 13px"}}><AlertPill level={pending?"watch":"ok"}/></td>
+                          <td style={{padding:"11px 13px"}}>{pending&&<Btn small variant="success" onClick={()=>markDelivered(o.id)}>✓ Recibido</Btn>}</td>
+                        <td style={{padding:"8px 13px"}}><button onClick={(e)=>{e.stopPropagation();LS.set('aryes-picking-pendiente',[{productoNombre:o.productName,cantidad:o.qty,productoId:o.productId||''}]);setTab('deposito');}} style={{background:"#3a7d1e",color:"#fff",border:"none",padding:"5px 12px",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:700}}>Picking</button></td></tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ SUPPLIERS ══ */}
+        {tab==="suppliers"&&(
+          <div className="au" style={{display:"grid",gap:24}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
+              <div>
+                <Cap style={{color:T.green}}>Gestión</Cap>
+                <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Proveedores</h1>
+              </div>
+              <Btn onClick={()=>{setEditSup(null);setModal({type:"supplierForm"});}}>+ Nuevo proveedor</Btn>
+            </div>
+
+            {/* Supplier cards grid */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:16}}>
+              {suppliers.map(sup=>{
+                const supProds=enriched.filter(p=>p.supplierId===sup.id);
+                const alerts=supProds.filter(p=>p.alert.level!=="ok");
+                const criticals=supProds.filter(p=>p.alert.level==="order_now");
+                const pending=orders.filter(o=>o.supplierId===sup.id&&o.status==="pending");
+                const totalSpent=orders.filter(o=>o.supplierId===sup.id&&o.status==="delivered").reduce((s,o)=>s+(+o.totalCost||0),0);
+                const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
+                const tfs=["preparation","customs","freight","warehouse"];
+                return(
+                  <div key={sup.id} style={{background:T.card,border:`1px solid ${criticals.length>0?T.dangerBd:T.border}`,borderRadius:8,overflow:"hidden",transition:"box-shadow .2s"}}
+                    onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.07)"}
+                    onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+
+                    {/* Card header */}
+                    <div style={{padding:"16px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                          <span style={{background:sup.color+"22",color:sup.color,fontFamily:T.sans,fontSize:11,fontWeight:700,padding:"2px 7px",borderRadius:3}}>{sup.flag}</span>
+                          <span style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:T.text}}>{sup.name}</span>
+                        </div>
+                        {sup.company&&<p style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.company}</p>}
+                        {sup.contact&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:1}}>👤 {sup.contact}</p>}
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <Stars value={sup.rating||3}/>
+                        <div style={{fontFamily:T.sans,fontSize:10,color:sup.active?T.ok:T.textXs,fontWeight:600,marginTop:4}}>{sup.active?"● Activo":"○ Inactivo"}</div>
+                      </div>
+                    </div>
+
+                    {/* Lead time bar */}
+                    <div style={{padding:"10px 18px",background:T.cardWarm,borderBottom:`1px solid ${T.border}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                        <Cap>Lead time</Cap>
+                        <Cap style={{color:sup.color}}>{totalLead(sup)} días totales</Cap>
+                      </div>
+                      <div style={{display:"flex",gap:2,height:6,borderRadius:3,overflow:"hidden"}}>
+                        {tfs.map((k,i)=><div key={k} style={{flex:sup.times[k]||0.1,background:tfCols[i],opacity:.75}}/>)}
+                      </div>
+                    </div>
+
+                    {/* Stats row */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border}}>
+                      {[
+                        {l:"Productos",v:supProds.length},
+                        {l:"En tránsito",v:pending.length,c:pending.length>0?T.watch:T.textSm},
+                        {l:"Comprado",v:`${sup.currency||"USD"} ${totalSpent.toFixed(0)}`},
+                      ].map((s,i)=>(
+                        <div key={i} style={{background:T.card,padding:"10px 12px",textAlign:"center"}}>
+                          <Cap>{s.l}</Cap>
+                          <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:s.c||T.text,marginTop:3}}>{s.v}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Alert strip */}
+                    {criticals.length>0&&(
+                      <div style={{padding:"8px 18px",background:T.dangerBg,borderTop:`1px solid ${T.dangerBd}`}}>
+                        <p style={{fontFamily:T.sans,fontSize:11,color:T.danger,fontWeight:600}}>
+                          ● {criticals.length} producto{criticals.length>1?"s requieren":"requiere"} pedido inmediato: {criticals.map(p=>p.name).join(", ")}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Commercial conditions summary */}
+                    <div style={{padding:"10px 18px",borderTop:`1px solid ${T.border}`,display:"flex",gap:12,flexWrap:"wrap"}}>
+                      {sup.paymentTerms&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>💳 {sup.paymentTerms}d pago</span>}
+                      {sup.minOrder>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>📦 Min. {sup.currency||"USD"} {sup.minOrder}</span>}
+                      {sup.discount>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>🏷️ {sup.discount}% dto.</span>}
+                      {sup.email&&<a href={"mailto:"+sup.email} style={{fontFamily:T.sans,fontSize:11,color:T.green,textDecoration:"none"}}>✉️ Email</a>}
+                      {sup.whatsapp&&<a href={"https://wa.me/"+sup.whatsapp.replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{fontFamily:T.sans,fontSize:11,color:"#16a34a",textDecoration:"none"}}>💬 WhatsApp</a>}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{padding:"12px 18px",borderTop:`1px solid ${T.border}`,display:"flex",gap:8}}>
+                      <Btn small full onClick={()=>setViewSup(sup)}>Ver detalle</Btn>
+                      <Btn small variant="ghost" onClick={()=>{setEditSup(sup);setModal({type:"supplierForm"});}}>Editar</Btn>
+                      <Btn small variant="danger" onClick={()=>deleteSupplier(sup.id)}>×</Btn>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Global lead time comparison table */}
+            <div>
+              <div style={{marginBottom:10}}><Cap>Comparativa de tiempos y condiciones</Cap></div>
+              <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
+                    {["Proveedor","Prep.","Aduana","Flete","Depósito","Total","Moneda","Pago","Mín.","Dto.","Calif."].map(h=>(
+                      <th key={h} style={{padding:"9px 12px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {suppliers.map(sup=>(
+                      <tr key={sup.id} style={{borderBottom:`1px solid ${T.border}`,cursor:"pointer"}}
+                        onMouseEnter={e=>e.currentTarget.style.background=T.cardWarm}
+                        onMouseLeave={e=>e.currentTarget.style.background=T.card}
+                        onClick={()=>setViewSup(sup)}>
+                        <td style={{padding:"10px 12px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:7}}>
+                            <span style={{background:sup.color+"22",color:sup.color,fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:2}}>{sup.flag}</span>
+                            <span style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{sup.name}</span>
+                          </div>
+                        </td>
+                        {["preparation","customs","freight","warehouse"].map(k=>(
+                          <td key={k} style={{padding:"10px 12px",fontFamily:T.sans,fontSize:13,color:T.textMd,textAlign:"center"}}>{sup.times[k]}d</td>
+                        ))}
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:13,fontWeight:700,color:sup.color,textAlign:"center"}}>{totalLead(sup)}d</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.currency||"USD"}</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.paymentTerms||"—"}d</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.minOrder>0?`${sup.minOrder}`:"—"}</td>
+                        <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:sup.discount>0?T.ok:T.textSm,fontWeight:sup.discount>0?600:400}}>{sup.discount>0?`${sup.discount}%`:"—"}</td>
+                        <td style={{padding:"10px 12px"}}><Stars value={sup.rating||3}/></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ PLANNING ══ */}
+        {tab==="planning"&&(
+          <div className="au">
+            <PlanningView products={products} suppliers={suppliers} orders={orders} plans={plans} setPlans={setPlans}/>
+          </div>
+        )}
+
+        {/* ══ MOVEMENTS ══ */}
+        {tab==="movements"&&(
+          <div className="au">
+            <MovementsView
+              movements={movements}
+              products={products}
+              suppliers={suppliers}
+              onAddManual={m=>{
+                addMov(m);
+                if(m.type==="manual_in") setProducts(ps=>ps.map(p=>p.id===m.productId?{...p,stock:p.stock+m.qty}:p));
+                else if(m.type==="manual_out") setProducts(ps=>ps.map(p=>p.id===m.productId?{...p,stock:Math.max(0,p.stock-m.qty)}:p));
+              }}
+            />
+          </div>
+        )}
+
+        {/* ══ SCANNER ══ */}
+        {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
+
+        {/* ══ SETTINGS ══ */}
+        {tab==="settings"&&(
+          <div className="au" style={{display:"grid",gap:24}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
+              <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1></div>
+            </div>
+            {/* Settings sub-tabs */}
+            {(()=>{
+              const [settingsTab,setSettingsTab]=useState("freight");
+              return(
+                <div>
+                  <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:400,marginBottom:24}}>
+                    {[{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"}].map(st=>(
+                      <button key={st.id} onClick={()=>setSettingsTab(st.id)}
+                        style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
+                          background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
+                        {st.l}
+                      </button>
+                    ))}
+                  </div>
+                  {settingsTab==="freight"&&(
+                    <div style={{maxWidth:680}}>
+                      <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginBottom:16,lineHeight:1.6}}>Estos valores determinan el ROP (punto de pedido). Actualizalos cuando cambien las condiciones logísticas.</p>
+                      {suppliers.map(sup=>(
+                        <div key={sup.id} style={{border:`1px solid ${T.border}`,borderRadius:8,marginBottom:8,overflow:"hidden"}}>
+                          <div style={{padding:"12px 18px",background:T.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <Cap style={{color:sup.color}}>[{sup.flag}] {sup.name}</Cap>
+                            <Cap>Total: {totalLead(sup)} días</Cap>
+                          </div>
+                          <div style={{padding:"14px 18px",background:T.card}}>
+                            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14}}>
+                              {[["preparation","Preparación"],["customs","Aduana"],["freight","Flete"],["warehouse","Depósito"]].map(([k,l])=>(
+                                <Field key={k} label={l}>
+                                  <div style={{display:"flex",gap:6,alignItems:"center",marginTop:5}}>
+                                    <Inp type="number" min="0" value={sup.times[k]} onChange={e=>setSuppliers(ss=>ss.map(s=>s.id===sup.id?{...s,times:{...s.times,[k]:Math.max(0,+e.target.value)}}:s))} style={{textAlign:"center"}}/>
+                                    <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>d</span>
+                                  </div>
+                                </Field>
+                              ))}
+                            </div>
+                            <div style={{display:"flex",gap:2,height:5,borderRadius:2,overflow:"hidden",marginTop:12}}>
+                              {Object.values(sup.times).map((v,i)=><div key={i} style={{flex:v||.1,background:tfCols[i],opacity:.65}}/>)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {settingsTab==="email"&&(
+                    <EmailSettings
+                      cfg={emailCfg}
+                      setCfg={setEmailCfg}
+                      enriched={enriched}
+                      onTestSend={()=>{}}
+                      onManualSend={(prods)=>sendAlertEmail(prods,emailCfg)}
+                    />
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ══ IMPORTER ══ */}
+        {tab==="importer"&&<ImporterTab onDone={()=>{setProducts(LS.get("aryes6-products",[]));setTab("products");}}/>}
+      
+      {tab==="usuarios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Usuarios</h2><p style={{color:"#888"}}>Gestión de usuarios del sistema.</p></section>}
+      {tab==="lotes"&&<LotesTab />}
+      {tab==="importar-excel"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Importar Excel</h2><p style={{color:"#888"}}>Importación masiva de productos por Excel.</p></section>}
+      {tab==="precios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Historial de Precios</h2><p style={{color:"#888"}}>Registro histórico de cambios de precios.</p></section>}
+      {tab==="clientes"&&<ClientesTab />}
+      {tab==="movimientos"&&<MovimientosTab />}
+      {tab==="alertas"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Alertas Email</h2><p style={{color:"#888"}}>Configuración de alertas automáticas por email.</p></section>}
+      
+      {tab==="deposito"&&<DepositoTab />}
+      
+      {tab==="rutas"&&<RutasTab />}
       </main>
+
+      {/* ══ MODALS ══ */}
+      {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
+      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}
+      {modal?.type==="orderDone"&&(
+        <Modal title={modal.order.productName} sub="Pedido registrado correctamente" onClose={()=>setModal(null)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:T.border,borderRadius:6,overflow:"hidden",marginBottom:20}}>
+            {[{l:"Cantidad",v:`${modal.order.qty} ${modal.order.unit}`},{l:"Costo estimado",v:`USD ${modal.order.totalCost}`},{l:"Fecha pedido",v:fmtDate(modal.order.orderedAt)},{l:"Llegada estimada",v:fmtDate(modal.order.expectedArrival)}].map((s,i)=>(
+              <div key={i} style={{background:T.cardWarm,padding:"14px 16px"}}>
+                <Cap>{s.l}</Cap>
+                <div style={{fontFamily:T.serif,fontSize:22,fontWeight:500,color:T.text,marginTop:5}}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+          <Btn onClick={()=>setModal(null)} full>Entendido</Btn>
+        </Modal>
+      )}
+      {modal?.type==="excel"&&<ExcelModal products={products} onApply={applyExcel} onClose={()=>setModal(null)}/>}
+      {modal?.type==="supplierForm"&&(
+        <Modal title={editSup?"Editar proveedor":"Nuevo proveedor"} sub="Proveedores" onClose={()=>{setModal(null);setEditSup(null);}} wide>
+          <SupplierForm supplier={editSup} onSave={saveSupplier} onClose={()=>{setModal(null);setEditSup(null);}}/>
+        </Modal>
+      )}
+      {viewSup&&(
+        <SupplierDetail
+          supplier={viewSup}
+          products={products}
+          orders={orders}
+          onEdit={()=>{setEditSup(viewSup);setViewSup(null);setModal({type:"supplierForm"});}}
+          onClose={()=>setViewSup(null)}
+        />
+      )}
     </div>
   );
 }
