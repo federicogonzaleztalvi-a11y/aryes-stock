@@ -5417,43 +5417,61 @@ function AryesApp(){
     {username:"operador",password:"stock123",role:"operador",name:"Operador"},
     {username:"vendedor",password:"ventas123",role:"vendedor",name:"Vendedor"}
   ];
-  const [user,setUser]=useState(null);
-  const [tab,setTab]=useState("dashboard");
-  const [ready,setReady]=useState(false);
 
+  // Read session DIRECTLY from localStorage — no Supabase sync for auth
+  const [user,setUser]=useState(()=>{
+    try{
+      const raw=localStorage.getItem('aryes-session');
+      if(!raw)return null;
+      const parsed=JSON.parse(raw);
+      return parsed&&parsed.username?parsed:null;
+    }catch(e){return null;}
+  });
+  const [tab,setTab]=useState("dashboard");
+
+  // Init data sync (inventory, etc.) but NOT session
   useEffect(()=>{
-    LS.init().then(()=>{
-      const saved=LS.get("aryes-session",null);
-      if(saved&&saved.username)setUser(saved);
-      setReady(true);
-    }).catch(()=>setReady(true));
+    LS.init().catch(()=>{});
   },[]);
 
-  if(!ready)return React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"sans-serif",color:"#888",fontSize:16}},"Cargando Aryes Stock...");
+  const doLogin=(u,p)=>{
+    const found=USERS.find(x=>x.username===u&&x.password===p);
+    if(found){
+      localStorage.setItem('aryes-session',JSON.stringify(found));
+      setUser(found);
+    }else{
+      alert("Usuario o contrasena incorrectos");
+    }
+  };
+
+  const logout=()=>{
+    localStorage.removeItem('aryes-session');
+    setUser(null);
+    setTab("dashboard");
+  };
 
   if(!user){
     let lu="",lp="";
-    const doLogin=()=>{
-      const found=USERS.find(x=>x.username===lu&&x.password===lp);
-      if(found){LS.set("aryes-session",found);setUser(found);}
-      else alert("Usuario o contrasena incorrectos");
-    };
     return(
-      <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f0 0%,#e8f0e8 100%)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f0,#e8f0e8)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Georgia,serif"}}>
         <div style={{background:"#fff",borderRadius:16,padding:"48px 40px",boxShadow:"0 8px 32px rgba(0,0,0,.10)",width:360,textAlign:"center"}}>
           <img src="/aryes-logo.png" alt="Aryes" style={{height:72,marginBottom:12,objectFit:"contain"}} />
           <h1 style={{fontFamily:"Playfair Display,serif",fontSize:26,color:"#1a1a1a",margin:"0 0 4px"}}>Aryes Stock</h1>
           <p style={{color:"#888",fontSize:13,margin:"0 0 28px"}}>Sistema de gestion de insumos</p>
-          <input type="text" placeholder="Usuario" onChange={e=>{lu=e.target.value;}}
-            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:10,boxSizing:"border-box",fontFamily:"inherit"}} />
-          <input type="password" placeholder="Contrasena" onChange={e=>{lp=e.target.value;}}
-            onKeyDown={e=>{if(e.key==="Enter")doLogin();}}
-            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:20,boxSizing:"border-box",fontFamily:"inherit"}} />
-          <button onClick={doLogin}
-            style={{width:"100%",padding:"12px",background:G,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700,cursor:"pointer"}}>
+          <input type="text" placeholder="Usuario"
+            onChange={e=>{lu=e.target.value;}}
+            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:10,boxSizing:"border-box",fontFamily:"inherit",outline:"none"}} />
+          <input type="password" placeholder="Contrasena"
+            onChange={e=>{lp=e.target.value;}}
+            onKeyDown={e=>{if(e.key==="Enter")doLogin(lu,lp);}}
+            style={{width:"100%",padding:"11px 14px",border:"1px solid #e5e7eb",borderRadius:8,fontSize:14,marginBottom:20,boxSizing:"border-box",fontFamily:"inherit",outline:"none"}} />
+          <button onClick={()=>doLogin(lu,lp)}
+            style={{width:"100%",padding:"12px",background:G,color:"#fff",border:"none",borderRadius:8,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             Ingresar
           </button>
-          <div style={{marginTop:20,fontSize:11,color:"#bbb"}}>admin/aryes2024 · operador/stock123 · vendedor/ventas123</div>
+          <div style={{marginTop:16,fontSize:11,color:"#ccc",lineHeight:1.6}}>
+            admin / aryes2024<br/>operador / stock123<br/>vendedor / ventas123
+          </div>
         </div>
       </div>
     );
@@ -5476,39 +5494,39 @@ function AryesApp(){
     {id:"config",label:"Config",icon:"⚙️"},
   ];
 
-  const logout=()=>{LS.set("aryes-session",null);setUser(null);setTab("dashboard");};
   const VCOLOR={"admin":"#3a7d1e","operador":"#3b82f6","vendedor":"#8b5cf6"};
 
   return(
-    <div style={{display:"flex",minHeight:"100vh",background:"#f8f9fa"}}>
-      <aside style={{width:195,minWidth:195,background:"#1c1c1c",display:"flex",flexDirection:"column",overflowY:"auto",flexShrink:0}}>
-        <div style={{padding:"18px 14px 12px",borderBottom:"1px solid #333",textAlign:"center"}}>
+    <div style={{display:"flex",minHeight:"100vh",background:"#f8f9fa",fontFamily:"Georgia,serif"}}>
+      <aside style={{width:190,minWidth:190,background:"#1c1c1c",display:"flex",flexDirection:"column",flexShrink:0}}>
+        <div style={{padding:"18px 14px 12px",borderBottom:"1px solid #2e2e2e",textAlign:"center"}}>
           <img src="/aryes-logo.png" alt="Aryes" style={{height:48,objectFit:"contain",filter:"brightness(0) invert(1)"}} />
         </div>
-        <nav style={{flex:1,paddingTop:6}}>
+        <nav style={{flex:1,paddingTop:4,overflowY:"auto"}}>
           {NAV.map(n=>(
             <button key={n.id} onClick={()=>setTab(n.id)}
               style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"9px 14px",
                 background:tab===n.id?"#3a7d1e":"transparent",
-                color:tab===n.id?"#fff":"#aaa",
-                border:"none",cursor:"pointer",fontSize:12,fontFamily:"inherit",textAlign:"left"}}>
-              <span>{n.icon}</span>
+                color:tab===n.id?"#fff":"#999",
+                border:"none",cursor:"pointer",fontSize:12,fontFamily:"inherit",textAlign:"left",
+                borderLeft:tab===n.id?"3px solid #5aad3a":"3px solid transparent"}}>
+              <span style={{fontSize:13}}>{n.icon}</span>
               <span style={{fontWeight:tab===n.id?700:400}}>{n.label}</span>
             </button>
           ))}
         </nav>
-        <div style={{padding:"12px 14px",borderTop:"1px solid #333"}}>
-          <div style={{fontSize:11,color:"#777",marginBottom:6,textAlign:"center"}}>
-            <span style={{background:VCOLOR[user.role]||"#555",color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:10}}>{user.role}</span>
-            {" "}{user.name}
+        <div style={{padding:"12px 14px",borderTop:"1px solid #2e2e2e"}}>
+          <div style={{fontSize:11,color:"#666",marginBottom:6,textAlign:"center"}}>
+            <span style={{background:VCOLOR[user.role]||"#555",color:"#fff",borderRadius:10,padding:"2px 8px",fontSize:10}}>{user.role}</span>
+            {" "}<span style={{color:"#888"}}>{user.name}</span>
           </div>
           <button onClick={logout}
-            style={{width:"100%",padding:"7px",background:"#333",color:"#aaa",border:"none",borderRadius:6,cursor:"pointer",fontSize:11}}>
+            style={{width:"100%",padding:"7px",background:"#2e2e2e",color:"#888",border:"none",borderRadius:6,cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>
             Cerrar sesion
           </button>
         </div>
       </aside>
-      <main style={{flex:1,overflowY:"auto"}}>
+      <main style={{flex:1,overflowY:"auto",minHeight:"100vh"}}>
         {tab==="dashboard"&&<DashboardTab setTab={setTab} />}
         {tab==="inventory"&&<InventoryTab />}
         {tab==="orders"&&<OrdersTab setTab={setTab} />}
