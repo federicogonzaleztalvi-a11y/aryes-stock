@@ -4935,6 +4935,239 @@ function RutasTab(){
     </section>
   );
 }
+
+function KPITab(){
+  const G="#3a7d1e";
+  const [movs] = useState(()=>LS.get('aryes-movements',[]));
+  const [rutas] = useState(()=>LS.get('aryes-rutas',[]));
+  const [lotes] = useState(()=>LS.get('aryes-lots',[]));
+  const [prods] = useState(()=>LS.get('aryes6-products',[]));
+  const [pedidos] = useState(()=>LS.get('aryes6-orders',[]));
+  const [periodo,setPeriodo] = useState('semana');
+
+  const hoy = new Date();
+  const startOf = (n) => { const d=new Date(); d.setDate(d.getDate()-n); d.setHours(0,0,0,0); return d; };
+  const periodoStart = periodo==='hoy'?startOf(0):periodo==='semana'?startOf(7):periodo==='mes'?startOf(30):startOf(90);
+
+  // Movimientos en el periodo
+  const movsP = movs.filter(m=>m.timestamp&&new Date(m.timestamp)>=periodoStart);
+  const entradasP = movsP.filter(m=>m.tipo==='Entrada');
+  const salidasP = movsP.filter(m=>m.tipo==='Salida');
+  const totalUnidadesEntradas = entradasP.reduce((a,m)=>a+Number(m.cantidad||0),0);
+  const totalUnidadesSalidas = salidasP.reduce((a,m)=>a+Number(m.cantidad||0),0);
+
+  // Rutas en el periodo
+  const DIAS=['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const diaHoy = DIAS[hoy.getDay()-1]||'Lunes';
+  const rutasP = rutas;
+  const todasEntregas = rutasP.flatMap(r=>r.entregas||[]);
+  const entregasOk = todasEntregas.filter(e=>e.estado==='entregado').length;
+  const entregasFail = todasEntregas.filter(e=>e.estado==='no-entregado').length;
+  const pctEntregas = todasEntregas.length>0?Math.round(entregasOk/todasEntregas.length*100):0;
+
+  // Lotes por vencer
+  const diasParaVencer=(f)=>Math.ceil((new Date(f)-hoy)/(1000*60*60*24));
+  const vencidos = lotes.filter(l=>l.fechaVenc&&diasParaVencer(l.fechaVenc)<0).length;
+  const proximos30 = lotes.filter(l=>l.fechaVenc&&diasParaVencer(l.fechaVenc)>=0&&diasParaVencer(l.fechaVenc)<=30).length;
+
+  // Stock critico
+  const stockCritico = prods.filter(p=>{
+    const stock=Number(p.stock||0);
+    const rop=Number(p.rop||p.stockMin||0);
+    return stock<=rop&&stock>0;
+  }).length;
+  const sinStock = prods.filter(p=>Number(p.stock||0)===0).length;
+
+  // Productos mas movidos
+  const movPorProd = {};
+  salidasP.forEach(m=>{
+    if(!movPorProd[m.productoNombre])movPorProd[m.productoNombre]=0;
+    movPorProd[m.productoNombre]+=Number(m.cantidad||0);
+  });
+  const topProds = Object.entries(movPorProd).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // Entregas por vehiculo
+  const entXVeh = {};
+  rutasP.forEach(r=>{
+    if(!entXVeh[r.vehiculo])entXVeh[r.vehiculo]={total:0,ok:0};
+    (r.entregas||[]).forEach(e=>{
+      entXVeh[r.vehiculo].total++;
+      if(e.estado==='entregado')entXVeh[r.vehiculo].ok++;
+    });
+  });
+
+  // Movimientos por dia (ultimos 7)
+  const movXDia = {};
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const key=d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric'});
+    movXDia[key]={entradas:0,salidas:0};
+  }
+  movs.forEach(m=>{
+    if(!m.timestamp)return;
+    const d=new Date(m.timestamp);
+    if(d<startOf(6))return;
+    const key=d.toLocaleDateString('es-UY',{weekday:'short',day:'numeric'});
+    if(!movXDia[key])return;
+    if(m.tipo==='Entrada')movXDia[key].entradas+=Number(m.cantidad||0);
+    if(m.tipo==='Salida')movXDia[key].salidas+=Number(m.cantidad||0);
+  });
+  const diasData=Object.entries(movXDia);
+  const maxVal=Math.max(...diasData.flatMap(([,v])=>[v.entradas,v.salidas]),1);
+  // Mini barra de grafico
+  const Bar=({val,max,color,label})=>{
+    const pct=max>0?Math.round(val/max*100):0;
+    return(
+      <div style={{marginBottom:6}}>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#666',marginBottom:2}}>
+          <span>{label}</span><span style={{fontWeight:700,color:'#1a1a1a'}}>{val}</span>
+        </div>
+        <div style={{background:'#f3f4f6',borderRadius:99,height:8,overflow:'hidden'}}>
+          <div style={{width:pct+'%',background:color,height:'100%',borderRadius:99,transition:'width .4s'}} />
+        </div>
+      </div>
+    );
+  };
+
+  // Tarjeta KPI
+  const KCard=({label,value,sub,color,icon,alert})=>(
+    <div style={{background:'#fff',borderRadius:12,padding:'18px 20px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'2px solid '+(alert?'#ef4444':'transparent'),position:'relative',overflow:'hidden'}}>
+      <div style={{position:'absolute',top:12,right:14,fontSize:24,opacity:.15}}>{icon}</div>
+      <div style={{fontSize:11,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>{label}</div>
+      <div style={{fontSize:32,fontWeight:800,color:color||'#1a1a1a',lineHeight:1}}>{value}</div>
+      {sub&&<div style={{fontSize:12,color:'#888',marginTop:6}}>{sub}</div>}
+      {alert&&<div style={{fontSize:11,color:'#ef4444',marginTop:4,fontWeight:600}}>Requiere atencion</div>}
+    </div>
+  );
+
+  return(
+    <section style={{padding:'28px 36px',maxWidth:1200,margin:'0 auto'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+        <div>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>KPIs de Operacion</h2>
+          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Panel de control de rendimiento operativo</p>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          {['hoy','semana','mes','trimestre'].map(p=>(
+            <button key={p} onClick={()=>setPeriodo(p)} style={{padding:'6px 14px',borderRadius:20,border:'2px solid '+(periodo===p?G:'#e5e7eb'),background:periodo===p?G:'#fff',color:periodo===p?'#fff':'#666',fontWeight:600,fontSize:12,cursor:'pointer',textTransform:'capitalize'}}>
+              {p==='trimestre'?'90 dias':p==='mes'?'30 dias':p==='semana'?'7 dias':'Hoy'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* KPIs principales */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
+        <KCard label='Movimientos periodo' value={movsP.length} sub={entradasP.length+' entradas · '+salidasP.length+' salidas'} color={G} icon='📦' />
+        <KCard label='Eficiencia entregas' value={pctEntregas+'%'} sub={entregasOk+' ok · '+entregasFail+' fallidas de '+todasEntregas.length} color={pctEntregas>=90?G:pctEntregas>=70?'#f59e0b':'#ef4444'} icon='🚛' alert={pctEntregas<70&&todasEntregas.length>0} />
+        <KCard label='Lotes por vencer' value={proximos30} sub={vencidos+' ya vencidos'} color={proximos30>5?'#f59e0b':'#1a1a1a'} icon='⏰' alert={vencidos>0} />
+        <KCard label='Stock critico' value={stockCritico} sub={sinStock+' productos sin stock'} color={stockCritico>0?'#ef4444':'#1a1a1a'} icon='⚠️' alert={stockCritico>0||sinStock>0} />
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+        {/* Grafico movimientos 7 dias */}
+        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Movimientos — ultimos 7 dias</h3>
+          {diasData.every(([,v])=>v.entradas===0&&v.salidas===0)?(
+            <div style={{textAlign:'center',padding:'30px 0',color:'#aaa',fontSize:13}}>Sin movimientos registrados en este periodo</div>
+          ):(
+            <div>
+              {diasData.map(([dia,v])=>(
+                <div key={dia} style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:'#666',marginBottom:4,fontWeight:600}}>{dia}</div>
+                  <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                    <div style={{width:50,fontSize:10,color:'#3b82f6',textAlign:'right'}}>+{v.entradas}</div>
+                    <div style={{flex:1,display:'flex',gap:2}}>
+                      <div style={{height:16,borderRadius:'4px 0 0 4px',background:'#3b82f6',width:(v.entradas/maxVal*50)+'%',minWidth:v.entradas>0?2:0,transition:'width .4s'}} />
+                      <div style={{height:16,borderRadius:'0 4px 4px 0',background:G,width:(v.salidas/maxVal*50)+'%',minWidth:v.salidas>0?2:0,transition:'width .4s'}} />
+                    </div>
+                    <div style={{width:50,fontSize:10,color:G}}>-{v.salidas}</div>
+                  </div>
+                </div>
+              ))}
+              <div style={{display:'flex',gap:16,marginTop:12,fontSize:11}}>
+                <span style={{color:'#3b82f6'}}>■ Entradas</span>
+                <span style={{color:G}}>■ Salidas</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Top productos */}
+        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Top 5 productos mas movidos</h3>
+          {topProds.length===0?(
+            <div style={{textAlign:'center',padding:'30px 0',color:'#aaa',fontSize:13}}>Sin salidas registradas en este periodo</div>
+          ):(
+            <div>
+              {topProds.map(([nombre,cant],i)=>(
+                <Bar key={nombre} label={(i+1)+'. '+nombre} val={cant} max={topProds[0][1]} color={['#3a7d1e','#4ade80','#86efac','#bbf7d0','#dcfce7'][i]} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {/* Entregas por vehiculo */}
+        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Rendimiento por vehiculo</h3>
+          {Object.keys(entXVeh).length===0?(
+            <div style={{textAlign:'center',padding:'30px 0',color:'#aaa',fontSize:13}}>Sin rutas configuradas aun</div>
+          ):(
+            Object.entries(entXVeh).map(([veh,data])=>{
+              const pct=data.total>0?Math.round(data.ok/data.total*100):0;
+              const VCOLOR={"Vehiculo 1":"#3b82f6","Vehiculo 2":"#8b5cf6","Vehiculo 3":"#f59e0b"};
+              return(
+                <div key={veh} style={{marginBottom:16}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{background:VCOLOR[veh]||'#6b7280',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20}}>{veh}</span>
+                    </div>
+                    <span style={{fontSize:13,fontWeight:700,color:pct>=90?G:pct>=70?'#f59e0b':'#ef4444'}}>{pct}% ({data.ok}/{data.total})</span>
+                  </div>
+                  <div style={{background:'#f3f4f6',borderRadius:99,height:10,overflow:'hidden'}}>
+                    <div style={{width:pct+'%',background:VCOLOR[veh]||G,height:'100%',borderRadius:99,transition:'width .4s'}} />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Resumen stock */}
+        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>Estado del stock</h3>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+            {[
+              {l:'Total productos',v:prods.length,c:'#6b7280'},
+              {l:'Unidades en stock',v:prods.reduce((a,p)=>a+Number(p.stock||0),0).toLocaleString('es-UY'),c:G},
+              {l:'Stock critico',v:stockCritico,c:'#ef4444'},
+              {l:'Sin stock',v:sinStock,c:'#dc2626'},
+            ].map(s=>(
+              <div key={s.l} style={{background:'#f9fafb',borderRadius:8,padding:'12px 14px'}}>
+                <div style={{fontSize:10,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{s.l}</div>
+                <div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+          {(stockCritico>0||sinStock>0)&&(
+            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'10px 14px'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'#dc2626',marginBottom:6}}>Productos que requieren atencion:</div>
+              {prods.filter(p=>Number(p.stock||0)<=Number(p.rop||p.stockMin||0)).slice(0,5).map(p=>(
+                <div key={p.id} style={{fontSize:12,color:'#374151',padding:'3px 0',borderBottom:'1px solid #fee2e2',display:'flex',justifyContent:'space-between'}}>
+                  <span>{p.nombre}</span>
+                  <span style={{fontWeight:700,color:Number(p.stock||0)===0?'#dc2626':'#f59e0b'}}>{p.stock||0} uds</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
@@ -5114,7 +5347,7 @@ function AryesApp(){
   };
 
   const NAV=[{id:"dashboard",label:"Panel general"},{id:"products",label:"Inventario"},{id:"orders",label:"Pedidos"},{id:"suppliers",label:"Proveedores"},{id:"planning",label:"Planificación"},{id:"scanner",label:"Scanner"},{id:"settings",label:"Configuración"},{id:"importer",label:"📦 Importar"},
-  {id:"usuarios",label:"Usuarios",icon:"👤"}  ,{id:"lotes",label:"Lotes / Venc.",icon:"📅"},{id:"deposito",label:"Deposito",icon:"🗂️"}
+  {id:"usuarios",label:"Usuarios",icon:"👤"}  ,{id:"lotes",label:"Lotes / Venc.",icon:"📅"},{id:"deposito",label:"Deposito",icon:"🗂️"},{id:"kpis",label:"KPIs",icon:"📊"}
   ,{id:"importar-excel",label:"Importar Excel",icon:"📊"}
   ,{id:"precios",label:"Hist. Precios",icon:"📈"}
   ,{id:"clientes",label:"Clientes",icon:"👥"},{id:"rutas",label:"Rutas",icon:"🚛"}
@@ -5594,6 +5827,8 @@ function AryesApp(){
       {tab==="deposito"&&<DepositoTab />}
       
       {tab==="rutas"&&<RutasTab />}
+      
+      {tab==="kpis"&&<KPITab />}
       </main>
 
       {/* ══ MODALS ══ */}
