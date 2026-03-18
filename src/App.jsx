@@ -5545,3 +5545,5 @@ function AryesApp(){
     </div>
   );
 }
+
+export default AryesApp;
