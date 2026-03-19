@@ -4860,7 +4860,8 @@ function RutasTab(){
                   </div>
                 )}
                 {(isEntregado||isNoEntregado)&&(
-                  <button onClick={()=>{const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:r.entregas.map(ev=>ev.clienteId===e.clienteId?{...ev,estado:'pendiente',hora:''}:ev)}:r);setRutas(
+                  <button onClick={()=>{const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:r.entregas.map(ev=>ev.clienteId===e.clienteId?{...ev,estado:'pendiente',hora:''}:ev)}:r);setRutas(upd);LS.set('aryes-rutas',upd);}} style={{padding:'7px 12px',border:'1px solid #e5e7eb',background:'#fff',color:'#374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600}}>Revertir</button>
+                )}
   // HISTORIAL VIEW
   if(vista==='historial'){
     const hist=LS.get('aryes-hist-ent',[]);
