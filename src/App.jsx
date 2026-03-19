@@ -6810,7 +6810,7 @@ function AryesApp(){
     {id:"clientes",label:"Clientes",icon:"👥"},
     {id:"ventas",label:"Ventas",icon:"🧾"},
     {id:"movimientos",label:"Movimientos",icon:"🔄"},
-    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↔️"},
+    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↕"},
     {id:"deposito",label:"Deposito",icon:"🗂️"},
     {id:"rutas",label:"Rutas",icon:"🚛"},
     {id:"tracking",label:"Tracking",icon:"📍"},
