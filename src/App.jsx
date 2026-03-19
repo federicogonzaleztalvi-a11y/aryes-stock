@@ -5814,9 +5814,7 @@ function InformesTab(){
   const movsP=movs.filter(m=>m.timestamp&&new Date(m.timestamp)>=periodoStart);
   const ventasP=ventas.filter(v=>v.creadoEn&&new Date(v.creadoEn)>=periodoStart);
   const diasVenc=(f)=>Math.ceil((new Date(f)-hoy)/(1000*60*60*24));
-  const toCSV=(headers,rows)=>headers.join(",")+"
-"+rows.map(r=>r.map(c=>'"'+( c||"").toString().replace(/"/g,'""')+'"').join(",")).join("
-");
+  const toCSV=(headers,rows)=>headers.join(",")+"\n"+rows.map(r=>r.map(c=>'"'+( c||"").toString().replace(/"/g,'""')+'"').join(",")).join("\n");
   const downloadCSV=(content,filename)=>{const blob=new Blob(["﻿"+content],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);setMsg("Descargando "+filename);setTimeout(()=>setMsg(""),3000);};
   const exportStock=()=>{const h=["Producto","Stock","Unidad","Precio","Stock Min","Proveedor","Estado"];const rows=prods.map(p=>[p.nombre||p.name||"",p.stock||0,p.unidad||p.unit||"u",p.precio||p.price||0,p.rop||5,p.proveedor||"",Number(p.stock||0)===0?"Sin stock":Number(p.stock||0)<=(p.rop||5)?"Critico":"OK"]);downloadCSV(toCSV(h,rows),"stock-"+hoy.toISOString().split("T")[0]+".csv");};
   const exportMovimientos=()=>{const h=["Fecha","Tipo","Producto","Cantidad","Notas"];const rows=movsP.map(m=>[m.timestamp?new Date(m.timestamp).toLocaleDateString("es-UY"):"",m.tipo||"",m.productoNombre||m.nombre||"",m.cantidad||0,m.notas||""]);downloadCSV(toCSV(h,rows),"movimientos-"+periodo+".csv");};
