@@ -5096,9 +5096,12 @@ function RecepcionTab(){
       nombre: ped.productName||ped.nombre||'Producto',
       cantidadEsperada: Number(ped.qty||ped.cantidad||0),
       cantidadRecibida: Number(ped.qty||ped.cantidad||0),
+      cantidadRechazada: 0,
       unidad: ped.unit||ped.unidad||'u',
       lote: '',
       vencimiento: '',
+      calidad: 'ok',
+      motivoRechazo: '',
       diferencia: 0,
     }]:[];
     setItems(its);
@@ -5110,8 +5113,8 @@ function RecepcionTab(){
     setProveedor('');
     setItems([{
       productoId:'',nombre:'',
-      cantidadEsperada:0,cantidadRecibida:0,
-      unidad:'u',lote:'',vencimiento:'',diferencia:0
+      cantidadEsperada:0,cantidadRecibida:0,cantidadRechazada:0,
+      unidad:'u',lote:'',vencimiento:'',calidad:'ok',motivoRechazo:'',diferencia:0
     }]);
     setVista('recepcion');
   };
@@ -5129,8 +5132,8 @@ function RecepcionTab(){
 
   const agregarItem=()=>setItems(prev=>[...prev,{
     productoId:'',nombre:'',
-    cantidadEsperada:0,cantidadRecibida:0,
-    unidad:'u',lote:'',vencimiento:'',diferencia:0
+    cantidadEsperada:0,cantidadRecibida:0,cantidadRechazada:0,
+    unidad:'u',lote:'',vencimiento:'',calidad:'ok',motivoRechazo:'',diferencia:0
   }]);
 
   const confirmarRecepcion=()=>{
@@ -5241,7 +5244,7 @@ function RecepcionTab(){
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
             <thead>
               <tr style={{background:'#f9fafb',borderBottom:'1px solid #e5e7eb'}}>
-                {['Producto','Esperado','Recibido','Unidad','Lote','Vencimiento','Diferencia',''].map(h=>(
+                {['Producto','Esperado','Recibido','Rechazado','Unidad','Lote','Vencimiento','Calidad','Diferencia',''].map(h=>(
                   <th key={h} style={{padding:'9px 12px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5,whiteSpace:'nowrap'}}>{h}</th>
                 ))}
               </tr>
@@ -5262,6 +5265,9 @@ function RecepcionTab(){
                   <td style={{padding:'8px 10px',width:90}}>
                     <input type="number" style={{...inp,width:80,fontWeight:700,borderColor:it.diferencia!==0?'#f59e0b':'#e5e7eb'}} value={it.cantidadRecibida} onChange={e=>updateItem(i,'cantidadRecibida',e.target.value)} min="0" />
                   </td>
+                  <td style={{padding:'8px 10px',width:90}}>
+                    <input type="number" style={{...inp,width:80,fontWeight:700,borderColor:Number(it.cantidadRechazada||0)>0?'#ef4444':'#e5e7eb',color:Number(it.cantidadRechazada||0)>0?'#dc2626':'#1a1a1a'}} value={it.cantidadRechazada||0} onChange={e=>updateItem(i,'cantidadRechazada',e.target.value)} min="0" placeholder="0" />
+                  </td>
                   <td style={{padding:'8px 10px',width:80}}>
                     <input style={{...inp,width:70}} value={it.unidad} onChange={e=>updateItem(i,'unidad',e.target.value)} placeholder="u" />
                   </td>
@@ -5270,6 +5276,13 @@ function RecepcionTab(){
                   </td>
                   <td style={{padding:'8px 10px',width:130}}>
                     <input type="date" style={{...inp,width:120}} value={it.vencimiento} onChange={e=>updateItem(i,'vencimiento',e.target.value)} />
+                  </td>
+                  <td style={{padding:'8px 10px',width:100}}>
+                    <select value={it.calidad||'ok'} onChange={e=>updateItem(i,'calidad',e.target.value)} style={{padding:'6px 8px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:11,fontWeight:700,fontFamily:'inherit',color:it.calidad==='rechazado'?'#dc2626':it.calidad==='observado'?'#f59e0b':'#3a7d1e',background:it.calidad==='rechazado'?'#fef2f2':it.calidad==='observado'?'#fffbeb':'#f0fdf4'}}>
+                      <option value="ok">OK</option>
+                      <option value="observado">Observado</option>
+                      <option value="rechazado">Rechazado</option>
+                    </select>
                   </td>
                   <td style={{padding:'8px 12px',width:90,textAlign:'center'}}>
                     <span style={{
@@ -6116,6 +6129,501 @@ function InformesTab(){
     </section>
   );
 }
+function ConteoTab(){
+  const G="#3a7d1e";
+  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
+  const [conteos,setConteos]=useState(()=>LS.get("aryes-conteos",[]));
+  const [conteoActivo,setConteoActivo]=useState(null);
+  const [itemIdx,setItemIdx]=useState(0);
+  const [cantFisica,setCantFisica]=useState("");
+  const [msg,setMsg]=useState("");
+  const [vista,setVista]=useState("inicio");
+
+  const iniciarConteo=()=>{
+    const items=prods.map(p=>({id:p.id,nombre:p.nombre||p.name||"",stockSistema:Number(p.stock||0),unidad:p.unidad||p.unit||"u",cantFisica:null,diferencia:null}));
+    const c={id:Date.now(),fecha:new Date().toISOString().split("T")[0],items,completado:false,creadoEn:new Date().toISOString()};
+    setConteoActivo(c);setItemIdx(0);setCantFisica("");setVista("conteo");
+  };
+
+  const registrarItem=()=>{
+    if(cantFisica==="")return;
+    const cant=Number(cantFisica);
+    const upd={...conteoActivo};
+    upd.items[itemIdx]={...upd.items[itemIdx],cantFisica:cant,diferencia:cant-upd.items[itemIdx].stockSistema};
+    setConteoActivo(upd);
+    if(itemIdx<upd.items.length-1){setItemIdx(itemIdx+1);setCantFisica("");}
+    else{setVista("revision");}
+  };
+
+  const saltarItem=()=>{
+    if(itemIdx<conteoActivo.items.length-1){setItemIdx(itemIdx+1);setCantFisica("");}
+    else setVista("revision");
+  };
+
+  const confirmarConteo=()=>{
+    // Update stock with physical count
+    let updProds=[...prods];
+    conteoActivo.items.filter(it=>it.cantFisica!==null).forEach(it=>{
+      const idx=updProds.findIndex(p=>String(p.id)===String(it.id));
+      if(idx>-1)updProds[idx]={...updProds[idx],stock:it.cantFisica};
+    });
+    setProds(updProds);LS.set("aryes6-products",updProds);
+    const finalConteo={...conteoActivo,completado:true,finalizadoEn:new Date().toISOString()};
+    const upd=[finalConteo,...conteos];
+    setConteos(upd);LS.set("aryes-conteos",upd);
+    setConteoActivo(null);setVista("inicio");
+    setMsg("Conteo aplicado. Stock actualizado en "+conteoActivo.items.filter(it=>it.cantFisica!==null).length+" productos.");
+    setTimeout(()=>setMsg(""),5000);
+  };
+
+  const pct=conteoActivo?Math.round(conteoActivo.items.filter(it=>it.cantFisica!==null).length/conteoActivo.items.length*100):0;
+
+  if(vista==="conteo"&&conteoActivo){
+    const item=conteoActivo.items[itemIdx];
+    return(
+      <section style={{padding:"28px 36px",maxWidth:600,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <button onClick={()=>setVista("revision")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Conteo fisico</h2>
+        </div>
+        <div style={{background:"#e5e7eb",borderRadius:99,height:8,marginBottom:20,overflow:"hidden"}}>
+          <div style={{width:pct+"%",background:G,height:"100%",borderRadius:99,transition:"width .3s"}} />
+        </div>
+        <div style={{background:"#fff",borderRadius:12,padding:28,boxShadow:"0 2px 12px rgba(0,0,0,.08)",textAlign:"center"}}>
+          <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{itemIdx+1} de {conteoActivo.items.length}</div>
+          <div style={{fontSize:26,fontWeight:800,color:"#1a1a1a",marginBottom:4}}>{item.nombre}</div>
+          <div style={{fontSize:14,color:"#888",marginBottom:24}}>Sistema dice: <strong style={{color:G}}>{item.stockSistema} {item.unidad}</strong></div>
+          <div style={{fontSize:13,color:"#666",marginBottom:8}}>Cantidad fisica contada:</div>
+          <input type="number" value={cantFisica} onChange={e=>setCantFisica(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&registrarItem()}
+            autoFocus min="0" placeholder="0"
+            style={{fontSize:36,fontWeight:700,textAlign:"center",width:160,padding:"10px",border:"2px solid #3a7d1e",borderRadius:10,outline:"none",fontFamily:"inherit"}} />
+          <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:20}}>
+            <button onClick={saltarItem} style={{padding:"10px 24px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Saltar</button>
+            <button onClick={registrarItem} disabled={cantFisica===""} style={{padding:"10px 32px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:15}}>Confirmar &#10003;</button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if(vista==="revision"&&conteoActivo){
+    const difs=conteoActivo.items.filter(it=>it.cantFisica!==null&&it.diferencia!==0);
+    const contados=conteoActivo.items.filter(it=>it.cantFisica!==null).length;
+    return(
+      <section style={{padding:"28px 36px",maxWidth:800,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+          <button onClick={()=>setVista("conteo")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Revision del conteo</h2>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+          <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
+            <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5}}>Contados</div>
+            <div style={{fontSize:28,fontWeight:800,color:G}}>{contados}</div></div>
+          <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
+            <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5}}>Con diferencia</div>
+            <div style={{fontSize:28,fontWeight:800,color:difs.length>0?"#ef4444":"#3a7d1e"}}>{difs.length}</div></div>
+          <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
+            <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5}}>Sin contar</div>
+            <div style={{fontSize:28,fontWeight:800,color:"#6b7280"}}>{conteoActivo.items.length-contados}</div></div>
+        </div>
+        {difs.length>0&&(
+          <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
+            <div style={{padding:"10px 16px",background:"#fef2f2",borderBottom:"2px solid #fecaca",fontWeight:700,color:"#dc2626",fontSize:13}}>Diferencias encontradas</div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead><tr style={{background:"#f9fafb"}}>{["Producto","Sistema","Fisico","Diferencia"].map(h=><th key={h} style={{padding:"8px 14px",textAlign:"left",fontWeight:600,color:"#6b7280",fontSize:11,textTransform:"uppercase",letterSpacing:.5}}>{h}</th>)}</tr></thead>
+              <tbody>{difs.map((it,i)=>(<tr key={it.id} style={{borderTop:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
+                <td style={{padding:"9px 14px",fontWeight:500}}>{it.nombre}</td>
+                <td style={{padding:"9px 14px",color:"#6b7280"}}>{it.stockSistema} {it.unidad}</td>
+                <td style={{padding:"9px 14px",fontWeight:700,color:"#3a7d1e"}}>{it.cantFisica} {it.unidad}</td>
+                <td style={{padding:"9px 14px",fontWeight:700,color:it.diferencia>0?"#059669":"#dc2626"}}>{it.diferencia>0?"+":""}{it.diferencia}</td>
+              </tr>))}</tbody>
+            </table>
+          </div>
+        )}
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={()=>setVista("conteo")} style={{padding:"10px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Seguir contando</button>
+          <button onClick={confirmarConteo} style={{padding:"10px 28px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Aplicar conteo al stock</button>
+        </div>
+      </section>
+    );
+  }
+
+  return(
+    <section style={{padding:"28px 36px",maxWidth:800,margin:"0 auto"}}>
+      <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Conteo Ciclico</h2>
+      <p style={{fontSize:12,color:"#888",margin:"0 0 24px"}}>Verificacion fisica del inventario vs sistema</p>
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
+        <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>&#128203;</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#1a1a1a",marginBottom:8}}>Nuevo conteo</div>
+          <div style={{fontSize:13,color:"#888",marginBottom:16}}>Recorre producto por producto confirmando la cantidad fisica en el deposito</div>
+          <button onClick={iniciarConteo} style={{padding:"10px 24px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Iniciar conteo ({prods.length} productos)</button>
+        </div>
+        <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial de conteos</div>
+          {conteos.length===0?(<div style={{color:"#888",fontSize:13,textAlign:"center",padding:"20px 0"}}>Sin conteos previos</div>):(
+            conteos.slice(0,5).map((c,i)=>{
+              const difs=c.items?.filter(it=>it.cantFisica!==null&&it.diferencia!==0).length||0;
+              return(<div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f3f4f6"}}>
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{c.fecha}</div><div style={{fontSize:11,color:"#888"}}>{c.items?.filter(it=>it.cantFisica!==null).length||0} contados</div></div>
+                <span style={{background:difs>0?"#fef2f2":"#f0fdf4",color:difs>0?"#dc2626":G,fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{difs>0?difs+" difs":"OK"}</span>
+              </div>);
+            })
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+function PackingTab(){
+  const G="#3a7d1e";
+  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
+  const [prods]=useState(()=>LS.get("aryes6-products",[]));
+  const [packings,setPackings]=useState(()=>LS.get("aryes-packings",[]));
+  const [sel,setSel]=useState(null);
+  const [validados,setValidados]=useState({});
+  const [bultos,setBultos]=useState(1);
+  const [notas,setNotas]=useState("");
+  const [msg,setMsg]=useState("");
+
+  // Only ventas confirmadas/preparadas que no tienen packing aun
+  const pendPacking=ventas.filter(v=>["confirmada","preparada"].includes(v.estado)&&!packings.find(p=>p.ventaId===v.id&&p.estado==="listo"));
+
+  const iniciarPacking=(venta)=>{
+    setSel(venta);
+    const init={};
+    (venta.items||[]).forEach(it=>init[it.productoId||it.nombre]={validado:false,cantReal:it.cantidad});
+    setValidados(init);setBultos(1);setNotas("");
+  };
+
+  const toggleValidar=(key)=>setValidados(v=>({...v,[key]:{...v[key],validado:!v[key].validado}}));
+  const todosValidados=sel&&Object.values(validados).every(v=>v.validado);
+
+  const confirmarPacking=()=>{
+    if(!todosValidados){setMsg("Debes validar todos los items antes de confirmar");return;}
+    const pk={id:Date.now(),ventaId:sel.id,nroVenta:sel.nroVenta,clienteNombre:sel.clienteNombre,
+      items:sel.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
+    const upd=[pk,...packings];
+    setPackings(upd);LS.set("aryes-packings",upd);
+    setSel(null);
+    setMsg("Packing "+sel.nroVenta+" confirmado. Listo para despacho.");
+    setTimeout(()=>setMsg(""),4000);
+  };
+
+  if(sel)return(
+    <section style={{padding:"28px 36px",maxWidth:700,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+        <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+        <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Packing — {sel.nroVenta}</h2>
+      </div>
+      {msg&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#dc2626",fontSize:13}}>{msg}</div>}
+      <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
+        <div style={{fontSize:13,color:"#888",marginBottom:12}}>Cliente: <strong style={{color:"#1a1a1a"}}>{sel.clienteNombre}</strong> · Fecha: {sel.fecha}</div>
+        <div style={{fontSize:13,fontWeight:700,color:"#374151",marginBottom:10}}>Validar items uno a uno:</div>
+        {(sel.items||[]).map(it=>{
+          const key=it.productoId||it.nombre;
+          const v=validados[key];
+          return(
+            <div key={key} onClick={()=>toggleValidar(key)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:8,marginBottom:8,cursor:"pointer",background:v?.validado?"#f0fdf4":"#f9fafb",border:"2px solid "+(v?.validado?"#3a7d1e":"#e5e7eb"),transition:"all .15s"}}>
+              <div style={{width:24,height:24,borderRadius:"50%",background:v?.validado?"#3a7d1e":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,flexShrink:0}}>{v?.validado?"✓":""}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:"#1a1a1a"}}>{it.nombre}</div>
+                <div style={{fontSize:12,color:"#888"}}>{it.cantidad} {it.unidad}</div>
+              </div>
+              <span style={{fontSize:12,fontWeight:700,color:v?.validado?"#3a7d1e":"#9ca3af"}}>{v?.validado?"VALIDADO":"Tocar para validar"}</span>
+            </div>
+          );
+        })}
+        <div style={{display:"flex",gap:12,marginTop:14,alignItems:"flex-end"}}>
+          <div style={{flex:1}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Numero de bultos</label>
+            <input type="number" value={bultos} onChange={e=>setBultos(e.target.value)} min="1" style={{padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:14,fontFamily:"inherit",width:80}} />
+          </div>
+          <div style={{flex:3}}>
+            <label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Notas del packing</label>
+            <input value={notas} onChange={e=>setNotas(e.target.value)} placeholder="Ej: frágil, cadena de frío..." style={{padding:"8px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"}} />
+          </div>
+        </div>
+      </div>
+      <div style={{background:todosValidados?"#f0fdf4":"#f9fafb",border:"2px solid "+(todosValidados?"#3a7d1e":"#e5e7eb"),borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:13,color:todosValidados?"#3a7d1e":"#9ca3af",fontWeight:600,textAlign:"center"}}>
+        {todosValidados?"✓ Todos los items validados — listo para confirmar":"Validá todos los items para habilitar la confirmacion"}
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+        <button onClick={()=>setSel(null)} style={{padding:"10px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Cancelar</button>
+        <button onClick={confirmarPacking} disabled={!todosValidados} style={{padding:"10px 28px",background:todosValidados?"#3a7d1e":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todosValidados?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar packing</button>
+      </div>
+    </section>
+  );
+
+  return(
+    <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+      <div style={{marginBottom:24}}>
+        <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Packing / Preparacion</h2>
+        <p style={{fontSize:12,color:"#888",margin:0}}>Validar items antes del despacho — evita errores de entrega</p>
+      </div>
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+      <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Ordenes para preparar ({pendPacking.length})</h3>
+      {pendPacking.length===0?(<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:20,fontSize:13,color:G,textAlign:"center"}}>No hay ordenes pendientes de packing</div>):(
+        <div style={{display:"grid",gap:10}}>
+          {pendPacking.map(v=>(
+            <div key={v.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:14}}>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:G}}>{v.nroVenta}</div><div style={{fontSize:12,color:"#666"}}>{v.clienteNombre} · {v.items?.length||0} productos · ${Number(v.total||0).toLocaleString("es-UY")}</div></div>
+              <span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 10px",borderRadius:20,textTransform:"capitalize"}}>{v.estado}</span>
+              <button onClick={()=>iniciarPacking(v)} style={{padding:"8px 18px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>Preparar</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {packings.length>0&&(
+        <div style={{marginTop:24}}>
+          <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial de packings</h3>
+          <div style={{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+            {packings.slice(0,8).map((pk,i)=>(
+              <div key={pk.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:G}}>{pk.nroVenta}</div><div style={{fontSize:11,color:"#666"}}>{pk.clienteNombre} · {pk.fecha}</div></div>
+                <div style={{fontSize:12,color:"#888"}}>{pk.bultos} bulto{pk.bultos>1?"s":""}</div>
+                <span style={{background:"#f0fdf4",color:G,fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Listo</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+function BatchPickingTab(){
+  const G="#3a7d1e";
+  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
+  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
+  const [selIds,setSelIds]=useState([]);
+  const [picking,setPicking]=useState(null);
+  const [recolectados,setRecolectados]=useState({});
+  const [msg,setMsg]=useState("");
+
+  const pendientes=ventas.filter(v=>["confirmada","preparada"].includes(v.estado));
+
+  const toggleSel=(id)=>setSelIds(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+
+  const generarBatch=()=>{
+    if(selIds.length===0)return;
+    const selVentas=ventas.filter(v=>selIds.includes(v.id));
+    // Consolidar items: agrupar por producto sumando cantidades
+    const mapa={};
+    selVentas.forEach(v=>{
+      (v.items||[]).forEach(it=>{
+        const key=it.productoId||it.nombre;
+        if(!mapa[key])mapa[key]={nombre:it.nombre,unidad:it.unidad,cantTotal:0,pedidos:[]};
+        mapa[key].cantTotal+=Number(it.cantidad);
+        mapa[key].pedidos.push({nroVenta:v.nroVenta,clienteNombre:v.clienteNombre,cantidad:it.cantidad});
+      });
+    });
+    const items=Object.entries(mapa).map(([k,v])=>({key:k,...v}));
+    const init={};items.forEach(it=>init[it.key]=false);
+    setPicking({id:Date.now(),ventas:selVentas,items,creadoEn:new Date().toISOString()});
+    setRecolectados(init);
+  };
+
+  const toggleRecolectado=(key)=>setRecolectados(r=>({...r,[key]:!r[key]}));
+  const todoRecolectado=picking&&Object.values(recolectados).every(Boolean);
+  const pct=picking?Math.round(Object.values(recolectados).filter(Boolean).length/picking.items.length*100):0;
+
+  const confirmarBatch=()=>{
+    // Descontar stock
+    let updProds=[...prods];
+    picking.items.forEach(it=>{
+      const idx=updProds.findIndex(p=>(p.nombre||p.name)===it.nombre);
+      if(idx>-1){
+        const nuevo=Math.max(0,Number(updProds[idx].stock||0)-it.cantTotal);
+        updProds[idx]={...updProds[idx],stock:nuevo};
+      }
+    });
+    setProds(updProds);LS.set("aryes6-products",updProds);
+    const n=picking.ventas.length;
+    setPicking(null);setSelIds([]);
+    setMsg("Batch completado. Stock descontado para "+n+" ordenes.");
+    setTimeout(()=>setMsg(""),4000);
+  };
+
+  if(picking)return(
+    <section style={{padding:"28px 36px",maxWidth:800,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <button onClick={()=>setPicking(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+        <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Batch Picking — {picking.ventas.length} ordenes</h2>
+      </div>
+      <div style={{background:"#e5e7eb",borderRadius:99,height:8,marginBottom:20,overflow:"hidden"}}>
+        <div style={{width:pct+"%",background:G,height:"100%",borderRadius:99,transition:"width .3s"}} />
+      </div>
+      <div style={{fontSize:12,color:"#888",marginBottom:16}}>
+        Ordenes: {picking.ventas.map(v=><span key={v.id} style={{background:"#f0fdf4",color:G,padding:"1px 8px",borderRadius:20,marginRight:4,fontSize:11,fontWeight:700}}>{v.nroVenta}</span>)}
+      </div>
+      <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
+        <div style={{padding:"10px 16px",background:"#f9fafb",borderBottom:"1px solid #e5e7eb",fontSize:12,color:"#888",fontWeight:600,display:"grid",gridTemplateColumns:"1fr auto auto",gap:10}}>
+          <span>PRODUCTO</span><span>TOTAL</span><span>ESTADO</span>
+        </div>
+        {picking.items.map(it=>(
+          <div key={it.key} onClick={()=>toggleRecolectado(it.key)} style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,alignItems:"center",padding:"12px 16px",borderBottom:"1px solid #f3f4f6",cursor:"pointer",background:recolectados[it.key]?"#f0fdf4":"#fff",transition:"background .15s"}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:600,color:"#1a1a1a"}}>{it.nombre}</div>
+              <div style={{fontSize:11,color:"#888"}}>{it.pedidos.map(p=>p.nroVenta+": "+p.cantidad).join(" · ")}</div>
+            </div>
+            <div style={{fontWeight:800,fontSize:16,color:G}}>{it.cantTotal} {it.unidad}</div>
+            <div style={{width:28,height:28,borderRadius:"50%",background:recolectados[it.key]?"#3a7d1e":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:16,flexShrink:0}}>{recolectados[it.key]?"✓":""}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+        <button onClick={()=>setPicking(null)} style={{padding:"10px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Cancelar</button>
+        <button onClick={confirmarBatch} disabled={!todoRecolectado} style={{padding:"10px 28px",background:todoRecolectado?"#3a7d1e":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todoRecolectado?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar y descontar stock</button>
+      </div>
+    </section>
+  );
+
+  return(
+    <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+      <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Batch Picking</h2>
+      <p style={{fontSize:12,color:"#888",margin:"0 0 20px"}}>Recolectar multiples ordenes en un solo recorrido del deposito</p>
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#374151"}}>{selIds.length>0?selIds.length+" ordenes seleccionadas":"Selecciona ordenes para hacer batch"}</div>
+        <button onClick={generarBatch} disabled={selIds.length===0} style={{padding:"8px 20px",background:selIds.length>0?"#3a7d1e":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:selIds.length>0?"pointer":"not-allowed",fontWeight:700,fontSize:13}}>Generar batch &#8594;</button>
+      </div>
+      {pendientes.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay ordenes pendientes</div>):(
+        <div style={{display:"grid",gap:8}}>
+          {pendientes.map(v=>(
+            <div key={v.id} onClick={()=>toggleSel(v.id)} style={{background:selIds.includes(v.id)?"#f0fdf4":"#fff",border:"2px solid "+(selIds.includes(v.id)?"#3a7d1e":"#e5e7eb"),borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .15s"}}>
+              <div style={{width:22,height:22,borderRadius:4,background:selIds.includes(v.id)?"#3a7d1e":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,flexShrink:0}}>{selIds.includes(v.id)?"✓":""}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:"#3a7d1e"}}>{v.nroVenta}</div><div style={{fontSize:12,color:"#666"}}>{v.clienteNombre} · {v.items?.length||0} productos</div></div>
+              <div style={{fontWeight:700,fontSize:14}}>${Number(v.total||0).toLocaleString("es-UY")}</div>
+              <span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20,textTransform:"capitalize"}}>{v.estado}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+function TransferenciasTab(){
+  const G="#3a7d1e";
+  const [prods]=useState(()=>LS.get("aryes6-products",[]));
+  const [ubicaciones]=useState(()=>LS.get("aryes-ubicaciones",[]));
+  const [deposito]=useState(()=>LS.get("aryes-deposito",{}));
+  const [transfers,setTransfers]=useState(()=>LS.get("aryes-transfers",[]));
+  const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
+  const [msg,setMsg]=useState("");
+  const [showForm,setShowForm]=useState(false);
+
+  // Build list of locations from deposito
+  const locs=Object.values(deposito||{}).filter(l=>l&&l.codigo);
+
+  const selProd=prods.find(p=>String(p.id)===String(form.productoId));
+
+  const guardarTransfer=()=>{
+    if(!form.productoId||!form.cantidad||!form.origen||!form.destino){
+      setMsg("Completa todos los campos requeridos");return;
+    }
+    if(form.origen===form.destino){setMsg("Origen y destino no pueden ser iguales");return;}
+    if(Number(form.cantidad)<=0){setMsg("La cantidad debe ser mayor a 0");return;}
+    const t={id:Date.now(),
+      productoId:form.productoId,
+      productoNombre:selProd?selProd.nombre||selProd.name:"",
+      cantidad:Number(form.cantidad),
+      origen:form.origen,
+      destino:form.destino,
+      notas:form.notas,
+      fecha:new Date().toLocaleDateString("es-UY"),
+      creadoEn:new Date().toISOString()};
+    const upd=[t,...transfers];
+    setTransfers(upd);LS.set("aryes-transfers",upd);
+    setForm({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
+    setShowForm(false);
+    setMsg("Transferencia registrada: "+t.productoNombre+" de "+t.origen+" a "+t.destino);
+    setTimeout(()=>setMsg(""),4000);
+  };
+
+  const F=({label,children,req})=>(
+    <div style={{marginBottom:14}}>
+      <label style={{fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:5}}>{label}{req&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+      {children}
+    </div>
+  );
+  const inp={padding:"9px 12px",border:"1px solid #e5e7eb",borderRadius:7,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
+
+  return(
+    <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+        <div><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Transferencias Internas</h2>
+        <p style={{fontSize:12,color:"#888",margin:0}}>Mover productos entre ubicaciones del deposito</p></div>
+        <button onClick={()=>setShowForm(!showForm)} style={{padding:"10px 20px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>
+          {showForm?"Cancelar":"+ Nueva transferencia"}</button>
+      </div>
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+
+      {showForm&&(
+        <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 2px 12px rgba(0,0,0,.08)",marginBottom:24}}>
+          <h3 style={{fontSize:16,fontWeight:700,color:"#1a1a1a",marginTop:0,marginBottom:16}}>Nueva transferencia</h3>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div style={{gridColumn:"1 / -1"}}>
+              <F label="Producto" req>
+                <select value={form.productoId} onChange={e=>setForm(f=>({...f,productoId:e.target.value}))} style={{...inp}}>
+                  <option value="">Seleccionar producto...</option>
+                  {prods.map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} ({p.stock||0} {p.unidad||p.unit||"u"} disponibles)</option>)}
+                </select>
+              </F>
+            </div>
+            <F label="Cantidad" req>
+              <input type="number" value={form.cantidad} onChange={e=>setForm(f=>({...f,cantidad:e.target.value}))} placeholder="0" min="1" style={{...inp}} />
+            </F>
+            <div/>
+            <F label="Ubicacion origen" req>
+              <select value={form.origen} onChange={e=>setForm(f=>({...f,origen:e.target.value}))} style={{...inp}}>
+                <option value="">Seleccionar origen...</option>
+                {locs.length>0?locs.map(l=><option key={l.codigo} value={l.codigo}>{l.codigo}</option>):
+                  ["A-1-1","A-1-2","A-2-1","B-1-1","B-1-2","C-1-1"].map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </F>
+            <F label="Ubicacion destino" req>
+              <select value={form.destino} onChange={e=>setForm(f=>({...f,destino:e.target.value}))} style={{...inp}}>
+                <option value="">Seleccionar destino...</option>
+                {locs.length>0?locs.map(l=><option key={l.codigo} value={l.codigo}>{l.codigo}</option>):
+                  ["A-1-1","A-1-2","A-2-1","B-1-1","B-1-2","C-1-1"].map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </F>
+            <div style={{gridColumn:"1 / -1"}}>
+              <F label="Notas">
+                <input value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} placeholder="Motivo del movimiento..." style={{...inp}} />
+              </F>
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:4}}>
+            <button onClick={()=>{setShowForm(false);setForm({productoId:"",cantidad:"",origen:"",destino:"",notas:""}); }} style={{padding:"9px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Cancelar</button>
+            <button onClick={guardarTransfer} style={{padding:"9px 24px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Registrar transferencia</button>
+          </div>
+        </div>
+      )}
+
+      <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial</h3>
+      {transfers.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay transferencias registradas</div>):(
+        <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{background:"#f9fafb"}}>{["Fecha","Producto","Cantidad","Origen","Destino","Notas"].map(h=><th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:600,color:"#6b7280",fontSize:11,textTransform:"uppercase",letterSpacing:.5}}>{h}</th>)}</tr></thead>
+            <tbody>{transfers.slice(0,20).map((t,i)=>(
+              <tr key={t.id} style={{borderTop:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
+                <td style={{padding:"9px 14px",color:"#888"}}>{t.fecha}</td>
+                <td style={{padding:"9px 14px",fontWeight:600}}>{t.productoNombre}</td>
+                <td style={{padding:"9px 14px",fontWeight:700,color:G}}>{t.cantidad}</td>
+                <td style={{padding:"9px 14px"}}><span style={{background:"#fef3c7",color:"#92400e",padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>{t.origen}</span></td>
+                <td style={{padding:"9px 14px"}}><span style={{background:"#f0fdf4",color:G,padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>{t.destino}</span></td>
+                <td style={{padding:"9px 14px",color:"#6b7280"}}>{t.notas||"—"}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
@@ -6302,12 +6810,12 @@ function AryesApp(){
     {id:"clientes",label:"Clientes",icon:"👥"},
     {id:"ventas",label:"Ventas",icon:"🧾"},
     {id:"movimientos",label:"Movimientos",icon:"🔄"},
-    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},
+    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↔️"},
     {id:"deposito",label:"Deposito",icon:"🗂️"},
     {id:"rutas",label:"Rutas",icon:"🚛"},
     {id:"tracking",label:"Tracking",icon:"📍"},
     {id:"kpis",label:"KPIs",icon:"📈"},
-    {id:"recepcion",label:"Recepcion",icon:"📥"},
+    {id:"recepcion",label:"Recepcion",icon:"📥"},{id:"packing",label:"Packing",icon:"📦"},{id:"batch-picking",label:"Batch Pick",icon:"📋"},
     {id:"informes",label:"Informes",icon:"📋"},
     {id:"importar",label:"Importar",icon:"📂"},
     {id:"scanner",label:"Scanner",icon:"📷"},
@@ -6802,6 +7310,11 @@ function AryesApp(){
         {tab==="import"&&<ImportTab />}
         
         {tab==="informes"&&<InformesTab />}
+        
+        {tab==="conteo"&&<ConteoTab />}
+        {tab==="packing"&&<PackingTab />}
+        {tab==="batch-picking"&&<BatchPickingTab />}
+        {tab==="transferencias"&&<TransferenciasTab />}
         </main>
 
       {/* ══ MODALS ══ */}
