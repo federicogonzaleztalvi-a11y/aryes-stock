@@ -1002,7 +1002,7 @@ const Scanner=({products,suppliers,onUpdate})=>{
       {/* Mode selector */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:T.border,borderRadius:8,overflow:"hidden",marginBottom:16}}>
         {[
-          {id:"usb",   icon:"⌨️", title:"Lector USB / Bluetooth", sub:"Lector físico conectado a la PC"},
+          {id:"usb",   icon:"⌨", title:"Lector USB / Bluetooth", sub:"Lector físico conectado a la PC"},
           {id:"camera",icon:"📷", title:"Cámara del celular",     sub:"Usá la cámara para escanear"},
         ].map(m=>(
           <button key={m.id} onClick={()=>setMode(m.id)}
@@ -1256,7 +1256,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             <div style={{marginTop:10,display:"grid",gap:8}}>
               {[
                 {icon:"👤",label:"Contacto",val:supplier.contact},
-                {icon:"✉️",label:"Email",val:supplier.email,href:`mailto:${supplier.email}`},
+                {icon:"✉",label:"Email",val:supplier.email,href:`mailto:${supplier.email}`},
                 {icon:"📞",label:"Teléfono",val:supplier.phone,href:`tel:${supplier.phone}`},
                 {icon:"💬",label:"WhatsApp",val:supplier.whatsapp,href:supplier.whatsapp?`https://wa.me/${supplier.whatsapp.replace(/\D/g,"")}`:""},
                 {icon:"📍",label:"Ubicación",val:[supplier.city,supplier.country].filter(Boolean).join(", ")},
@@ -1366,7 +1366,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
         )}
 
         <div style={{display:"flex",gap:10,paddingTop:4}}>
-          <Btn onClick={onEdit} full variant="ghost">✏️ Editar proveedor</Btn>
+          <Btn onClick={onEdit} full variant="ghost">✏ Editar proveedor</Btn>
           <Btn onClick={onClose} variant="ghost">Cerrar</Btn>
         </div>
       </div>
@@ -1812,7 +1812,7 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
                           </div>
                           {!meetsMin && <div style={{fontFamily:T.sans,fontSize:11,color:T.warning,marginTop:2}}>⚠ Mínimo: {sup.currency||"USD"} {minOrder} — faltan {sup.currency||"USD"} {(minOrder-totalCost).toFixed(0)}</div>}
                           {meetsMin && minOrder>0 && <div style={{fontFamily:T.sans,fontSize:11,color:T.ok,marginTop:2}}>✓ Supera pedido mínimo</div>}
-                          {sup.discount>0 && totalCost >= minOrder && <div style={{fontFamily:T.sans,fontSize:11,color:T.green,marginTop:2}}>🏷️ Descuento {sup.discount}% aplicable</div>}
+                          {sup.discount>0 && totalCost >= minOrder && <div style={{fontFamily:T.sans,fontSize:11,color:T.green,marginTop:2}}>🏷 Descuento {sup.discount}% aplicable</div>}
                         </div>
                       </div>
                       <div style={{display:"flex",gap:1,background:T.border,borderRadius:4,overflow:"hidden"}}>
@@ -1843,12 +1843,12 @@ const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
 const MOV_CFG = {
   order_placed: { icon:"📋", label:"Pedido generado",   color:"#1d4ed8", bg:"#eff6ff", bd:"#bfdbfe" },
   delivery:     { icon:"📦", label:"Mercadería recibida",color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  scanner_in:   { icon:"⌨️", label:"Ingreso scanner",    color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
+  scanner_in:   { icon:"⌨", label:"Ingreso scanner",    color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
   excel_in:     { icon:"📊", label:"Ajuste Excel +",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
   excel_out:    { icon:"📊", label:"Ajuste Excel −",     color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
   manual_in:    { icon:"➕", label:"Entrada manual",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
   manual_out:   { icon:"➖", label:"Salida manual",      color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
-  adjustment:   { icon:"⚖️", label:"Ajuste de inventario",color:"#92400e",bg:"#fffbeb",bd:"#fde68a" },
+  adjustment:   { icon:"⚖", label:"Ajuste de inventario",color:"#92400e",bg:"#fffbeb",bd:"#fde68a" },
 };
 
 const MovTypeTag = ({type}) => {
@@ -2071,7 +2071,7 @@ const ManualMovModal = ({ products, onSave, onClose }) => {
             <Sel value={f.type} onChange={e=>set("type",e.target.value)}>
               <option value="manual_in">➕ Entrada manual</option>
               <option value="manual_out">➖ Salida manual</option>
-              <option value="adjustment">⚖️ Ajuste de inventario</option>
+              <option value="adjustment">⚖ Ajuste de inventario</option>
             </Sel>
           </Field>
           <Field label="Producto">
@@ -2632,7 +2632,7 @@ const LotsTab=({products,session})=>{
       </div>
       {(expired>0||expiring>0)&&<div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
         {expired>0&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 18px',display:'flex',gap:10,alignItems:'center'}}><span style={{fontSize:20}}>🚨</span><div><div style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>{expired} lote{expired>1?'s':''} vencido{expired>1?'s':''}</div><div style={{fontSize:11,color:'#9a9a98'}}>Revisar y dar de baja</div></div></div>}
-        {expiring>0&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 18px',display:'flex',gap:10,alignItems:'center'}}><span style={{fontSize:20}}>⚠️</span><div><div style={{fontSize:13,fontWeight:700,color:'#d97706'}}>{expiring} lote{expiring>1?'s':''} por vencer</div><div style={{fontSize:11,color:'#9a9a98'}}>Priorizar salida (FEFO)</div></div></div>}
+        {expiring>0&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:'12px 18px',display:'flex',gap:10,alignItems:'center'}}><span style={{fontSize:20}}>⚠</span><div><div style={{fontSize:13,fontWeight:700,color:'#d97706'}}>{expiring} lote{expiring>1?'s':''} por vencer</div><div style={{fontSize:11,color:'#9a9a98'}}>Priorizar salida (FEFO)</div></div></div>}
       </div>}
       <div style={{display:'flex',gap:8,marginBottom:20}}>
         {[['all','Todos',lots.length],['expiring','Por vencer',expired+expiring],['expired','Vencidos',expired]].map(([v,l,c])=>(
@@ -6811,7 +6811,7 @@ function AryesApp(){
     {id:"ventas",label:"Ventas",icon:"🧾"},
     {id:"movimientos",label:"Movimientos",icon:"🔄"},
     {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↕"},
-    {id:"deposito",label:"Deposito",icon:"🗂️"},
+    {id:"deposito",label:"Deposito",icon:"🗂"},
     {id:"rutas",label:"Rutas",icon:"🚛"},
     {id:"tracking",label:"Tracking",icon:"📍"},
     {id:"kpis",label:"KPIs",icon:"📈"},
@@ -6819,7 +6819,7 @@ function AryesApp(){
     {id:"informes",label:"Informes",icon:"📋"},
     {id:"importar",label:"Importar",icon:"📂"},
     {id:"scanner",label:"Scanner",icon:"📷"},
-    {id:"config",label:"Config",icon:"⚙️"},
+    {id:"config",label:"Config",icon:"⚙"},
   ];
   const NAV_ROLES={
     admin:["dashboard","inventory","orders","suppliers","clientes","ventas","movimientos","lotes","deposito","rutas","tracking","kpis","recepcion","informes","importar","scanner","config"],
@@ -7141,8 +7141,8 @@ function AryesApp(){
                     <div style={{padding:"10px 18px",borderTop:`1px solid ${T.border}`,display:"flex",gap:12,flexWrap:"wrap"}}>
                       {sup.paymentTerms&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>💳 {sup.paymentTerms}d pago</span>}
                       {sup.minOrder>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.textSm}}>📦 Min. {sup.currency||"USD"} {sup.minOrder}</span>}
-                      {sup.discount>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>🏷️ {sup.discount}% dto.</span>}
-                      {sup.email&&<a href={"mailto:"+sup.email} style={{fontFamily:T.sans,fontSize:11,color:T.green,textDecoration:"none"}}>✉️ Email</a>}
+                      {sup.discount>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>🏷 {sup.discount}% dto.</span>}
+                      {sup.email&&<a href={"mailto:"+sup.email} style={{fontFamily:T.sans,fontSize:11,color:T.green,textDecoration:"none"}}>✉ Email</a>}
                       {sup.whatsapp&&<a href={"https://wa.me/"+sup.whatsapp.replace(/\D/g,"")} target="_blank" rel="noreferrer" style={{fontFamily:T.sans,fontSize:11,color:"#16a34a",textDecoration:"none"}}>💬 WhatsApp</a>}
                     </div>
 
