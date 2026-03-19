@@ -21,11 +21,88 @@ input[type=range]{accent-color:#3a7d1e;}
 // ─────────────────────────────────────────────────────────────────────────────
 // STORAGE
 // ─────────────────────────────────────────────────────────────────────────────
-const SUPA_URL="https://mrotnqybqvmvlexncvno.supabase.co";
-const SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
-const _supaSync=async(key,value)=>{try{await fetch(SUPA_URL+"/rest/v1/aryes_data",{method:"POST",headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({key,value,updated_at:new Date().toISOString()})});}catch(e){}};
-const _supaLoad=async(key,def)=>{try{const r=await fetch(SUPA_URL+"/rest/v1/aryes_data?key=eq."+encodeURIComponent(key),{headers:{"apikey":SUPA_KEY,"Authorization":"Bearer "+SUPA_KEY}});const d=await r.json();if(d&&d[0]&&d[0].value!==undefined){localStorage.setItem(key,JSON.stringify(d[0].value));return d[0].value;}}catch(e){}return def;};
-const LS={get:(k,d)=>{try{const v=localStorage.getItem(k);return v!=null?JSON.parse(v):d;}catch{return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));_supaSync(k,v);}catch{}},load:_supaLoad};
+
+// ============================================================
+// SUPABASE-FIRST DATA LAYER
+// Strategy: localStorage as cache, Supabase as source of truth
+// - Reads: localStorage first (instant), then sync from Supabase in background
+// - Writes: localStorage immediately + Supabase async (never blocks UI)
+// - On first load: pulls all data from Supabase into localStorage
+// ============================================================
+const SB_URL = 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
+
+// Write to Supabase async - never blocks
+function sbWrite(key, value) {
+  try {
+    fetch(SB_URL+'/rest/v1/aryes_data', {
+      method: 'POST',
+      headers: SB_HEADERS,
+      body: JSON.stringify({key, value, updated_at: new Date().toISOString()})
+    }).catch(()=>{});
+  } catch(e) {}
+}
+
+// Read all from Supabase and refresh localStorage cache
+async function sbSyncAll() {
+  try {
+    const r = await fetch(SB_URL+'/rest/v1/aryes_data?select=key,value', {headers: SB_HEADERS});
+    if(!r.ok) return;
+    const rows = await r.json();
+    if(!Array.isArray(rows)) return;
+    rows.forEach(row => {
+      try {
+        const val = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
+        localStorage.setItem(row.key, val);
+      } catch(e) {}
+    });
+    localStorage.setItem('aryes-last-sync', new Date().toISOString());
+  } catch(e) {}
+}
+
+// Read single key from Supabase and refresh cache
+async function sbSyncKey(key) {
+  try {
+    const r = await fetch(SB_URL+'/rest/v1/aryes_data?key=eq.'+encodeURIComponent(key)+'&select=key,value', {headers: SB_HEADERS});
+    if(!r.ok) return;
+    const rows = await r.json();
+    if(!Array.isArray(rows) || rows.length===0) return;
+    const val = typeof rows[0].value === 'string' ? rows[0].value : JSON.stringify(rows[0].value);
+    localStorage.setItem(key, val);
+  } catch(e) {}
+}
+
+// LS: main data access object - localStorage first, Supabase background
+const LS = {
+  get(key, def) {
+    try {
+      const raw = localStorage.getItem(key);
+      if(raw===null||raw===undefined) return def;
+      try { return JSON.parse(raw); } catch(e) { return raw; }
+    } catch(e) { return def; }
+  },
+  set(key, value) {
+    try {
+      const str = typeof value === 'string' ? value : JSON.stringify(value);
+      localStorage.setItem(key, str);
+      sbWrite(key, value); // async, non-blocking
+    } catch(e) {}
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(key);
+      fetch(SB_URL+'/rest/v1/aryes_data?key=eq.'+encodeURIComponent(key), {
+        method: 'DELETE', headers: SB_HEADERS
+      }).catch(()=>{});
+    } catch(e) {}
+  }
+};
+
+// On app load: trigger background sync from Supabase
+// This ensures data is always fresh from the server
+setTimeout(() => sbSyncAll(), 1000);
+
 const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
 const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
