@@ -5750,6 +5750,253 @@ function VentasTab(){
     </section>
   );
 }
+
+function ConfigTab(){
+  const G="#3a7d1e";
+  const [emailCfg,setEmailCfg]=useState(()=>LS.get('aryes9-emailcfg',{serviceId:'',templateId:'',publicKey:'',toEmail:''}));
+  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes');
+  const [stockMin,setStockMin]=useState(()=>localStorage.getItem('aryes-stock-min-default')||'5');
+  const [empresa,setEmpresa]=useState(()=>localStorage.getItem('aryes-empresa')||'Aryes');
+  const [msg,setMsg]=useState('');
+  const inp={padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box'};
+
+  const save=()=>{
+    LS.set('aryes9-emailcfg',emailCfg);
+    localStorage.setItem('aryes-wa-template',waTpl);
+    localStorage.setItem('aryes-stock-min-default',stockMin);
+    localStorage.setItem('aryes-empresa',empresa);
+    setMsg('Configuracion guardada');
+    setTimeout(()=>setMsg(''),3000);
+  };
+
+  return(
+    <section style={{padding:'28px 36px',maxWidth:800,margin:'0 auto'}}>
+      <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:'0 0 4px'}}>Configuracion</h2>
+      <p style={{fontSize:12,color:'#888',margin:'0 0 24px'}}>Ajustes generales del sistema</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+
+      {/* General */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>General</h3>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Nombre de la empresa</label>
+            <input style={inp} value={empresa} onChange={e=>setEmpresa(e.target.value)} placeholder="Aryes" />
+          </div>
+          <div>
+            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Stock minimo por defecto</label>
+            <input type="number" style={inp} value={stockMin} onChange={e=>setStockMin(e.target.value)} min="0" />
+          </div>
+        </div>
+      </div>
+
+      {/* WhatsApp */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 6px',display:'flex',alignItems:'center',gap:8}}>
+          <span style={{color:'#25d366'}}>&#128233;</span> Plantilla WhatsApp
+        </h3>
+        <p style={{fontSize:12,color:'#888',margin:'0 0 12px'}}>Variables: <code style={{background:'#f3f4f6',padding:'1px 6px',borderRadius:4}}>{'{cliente}'}</code> nombre del cliente · <code style={{background:'#f3f4f6',padding:'1px 6px',borderRadius:4}}>{'{detalle}'}</code> detalle de la entrega</p>
+        <textarea value={waTpl} onChange={e=>setWaTpl(e.target.value)} rows={3} style={{...inp,resize:'vertical'}} />
+        <div style={{fontSize:11,color:'#888',marginTop:6}}>Vista previa: <em>{waTpl.replace('{cliente}','Panaderia Lopez').replace('{detalle}','su pedido V-0001 fue entregado hoy')}</em></div>
+      </div>
+
+      {/* Email */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>&#128231; Alertas por Email (EmailJS)</h3>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          {[
+            {l:'Service ID',k:'serviceId',ph:'service_xxx'},
+            {l:'Template ID',k:'templateId',ph:'template_xxx'},
+            {l:'Public Key',k:'publicKey',ph:'AbCdEf...'},
+            {l:'Email destino',k:'toEmail',ph:'admin@aryes.com.uy'},
+          ].map(f=>(
+            <div key={f.k}>
+              <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{f.l}</label>
+              <input style={inp} value={emailCfg[f.k]||''} onChange={e=>setEmailCfg(c=>({...c,[f.k]:e.target.value}))} placeholder={f.ph} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Accesos */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>&#128274; Usuarios del sistema</h3>
+        <div style={{display:'grid',gap:8}}>
+          {[
+            {rol:'admin',user:'admin',pass:'aryes2024',color:'#3a7d1e'},
+            {rol:'operador',user:'operador',pass:'stock123',color:'#3b82f6'},
+            {rol:'vendedor',user:'vendedor',pass:'ventas123',color:'#8b5cf6'},
+          ].map(u=>(
+            <div key={u.rol} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'#f9fafb',borderRadius:8}}>
+              <span style={{background:u.color,color:'#fff',fontSize:11,fontWeight:700,padding:'2px 10px',borderRadius:20}}>{u.rol}</span>
+              <span style={{fontSize:13,color:'#374151'}}>Usuario: <strong>{u.user}</strong></span>
+              <span style={{fontSize:13,color:'#374151'}}>Contrasena: <strong>{u.pass}</strong></span>
+            </div>
+          ))}
+        </div>
+        <p style={{fontSize:11,color:'#aaa',marginTop:8}}>Para cambiar credenciales editar el codigo fuente en AryesApp USERS array.</p>
+      </div>
+
+      <div style={{display:'flex',justifyContent:'flex-end'}}>
+        <button onClick={save} style={{padding:'10px 28px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:14}}>Guardar configuracion</button>
+      </div>
+    </section>
+  );
+}
+
+function ImportTab(){
+  const G="#3a7d1e";
+  const KPROD="aryes6-products";
+  const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
+  const [preview,setPreview]=useState([]);
+  const [msg,setMsg]=useState('');
+  const [importing,setImporting]=useState(false);
+  const [mode,setMode]=useState('csv');
+
+  const parseCSV=(text)=>{
+    const lines=text.split('\n').filter(l=>l.trim());
+    if(lines.length<2)return[];
+    const headers=lines[0].split(/[,;\t]/).map(h=>h.trim().toLowerCase().replace(/[^a-z0-9]/g,''));
+    return lines.slice(1).map((line,i)=>{
+      const vals=line.split(/[,;\t]/);
+      const obj={};
+      headers.forEach((h,j)=>obj[h]=(vals[j]||'').trim().replace(/^"|"$/g,''));
+      return{
+        id:Date.now()+i,
+        nombre:obj.nombre||obj.name||obj.producto||obj.descripcion||'Producto '+(i+1),
+        stock:Number(obj.stock||obj.cantidad||obj.qty||0),
+        unidad:obj.unidad||obj.unit||obj.um||'u',
+        precio:Number(obj.precio||obj.price||obj.costo||0),
+        rop:Number(obj.rop||obj.stockmin||obj.minimo||5),
+        proveedor:obj.proveedor||obj.supplier||obj.marca||'',
+      };
+    }).filter(p=>p.nombre&&p.nombre!=='Producto 1'||p.stock>0);
+  };
+
+  const handleFile=(e)=>{
+    const file=e.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      const text=ev.target.result;
+      const parsed=parseCSV(text);
+      setPreview(parsed);
+      setMsg(parsed.length+' productos detectados. Revisalos antes de importar.');
+    };
+    reader.readAsText(file,'UTF-8');
+  };
+
+  const confirmarImport=()=>{
+    if(preview.length===0)return;
+    setImporting(true);
+    const existing=[...prods];
+    let added=0,updated=0;
+    preview.forEach(p=>{
+      const idx=existing.findIndex(e=>e.nombre?.toLowerCase()===p.nombre?.toLowerCase());
+      if(idx>-1){existing[idx]={...existing[idx],...p,id:existing[idx].id};updated++;}
+      else{existing.push(p);added++;}
+    });
+    setProds(existing);
+    LS.set(KPROD,existing);
+    setPreview([]);
+    setMsg(added+' productos agregados, '+updated+' actualizados.');
+    setImporting(false);
+  };
+
+  const exportCSV=()=>{
+    const headers='nombre,stock,unidad,precio,rop,proveedor';
+    const rows=prods.map(p=>[p.nombre||p.name||'',p.stock||0,p.unidad||p.unit||'u',p.precio||p.price||0,p.rop||5,p.proveedor||''].join(',')).join('\n');
+    const blob=new Blob([headers+'\n'+rows],{type:'text/csv'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='aryes-productos.csv';a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return(
+    <section style={{padding:'28px 36px',maxWidth:900,margin:'0 auto'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+        <div>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Importar / Exportar</h2>
+          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Importa productos desde CSV o Excel exportado como CSV</p>
+        </div>
+        <button onClick={exportCSV} style={{padding:'8px 18px',border:'2px solid '+G,background:'#fff',color:G,borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>
+          &#8659; Exportar productos CSV
+        </button>
+      </div>
+
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+
+      {/* Instrucciones */}
+      <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:20,marginBottom:20}}>
+        <div style={{fontWeight:700,color:'#92400e',marginBottom:8}}>Como preparar el archivo CSV:</div>
+        <div style={{fontSize:13,color:'#78350f',lineHeight:1.7}}>
+          1. Abre Excel o Google Sheets<br/>
+          2. La primera fila debe tener los encabezados:<br/>
+          <code style={{background:'#fef3c7',padding:'2px 8px',borderRadius:4,fontFamily:'monospace',fontSize:12}}>nombre, stock, unidad, precio, rop, proveedor</code><br/>
+          3. Guarda como CSV (separado por comas)<br/>
+          4. Sube el archivo abajo
+        </div>
+        <div style={{marginTop:10,fontSize:12,color:'#92400e'}}>
+          Columnas reconocidas: <strong>nombre/name/producto/descripcion, stock/cantidad/qty, unidad/unit/um, precio/price/costo, rop/stockmin/minimo, proveedor/supplier/marca</strong>
+        </div>
+      </div>
+
+      {/* Upload */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20,textAlign:'center'}}>
+        <div style={{fontSize:40,marginBottom:8}}>&#128196;</div>
+        <div style={{fontSize:14,fontWeight:600,color:'#374151',marginBottom:16}}>Seleccionar archivo CSV</div>
+        <input type="file" accept=".csv,.txt" onChange={handleFile}
+          style={{display:'block',margin:'0 auto',padding:'10px',border:'2px dashed #e5e7eb',borderRadius:8,cursor:'pointer',width:'100%',maxWidth:400,fontSize:13}} />
+        <div style={{fontSize:11,color:'#aaa',marginTop:8}}>Formatos: .csv · Separador: coma, punto y coma, o tab</div>
+      </div>
+
+      {/* Preview */}
+      {preview.length>0&&(
+        <div style={{background:'#fff',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16}}>
+          <div style={{padding:'12px 16px',background:'#f9fafb',borderBottom:'2px solid #e5e7eb',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontWeight:700,color:'#374151'}}>Vista previa — {preview.length} productos</span>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setPreview([])} style={{padding:'6px 14px',border:'1px solid #e5e7eb',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:12}}>Cancelar</button>
+              <button onClick={confirmarImport} disabled={importing} style={{padding:'6px 18px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontWeight:700,fontSize:12}}>
+                {importing?'Importando...':'Confirmar importacion'}
+              </button>
+            </div>
+          </div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead>
+                <tr style={{background:'#f9fafb'}}>
+                  {['Nombre','Stock','Unidad','Precio','Stock min','Proveedor'].map(h=>(
+                    <th key={h} style={{padding:'8px 12px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.slice(0,20).map((p,i)=>(
+                  <tr key={i} style={{borderTop:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa'}}>
+                    <td style={{padding:'7px 12px',fontWeight:500,color:'#1a1a1a'}}>{p.nombre}</td>
+                    <td style={{padding:'7px 12px',fontWeight:700,color:G}}>{p.stock}</td>
+                    <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.unidad}</td>
+                    <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.precio>0?'$'+p.precio:'-'}</td>
+                    <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.rop}</td>
+                    <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.proveedor||'-'}</td>
+                  </tr>
+                ))}
+                {preview.length>20&&<tr><td colSpan='6' style={{padding:'8px 12px',color:'#888',fontStyle:'italic',textAlign:'center'}}>...y {preview.length-20} mas</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div style={{background:'#fff',borderRadius:10,padding:'16px 20px',boxShadow:'0 1px 3px rgba(0,0,0,.04)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{fontSize:13,color:'#6b7280'}}>Productos actualmente en el sistema:</span>
+        <span style={{fontSize:22,fontWeight:800,color:G}}>{prods.length}</span>
+      </div>
+    </section>
+  );
+}
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
@@ -6413,6 +6660,10 @@ function AryesApp(){
         {tab==="recepcion"&&<RecepcionTab />}
         
         {tab==="ventas"&&<VentasTab />}
+        
+        {tab==="config"&&<ConfigTab />}
+        {tab==="importar"&&<ImportTab />}
+        {tab==="import"&&<ImportTab />}
         </main>
 
       {/* ══ MODALS ══ */}
