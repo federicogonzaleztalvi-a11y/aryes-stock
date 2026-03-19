@@ -4633,440 +4633,226 @@ function DepositoTab(){
 
 function RutasTab(){
   const G="#3a7d1e";
-  const KRUTAS="aryes-rutas";
-  const KCLIENTES="aryes-clients";
-  const VEHICULOS=["Vehiculo 1","Vehiculo 2","Vehiculo 3"];
-  const ZONAS=["Zona Norte","Zona Sur","Zona Este","Zona Oeste","Zona Centro","Ciudad del Este","Interior"];
-  const DIAS=["Lunes","Martes","Miercoles","Jueves","Viernes","Sabado"];
-  const emptyForm={vehiculo:"Vehiculo 1",zona:"Zona Norte",dia:"Lunes",hora:"08:00",clienteIds:[],notas:''};
-  const [rutas,setRutas]=useState(()=>LS.get(KRUTAS,[]));
-  const [clientes,setClientes]=useState(()=>LS.get(KCLIENTES,[]));
-  const [form,setForm]=useState(emptyForm);
-  const [vista,setVista]=useState('hoy');
-  const [diaVista,setDiaVista]=useState(()=>DIAS[new Date().getDay()-1]||'Lunes');
+  const [rutas,setRutas]=useState(()=>LS.get("aryes-rutas",[]));
+  const [clientes]=useState(()=>LS.get("aryes-clients",[]));
+  const [vista,setVista]=useState("lista");
   const [rutaActiva,setRutaActiva]=useState(null);
-  const [msg,setMsg]=useState('');
-  const [editId,setEditId]=useState(null);
+  const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
+  const [msg,setMsg]=useState("");
+  const [busqCli,setBusqCli]=useState("");
+  const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
 
-  const hoy=new Date();
-  const diaHoy=DIAS[hoy.getDay()-1]||'Lunes';
+  const ruta=rutas.find(r=>r.id===rutaActiva)||null;
 
-  const guardarRuta=()=>{
-    if(form.clienteIds.length===0){setMsg('Agrega al menos un cliente');return;}
-    const ruta={
-      ...form,
-      id:editId||Date.now(),
-      entregas:form.clienteIds.map(cid=>{
-        const cl=clientes.find(c=>String(c.id)===String(cid));
-        return{clienteId:cid,clienteNombre:cl?.nombre||'?',ciudad:cl?.ciudad||'',telefono:cl?.telefono||'',direccion:cl?.direccion||'',estado:'pendiente',hora:''};
-      }),
-      creado:new Date().toISOString()
-    };
-    const upd=editId?rutas.map(r=>r.id===editId?ruta:r):[...rutas,ruta];
-    setRutas(upd);LS.set(KRUTAS,upd);
-    setMsg(editId?'Ruta actualizada':'Ruta creada');
-    setForm(emptyForm);setEditId(null);setVista('hoy');
-    setTimeout(()=>setMsg(''),3000);
-  };
-
-  const confirmarEntrega=(rutaId,clienteId,foto,nota)=>{
-    const upd=rutas.map(r=>{
-      if(r.id!==rutaId)return r;
-      return{...r,entregas:r.entregas.map(e=>e.clienteId===clienteId?{...e,estado:'entregado',hora:new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}),foto:foto||'',nota:nota||'',fecha:new Date().toLocaleDateString('es-UY')}:e)};
-    });
-    setRutas(upd);LS.set(KRUTAS,upd);
-    const ruta=rutas.find(r=>r.id===rutaId);
-    const ent=ruta?.entregas.find(e=>e.clienteId===clienteId);
-    if(ent){const h=LS.get('aryes-hist-ent',[]);h.unshift({id:Date.now(),rutaId,vehiculo:ruta.vehiculo,zona:ruta.zona,clienteId,nombre:ent.clienteNombre,ciudad:ent.ciudad||'',hora:new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}),fecha:new Date().toLocaleDateString('es-UY'),foto:foto||'',nota:nota||''});LS.set('aryes-hist-ent',h.slice(0,500));}
-  };
-
-  const marcarNoEntregado=(rutaId,clienteId)=>{
-    const upd=rutas.map(r=>{
-      if(r.id!==rutaId)return r;
-      return{...r,entregas:r.entregas.map(e=>e.clienteId===clienteId?{...e,estado:'no-entregado',hora:new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}:e)};
-    });
-    setRutas(upd);LS.set(KRUTAS,upd);
+  const crearRuta=()=>{
+    if(!form.vehiculo||!form.zona){setMsg("Completa vehiculo y zona");return;}
+    const nueva={id:Date.now(),vehiculo:form.vehiculo,zona:form.zona,dia:form.dia,notas:form.notas,entregas:[],creadoEn:new Date().toISOString()};
+    const upd=[nueva,...rutas];
+    setRutas(upd);LS.set("aryes-rutas",upd);
+    setForm({vehiculo:"",zona:"",dia:"",notas:""});
+    setMsg("Ruta creada");setTimeout(()=>setMsg(""),3000);
   };
 
   const eliminarRuta=(id)=>{
-    if(!confirm('Eliminar esta ruta?'))return;
+    if(!confirm("Eliminar esta ruta?"))return;
     const upd=rutas.filter(r=>r.id!==id);
-    setRutas(upd);LS.set(KRUTAS,upd);
-    setRutaActiva(null);
+    setRutas(upd);LS.set("aryes-rutas",upd);
   };
 
-  const rutasHoy=rutas.filter(r=>r.dia===diaVista);
-  const toggleCliente=(cid)=>{
-    setForm(f=>({...f,clienteIds:f.clienteIds.includes(cid)?f.clienteIds.filter(x=>x!==cid):[...f.clienteIds,cid]}));
-  };
-  // Google Maps URL con todas las paradas en orden
-  const getMapsUrl=(ruta)=>{
-    const stops=ruta.entregas.filter(e=>e.direccion||e.ciudad);
-
-  const optimizarRutaOSRM=async(entregas,onMsg)=>{
-    const conDir=entregas.filter(e=>e.direccion||e.ciudad);
-    if(conDir.length<2)return entregas;
-    if(onMsg)onMsg('Geocodificando '+conDir.length+' paradas...');
-    try{
-      const geoRes=await Promise.all(conDir.map(async e=>{
-        const q=encodeURIComponent((e.direccion||'')+' '+(e.ciudad||'')+' Uruguay');
-        const res=await fetch('https://nominatim.openstreetmap.org/search?q='+q+'&format=json&limit=1',{headers:{'User-Agent':'AryesStock/1.0'}});
-        const data=await res.json();
-        return data&&data[0]?{...e,lat:parseFloat(data[0].lat),lng:parseFloat(data[0].lon)}:{...e,lat:null,lng:null};
-      }));
-      const valid=geoRes.filter(e=>e.lat);
-      if(valid.length<2)return entregas;
-      if(onMsg)onMsg('Optimizando orden de '+valid.length+' paradas...');
-      const coords=valid.map(e=>e.lng+','+e.lat).join(';');
-      const res=await fetch('https://router.project-osrm.org/trip/v1/driving/'+coords+'?roundtrip=false&source=first&destination=last');
-      const data=await res.json();
-      if(data.code==='Ok'&&data.waypoints){
-        const ordered=data.waypoints.sort((a,b)=>a.waypoint_index-b.waypoint_index).map(wp=>valid[wp.trips_index]||valid[0]);
-        const noDir=entregas.filter(e=>!e.direccion&&!e.ciudad);
-        const km=Math.round((data.trips[0]?.distance||0)/1000);
-        const min=Math.round((data.trips[0]?.duration||0)/60);
-        if(onMsg)onMsg('Ruta optimizada: '+km+'km en aprox '+min+' min');
-        return [...ordered,...noDir];
-      }
-    }catch(err){if(onMsg)onMsg('Sin conexion. Usando orden manual.');}
-    return entregas;
-  };
-    if(stops.length===0)return null;
-    const base='https://www.google.com/maps/dir/';
-    const waypoints=stops.map(e=>encodeURIComponent((e.direccion?e.direccion+', ':'')+e.ciudad+', Uruguay')).join('/');
-    return base+waypoints;
+  const agregarEntrega=(cli)=>{
+    if(!ruta)return;
+    if(ruta.entregas.find(e=>e.clienteId===cli.id)){setMsg("Ya esta en la ruta");return;}
+    const e={clienteId:cli.id,clienteNombre:cli.nombre,ciudad:cli.ciudad||"",telefono:cli.telefono||"",estado:"pendiente",hora:"",nota:"",foto:""};
+    const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:[...r.entregas,e]}:r);
+    setRutas(upd);LS.set("aryes-rutas",upd);
+    setBusqCli("");
   };
 
-  const inp={width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',boxSizing:'border-box'};
+  const marcarEntregado=(rutaId,clienteId)=>{
+    const hora=new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"});
+    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora}:ev)}:r);
+    setRutas(upd);LS.set("aryes-rutas",upd);
+  };
 
-  // FORM VIEW
-  if(vista==='form')return(
-    <section style={{padding:'32px 40px',maxWidth:700,margin:'0 auto'}}>
-      <div style={{display:'flex',alignItems:'center',marginBottom:28}}>
-        <button onClick={()=>{setVista('hoy');setEditId(null);setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>&#8592;</button>
-        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>{editId?'Editar ruta':'Nueva ruta de reparto'}</h2>
-      </div>
-      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
-      <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gap:16}}>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-          <div>
-            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Vehiculo</label>
-            <select value={form.vehiculo} onChange={e=>setForm(f=>({...f,vehiculo:e.target.value}))} style={{...inp,background:'#fff'}}>
-              {VEHICULOS.map(v=><option key={v}>{v}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Dia</label>
-            <select value={form.dia} onChange={e=>setForm(f=>({...f,dia:e.target.value}))} style={{...inp,background:'#fff'}}>
-              {DIAS.map(d=><option key={d}>{d}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Zona</label>
-            <select value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} style={{...inp,background:'#fff'}}>
-              {ZONAS.map(z=><option key={z}>{z}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Hora salida</label>
-            <input type='time' value={form.hora} onChange={e=>setForm(f=>({...f,hora:e.target.value}))} style={inp} />
-          </div>
-        </div>
-        <div>
-          <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:8}}>Clientes a visitar ({form.clienteIds.length} seleccionados)</label>
-          {clientes.length===0?(
-            <div style={{padding:16,background:'#f9fafb',borderRadius:8,fontSize:13,color:'#888',textAlign:'center'}}>No hay clientes cargados. Ve al modulo Clientes para agregar.</div>
-          ):(
-            <div style={{maxHeight:250,overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:8}}>
-              {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=>(
-                <label key={c.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:'1px solid #f3f4f6',cursor:'pointer',background:form.clienteIds.includes(String(c.id))?'#f0fdf4':'#fff'}}>
-                  <input type='checkbox' checked={form.clienteIds.includes(String(c.id))} onChange={()=>toggleCliente(String(c.id))} />
-                  <div>
-                    <div style={{fontSize:13,fontWeight:500}}>{c.nombre}</div>
-                    <div style={{fontSize:11,color:'#888'}}>{c.tipo}{c.ciudad?' · '+c.ciudad:''}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-        <div>
-          <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Notas</label>
-          <textarea value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} rows={2} style={{...inp,resize:'vertical'}} />
-        </div>
-        <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:4}}>
-          <button onClick={()=>{setVista('hoy');setEditId(null);}} style={{padding:'9px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
-          <button onClick={guardarRuta} style={{padding:'9px 24px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>{editId?'Guardar cambios':'Crear ruta'}</button>
-        </div>
-      </div>
-    </section>
-  );
-  // DETALLE RUTA
-  if(vista==='detalle'&&rutaActiva){
-    const ruta=rutas.find(r=>r.id===rutaActiva);
-    if(!ruta)return null;
-    const entregadas=ruta.entregas.filter(e=>e.estado==='entregado').length;
-    const total=ruta.entregas.length;
-    const pct=total>0?Math.round(entregadas/total*100):0;
-    const mapsUrl=getMapsUrl(ruta);
-    return(
-      <section style={{padding:'32px 40px',maxWidth:800,margin:'0 auto'}}>
-        <div style={{display:'flex',alignItems:'center',marginBottom:20,gap:12}}>
-          <button onClick={()=>setVista('hoy')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
-          <div style={{flex:1}}>
-            <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>{ruta.vehiculo} — {ruta.zona}</h2>
-            <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{ruta.dia} · Salida {ruta.hora}</p>
-          </div>
-          <div style={{display:'flex',gap:8}}>
-            {mapsUrl&&<a href={mapsUrl} target='_blank' rel='noreferrer' style={{padding:'8px 16px',background:'#4285f4',color:'#fff',borderRadius:8,fontSize:12,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>&#128506; Abrir en Maps</a>}
-            <button onClick={async()=>{const opt=await optimizarRutaOSRM(ruta.entregas,(m)=>setMsg(m));const upd=rutas.map(r2=>r2.id===ruta.id?{...r2,entregas:opt}:r2);setRutas(upd);LS.set(KRUTAS,upd);setTimeout(()=>setMsg(''),6000);}} style={{padding:'8px 14px',background:'#059669',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>&#129302; Optimizar orden</button>
-                    <button onClick={()=>eliminarRuta(ruta.id)} style={{padding:'8px 14px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:12}}>Eliminar</button>
-          </div>
-        </div>
-        {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+  const marcarNoEntregado=(rutaId,clienteId)=>{
+    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"no_entregado",hora:new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"})}:ev)}:r);
+    setRutas(upd);LS.set("aryes-rutas",upd);
+  };
 
-        {/* Progress bar */}
-        <div style={{background:'#fff',borderRadius:10,padding:'16px 20px',marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
-            <span style={{fontSize:13,fontWeight:600,color:'#374151'}}>Progreso de entregas</span>
-            <span style={{fontSize:13,fontWeight:700,color:G}}>{entregadas}/{total} ({pct}%)</span>
-          </div>
-          <div style={{background:'#e5e7eb',borderRadius:99,height:8,overflow:'hidden'}}>
-            <div style={{width:pct+'%',background:G,height:'100%',borderRadius:99,transition:'width .3s'}} />
-          </div>
-        </div>
+  const revertirEntrega=(rutaId,clienteId)=>{
+    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"pendiente",hora:""}:ev)}:r);
+    setRutas(upd);LS.set("aryes-rutas",upd);
+  };
 
-        {/* Lista de paradas */}
-        <div style={{display:'grid',gap:10}}>
-          {ruta.entregas.map((e,i)=>{
-            const isEntregado=e.estado==='entregado';
-            const isNoEntregado=e.estado==='no-entregado';
-            return(
-              <div key={e.clienteId} style={{background:'#fff',borderRadius:10,padding:'16px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'2px solid '+(isEntregado?G:isNoEntregado?'#ef4444':'#e5e7eb'),display:'flex',alignItems:'center',gap:14}}>
-                <div style={{width:28,height:28,borderRadius:'50%',background:isEntregado?G:isNoEntregado?'#ef4444':'#e5e7eb',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0}}>{i+1}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:600,fontSize:14,color:'#1a1a1a'}}>{e.clienteNombre}</div>
-                  <div style={{fontSize:12,color:'#666',marginTop:2}}>
-                    {e.direccion&&<span>&#128205; {e.direccion}{e.ciudad?', '+e.ciudad:''}</span>}
-                    {!e.direccion&&e.ciudad&&<span>&#128205; {e.ciudad}</span>}
-                    {e.telefono&&<span style={{marginLeft:12}}>&#128222; {e.telefono}</span>}
-                  </div>
-                  {(isEntregado||isNoEntregado)&&<div style={{fontSize:11,color:isEntregado?G:'#ef4444',marginTop:4,fontWeight:600}}>{isEntregado?'Entregado':'No entregado'} {e.hora&&'a las '+e.hora}</div>}{isEntregado&&e.foto&&<img src={e.foto} alt="prueba entrega" style={{width:80,height:60,objectFit:'cover',borderRadius:6,marginTop:6,border:'2px solid #3a7d1e'}} />}{isEntregado&&e.foto&&<img src={e.foto} alt="prueba" style={{width:72,height:54,objectFit:'cover',borderRadius:6,marginTop:4,border:'2px solid '+G}} />}
-                </div>
-                {!isEntregado&&!isNoEntregado&&(
-                  <div style={{display:'flex',gap:6}}>
-                    <button onClick={()=>{setFotoModal({rutaId:ruta.id,clienteId:e.clienteId,nombre:e.clienteNombre});setNotaInput('');}} style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>Entregado</button>
-                    <button onClick={()=>marcarNoEntregado(ruta.id,e.clienteId)} style={{padding:'7px 12px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>No entregado</button>
-                  </div>
-                )}
-                {(isEntregado||isNoEntregado)&&(
-                  <button onClick={()=>{const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:r.entregas.map(ev=>ev.clienteId===e.clienteId?{...ev,estado:'pendiente',hora:''}:ev)}:r);setRutas(upd);LS.set('aryes-rutas',upd);}} style={{padding:'7px 12px',border:'1px solid #e5e7eb',background:'#fff',color:'#374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600}}>Revertir</button>
-                )}
+  const abrirMaps=(e)=>{
+    const q=encodeURIComponent((e.ciudad||e.clienteNombre)+" Uruguay");
+    window.open("https://maps.google.com/?q="+q,"_blank");
+  };
+
+  const exportarCSV=()=>{
+    if(!ruta)return;
+    const rows=[["Cliente","Ciudad","Estado","Hora","Nota"],...ruta.entregas.map(e=>[e.clienteNombre,e.ciudad,e.estado,e.hora,e.nota||""])];
+    const csv=rows.map(r=>r.map(c=>"\""+c+"\"").join(",")).join("\n");
+    const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="ruta-"+ruta.vehiculo+".csv";a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const clientesFiltrados=clientes.filter(c=>c.nombre&&c.nombre.toLowerCase().includes(busqCli.toLowerCase())).slice(0,6);
+  const pendientes=ruta?ruta.entregas.filter(e=>e.estado==="pendiente").length:0;
+  const entregados=ruta?ruta.entregas.filter(e=>e.estado==="entregado").length:0;
+
   // HISTORIAL VIEW
-  if(vista==='historial'){
-    const hist=LS.get('aryes-hist-ent',[]);
-    const exportar=()=>{
-      const rows=[['Fecha','Hora','Vehiculo','Zona','Cliente','Ciudad','Nota'],...hist.map(h=>[h.fecha,h.hora,h.vehiculo,h.zona,h.nombre,h.ciudad,h.nota||''])];
-      const csv=rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
-      const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='entregas.csv';a.click();
+  if(vista==="historial"){
+    const hist=rutas.flatMap(r=>r.entregas.filter(e=>e.estado==="entregado").map(e=>({...e,vehiculo:r.vehiculo,zona:r.zona})));
+    const exportarHist=()=>{
+      const rows=[["Vehiculo","Zona","Cliente","Ciudad","Hora","Nota"],...hist.map(h=>[h.vehiculo,h.zona,h.clienteNombre,h.ciudad||"",h.hora,h.nota||""])];
+      const csv=rows.map(r=>r.map(c=>"\""+c+"\"").join(",")).join("\n");
+      const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download="historial-entregas.csv";a.click();
+      URL.revokeObjectURL(url);
     };
     return(
-      <section style={{padding:'28px 36px',maxWidth:1000,margin:'0 auto'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
-          <button onClick={()=>setVista('hoy')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Historial de Entregas</h2>
-          <span style={{fontSize:13,color:'#888'}}>({hist.length} registros)</span>
-          <button onClick={exportar} style={{marginLeft:'auto',padding:'8px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>Exportar CSV</button>
+      <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+          <button onClick={()=>setVista("lista")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Historial de entregas</h2>
+          <button onClick={exportarHist} style={{marginLeft:"auto",padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700}}>Exportar CSV</button>
         </div>
-        {hist.length===0?(<div style={{textAlign:'center',padding:'60px 0',color:'#888',fontSize:15}}>Aun no hay entregas confirmadas</div>):(
-          <div style={{background:'#fff',borderRadius:12,overflow:'auto',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-              <thead><tr style={{background:'#f9fafb',borderBottom:'2px solid #e5e7eb'}}>
-                {['Fecha','Hora','Vehiculo','Zona','Cliente','Nota','Foto'].map(h=>(
-                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase'}}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {hist.map((h,i)=>(
-                  <tr key={h.id} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa'}}>
-                    <td style={{padding:'9px 14px',color:'#6b7280',fontSize:12}}>{h.fecha}</td>
-                    <td style={{padding:'9px 14px',fontWeight:700,color:G}}>{h.hora}</td>
-                    <td style={{padding:'9px 14px'}}><span style={{background:'#3b82f6',color:'#fff',fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20}}>{h.vehiculo}</span></td>
-                    <td style={{padding:'9px 14px',fontSize:12}}>{h.zona}</td>
-                    <td style={{padding:'9px 14px',fontWeight:500}}>{h.nombre}</td>
-                    <td style={{padding:'9px 14px',color:'#888',fontSize:12}}>{h.nota||'-'}</td>
-                    <td style={{padding:'9px 14px'}}>
-                      {h.foto?<img src={h.foto} alt="foto" style={{width:44,height:44,objectFit:'cover',borderRadius:6,cursor:'pointer',border:'1px solid #e5e7eb'}} onClick={()=>window.open(h.foto)} />:<span style={{color:'#ccc',fontSize:11}}>-</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {hist.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>Sin entregas registradas</div>):(
+          <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+            {hist.map((h,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
+                <span style={{fontSize:16}}>&#128666;</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{h.clienteNombre}</div>
+                  <div style={{fontSize:11,color:"#888"}}>{h.vehiculo} · {h.zona} · {h.ciudad||""}</div>
+                </div>
+                <div style={{fontSize:12,color:G,fontWeight:700}}>{h.hora}</div>
+                <span style={{background:"#f0fdf4",color:G,fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Entregado</span>
+              </div>
+            ))}
           </div>
         )}
       </section>
     );
   }
 
-  // FOTO MODAL
-  const tomarFoto=async()=>{
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
-      const video=document.createElement('video');
-      video.srcObject=stream;video.playsInline=true;
-      await new Promise(res=>{video.onloadedmetadata=res;});
-      await video.play();
-      await new Promise(res=>setTimeout(res,500));
-      const canvas=document.createElement('canvas');
-      canvas.width=Math.min(video.videoWidth,800);
-      canvas.height=Math.round(video.videoHeight*(canvas.width/video.videoWidth));
-      canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-      stream.getTracks().forEach(t=>t.stop());
-      return canvas.toDataURL('image/jpeg',0.7);
-    }catch(e){return '';}
-  };
-
-upd);LS.set(KRUTAS,upd);}} style={{padding:'5px 10px',border:'1px solid #e5e7eb',background:'#fff',color:'#666',borderRadius:6,cursor:'pointer',fontSize:11}}>Resetear</button>
-                )}
+  // DETALLE VIEW
+  if(vista==="detalle"&&ruta){
+    return(
+      <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
+          <button onClick={()=>{setVista("lista");setRutaActiva(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <div style={{flex:1}}>
+            <h2 style={{fontFamily:"Playfair Display,serif",fontSize:22,color:"#1a1a1a",margin:0}}>&#128666; {ruta.vehiculo} — {ruta.zona}</h2>
+            <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>{ruta.dia||"Sin dia asignado"} · {ruta.entregas.length} paradas</p>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={exportarCSV} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>CSV</button>
+            <button onClick={()=>setVista("historial")} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>Historial</button>
+          </div>
+        </div>
+        {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"8px 14px",marginBottom:12,color:G,fontSize:12,fontWeight:600}}>{msg}</div>}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+          <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:G}}>{entregados}</div><div style={{fontSize:11,color:"#888"}}>Entregados</div></div>
+          <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{pendientes}</div><div style={{fontSize:11,color:"#888"}}>Pendientes</div></div>
+          <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{ruta.entregas.length}</div><div style={{fontSize:11,color:"#888"}}>Total</div></div>
+        </div>
+        <div style={{background:"#fff",borderRadius:10,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
+          <input value={busqCli} onChange={e=>setBusqCli(e.target.value)} placeholder="Buscar cliente para agregar..." style={{...inp,marginBottom:busqCli?8:0}} />
+          {busqCli&&clientesFiltrados.map(c=>(
+            <div key={c.id} onClick={()=>agregarEntrega(c)} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",background:"#f9fafb",marginBottom:4}}>
+              <span style={{fontSize:14}}>&#128100;</span>
+              <div style={{flex:1,fontSize:13,fontWeight:600}}>{c.nombre}</div>
+              <span style={{fontSize:11,color:"#888"}}>{c.ciudad||""}</span>
+              <span style={{fontSize:12,color:G,fontWeight:700}}>+</span>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"grid",gap:8}}>
+          {ruta.entregas.map((e,i)=>{
+            const isEntregado=e.estado==="entregado";
+            const isNoEnt=e.estado==="no_entregado";
+            return(
+              <div key={e.clienteId} style={{background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fff",border:"1px solid "+(isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),borderRadius:10,padding:"12px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                  <span style={{fontSize:18,opacity:.7}}>&#128205;</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{e.clienteNombre}</div>
+                    <div style={{fontSize:12,color:"#888"}}>{e.ciudad||""}{e.hora?" · "+e.hora:""}</div>
+                  </div>
+                  <span style={{fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:700,background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fffbeb",color:isEntregado?G:isNoEnt?"#dc2626":"#92400e"}}>{e.estado==="pendiente"?"Pendiente":e.estado==="entregado"?"Entregado":"No entregado"}</span>
+                </div>
+                <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
+                  {!isEntregado&&!isNoEnt&&(
+                    <>
+                      <button onClick={()=>marcarEntregado(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700}}>Entregado</button>
+                      <button onClick={()=>marcarNoEntregado(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:6,cursor:"pointer",fontSize:12}}>No entregado</button>
+                    </>
+                  )}
+                  {(isEntregado||isNoEnt)&&(
+                    <button onClick={()=>revertirEntrega(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12}}>Revertir</button>
+                  )}
+                  <button onClick={()=>abrirMaps(e)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12}}>Maps</button>
+                </div>
               </div>
             );
           })}
         </div>
-        {ruta.notas&&<div style={{marginTop:16,padding:'12px 16px',background:'#fffbeb',borderRadius:8,fontSize:13,color:'#92400e'}}>Notas: {ruta.notas}</div>}
+        {ruta.entregas.length===0&&<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>Buscá clientes arriba para agregar paradas</div>}
       </section>
     );
   }
-  // Stats generales
-  const totalRutas=rutas.length;
-  const rutasHoyCount=rutasHoy.length;
-  const entregasTotales=rutasHoy.reduce((a,r)=>a+r.entregas.length,0);
-  const entregasOk=rutasHoy.reduce((a,r)=>a+r.entregas.filter(e=>e.estado==='entregado').length,0);
 
+  // LISTA VIEW (default)
   return(
-    <section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+    <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Rutas de Reparto</h2>
-          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestion de entregas por vehiculo y zona</p>
+          <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>Rutas de Reparto</h2>
+          <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>Planifica y gestiona las rutas de entrega</p>
         </div>
-        <div style={{display:'flex',gap:8}}><button onClick={()=>setVista('historial')} style={{padding:'9px 16px',border:'1px solid #e5e7eb',background:'#fff',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151'}}>Historial</button><button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva ruta</button></div>
+        <button onClick={()=>setVista("historial")} style={{padding:"8px 16px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:13}}>Ver historial</button>
       </div>
-      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
-
-      
-      {fotoModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-          <div style={{background:'#fff',borderRadius:16,padding:28,width:'100%',maxWidth:340,boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
-            <div style={{fontWeight:700,fontSize:16,color:'#1a1a1a',marginBottom:6}}>Confirmar entrega</div>
-            <div style={{fontSize:13,color:'#3a7d1e',fontWeight:600,marginBottom:14}}>{fotoModal.nombre}</div>
-            <textarea placeholder="Nota (opcional): firmado por Juan, dejado en porteria..." value={notaInput} onChange={e=>setNotaInput(e.target.value)} rows={2} style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,marginBottom:14,resize:'none',boxSizing:'border-box',fontFamily:'inherit'}} />
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-              <button onClick={async()=>{const f=await tomarFoto();confirmarEntrega(fotoModal.rutaId,fotoModal.clienteId,f,notaInput);setFotoModal(null);}} style={{padding:'11px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:700}}>Foto + Confirmar</button>
-              <button onClick={()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';inp.onchange=(ev)=>{const f=ev.target.files[0];if(f){const fr=new FileReader();fr.onload=(re)=>confirmarEntrega(ruta.id,e.clienteId,re.result);fr.readAsDataURL(f);}else{confirmarEntrega(ruta.id,e.clienteId);}};inp.click();}} style={{padding:'11px',border:'2px solid #3a7d1e',color:'#3a7d1e',background:'#fff',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>Sin foto</button>
-            </div>
-            <button onClick={()=>setFotoModal(null)} style={{width:'100%',padding:'8px',border:'1px solid #e5e7eb',borderRadius:8,background:'#f9fafb',cursor:'pointer',fontSize:12,color:'#888'}}>Cancelar</button>
-          </div>
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+      <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:20}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:14}}>Nueva ruta</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+          <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Vehiculo</label>
+          <input value={form.vehiculo} onChange={e=>setForm(f=>({...f,vehiculo:e.target.value}))} placeholder="Ej: Camion A" style={inp} /></div>
+          <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Zona</label>
+          <input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} placeholder="Ej: Montevideo Norte" style={inp} /></div>
+          <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Dia</label>
+          <input value={form.dia} onChange={e=>setForm(f=>({...f,dia:e.target.value}))} placeholder="Ej: Lunes" style={inp} /></div>
         </div>
-      )}
-
-      {/* Stats */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
-        {[
-          {l:'Rutas totales',v:totalRutas,c:'#6b7280'},
-          {l:'Rutas hoy',v:rutasHoyCount,c:'#3b82f6'},
-          {l:'Entregas hoy',v:entregasTotales,c:'#f59e0b'},
-          {l:'Completadas',v:entregasOk,c:G},
-        ].map(s=>(
-          <div key={s.l} style={{background:'#fff',borderRadius:10,padding:'14px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-            <div style={{fontSize:11,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{s.l}</div>
-            <div style={{fontSize:26,fontWeight:700,color:s.c}}>{s.v}</div>
-          </div>
-        ))}
+        <button onClick={crearRuta} style={{padding:"9px 22px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Crear ruta</button>
       </div>
-
-      {/* Dia selector */}
-      <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
-        {DIAS.map(d=>(
-          <button key={d} onClick={()=>setDiaVista(d)} style={{padding:'7px 16px',borderRadius:20,border:'2px solid '+(diaVista===d?G:'#e5e7eb'),background:diaVista===d?G:'#fff',color:diaVista===d?'#fff':'#666',fontWeight:600,fontSize:12,cursor:'pointer',position:'relative'}}>
-            {d}{d===diaHoy&&<span style={{position:'absolute',top:-4,right:-4,background:'#ef4444',borderRadius:'50%',width:8,height:8,border:'1px solid #fff'}} />}
-          </button>
-        ))}
-      </div>
-
-      {rutasHoy.length===0?(
-        <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
-          <div style={{fontSize:40,marginBottom:12}}>&#128665;</div>
-          <p style={{fontSize:15}}>{rutas.length===0?'No hay rutas configuradas todavia':'No hay rutas para el '+diaVista}</p>
-          <button onClick={()=>setVista('form')} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Crear primera ruta</button>
-        </div>
-      ):(
-        <div style={{display:'grid',gap:12}}>
-          {rutasHoy.map(ruta=>{
-            const entregadas=ruta.entregas.filter(e=>e.estado==='entregado').length;
-            const total=ruta.entregas.length;
-            const pct=total>0?Math.round(entregadas/total*100):0;
-            const mapsUrl=getMapsUrl(ruta);
-            const VCOLOR={"Vehiculo 1":"#3b82f6","Vehiculo 2":"#8b5cf6","Vehiculo 3":"#f59e0b"};
+      <div style={{display:"grid",gap:10}}>
+        {rutas.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>Sin rutas creadas</div>):(
+          rutas.map(r=>{
+            const pend=r.entregas.filter(e=>e.estado==="pendiente").length;
+            const ent=r.entregas.filter(e=>e.estado==="entregado").length;
             return(
-              <div key={ruta.id} style={{background:'#fff',borderRadius:12,padding:'18px 22px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #f3f4f6'}}>
-                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <span style={{background:VCOLOR[ruta.vehiculo]||'#6b7280',color:'#fff',fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20}}>{ruta.vehiculo}</span>
-                    <span style={{fontWeight:700,fontSize:16,color:'#1a1a1a'}}>{ruta.zona}</span>
-                    <span style={{fontSize:12,color:'#888'}}>· Salida {ruta.hora}</span>
-                  </div>
-                  <div style={{display:'flex',gap:6}}>
-                    {mapsUrl&&<a href={mapsUrl} target='_blank' rel='noreferrer' style={{padding:'6px 12px',background:'#4285f4',color:'#fff',borderRadius:6,fontSize:11,fontWeight:700,textDecoration:'none'}}>&#128506; Maps</a>}
-                    <button onClick={()=>{setRutaActiva(ruta.id);setVista('detalle');}} style={{padding:'6px 14px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,fontWeight:700}}>Ver ruta</button>
-                    <button onClick={()=>eliminarRuta(ruta.id)} style={{padding:'6px 10px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:6,cursor:'pointer',fontSize:12}}>x</button>
-                  </div>
+              <div key={r.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                <span style={{fontSize:22}}>&#128666;</span>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{r.vehiculo} — {r.zona}</div>
+                  <div style={{fontSize:12,color:"#888"}}>{r.dia||"Sin dia"} · {ent}/{r.entregas.length} entregas</div>
                 </div>
-                <div style={{marginBottom:10}}>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                    <span style={{fontSize:12,color:'#666'}}>{total} clientes · {entregadas} entregados</span>
-                    <span style={{fontSize:12,fontWeight:700,color:pct===100?G:'#666'}}>{pct}%</span>
-                  </div>
-                  <div style={{background:'#e5e7eb',borderRadius:99,height:6}}>
-                    <div style={{width:pct+'%',background:pct===100?G:'#3b82f6',height:'100%',borderRadius:99,transition:'width .3s'}} />
-                  </div>
-                </div>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {ruta.entregas.map(e=>(
-                    <span key={e.clienteId} style={{fontSize:11,padding:'3px 8px',borderRadius:20,background:e.estado==='entregado'?'#f0fdf4':e.estado==='no-entregado'?'#fef2f2':'#f3f4f6',color:e.estado==='entregado'?G:e.estado==='no-entregado'?'#dc2626':'#6b7280',border:'1px solid '+(e.estado==='entregado'?'#bbf7d0':e.estado==='no-entregado'?'#fecaca':'#e5e7eb')}}>
-                      {e.clienteNombre}
-                    </span>
-                  ))}
-                </div>
-                {ruta.notas&&<div style={{marginTop:10,fontSize:12,color:'#888',fontStyle:'italic'}}>{ruta.notas}</div>}
+                {pend>0&&<span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{pend} pendientes</span>}
+                <button onClick={()=>{setRutaActiva(r.id);setVista("detalle");}} style={{padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>Ver ruta</button>
+                <button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8,cursor:"pointer",fontSize:12}}>&#10005;</button>
               </div>
             );
-          })}
-        </div>
-      )}
-
-      {/* Rutas de otros dias */}
-      {rutas.filter(r=>r.dia!==diaVista).length>0&&(
-        <div style={{marginTop:24}}>
-          <details>
-            <summary style={{cursor:'pointer',fontSize:13,color:'#888',fontWeight:600}}>Ver rutas de otros dias ({rutas.filter(r=>r.dia!==diaVista).length})</summary>
-            <div style={{display:'grid',gap:8,marginTop:12}}>
-              {rutas.filter(r=>r.dia!==diaVista).map(ruta=>(
-                <div key={ruta.id} style={{background:'#fff',borderRadius:10,padding:'12px 16px',boxShadow:'0 1px 3px rgba(0,0,0,.04)',display:'flex',alignItems:'center',gap:12}}>
-                  <span style={{fontSize:11,padding:'2px 8px',background:'#f3f4f6',borderRadius:20,color:'#6b7280',fontWeight:600}}>{ruta.dia}</span>
-                  <span style={{fontWeight:600,fontSize:14}}>{ruta.vehiculo} — {ruta.zona}</span>
-                  <span style={{fontSize:12,color:'#888'}}>{ruta.entregas.length} clientes</span>
-                  <button onClick={()=>{setRutaActiva(ruta.id);setVista('detalle');}} style={{marginLeft:'auto',padding:'5px 12px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:700}}>Ver</button>
-                  <button onClick={()=>eliminarRuta(ruta.id)} style={{padding:'5px 8px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:6,cursor:'pointer',fontSize:11}}>x</button>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-      )}
+          })
+        )}
+      </div>
     </section>
   );
 }
-
 function RecepcionTab(){
   const G="#3a7d1e";
   const KORD="aryes6-orders";
