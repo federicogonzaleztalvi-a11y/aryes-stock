@@ -2959,7 +2959,7 @@ const generateOrderPDF = (order, suppliers, products) => {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
+  const win = window.open('',"_blank","noopener,noreferrer");
   if (win) {
     win.document.write(html);
     win.document.close();
@@ -3687,7 +3687,6 @@ const sendLowStockAlert = async (product, currentStock) => {
         }
       })
     });
-    console.log('Alert sent for:', product.name);
   } catch(e) { console.warn('Email alert failed:', e); }
 };
 
@@ -4686,7 +4685,7 @@ function RutasTab(){
 
   const abrirMaps=(e)=>{
     const q=encodeURIComponent((e.ciudad||e.clienteNombre)+" Uruguay");
-    window.open("https://maps.google.com/?q="+q,"_blank");
+    window.open("https://maps.google.com/?q="+q,"_blank","noopener,noreferrer");
   };
 
   const exportarCSV=()=>{
@@ -5828,7 +5827,7 @@ function InformesTab(){
     const rows=its.map(it=>"<tr><td>"+it.nombre+"</td><td>"+it.cantidad+" "+it.unidad+"</td><td>$"+Number(it.precioUnit).toLocaleString("es-UY")+"</td><td>$"+Number(it.cantidad*it.precioUnit).toLocaleString("es-UY")+"</td></tr>").join("");
     const desc=Number(venta.descuento)>0?"<p style=\"text-align:right;color:#92400e\">Descuento "+venta.descuento+"%</p>":"";
     const html="<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Remito "+venta.nroVenta+"</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1a1a1a;}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #3a7d1e;padding-bottom:16px;margin-bottom:24px;}.emp{font-size:22px;font-weight:700;color:#3a7d1e;}table{width:100%;border-collapse:collapse;margin:16px 0;}th{background:#3a7d1e;color:#fff;padding:9px;text-align:left;font-size:13px;}td{padding:8px 9px;border-bottom:1px solid #eee;font-size:13px;}.tot{text-align:right;font-size:18px;font-weight:700;color:#3a7d1e;margin-top:8px;}.ftr{margin-top:40px;border-top:1px solid #eee;padding-top:12px;font-size:11px;color:#aaa;text-align:center;}</style></head><body><div class='hdr'><div><div class='emp'>"+emp+"</div></div><div style='text-align:right'><b>REMITO "+venta.nroVenta+"</b><br>"+venta.fecha+"<br><span style='font-size:11px;padding:2px 8px;background:#f0fdf4;border-radius:4px;color:#3a7d1e;font-weight:700'>"+(venta.estado||"").toUpperCase()+"</span></div></div><p><b>Cliente:</b> "+venta.clienteNombre+"</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>"+rows+"</tbody></table>"+desc+"<div class='tot'>TOTAL: $"+Number(venta.total||0).toLocaleString("es-UY")+"</div><div class='ftr'>"+emp+" · "+new Date().toLocaleDateString("es-UY")+"</div><script>window.onload=function(){window.print();}<" + "/script></body></html>";
-    const w=window.open("","_blank");if(w){w.document.write(html);w.document.close();}
+    const w=window.open("","_blank","noopener,noreferrer");if(w){w.document.write(html);w.document.close();}
   };
   const stockCritico=prods.filter(p=>Number(p.stock||0)<=Number(p.rop||5)&&Number(p.stock||0)>0).length;
   const sinStock=prods.filter(p=>Number(p.stock||0)===0).length;
@@ -6409,6 +6408,266 @@ function TransferenciasTab(){
     </section>
   );
 }
+function InventarioTab(){
+  const G="#3a7d1e";
+  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
+  const [busq,setBusq]=useState("");
+  const [marca,setMarca]=useState("todas");
+  const [soloStock,setSoloStock]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const [form,setForm]=useState({});
+  const [msg,setMsg]=useState("");
+  const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
+  const marcas=["todas",...new Set(prods.map(p=>p.marca||p.brand||"Sin marca").filter(Boolean))].slice(0,20);
+  const filtered=prods.filter(p=>{
+    const n=(p.nombre||p.name||"").toLowerCase();
+    if(busq&&!n.includes(busq.toLowerCase()))return false;
+    if(marca!=="todas"&&(p.marca||p.brand||"Sin marca")!==marca)return false;
+    if(soloStock&&Number(p.stock||0)<=0)return false;
+    return true;
+  });
+  const stockCrit=prods.filter(p=>Number(p.stock||0)>0&&Number(p.stock||0)<=(p.rop||5)).length;
+  const sinStock=prods.filter(p=>Number(p.stock||0)===0).length;
+  const totalValor=prods.reduce((a,p)=>a+Number(p.stock||0)*Number(p.precio||p.price||0),0);
+  const startEdit=(p)=>{setEditId(p.id);setForm({nombre:p.nombre||p.name||"",stock:p.stock||0,precio:p.precio||p.price||0,unidad:p.unidad||p.unit||"u",rop:p.rop||5,proveedor:p.proveedor||""});};
+  const saveEdit=(id)=>{
+    const upd=prods.map(p=>p.id===id?{...p,...form,nombre:form.nombre,name:form.nombre,precio:Number(form.precio),price:Number(form.precio),stock:Number(form.stock),rop:Number(form.rop)}:p);
+    setProds(upd);LS.set("aryes6-products",upd);setEditId(null);setMsg("Guardado");setTimeout(()=>setMsg(""),2000);
+  };
+  return(
+    <section style={{padding:"28px 36px",maxWidth:1100,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>Inventario</h2>
+        <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>{prods.length} productos · {filtered.length} visibles</p></div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {stockCrit>0&&<span style={{background:"#fffbeb",color:"#92400e",fontSize:12,fontWeight:700,padding:"4px 10px",borderRadius:20}}>{stockCrit} criticos</span>}
+          {sinStock>0&&<span style={{background:"#fef2f2",color:"#dc2626",fontSize:12,fontWeight:700,padding:"4px 10px",borderRadius:20}}>{sinStock} sin stock</span>}
+        </div>
+      </div>
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"8px 14px",marginBottom:12,color:G,fontSize:12,fontWeight:600}}>{msg}</div>}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+        <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Total productos</div><div style={{fontSize:28,fontWeight:800,color:G}}>{prods.length}</div></div>
+        <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Valor en stock</div><div style={{fontSize:22,fontWeight:800,color:"#1a1a1a"}}>${totalValor.toLocaleString("es-UY")}</div></div>
+        <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Sin stock / Critico</div><div style={{fontSize:28,fontWeight:800,color:sinStock>0?"#dc2626":stockCrit>0?"#f59e0b":G}}>{sinStock+stockCrit}</div></div>
+      </div>
+      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+        <input value={busq} onChange={e=>setBusq(e.target.value)} placeholder="Buscar producto..." style={{...inp,flex:1,minWidth:200}} />
+        <select value={marca} onChange={e=>setMarca(e.target.value)} style={{...inp,width:180}}>{marcas.map(m=><option key={m} value={m}>{m}</option>)}</select>
+        <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"#374151",cursor:"pointer",whiteSpace:"nowrap"}}>
+          <input type="checkbox" checked={soloStock} onChange={e=>setSoloStock(e.target.checked)} />Con stock
+        </label>
+      </div>
+      <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+          <thead><tr style={{background:"#f9fafb",borderBottom:"2px solid #e5e7eb"}}>
+            {["Producto","Marca","Stock","Precio","Pto.Reorden","Proveedor","Estado",""].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontWeight:600,color:"#6b7280",fontSize:11,textTransform:"uppercase",letterSpacing:.5}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {filtered.map((p,i)=>{
+              const st=Number(p.stock||0);
+              const rop=Number(p.rop||5);
+              const status=st===0?"sin-stock":st<=rop?"critico":"ok";
+              const statusColors={ok:{bg:"#f0fdf4",color:G,label:"OK"},"sin-stock":{bg:"#fef2f2",color:"#dc2626",label:"Sin stock"},"critico":{bg:"#fffbeb",color:"#92400e",label:"Critico"}};
+              const sc=statusColors[status];
+              const isEdit=editId===p.id;
+              return(
+                <tr key={p.id} style={{borderBottom:"1px solid #f3f4f6",background:st===0?"#fef2f2":i%2===0?"#fff":"#fafafa"}}>
+                  <td style={{padding:"10px 14px",fontWeight:600}}>{isEdit?<input style={{...inp,width:160}} value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))} />:(p.nombre||p.name)}</td>
+                  <td style={{padding:"10px 14px",color:"#6b7280"}}>{p.marca||p.brand||"-"}</td>
+                  <td style={{padding:"10px 14px",fontWeight:700,color:sc.color}}>{isEdit?<input type="number" style={{...inp,width:70}} value={form.stock} onChange={e=>setForm(f=>({...f,stock:e.target.value}))} />:st}</td>
+                  <td style={{padding:"10px 14px"}}>{isEdit?<input type="number" style={{...inp,width:90}} value={form.precio} onChange={e=>setForm(f=>({...f,precio:e.target.value}))} />:"$"+(p.precio||p.price||0)}</td>
+                  <td style={{padding:"10px 14px"}}>{isEdit?<input type="number" style={{...inp,width:60}} value={form.rop} onChange={e=>setForm(f=>({...f,rop:e.target.value}))} />:rop}</td>
+                  <td style={{padding:"10px 14px",color:"#6b7280"}}>{isEdit?<input style={{...inp,width:120}} value={form.proveedor} onChange={e=>setForm(f=>({...f,proveedor:e.target.value}))} />:(p.proveedor||"-")}</td>
+                  <td style={{padding:"10px 14px"}}><span style={{background:sc.bg,color:sc.color,fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{sc.label}</span></td>
+                  <td style={{padding:"10px 14px"}}>{isEdit?(<div style={{display:"flex",gap:4}}><button onClick={()=>saveEdit(p.id)} style={{padding:"4px 10px",background:G,color:"#fff",border:"none",borderRadius:5,cursor:"pointer",fontSize:11,fontWeight:700}}>Guardar</button><button onClick={()=>setEditId(null)} style={{padding:"4px 8px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:5,cursor:"pointer",fontSize:11}}>Cancelar</button></div>):(<button onClick={()=>startEdit(p)} style={{padding:"4px 10px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:5,cursor:"pointer",fontSize:11}}>Editar</button>)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length===0&&<div style={{padding:24,textAlign:"center",color:"#888",fontSize:13}}>Sin resultados para esta busqueda</div>}
+      </div>
+    </section>
+  );
+}
+function KPIsTab(){
+  const G="#3a7d1e";
+  const [prods]=useState(()=>LS.get("aryes6-products",[]));
+  const [movs]=useState(()=>LS.get("aryes-movements",[]));
+  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
+  const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
+  const [lotes]=useState(()=>LS.get("aryes-lots",[]));
+  const [periodo,setPeriodo]=useState("mes");
+  const hoy=new Date();
+  const diasAtras=(n)=>{const d=new Date();d.setDate(d.getDate()-n);return d;};
+  const pStart=periodo==="semana"?diasAtras(7):periodo==="mes"?diasAtras(30):diasAtras(90);
+  const movsP=movs.filter(m=>m.timestamp&&new Date(m.timestamp)>=pStart);
+  const ventasP=ventas.filter(v=>v.creadoEn&&new Date(v.creadoEn)>=pStart&&v.estado!=="cancelada");
+  const entradas=movsP.filter(m=>m.tipo==="entrada").reduce((a,m)=>a+Number(m.cantidad||0),0);
+  const salidas=movsP.filter(m=>m.tipo==="salida"||m.tipo==="ajuste").reduce((a,m)=>a+Number(m.cantidad||0),0);
+  const totalVentas=ventasP.reduce((a,v)=>a+Number(v.total||0),0);
+  const stockCrit=prods.filter(p=>Number(p.stock||0)>0&&Number(p.stock||0)<=(p.rop||5)).length;
+  const sinStock=prods.filter(p=>Number(p.stock||0)===0).length;
+  const diasVenc=(f)=>Math.ceil((new Date(f)-hoy)/(1000*60*60*24));
+  const vencProx=lotes.filter(l=>l.fechaVenc&&diasVenc(l.fechaVenc)>=0&&diasVenc(l.fechaVenc)<=30).length;
+  const vencidos=lotes.filter(l=>l.fechaVenc&&diasVenc(l.fechaVenc)<0).length;
+  const entregasAll=rutas.flatMap(r=>r.entregas||[]);
+  const entregasOk=entregasAll.filter(e=>e.estado==="entregado").length;
+  const efectividad=entregasAll.length>0?Math.round(entregasOk/entregasAll.length*100):0;
+  // Top productos por movimientos
+  const prodMov={};
+  movsP.forEach(m=>{const k=m.productoNombre||m.nombre||"?";prodMov[k]=(prodMov[k]||0)+Number(m.cantidad||0);});
+  const topProds=Object.entries(prodMov).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  // Ventas por estado
+  const ventasEst={};
+  ventas.forEach(v=>{ventasEst[v.estado||"?"]=(ventasEst[v.estado||"?"]||0)+1;});
+  const CARD=({icon,label,value,sub,alert,color})=>(
+    <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",border:"2px solid "+(alert?"#ef4444":"transparent")}}>
+      <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
+      <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{label}</div>
+      <div style={{fontSize:28,fontWeight:800,color:color||"#1a1a1a"}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:"#888",marginTop:3}}>{sub}</div>}
+    </div>
+  );
+  return(
+    <section style={{padding:"28px 36px",maxWidth:1100,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+        <div><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>KPIs</h2>
+        <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>Indicadores clave del negocio</p></div>
+        <div style={{display:"flex",gap:6}}>{["semana","mes","trimestre"].map(p=>(
+          <button key={p} onClick={()=>setPeriodo(p)} style={{padding:"6px 14px",borderRadius:20,border:"2px solid "+(periodo===p?G:"#e5e7eb"),background:periodo===p?G:"#fff",color:periodo===p?"#fff":"#666",fontWeight:600,fontSize:12,cursor:"pointer"}}>
+            {p==="semana"?"7 dias":p==="mes"?"30 dias":"90 dias"}</button>))}</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+        <CARD icon="💰" label={"Ventas ("+periodo+")"} value={ventasP.length} sub={"$"+totalVentas.toLocaleString("es-UY")} color={G} />
+        <CARD icon="📦" label="Stock critico" value={stockCrit+sinStock} sub={stockCrit+" criticos · "+sinStock+" sin stock"} alert={sinStock>0||stockCrit>5} color={sinStock>0?"#dc2626":stockCrit>0?"#f59e0b":G} />
+        <CARD icon="📅" label="Venc. proximos" value={vencProx} sub={vencidos+" ya vencidos"} alert={vencidos>0} color={vencidos>0?"#dc2626":"#f59e0b"} />
+        <CARD icon="🚛" label="Efectividad entregas" value={efectividad+"%"} sub={entregasOk+"/"+entregasAll.length+" entregas"} color={efectividad>=90?G:efectividad>=70?"#f59e0b":"#dc2626"} />
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
+        <CARD icon="📥" label="Entradas stock" value={entradas} sub={"en los ultimos "+periodo} color={G} />
+        <CARD icon="📤" label="Salidas stock" value={salidas} sub={"en los ultimos "+periodo} color="#6b7280" />
+        <CARD icon="🔄" label="Movimientos" value={movsP.length} sub={"total periodo"} color="#3b82f6" />
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+        <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:"#1a1a1a",margin:"0 0 14px"}}>Top productos por movimiento</h3>
+          {topProds.length===0?<div style={{color:"#888",fontSize:13}}>Sin movimientos en el periodo</div>:(
+            topProds.map(([nombre,cant],i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #f3f4f6"}}>
+                <span style={{width:22,height:22,borderRadius:"50%",background:G,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</span>
+                <span style={{flex:1,fontSize:13,fontWeight:500}}>{nombre}</span>
+                <span style={{fontSize:13,fontWeight:700,color:G}}>{cant}</span>
+              </div>
+            ))
+          )}
+        </div>
+        <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <h3 style={{fontSize:14,fontWeight:700,color:"#1a1a1a",margin:"0 0 14px"}}>Ventas por estado</h3>
+          {Object.entries(ventasEst).length===0?<div style={{color:"#888",fontSize:13}}>Sin ventas registradas</div>:(
+            Object.entries(ventasEst).map(([est,cnt])=>{
+              const colors={pendiente:"#f59e0b",confirmada:"#3b82f6",preparada:"#8b5cf6",entregada:G,cancelada:"#6b7280"};
+              return(
+                <div key={est} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid #f3f4f6"}}>
+                  <span style={{width:10,height:10,borderRadius:"50%",background:colors[est]||"#888",flexShrink:0}} />
+                  <span style={{flex:1,fontSize:13,textTransform:"capitalize"}}>{est}</span>
+                  <span style={{fontSize:13,fontWeight:700}}>{cnt}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+function TrackingTab(){
+  const G="#3a7d1e";
+  const {user}=useContext(AppCtx);
+  const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
+  const [ubicaciones,setUbicaciones]=useState({});
+  const [tracking,setTracking]=useState(false);
+  const [watchId,setWatchId]=useState(null);
+  const [miPosicion,setMiPosicion]=useState(null);
+  const [msg,setMsg]=useState("");
+  const esRepartidor=user&&user.role==="operador";
+  const activarTracking=()=>{
+    if(!navigator.geolocation){setMsg("GPS no disponible en este dispositivo");return;}
+    const id=navigator.geolocation.watchPosition(
+      pos=>{
+        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:new Date().toISOString(),usuario:user?.username||"?"};
+        setMiPosicion(loc);
+        // Sync to Supabase
+        const SURL="https://mrotnqybqvmvlexncvno.supabase.co";
+        const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
+        fetch(SURL+"/rest/v1/aryes_tracking",{method:"POST",headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({id:user?.username||"repartidor",...loc})}).catch(()=>{});
+      },
+      ()=>setMsg("Error obteniendo GPS"),
+      {enableHighAccuracy:true,maximumAge:10000,timeout:15000}
+    );
+    setWatchId(id);setTracking(true);
+  };
+  const detenerTracking=()=>{
+    if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+    setWatchId(null);setTracking(false);setMiPosicion(null);
+  };
+  // Admin view: show all repartidores from Supabase
+  const [posiciones,setPosiciones]=useState([]);
+  useEffect(()=>{
+    if(esRepartidor)return;
+    const SURL="https://mrotnqybqvmvlexncvno.supabase.co";
+    const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
+    const fetchPos=()=>fetch(SURL+"/rest/v1/aryes_tracking?select=*",{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY}}).then(r=>r.json()).then(d=>setPosiciones(Array.isArray(d)?d:[])).catch(()=>{});
+    fetchPos();
+    const iv=setInterval(fetchPos,15000);
+    return()=>clearInterval(iv);
+  },[esRepartidor]);
+  if(esRepartidor)return(
+    <section style={{padding:"28px 36px",maxWidth:600,margin:"0 auto",textAlign:"center"}}>
+      <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 8px"}}>Mi ubicacion</h2>
+      <p style={{fontSize:13,color:"#888",marginBottom:24}}>Activa el tracking para que admin pueda ver tu posicion en tiempo real</p>
+      {msg&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#dc2626",fontSize:13}}>{msg}</div>}
+      {miPosicion&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"14px 18px",marginBottom:16,fontSize:13,color:G}}>
+        <div style={{fontWeight:700,marginBottom:4}}>Posicion actual</div>
+        <div>Lat: {miPosicion.lat.toFixed(5)} · Lng: {miPosicion.lng.toFixed(5)}</div>
+        <div style={{fontSize:11,color:"#888",marginTop:4}}>{new Date(miPosicion.ts).toLocaleTimeString("es-UY")}</div>
+      </div>}
+      <button onClick={tracking?detenerTracking:activarTracking} style={{padding:"14px 32px",background:tracking?"#dc2626":G,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:16}}>
+        {tracking?"Detener tracking":"Activar tracking GPS"}
+      </button>
+    </section>
+  );
+  return(
+    <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Tracking GPS</h2>
+        <p style={{fontSize:12,color:"#888",margin:0}}>Posicion en tiempo real de los repartidores</p>
+      </div>
+      {posiciones.length===0?(<div style={{background:"#f9fafb",borderRadius:12,padding:32,textAlign:"center",color:"#888",fontSize:13}}>
+        <div style={{fontSize:40,marginBottom:12}}>📍</div>
+        <div>Ningun repartidor activo ahora</div>
+        <div style={{fontSize:11,marginTop:6}}>Cuando un operador active el tracking, aparecera aqui. Se actualiza cada 15 seg.</div>
+      </div>):(
+        <div style={{display:"grid",gap:10}}>
+          {posiciones.map(p=>(
+            <div key={p.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:14}}>
+              <span style={{fontSize:28}}>📍</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{p.usuario||p.id}</div>
+                <div style={{fontSize:12,color:"#888"}}>Lat {Number(p.lat).toFixed(4)} · Lng {Number(p.lng).toFixed(4)}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:11,color:"#888"}}>{p.ts?new Date(p.ts).toLocaleTimeString("es-UY"):"-"}</div>
+                <button onClick={()=>window.open("https://maps.google.com/?q="+p.lat+","+p.lng,"_blank","noopener,noreferrer")} style={{marginTop:4,padding:"4px 10px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:11}}>Ver en Maps</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
@@ -6759,7 +7018,6 @@ function AryesApp(){
         )}
 
         {/* ══ INVENTORY ══ */}
-        {tab==="products"&&(
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
@@ -6983,14 +7241,12 @@ function AryesApp(){
         )}
 
         {/* ══ PLANNING ══ */}
-        {tab==="planning"&&(
           <div className="au">
             <PlanningView products={products} suppliers={suppliers} orders={orders} plans={plans} setPlans={setPlans}/>
           </div>
         )}
 
         {/* ══ MOVEMENTS ══ */}
-        {tab==="movements"&&(
           <div className="au">
             <MovementsView
               movements={movements}
@@ -7009,7 +7265,6 @@ function AryesApp(){
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
         {/* ══ SETTINGS ══ */}
-        {tab==="settings"&&(
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
               <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1></div>
@@ -7072,15 +7327,10 @@ function AryesApp(){
         )}
 
         {/* ══ IMPORTER ══ */}
-        {tab==="importer"&&<ImporterTab onDone={()=>{setProducts(LS.get("aryes6-products",[]));setTab("products");}}/>}
       
-      {tab==="usuarios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Usuarios</h2><p style={{color:"#888"}}>Gestión de usuarios del sistema.</p></section>}
       {tab==="lotes"&&<LotesTab />}
-      {tab==="importar-excel"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Importar Excel</h2><p style={{color:"#888"}}>Importación masiva de productos por Excel.</p></section>}
-      {tab==="precios"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Historial de Precios</h2><p style={{color:"#888"}}>Registro histórico de cambios de precios.</p></section>}
       {tab==="clientes"&&<ClientesTab />}
       {tab==="movimientos"&&<MovimientosTab />}
-      {tab==="alertas"&&<section style={{padding:"32px 40px",maxWidth:1100,margin:"0 auto"}}><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",marginBottom:24}}>Alertas Email</h2><p style={{color:"#888"}}>Configuración de alertas automáticas por email.</p></section>}
       
       {tab==="deposito"&&<DepositoTab />}
       
@@ -7092,7 +7342,6 @@ function AryesApp(){
         
         {tab==="config"&&<ConfigTab />}
         {tab==="importar"&&<ImportTab />}
-        {tab==="import"&&<ImportTab />}
         
         {tab==="informes"&&<InformesTab />}
         
@@ -7100,6 +7349,10 @@ function AryesApp(){
         {tab==="packing"&&<PackingTab />}
         {tab==="batch-picking"&&<BatchPickingTab />}
         {tab==="transferencias"&&<TransferenciasTab />}
+        
+        {tab==="inventory"&&<InventarioTab />}
+        {tab==="kpis"&&<KPIsTab />}
+        {tab==="tracking"&&<TrackingTab />}
         </main>
 
       {/* ══ MODALS ══ */}
