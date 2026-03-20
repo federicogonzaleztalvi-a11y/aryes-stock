@@ -115,10 +115,13 @@ const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application
 const getAuthHeaders = (extra={}) => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token || SKEY;
-    return {apikey:SKEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+    const token = session?.access_token;
+    // Use user JWT as apikey so PostgREST runs as 'authenticated' role
+    // This is required for auth.jwt() to work in RLS policies
+    if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
   } catch(e) {
-    return {apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
   }
 };
 const db={
