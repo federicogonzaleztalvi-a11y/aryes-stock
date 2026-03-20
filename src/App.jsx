@@ -116,6 +116,16 @@ const getAuthHeaders = (extra={}) => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token;
+    // Pass JWT as apikey: PostgREST runs as 'authenticated', auth.jwt() works in RLS
+    if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+  } catch(e) {
+    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+  }
+}) => {
+  try {
+    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+    const token = session?.access_token;
     if(token) {
       return {apikey:token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
     }
