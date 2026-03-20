@@ -7118,7 +7118,7 @@ function AryesApp(){
   // Sync from Supabase on mount
   useEffect(()=>{
     const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
-    keys.forEach(k=>LS.load(k,[]).then(()=>{}));
+    keys.forEach(k=>LS.get(k,[]));
   },[]);
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
   const handleLogout=()=>{
