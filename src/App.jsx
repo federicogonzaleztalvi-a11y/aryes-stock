@@ -1200,7 +1200,7 @@ const Stars = ({ value, onChange }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 const SupplierForm = ({ supplier, onSave, onClose }) => {
   const blank = {
-    id: Date.now().toString(), name:"", flag:"", color:"#1d4ed8",
+    id: crypto.randomUUID().toString(), name:"", flag:"", color:"#1d4ed8",
     times:{preparation:2,customs:2,freight:7,warehouse:1},
     company:"", contact:"", email:"", phone:"", whatsapp:"",
     country:"", city:"", currency:"USD", paymentTerms:"30",
@@ -2362,8 +2362,12 @@ function ImporterTab({onDone}){
       setProgress(Math.round(((i+1)/selProducts.length)*100));
       await new Promise(r=>setTimeout(r,6));
       const p=selProducts[i];
-      out.push({id:p.id,name:p.name,description:p.description,unitCost:p.unitCost,unit:p.unit,stock:p.stock,minStock:p.minStock||Math.max(5,Math.floor(p.stock/4)),supplierId:p.supplierId,brand:p.brand,category:p.category,dailyUsage:p.dailyUsage||0.5,createdAt:new Date().toISOString(),source:"lovable"});
+      if(!p.name) continue; // FIX 8: skip items without name
+      if(typeof p.stock==='number'&&p.stock<0) { p.stock=0; } // guard negative stock
+      out.push({id:crypto.randomUUID(),name:p.name,description:p.description,unitCost:p.unitCost,unit:p.unit,stock:Math.max(0,p.stock||0),minStock:p.minStock||Math.max(5,Math.floor(p.stock/4)),supplierId:p.supplierId,brand:p.brand,category:p.category,dailyUsage:p.dailyUsage||0.5,createdAt:new Date().toISOString(),source:"lovable"});
     }
+    // Snapshot for undo
+    LS.set("aryes-last-import-snapshot", LS.get("aryes6-products",[]));
     LS.set("aryes6-products",out);
     setResult({total:out.length});
     setStep("done");
@@ -3906,7 +3910,7 @@ function ClientesTab(){
   const sel=items.find(x=>x.id===selId);
   const save=()=>{
     if(!form.nombre.trim()){setMsg('Nombre obligatorio');return;}
-    const upd=editId?items.map(x=>x.id===editId?{...x,...form}:x):[...items,{...form,id:Date.now(),creado:new Date().toISOString()}];
+    const upd=editId?items.map(x=>x.id===editId?{...x,...form}:x):[...items,{...form,id:crypto.randomUUID(),creado:new Date().toISOString()}];
     setItems(upd);LS.set(KCLI,upd);
     setMsg(editId?'Cliente actualizado':'Cliente agregado');
     setForm(emptyForm);setEditId(null);setVista('lista');
@@ -4012,7 +4016,7 @@ function MovimientosTab(){
   const registrar=()=>{
     if(!form.productoId){setMsg('Selecciona un producto');return;}
     if(!form.cantidad||form.cantidad<=0){setMsg('Cantidad debe ser mayor a 0');return;}
-    const nuevo={id:Date.now(),tipo:form.tipo,productoId:form.productoId,productoNombre:prodNombre(form.productoId),cantidad:Number(form.cantidad),referencia:form.referencia,notas:form.notas,fecha:form.fecha,timestamp:new Date().toISOString()};
+    const nuevo={id:crypto.randomUUID(),tipo:form.tipo,productoId:form.productoId,productoNombre:prodNombre(form.productoId),cantidad:Number(form.cantidad),referencia:form.referencia,notas:form.notas,fecha:form.fecha,timestamp:new Date().toISOString()};
     const esEntrada=(form.tipo==='Entrada'||form.tipo==='Devolucion');
     const updProds=prods.map(p=>{
       if(String(p.id)===String(form.productoId)){
@@ -4714,7 +4718,7 @@ function RutasTab(){
 
   const crearRuta=()=>{
     if(!form.vehiculo||!form.zona){setMsg("Completa vehiculo y zona");return;}
-    const nueva={id:Date.now(),vehiculo:form.vehiculo,zona:form.zona,dia:form.dia,notas:form.notas,entregas:[],creadoEn:new Date().toISOString()};
+    const nueva={id:crypto.randomUUID(),vehiculo:form.vehiculo,zona:form.zona,dia:form.dia,notas:form.notas,entregas:[],creadoEn:new Date().toISOString()};
     const upd=[nueva,...rutas];
     setRutas(upd);LS.set("aryes-rutas",upd);
     setForm({vehiculo:"",zona:"",dia:"",notas:""});
@@ -5018,7 +5022,7 @@ function RecepcionTab(){
       if(!it.vencimiento||Number(it.cantidadRecibida)===0)return;
       const prod=updProds.find(p=>String(p.id)===String(it.productoId)||p.nombre?.toLowerCase()===it.nombre.toLowerCase()||p.name?.toLowerCase()===it.nombre.toLowerCase());
       updLotes.push({
-        id:Date.now()+Math.random(),
+        id:crypto.randomUUID()+Math.random(),
         productoId:prod?.id||it.productoId,
         productoNombre:it.nombre,
         lote:it.lote||('REC-'+Date.now()),
@@ -5033,7 +5037,7 @@ function RecepcionTab(){
 
     // 3. Save recepcion record
     const rec={
-      id:Date.now(),
+      id:crypto.randomUUID(),
       fecha,
       proveedor,
       nroRemito,
@@ -5315,7 +5319,7 @@ function VentasTab(){
     const cl=clientes.find(c=>String(c.id)===String(form.clienteId));
     const venta={
       ...form,
-      id:Date.now(),
+      id:crypto.randomUUID(),
       clienteNombre:cl?.nombre||form.clienteNombre,
       total:totalVenta(form.items,form.descuento),
       estado:'pendiente',
@@ -5730,7 +5734,7 @@ function ImportTab(){
       const obj={};
       headers.forEach((h,j)=>obj[h]=(vals[j]||'').trim().replace(/^"|"$/g,''));
       return{
-        id:Date.now()+i,
+        id:crypto.randomUUID()+i,
         nombre:obj.nombre||obj.name||obj.producto||obj.descripcion||'Producto '+(i+1),
         stock:Number(obj.stock||obj.cantidad||obj.qty||0),
         unidad:obj.unidad||obj.unit||obj.um||'u',
@@ -5994,7 +5998,7 @@ function ConteoTab(){
 
   const iniciarConteo=()=>{
     const items=prods.map(p=>({id:p.id,nombre:p.nombre||p.name||"",stockSistema:Number(p.stock||0),unidad:p.unidad||p.unit||"u",cantFisica:null,diferencia:null}));
-    const c={id:Date.now(),fecha:new Date().toISOString().split("T")[0],items,completado:false,creadoEn:new Date().toISOString()};
+    const c={id:crypto.randomUUID(),fecha:new Date().toISOString().split("T")[0],items,completado:false,creadoEn:new Date().toISOString()};
     setConteoActivo(c);setItemIdx(0);setCantFisica("");setVista("conteo");
   };
 
@@ -6156,7 +6160,7 @@ function PackingTab(){
 
   const confirmarPacking=()=>{
     if(!todosValidados){setMsg("Debes validar todos los items antes de confirmar");return;}
-    const pk={id:Date.now(),ventaId:sel.id,nroVenta:sel.nroVenta,clienteNombre:sel.clienteNombre,
+    const pk={id:crypto.randomUUID(),ventaId:sel.id,nroVenta:sel.nroVenta,clienteNombre:sel.clienteNombre,
       items:sel.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
     const upd=[pk,...packings];
     setPackings(upd);LS.set("aryes-packings",upd);
@@ -6274,7 +6278,7 @@ function BatchPickingTab(){
     });
     const items=Object.entries(mapa).map(([k,v])=>({key:k,...v}));
     const init={};items.forEach(it=>init[it.key]=false);
-    setPicking({id:Date.now(),ventas:selVentas,items,creadoEn:new Date().toISOString()});
+    setPicking({id:crypto.randomUUID(),ventas:selVentas,items,creadoEn:new Date().toISOString()});
     setRecolectados(init);
   };
 
@@ -6378,7 +6382,7 @@ function TransferenciasTab(){
     }
     if(form.origen===form.destino){setMsg("Origen y destino no pueden ser iguales");return;}
     if(Number(form.cantidad)<=0){setMsg("La cantidad debe ser mayor a 0");return;}
-    const t={id:Date.now(),
+    const t={id:crypto.randomUUID(),
       productoId:form.productoId,
       productoNombre:selProd?selProd.nombre||selProd.name:"",
       cantidad:Number(form.cantidad),
@@ -6743,7 +6747,7 @@ function auditLog(tipo, descripcion, detalle, usuario) {
   try {
     const logs = LS.get('aryes-audit-log', []);
     const entry = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       tipo,
       descripcion,
       detalle: typeof detalle === 'object' ? JSON.stringify(detalle) : (detalle || ''),
@@ -6782,7 +6786,7 @@ function DevolucionesTab(){
       }
     });
     setProds(updProds);LS.set("aryes6-products",updProds);
-    const dev={id:Date.now(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
+    const dev={id:crypto.randomUUID(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
       ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
       items:itemsDevueltos,estado:"procesada",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
     const upd=[dev,...devoluciones];
@@ -7132,12 +7136,30 @@ class ErrorBoundary extends React.Component {
 }
 
 function AryesApp(){
-  const [session,setSession]=useState(()=>LS.get('aryes-session',null));
+  const [session,setSession]=useState(()=>{
+    const s=LS.get('aryes-session',null);
+    if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
+    return s;
+  });
   // Sync from Supabase on mount
 
-  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
+  const handleLogin=(u)=>{
+    const sessionWithExpiry={...u,expiresAt:Date.now()+8*60*60*1000};
+    LS.set('aryes-session',sessionWithExpiry);
+    setSession(sessionWithExpiry);
+    setTimeout(()=>window.location.reload(),50);
+  };
   const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  if(!dbReady) return(
+    <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
+      <style>{CSS}</style>
+      <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
+      <div style={{width:32,height:32,border:"3px solid #3a7d1e",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      <p style={{fontFamily:"Inter,sans-serif",fontSize:14,color:"#6a6a68",fontWeight:500}}>Conectando...</p>
+      <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
+    </div>
+  );
   const canEdit=session.role==='admin'||session.role==='operador';
 
   const [dbReady,setDbReady]=useState(false);
@@ -7151,9 +7173,10 @@ function AryesApp(){
         if(prods?.length>0){
           const mapped=prods.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
           LS.set('aryes6-products',mapped);
+          setProducts(mapped);
         }
         const sups=await db.get('suppliers','order=name.asc');
-        if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);}
+        if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);setSuppliers(mapped);}
         const usrs=await db.get('users','order=id.asc');
         if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,password:u.password,name:u.name,role:u.role,active:u.active})));
         setDbReady(true);setSyncStatus('ok');setTimeout(()=>setSyncStatus(''),3000);
@@ -7174,6 +7197,7 @@ function AryesApp(){
   const [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
   const [emailCfg,setEmailCfg]=useState(()=>LS.get("aryes9-emailcfg",{serviceId:"",templateId:"",publicKey:"",toEmail:"",enabled:false}));
   const [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
+  const [hasPendingSync,setHasPendingSync]=useState(false);
 
   useEffect(()=>LS.set("aryes6-products",products),[products]);
   useEffect(()=>LS.set("aryes6-suppliers",suppliers),[suppliers]);
@@ -7183,6 +7207,20 @@ function AryesApp(){
   useEffect(()=>LS.set("aryes9-emailcfg",emailCfg),[emailCfg]);
   useEffect(()=>LS.set("aryes9-notified",notified),[notified]);
 
+
+  // Retry wrapper for Supabase writes
+  const dbWriteWithRetry = async (fn) => {
+    const delays = [500, 1000, 2000];
+    for(let i=0; i<=delays.length; i++) {
+      try {
+        const result = await fn();
+        if(result !== null) { setHasPendingSync(false); return result; }
+      } catch(e) {}
+      if(i < delays.length) await new Promise(r=>setTimeout(r,delays[i]));
+    }
+    setHasPendingSync(true);
+    return null;
+  };
   const getSup=id=>suppliers.find(s=>s.id===id);
 
   const enriched=useMemo(()=>(products||[]).map(p=>{const sup=getSup(p.supplierId);return{...p,sup,alert:alertLevel(p,sup)};}), [products,suppliers]);
@@ -7191,13 +7229,13 @@ function AryesApp(){
 
   const saveProduct=f=>{
     if(editProd)setProducts(ps=>ps.map(p=>p.id===editProd.id?{...p,...f}:p));
-    else setProducts(ps=>[...ps,{...f,id:Date.now()}]);
+    else setProducts(ps=>[...ps,{...f,id:crypto.randomUUID()}]);
     setModal(null);setEditProd(null);
   };
   const confirmOrder=(product,qty)=>{
     const sup=getSup(product.supplierId);const lead=totalLead(sup);
     const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
-    const o={id:Date.now(),productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,orderedAt:new Date().toISOString(),expectedArrival:arrival.toISOString(),status:"pending",totalCost:(qty*product.unitCost).toFixed(2),leadBreakdown:{...sup.times}};
+    const o={id:crypto.randomUUID(),productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,orderedAt:new Date().toISOString(),expectedArrival:arrival.toISOString(),status:"pending",totalCost:(qty*product.unitCost).toFixed(2),leadBreakdown:{...sup.times}};
     setOrders(os=>[o,...os]);
     addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
     setModal({type:"orderDone",order:o});
@@ -7211,7 +7249,7 @@ function AryesApp(){
     addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercadería recibida — pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
   };
   const applyExcel=matches=>{
-    const excelProds = products.map(p=>{const m=matches.find(x=>x.product.id===p.id);return m?{...p,stock:m.newStock}:p;});
+    const excelProds = products.map(p=>{const m=matches.find(x=>x.product.id===p.id);return m?{...p,stock:Math.max(0,m.newStock)}:p;});
     setProducts(()=>excelProds);
     setTimeout(()=>checkAndNotify(excelProds,suppliers,emailCfg,notified),500);
     matches.forEach(m=>{
@@ -7222,7 +7260,7 @@ function AryesApp(){
   };
   const saveSupplier=f=>{
     if(editSup)setSuppliers(ss=>ss.map(s=>s.id===editSup.id?{...s,...f}:s));
-    else setSuppliers(ss=>[...ss,{...f,id:Date.now().toString()}]);
+    else setSuppliers(ss=>[...ss,{...f,id:crypto.randomUUID().toString()}]);
     setModal(null);setEditSup(null);
   };
   const deleteSupplier=id=>{
@@ -7281,7 +7319,7 @@ function AryesApp(){
     } catch(e){ console.warn("Email error:", e); }
   };
 
-  const addMov=(m)=>setMovements(ms=>[{...m,id:Date.now(),ts:new Date().toISOString()},...ms].slice(0,2000));
+  const addMov=(m)=>setMovements(ms=>[{...m,id:crypto.randomUUID(),ts:new Date().toISOString()},...ms]);
 
   const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
     if(!cfg?.enabled) return;
@@ -7346,6 +7384,7 @@ function AryesApp(){
           {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>↻ Sincronizando...</div>}
           {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>✓ Sincronizado</div>}
           {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>⚠ Modo local</div>}
+          {hasPendingSync&&<div style={{fontSize:10,color:'#d97706',marginTop:3,fontWeight:600}}>⚠ Sync pendiente</div>}
           <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gestión de stock · UY</Cap></div>
         </div>
 
@@ -7381,7 +7420,11 @@ function AryesApp(){
       {/* ── MAIN ── */}
       <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
 
-        {/* ══ DASHBOARD ══ */}
+        {hasPendingSync&&<div style={{background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:16}}>⚠️</span>
+        <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización — reconectando...</span>
+      </div>}
+      {/* ══ DASHBOARD ══ */}
         {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></ErrorBoundary>}
 
 {tab==="inventory"&&<>
