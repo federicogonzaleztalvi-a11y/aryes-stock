@@ -2529,7 +2529,7 @@ const LoginScreen=({onLogin})=>{
       if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setLoading(false);return;}
       const m=d.user.user_metadata||{};
       onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||email.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token});
-    }catch(e){setErr("Error de conexion. Verifica tu internet.");}
+    }catch(e){setErr("Error de conexion");}
     setLoading(false);
   };
   return(
@@ -7138,11 +7138,11 @@ function AryesApp(){
     const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
     keys.forEach(k=>LS.load(k,[]).then(()=>{}));
   },[]);
-  const handleLogin=(u)=>{LS.set("aryes-session",u);setUser(u);auditLog("login","Inicio de sesion",u.email,u.username);};
+  const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
   const handleLogout=()=>{
-    const token=LS.get("aryes-session",{}).access_token||"";
+    const token=(LS.get("aryes-session",{})||{}).access_token||"";
     if(token)fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+token}}).catch(()=>{});
-    LS.remove("aryes-session");setUser(null);
+    LS.remove("aryes-session");setSession(null);
   };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   const canEdit=session.role==='admin'||session.role==='operador';
