@@ -7382,7 +7382,7 @@ function AryesApp(){
       <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
 
         {/* ══ DASHBOARD ══ */}
-        {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal}/></ErrorBoundary>}
+        {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></ErrorBoundary>}
 
 {tab==="inventory"&&<>
 {/* ══ INVENTORY ══ */}
@@ -7435,7 +7435,7 @@ function AryesApp(){
         {/* ══ ORDERS ══ */}
         </>
         }
-        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab}/></ErrorBoundary>}
+        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
         {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></ErrorBoundary>}
@@ -7578,7 +7578,7 @@ function AryesApp(){
 // EXTRACTED INLINE TAB COMPONENTS (refactored from main render)
 // ═══════════════════════════════════════════════════════════
 
-function DashboardInline({products,suppliers,orders,movements,session,setTab,critN,alerts,enriched,setModal}) {
+function DashboardInline({products,suppliers,orders,movements,session,setTab,critN,alerts,enriched,setModal,tfCols}) {
   return (
           <div className="au" style={{display:"grid",gap:32}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
@@ -7676,7 +7676,7 @@ function DashboardInline({products,suppliers,orders,movements,session,setTab,cri
         );
 }
 
-function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,tab,getSup,markDelivered,setTab}) {
+function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,tab,getSup,markDelivered,setTab,tfCols}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
