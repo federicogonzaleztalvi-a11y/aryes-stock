@@ -7134,10 +7134,7 @@ class ErrorBoundary extends React.Component {
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
-  useEffect(()=>{
-    const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
-    keys.forEach(k=>LS.load(k,[]).then(()=>{}));
-  },[]);
+
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
   const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
@@ -7188,9 +7185,9 @@ function AryesApp(){
 
   const getSup=id=>suppliers.find(s=>s.id===id);
 
-  const enriched=useMemo(()=>products.map(p=>{const sup=getSup(p.supplierId);return{...p,sup,alert:alertLevel(p,sup)};}), [products,suppliers]);
-  const alerts=enriched.filter(p=>p.alert.level!=="ok").sort((a,b)=>ALERT_CFG[b.alert.level].pri-ALERT_CFG[a.alert.level].pri);
-  const critN=alerts.filter(p=>p.alert.level==="order_now").length;
+  const enriched=useMemo(()=>(products||[]).map(p=>{const sup=getSup(p.supplierId);return{...p,sup,alert:alertLevel(p,sup)};}), [products,suppliers]);
+  const alerts=(enriched||[]).filter(p=>p.alert.level!=="ok").sort((a,b)=>ALERT_CFG[b.alert.level].pri-ALERT_CFG[a.alert.level].pri);
+  const critN=(alerts||[]).filter(p=>p.alert.level==="order_now").length;
 
   const saveProduct=f=>{
     if(editProd)setProducts(ps=>ps.map(p=>p.id===editProd.id?{...p,...f}:p));
