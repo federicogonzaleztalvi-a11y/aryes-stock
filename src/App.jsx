@@ -7467,7 +7467,8 @@ function AryesApp(){
             </div>
           </div>
         )}
-        {tab==="inventory"&&({/* ══ INVENTORY ══ */}
+        {tab==="inventory"&&(
+
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
