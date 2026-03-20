@@ -7198,6 +7198,7 @@ function AryesApp(){
   const [emailCfg,setEmailCfg]=useState(()=>LS.get("aryes9-emailcfg",{serviceId:"",templateId:"",publicKey:"",toEmail:"",enabled:false}));
   const [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
   const [hasPendingSync,setHasPendingSync]=useState(false);
+  const [syncToast,setSyncToast]=useState(null); // {msg,type}
 
   useEffect(()=>LS.set("aryes6-products",products),[products]);
   useEffect(()=>LS.set("aryes6-suppliers",suppliers),[suppliers]);
@@ -7205,7 +7206,63 @@ function AryesApp(){
   useEffect(()=>LS.set("aryes7-plans",plans),[plans]);
   useEffect(()=>LS.set("aryes8-movements",movements),[movements]);
   useEffect(()=>LS.set("aryes9-emailcfg",emailCfg),[emailCfg]);
+
   useEffect(()=>LS.set("aryes9-notified",notified),[notified]);
+
+  // ── Multi-device conflict detection ──────────────────────────────
+  // Poll Supabase every 30s and on tab focus. If server has newer
+  // data than our local state, apply it and show a toast.
+  useEffect(()=>{
+    if(!session||!dbReady) return;
+    let pollTimer;
+
+    const syncFromServer = async () => {
+      try {
+        const serverProds = await db.get('products','order=id.asc&limit=1000');
+        if(!serverProds?.length) return;
+
+        const serverMap = {};
+        serverProds.forEach(p => { serverMap[p.id] = p; });
+
+        let hasChanges = false;
+        const merged = products.map(local => {
+          const server = serverMap[local.id];
+          if(!server) return local;
+          // If server stock differs from local, server wins
+          const serverStock = Number(server.stock)||0;
+          if(serverStock !== local.stock) {
+            hasChanges = true;
+            return {...local, stock: serverStock};
+          }
+          return local;
+        });
+
+        if(hasChanges) {
+          setProducts(merged);
+          LS.set('aryes6-products', merged);
+          setSyncToast({msg:'Datos actualizados desde otro dispositivo', type:'info'});
+          setTimeout(()=>setSyncToast(null), 4000);
+        }
+      } catch(e) {
+        // offline — silent
+      }
+    };
+
+    // Poll every 30 seconds
+    pollTimer = setInterval(syncFromServer, 30000);
+
+    // Also sync on tab focus (user switches back to this tab)
+    const onFocus = () => syncFromServer();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.visibilityState==='visible') syncFromServer();
+    });
+
+    return () => {
+      clearInterval(pollTimer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [session, dbReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   // Retry wrapper for Supabase writes
@@ -7243,7 +7300,7 @@ function AryesApp(){
   const markDelivered=id=>{
     const o=orders.find(x=>x.id===id);if(!o)return;
     setOrders(os=>os.map(x=>x.id===id?{...x,status:"delivered"}:x));
-    const updatedProds = products.map(p=>p.id===o.productId?{...p,stock:p.stock+o.qty}:p);
+    const updatedProds = products.map(p=>p.id===o.productId?{...p,stock:p.stock+o.qty,updatedAt:new Date().toISOString()}:p);
     setProducts(()=>updatedProds);
     setTimeout(()=>checkAndNotify(updatedProds,suppliers,emailCfg,notified),500);
     addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercadería recibida — pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
@@ -7420,7 +7477,11 @@ function AryesApp(){
       {/* ── MAIN ── */}
       <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
 
-        {hasPendingSync&&<div style={{background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
+        {syncToast&&<div style={{position:"fixed",top:20,right:20,zIndex:9999,background:syncToast.type==="info"?"#eff6ff":"#fef3c7",border:"1px solid "+(syncToast.type==="info"?"#bfdbfe":"#fde68a"),borderRadius:8,padding:"12px 18px",boxShadow:"0 4px 16px rgba(0,0,0,.12)",display:"flex",alignItems:"center",gap:10,animation:"fadeUp .25s ease both",maxWidth:360}}>
+        <span style={{fontSize:18}}>{syncToast.type==="info"?"🔄":"⚠️"}</span>
+        <span style={{fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,color:syncToast.type==="info"?"#1d4ed8":"#92400e"}}>{syncToast.msg}</span>
+      </div>}
+      {hasPendingSync&&<div style={{background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:16}}>⚠️</span>
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización — reconectando...</span>
       </div>}
