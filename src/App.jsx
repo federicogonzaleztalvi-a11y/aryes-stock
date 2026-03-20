@@ -7690,7 +7690,8 @@ function AryesApp(){
             </div>
           </div>
         )}
-        {tab==="orders"&&(        {/* ══ PLANNING ══ */}
+        {tab==="orders"&&(
+
           <div className="au">
             <PlanningView products={products} suppliers={suppliers} orders={orders} plans={plans} setPlans={setPlans}/>
           </div>
