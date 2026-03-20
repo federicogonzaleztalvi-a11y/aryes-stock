@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
@@ -7120,6 +7120,26 @@ function AuditTab(){
   );
 }
 
+
+// ─── Error Boundary ─────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props){super(props);this.state={err:null};}
+  static getDerivedStateFromError(e){return {err:e};}
+  componentDidCatch(e,i){console.error('[Aryes]',e,i);}
+  render(){
+    if(this.state.err) return (
+      <div style={{padding:40,textAlign:'center',fontFamily:'sans-serif'}}>
+        <h3 style={{color:'#c00'}}>Error en esta sección</h3>
+        <p style={{color:'#666',fontSize:13,marginTop:8}}>{this.state.err?.message}</p>
+        <button onClick={()=>this.setState({err:null})} style={{marginTop:16,padding:'8px 20px',cursor:'pointer',borderRadius:6,border:'1px solid #ddd'}}>
+          Reintentar
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 function AryesApp(){
   const [session,setSession]=useState(()=>LS.get('aryes-session',null));
   // Sync from Supabase on mount
@@ -7374,10 +7394,8 @@ function AryesApp(){
       <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
 
         {/* ══ DASHBOARD ══ */}
-        {tab==="dashboard"&&<DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} lots={lots} session={session} setTab={setTab}/>}
+        {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} lots={lots} session={session} setTab={setTab}/></ErrorBoundary>}
 
-{tab==="inventory"&&<>
-{/* ══ INVENTORY ══ */}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
@@ -7427,14 +7445,12 @@ function AryesApp(){
         {/* ══ ORDERS ══ */}
         </>
         }
-        {tab==="orders"&&<PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans}/>}
+        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans}/></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {tab==="suppliers"&&<ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session}/>}
+        {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session}/></ErrorBoundary>}
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
-{tab==="config"&&<>
-{/* ══ SETTINGS ══ */}
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
               <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1></div>
@@ -7499,36 +7515,36 @@ function AryesApp(){
         {/* ══ IMPORTER ══ */}
         </>
         }
-        {tab==="lotes"&&<LotesTab />}
-      {tab==="clientes"&&<ClientesTab />}
-      {tab==="movimientos"&&<MovimientosTab />}
+        {tab==="lotes"&&<ErrorBoundary><LotesTab /></ErrorBoundary>}
+      {tab==="clientes"&&<ErrorBoundary><ClientesTab /></ErrorBoundary>}
+      {tab==="movimientos"&&<ErrorBoundary><MovimientosTab /></ErrorBoundary>}
       
-      {tab==="deposito"&&<DepositoTab />}
+      {tab==="deposito"&&<ErrorBoundary><DepositoTab /></ErrorBoundary>}
       
-      {tab==="rutas"&&<RutasTab />}
+      {tab==="rutas"&&<ErrorBoundary><RutasTab /></ErrorBoundary>}
       
-        {tab==="recepcion"&&<RecepcionTab />}
+        {tab==="recepcion"&&<ErrorBoundary><RecepcionTab /></ErrorBoundary>}
         
-        {tab==="ventas"&&<VentasTab />}
+        {tab==="ventas"&&<ErrorBoundary><VentasTab /></ErrorBoundary>}
         
-        {tab==="config"&&<ConfigTab />}
-        {tab==="importar"&&<ImportTab />}
+        {tab==="config"&&<ErrorBoundary><ConfigTab /></ErrorBoundary>}
+        {tab==="importar"&&<ErrorBoundary><ImportTab /></ErrorBoundary>}
         
-        {tab==="informes"&&<InformesTab />}
+        {tab==="informes"&&<ErrorBoundary><InformesTab /></ErrorBoundary>}
         
-        {tab==="conteo"&&<ConteoTab />}
-        {tab==="packing"&&<PackingTab />}
-        {tab==="batch-picking"&&<BatchPickingTab />}
-        {tab==="transferencias"&&<TransferenciasTab />}
+        {tab==="conteo"&&<ErrorBoundary><ConteoTab /></ErrorBoundary>}
+        {tab==="packing"&&<ErrorBoundary><PackingTab /></ErrorBoundary>}
+        {tab==="batch-picking"&&<ErrorBoundary><BatchPickingTab /></ErrorBoundary>}
+        {tab==="transferencias"&&<ErrorBoundary><TransferenciasTab /></ErrorBoundary>}
         
-        {tab==="inventory"&&<InventarioTab />}
-        {tab==="kpis"&&<KPIsTab />}
-        {tab==="tracking"&&<TrackingTab session={session} />}
+        {tab==="inventory"&&<ErrorBoundary><InventarioTab /></ErrorBoundary>}
+        {tab==="kpis"&&<ErrorBoundary><KPIsTab /></ErrorBoundary>}
+        {tab==="tracking"&&<ErrorBoundary><TrackingTab session={session}/></ErrorBoundary>}
         
-        {tab==="devoluciones"&&<DevolucionesTab />}
-        {tab==="precios"&&<PreciosTab />}
-        {tab==="demanda"&&<DemandaTab />}
-        {tab==="audit"&&<AuditTab />}
+        {tab==="devoluciones"&&<ErrorBoundary><DevolucionesTab /></ErrorBoundary>}
+        {tab==="precios"&&<ErrorBoundary><PreciosTab /></ErrorBoundary>}
+        {tab==="demanda"&&<ErrorBoundary><DemandaTab /></ErrorBoundary>}
+        {tab==="audit"&&<ErrorBoundary><AuditTab /></ErrorBoundary>}
         </main>
 
       {/* ══ MODALS ══ */}
