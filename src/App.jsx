@@ -6663,7 +6663,7 @@ function KPIsTab(){
 }
 function TrackingTab(){
   const G="#3a7d1e";
-  const {user}=useContext(AppCtx);
+  const user=session;
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
   const [ubicaciones,setUbicaciones]=useState({});
   const [tracking,setTracking]=useState(false);
@@ -7819,7 +7819,7 @@ function AryesApp(){
         
         {tab==="inventory"&&<InventarioTab />}
         {tab==="kpis"&&<KPIsTab />}
-        {tab==="tracking"&&<TrackingTab />}
+        {tab==="tracking"&&<TrackingTab session={session} />}
         
         {tab==="devoluciones"&&<DevolucionesTab />}
         {tab==="precios"&&<PreciosTab />}
