@@ -7337,7 +7337,7 @@ function AryesApp(){
     operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
     vendedor:["dashboard","clientes","ventas","kpis","informes"]
   };
-  const NAV=NAV_ALL.filter(n=>(NAV_ROLES[user?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
+  const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
