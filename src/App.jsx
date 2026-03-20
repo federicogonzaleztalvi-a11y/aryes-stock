@@ -115,7 +115,6 @@ const db={
 
 
 
-
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS — Aryes palette
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2516,51 +2515,42 @@ function ImporterTab({onDone}){
 
 const LoginScreen=({onLogin})=>{
   const G="#3a7d1e";
-  const [email,setEmail]=useState("");
-  const [pw,setPw]=useState("");
-  const [err,setErr]=useState("");
-  const [loading,setLoading]=useState(false);
-  const doLogin=async()=>{
-    if(!email||!pw){setErr("Ingresa email y contrasena");return;}
-    setErr("");setLoading(true);
+  const [em,setEm]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
+  const submit=async()=>{
+    if(!em||!pw){setErr("Ingresa email y contrasena");return;}
+    setErr("");setBusy(true);
     try{
-      const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})});
+      const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:em,password:pw})});
       const d=await r.json();
-      if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setLoading(false);return;}
+      if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setBusy(false);return;}
       const m=d.user.user_metadata||{};
-      onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||email.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token});
-    }catch(e){setErr("Error de conexion");}
-    setLoading(false);
+      onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token});
+    }catch(e){setErr("Error de conexion. Verifica tu internet.");}
+    setBusy(false);
   };
-  return(
-    <div style={{minHeight:"100vh",background:"#f5f5f0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif"}}>
-      <div style={{background:"#fff",borderRadius:16,padding:"40px 36px",width:380,boxShadow:"0 8px 40px rgba(0,0,0,.10)"}}>
-        <div style={{textAlign:"center",marginBottom:28}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:48,marginBottom:12,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
-          <h1 style={{fontFamily:"Playfair Display,serif",fontSize:26,color:"#1a1a1a",margin:"0 0 4px"}}>Aryes Stock</h1>
-          <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
-        </div>
-        {err&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 14px",marginBottom:16,color:"#dc2626",fontSize:13,textAlign:"center"}}>{err}</div>}
-        <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,fontWeight:700,color:"#374151",display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Email</label>
-          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@aryes.com"
-            style={{width:"100%",padding:"10px 12px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
-            onKeyDown={e=>e.key==="Enter"&&document.getElementById("sbpw2").focus()} />
-        </div>
-        <div style={{marginBottom:22}}>
-          <label style={{fontSize:11,fontWeight:700,color:"#374151",display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Contrasena</label>
-          <input id="sbpw2" type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••"
-            style={{width:"100%",padding:"10px 12px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
-            onKeyDown={e=>e.key==="Enter"&&doLogin()} />
-        </div>
-        <button onClick={doLogin} disabled={loading}
-          style={{width:"100%",padding:"12px",background:loading?"#9ca3af":G,color:"#fff",border:"none",borderRadius:8,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>
-          {loading?"Ingresando...":"Ingresar"}
-        </button>
-        <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:18,marginBottom:0}}>Aryes Distribuidora Gastronomica</p>
+  const inp={width:"100%",padding:"11px 14px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
+  return(<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f8,#e8f0e8)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:16}}>
+    <div style={{background:"#fff",borderRadius:20,padding:"44px 40px 40px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,.12)",border:"1px solid rgba(0,0,0,.06)"}}>
+      <div style={{textAlign:"center",marginBottom:32}}>
+        <img src="/aryes-logo.png" alt="Aryes" style={{height:52,marginBottom:14,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
+        <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Aryes Stock</h1>
+        <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
       </div>
+      {err&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:18,color:"#dc2626",fontSize:13}}>{err}</div>}
+      <div style={{marginBottom:16}}>
+        <label style={{fontSize:11,fontWeight:700,color:"#555",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:.6}}>Email</label>
+        <input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="usuario@aryes.com" autoComplete="email" style={inp} onKeyDown={e=>e.key==="Enter"&&document.getElementById("_pw").focus()} />
+      </div>
+      <div style={{marginBottom:24}}>
+        <label style={{fontSize:11,fontWeight:700,color:"#555",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:.6}}>Contrasena</label>
+        <input id="_pw" type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" autoComplete="current-password" style={inp} onKeyDown={e=>e.key==="Enter"&&submit()} />
+      </div>
+      <button onClick={submit} disabled={busy} style={{width:"100%",padding:"13px",background:busy?"#9ca3af":G,color:"#fff",border:"none",borderRadius:10,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15,boxShadow:busy?"none":"0 4px 12px rgba(58,125,30,.3)"}}>
+        {busy?"Verificando...":"Ingresar"}
+      </button>
+      <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:20,marginBottom:0}}>Aryes Distribuidora Gastronomica &copy; 2026</p>
     </div>
-  );
+  </div>);
 };
 
 const UsersTab=({session})=>{
@@ -6661,43 +6651,35 @@ function KPIsTab(){
     </section>
   );
 }
-function TrackingTab(){
+function TrackingTab({session}){
   const G="#3a7d1e";
-  const user=session;
+  const esRepartidor=session&&session.role==="operador";
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
-  const [ubicaciones,setUbicaciones]=useState({});
   const [tracking,setTracking]=useState(false);
   const [watchId,setWatchId]=useState(null);
-  const [miPosicion,setMiPosicion]=useState(null);
+  const [miPos,setMiPos]=useState(null);
+  const [posiciones,setPosiciones]=useState([]);
   const [msg,setMsg]=useState("");
-  const esRepartidor=user&&user.role==="operador";
   const activarTracking=()=>{
-    if(!navigator.geolocation){setMsg("GPS no disponible en este dispositivo");return;}
+    if(!navigator.geolocation){setMsg("GPS no disponible");return;}
     const id=navigator.geolocation.watchPosition(
       pos=>{
-        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:new Date().toISOString(),usuario:user?.username||"?"};
-        setMiPosicion(loc);
-        // Sync to Supabase
-        const SURL="https://mrotnqybqvmvlexncvno.supabase.co";
-        const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
-        fetch(SURL+"/rest/v1/aryes_tracking",{method:"POST",headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({id:user?.username||"repartidor",...loc})}).catch(()=>{});
+        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:new Date().toISOString(),usuario:session?.username||"repartidor"};
+        setMiPos(loc);
+        fetch(SB_URL+"/rest/v1/aryes_tracking",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({id:session?.username||"repartidor",...loc})}).catch(()=>{});
       },
-      ()=>setMsg("Error obteniendo GPS"),
+      ()=>setMsg("Error GPS"),
       {enableHighAccuracy:true,maximumAge:10000,timeout:15000}
     );
     setWatchId(id);setTracking(true);
   };
   const detenerTracking=()=>{
     if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-    setWatchId(null);setTracking(false);setMiPosicion(null);
+    setWatchId(null);setTracking(false);setMiPos(null);
   };
-  // Admin view: show all repartidores from Supabase
-  const [posiciones,setPosiciones]=useState([]);
   useEffect(()=>{
     if(esRepartidor)return;
-    const SURL="https://mrotnqybqvmvlexncvno.supabase.co";
-    const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
-    const fetchPos=()=>fetch(SURL+"/rest/v1/aryes_tracking?select=*",{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY}}).then(r=>r.json()).then(d=>setPosiciones(Array.isArray(d)?d:[])).catch(()=>{});
+    const fetchPos=()=>fetch(SB_URL+"/rest/v1/aryes_tracking?select=*",{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}}).then(r=>r.json()).then(d=>setPosiciones(Array.isArray(d)?d:[])).catch(()=>{});
     fetchPos();
     const iv=setInterval(fetchPos,15000);
     return()=>clearInterval(iv);
@@ -6705,12 +6687,12 @@ function TrackingTab(){
   if(esRepartidor)return(
     <section style={{padding:"28px 36px",maxWidth:600,margin:"0 auto",textAlign:"center"}}>
       <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 8px"}}>Mi ubicacion</h2>
-      <p style={{fontSize:13,color:"#888",marginBottom:24}}>Activa el tracking para que admin pueda ver tu posicion en tiempo real</p>
+      <p style={{fontSize:13,color:"#888",marginBottom:24}}>Activa el tracking para que admin vea tu posicion en tiempo real</p>
       {msg&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#dc2626",fontSize:13}}>{msg}</div>}
-      {miPosicion&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"14px 18px",marginBottom:16,fontSize:13,color:G}}>
+      {miPos&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"14px 18px",marginBottom:16,fontSize:13,color:G}}>
         <div style={{fontWeight:700,marginBottom:4}}>Posicion actual</div>
-        <div>Lat: {miPosicion.lat.toFixed(5)} · Lng: {miPosicion.lng.toFixed(5)}</div>
-        <div style={{fontSize:11,color:"#888",marginTop:4}}>{new Date(miPosicion.ts).toLocaleTimeString("es-UY")}</div>
+        <div>Lat: {miPos.lat.toFixed(5)} · Lng: {miPos.lng.toFixed(5)}</div>
+        <div style={{fontSize:11,color:"#888",marginTop:4}}>{new Date(miPos.ts).toLocaleTimeString("es-UY")}</div>
       </div>}
       <button onClick={tracking?detenerTracking:activarTracking} style={{padding:"14px 32px",background:tracking?"#dc2626":G,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:16}}>
         {tracking?"Detener tracking":"Activar tracking GPS"}
@@ -6721,19 +6703,21 @@ function TrackingTab(){
     <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
       <div style={{marginBottom:20}}>
         <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Tracking GPS</h2>
-        <p style={{fontSize:12,color:"#888",margin:0}}>Posicion en tiempo real de los repartidores</p>
+        <p style={{fontSize:12,color:"#888",margin:0}}>Posicion en tiempo real — actualiza cada 15 seg</p>
       </div>
-      {posiciones.length===0?(<div style={{background:"#f9fafb",borderRadius:12,padding:32,textAlign:"center",color:"#888",fontSize:13}}>
-        <div style={{fontSize:40,marginBottom:12}}>📍</div>
-        <div>Ningun repartidor activo ahora</div>
-        <div style={{fontSize:11,marginTop:6}}>Cuando un operador active el tracking, aparecera aqui. Se actualiza cada 15 seg.</div>
-      </div>):(
+      {posiciones.length===0?(
+        <div style={{background:"#f9fafb",borderRadius:12,padding:32,textAlign:"center",color:"#888",fontSize:13}}>
+          <div style={{fontSize:40,marginBottom:12}}>📍</div>
+          <div style={{fontWeight:600,marginBottom:6}}>Ningun repartidor activo</div>
+          <div style={{fontSize:11}}>Cuando un operador active el tracking, aparecera aqui.</div>
+        </div>
+      ):(
         <div style={{display:"grid",gap:10}}>
           {posiciones.map(p=>(
             <div key={p.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:14}}>
               <span style={{fontSize:28}}>📍</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{p.usuario||p.id}</div>
+                <div style={{fontSize:14,fontWeight:700}}>{p.usuario||p.id}</div>
                 <div style={{fontSize:12,color:"#888"}}>Lat {Number(p.lat).toFixed(4)} · Lng {Number(p.lng).toFixed(4)}</div>
               </div>
               <div style={{textAlign:"right"}}>
@@ -6748,8 +6732,6 @@ function TrackingTab(){
   );
 }
 
-
-// Audit log helper - call from any component
 function auditLog(tipo, descripcion, detalle, usuario) {
   try {
     const logs = LS.get('aryes-audit-log', []);
@@ -7140,9 +7122,10 @@ function AryesApp(){
   },[]);
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
   const handleLogout=()=>{
-    const token=(LS.get("aryes-session",{})||{}).access_token||"";
-    if(token)fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+token}}).catch(()=>{});
-    LS.remove("aryes-session");setSession(null);
+    const tok=(LS.get("aryes-session",{})||{}).access_token||"";
+    if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{});
+    LS.remove("aryes-session");
+    setSession(null);
   };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   const canEdit=session.role==='admin'||session.role==='operador';
