@@ -7875,4 +7875,5 @@ function AryesApp(){
   );
 }
 
+}
 export default AryesApp;
