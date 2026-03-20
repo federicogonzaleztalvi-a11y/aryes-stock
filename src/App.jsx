@@ -7180,7 +7180,6 @@ function AryesApp(){
         <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:18,marginBottom:0}}>Aryes Distribuidora Gastronomica</p>
       </div>
     </div>);
-  },[session]);
 
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
