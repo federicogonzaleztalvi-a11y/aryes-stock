@@ -7467,8 +7467,7 @@ function AryesApp(){
             </div>
           </div>
         )}
-
-        {/* ══ INVENTORY ══ */}
+        {tab==="inventory"&&({/* ══ INVENTORY ══ */}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
@@ -7513,10 +7512,8 @@ function AryesApp(){
               </table>
             </div>
           </div>
-        )}
-
-        {/* ══ ORDERS ══ */}
-        {tab==="orders"&&(
+        )})}
+        tab==="orders"&&(
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
             {!orders.length?(
@@ -7690,7 +7687,9 @@ function AryesApp(){
             </div>
           </div>
         )}
-        {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
+        {tab==="scanner"&&<div className="au"><Scanner products={products}
+        {tab==="config"&&(<>
+ suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
         {/* ══ SETTINGS ══ */}
           <div className="au" style={{display:"grid",gap:24}}>
@@ -7756,7 +7755,9 @@ function AryesApp(){
 
         {/* ══ IMPORTER ══ */}
       
-      {tab==="lotes"&&<LotesTab />}
+      {
+        </>)}
+        tab==="lotes"&&<LotesTab />}
       {tab==="clientes"&&<ClientesTab />}
       {tab==="movimientos"&&<MovimientosTab />}
       
