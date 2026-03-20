@@ -2530,7 +2530,7 @@ const LoginScreen=({onLogin})=>{
   };
   const inp={width:"100%",padding:"11px 14px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
   return(<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f8,#e8f0e8)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:16}}>
-    <div style={{background:"#fff",borderRadius:20,padding:"44px 40px 40px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,.12)",border:"1px solid rgba(0,0,0,.06)"}}>
+    <div style={{background:"#fff",borderRadius:20,padding:"44px 40px 40px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,.12)"}}>
       <div style={{textAlign:"center",marginBottom:32}}>
         <img src="/aryes-logo.png" alt="Aryes" style={{height:52,marginBottom:14,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
         <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Aryes Stock</h1>
@@ -2545,10 +2545,9 @@ const LoginScreen=({onLogin})=>{
         <label style={{fontSize:11,fontWeight:700,color:"#555",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:.6}}>Contrasena</label>
         <input id="_pw" type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" autoComplete="current-password" style={inp} onKeyDown={e=>e.key==="Enter"&&submit()} />
       </div>
-      <button onClick={submit} disabled={busy} style={{width:"100%",padding:"13px",background:busy?"#9ca3af":G,color:"#fff",border:"none",borderRadius:10,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15,boxShadow:busy?"none":"0 4px 12px rgba(58,125,30,.3)"}}>
+      <button onClick={submit} disabled={busy} style={{width:"100%",padding:"13px",background:busy?"#9ca3af":G,color:"#fff",border:"none",borderRadius:10,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>
         {busy?"Verificando...":"Ingresar"}
       </button>
-      <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:20,marginBottom:0}}>Aryes Distribuidora Gastronomica © 2026</p>
     </div>
   </div>);
 };
@@ -5789,7 +5788,7 @@ function ImportTab(){
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Importa productos desde CSV o Excel exportado como CSV</p>
         </div>
         <button onClick={exportCSV} style={{padding:'8px 18px',border:'2px solid '+G,background:'#fff',color:G,borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>
-          ⇓ Exportar productos CSV
+          &#8659; Exportar productos CSV
         </button>
       </div>
 
@@ -5910,7 +5909,7 @@ function InformesTab(){
     <button onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#fff",border:"2px solid #3a7d1e",borderRadius:10,cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left",marginBottom:8}}>
       <span style={{fontSize:20}}>{icon}</span>
       <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:"#1a1a1a"}}>{label}</div><div style={{fontSize:11,color:"#888"}}>Exportar CSV</div></div>
-      <span style={{fontSize:16,color:"#3a7d1e"}}>⇓</span>
+      <span style={{fontSize:16,color:"#3a7d1e"}}>&#8659;</span>
     </button>
   );
   return(
@@ -7467,13 +7466,12 @@ function AryesApp(){
                   );
                 })}
               </div>
-            <}
-        {tab==="inventory"&&(<>
-div>
+            </div>
           </div>
         )}
 
-        {/* ══ INVENTORY ══ */}
+{tab==="inventory"&&<>
+{/* ══ INVENTORY ══ */}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
@@ -7520,8 +7518,9 @@ div>
           </div>
         )}
 
-     </>)}
-           {/* ══ ORDERS ══ */}
+        {/* ══ ORDERS ══ */}
+        </>
+        }
         {tab==="orders"&&(
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
@@ -7696,12 +7695,10 @@ div>
             </div>
           </div>
         )}
-          {/* ══ SCANNER ══ */}
-        {tab==="scanner"&&<div className="
-        {tab==="config"&&(<>
-au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
+        {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
-        {/* ══ SETTINGS ══ */}
+{tab==="config"&&<>
+{/* ══ SETTINGS ══ */}
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
               <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1></div>
@@ -7763,11 +7760,10 @@ au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,un
           </div>
         )}
 
-        {/*
-        </>)}
-        ══ IMPORTER ══ */}
-      
-      {tab==="lotes"&&<LotesTab />}
+        {/* ══ IMPORTER ══ */}
+        </>
+        }
+        {tab==="lotes"&&<LotesTab />}
       {tab==="clientes"&&<ClientesTab />}
       {tab==="movimientos"&&<MovimientosTab />}
       
