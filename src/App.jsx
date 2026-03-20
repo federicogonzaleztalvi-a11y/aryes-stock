@@ -3545,7 +3545,8 @@ const MovementsTab=({products,setProducts,session})=>{
     const prod=products.find(p=>p.id===Number(form.productId));
     if(!prod){setMsg('Producto no encontrado');return;}
     const qty=Number(form.qty);
-    const newStock=form.type==='entrada'?(prod.stock||0)+qty:Math.max(0,(prod.stock||0)-qty);
+    if(form.type==='salida'&&qty>(prod.stock||0)){setMsg('Stock insuficiente: disponible '+(prod.stock||0)+' '+(prod.unit||'')+' — solicitado '+qty);return;}
+    const newStock=form.type==='entrada'?(prod.stock||0)+qty:(prod.stock||0)-qty;
     const mov={
       id:'mov-'+Date.now(),
       productId:prod.id,productName:prod.name,brand:prod.brand||'',
