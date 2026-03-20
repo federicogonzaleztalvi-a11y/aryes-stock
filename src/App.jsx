@@ -2525,7 +2525,7 @@ const LoginScreen=({onLogin})=>{
       if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setBusy(false);return;}
       const m=d.user.user_metadata||{};
       onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token});
-    }catch(e){setErr("Error de conexion. Verifica tu internet.");}
+    }catch(e){setErr("Error de conexion");}
     setBusy(false);
   };
   const inp={width:"100%",padding:"11px 14px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
@@ -5692,9 +5692,9 @@ function ConfigTab(){
         <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>🔒 Usuarios del sistema</h3>
         <div style={{display:'grid',gap:8}}>
           {[
-            {rol:'admin',user:'admin',pass:'••••••',color:'#3a7d1e'},
-            {rol:'operador',user:'operador',pass:'••••••',color:'#3b82f6'},
-            {rol:'vendedor',user:'vendedor',pass:'••••••',color:'#8b5cf6'},
+            {rol:'admin',user:'admin',pass:'aryes2024',color:'#3a7d1e'},
+            {rol:'operador',user:'operador',pass:'stock123',color:'#3b82f6'},
+            {rol:'vendedor',user:'vendedor',pass:'ventas123',color:'#8b5cf6'},
           ].map(u=>(
             <div key={u.rol} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'#f9fafb',borderRadius:8}}>
               <span style={{background:u.color,color:'#fff',fontSize:11,fontWeight:700,padding:'2px 10px',borderRadius:20}}>{u.rol}</span>
@@ -6653,33 +6653,41 @@ function KPIsTab(){
 }
 function TrackingTab({session}){
   const G="#3a7d1e";
-  const esRepartidor=session&&session.role==="operador";
+  const user=session;
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
+  const [ubicaciones,setUbicaciones]=useState({});
   const [tracking,setTracking]=useState(false);
   const [watchId,setWatchId]=useState(null);
-  const [miPos,setMiPos]=useState(null);
-  const [posiciones,setPosiciones]=useState([]);
+  const [miPosicion,setMiPosicion]=useState(null);
   const [msg,setMsg]=useState("");
+  const esRepartidor=user&&user.role==="operador";
   const activarTracking=()=>{
-    if(!navigator.geolocation){setMsg("GPS no disponible");return;}
+    if(!navigator.geolocation){setMsg("GPS no disponible en este dispositivo");return;}
     const id=navigator.geolocation.watchPosition(
       pos=>{
-        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:new Date().toISOString(),usuario:session?.username||"repartidor"};
-        setMiPos(loc);
-        fetch(SB_URL+"/rest/v1/aryes_tracking",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({id:session?.username||"repartidor",...loc})}).catch(()=>{});
+        const loc={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:new Date().toISOString(),usuario:user?.username||"?"};
+        setMiPosicion(loc);
+        // Sync to Supabase
+        const SURL="https://mrotnqybqvmvlexncvno.supabase.co";
+        const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
+        fetch(SURL+"/rest/v1/aryes_tracking",{method:"POST",headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({id:user?.username||"repartidor",...loc})}).catch(()=>{});
       },
-      ()=>setMsg("Error GPS"),
+      ()=>setMsg("Error obteniendo GPS"),
       {enableHighAccuracy:true,maximumAge:10000,timeout:15000}
     );
     setWatchId(id);setTracking(true);
   };
   const detenerTracking=()=>{
     if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-    setWatchId(null);setTracking(false);setMiPos(null);
+    setWatchId(null);setTracking(false);setMiPosicion(null);
   };
+  // Admin view: show all repartidores from Supabase
+  const [posiciones,setPosiciones]=useState([]);
   useEffect(()=>{
     if(esRepartidor)return;
-    const fetchPos=()=>fetch(SB_URL+"/rest/v1/aryes_tracking?select=*",{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}}).then(r=>r.json()).then(d=>setPosiciones(Array.isArray(d)?d:[])).catch(()=>{});
+    const SURL="https://mrotnqybqvmvlexncvno.supabase.co";
+    const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
+    const fetchPos=()=>fetch(SURL+"/rest/v1/aryes_tracking?select=*",{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY}}).then(r=>r.json()).then(d=>setPosiciones(Array.isArray(d)?d:[])).catch(()=>{});
     fetchPos();
     const iv=setInterval(fetchPos,15000);
     return()=>clearInterval(iv);
@@ -6687,12 +6695,12 @@ function TrackingTab({session}){
   if(esRepartidor)return(
     <section style={{padding:"28px 36px",maxWidth:600,margin:"0 auto",textAlign:"center"}}>
       <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 8px"}}>Mi ubicacion</h2>
-      <p style={{fontSize:13,color:"#888",marginBottom:24}}>Activa el tracking para que admin vea tu posicion en tiempo real</p>
+      <p style={{fontSize:13,color:"#888",marginBottom:24}}>Activa el tracking para que admin pueda ver tu posicion en tiempo real</p>
       {msg&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#dc2626",fontSize:13}}>{msg}</div>}
-      {miPos&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"14px 18px",marginBottom:16,fontSize:13,color:G}}>
+      {miPosicion&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:"14px 18px",marginBottom:16,fontSize:13,color:G}}>
         <div style={{fontWeight:700,marginBottom:4}}>Posicion actual</div>
-        <div>Lat: {miPos.lat.toFixed(5)} · Lng: {miPos.lng.toFixed(5)}</div>
-        <div style={{fontSize:11,color:"#888",marginTop:4}}>{new Date(miPos.ts).toLocaleTimeString("es-UY")}</div>
+        <div>Lat: {miPosicion.lat.toFixed(5)} · Lng: {miPosicion.lng.toFixed(5)}</div>
+        <div style={{fontSize:11,color:"#888",marginTop:4}}>{new Date(miPosicion.ts).toLocaleTimeString("es-UY")}</div>
       </div>}
       <button onClick={tracking?detenerTracking:activarTracking} style={{padding:"14px 32px",background:tracking?"#dc2626":G,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:16}}>
         {tracking?"Detener tracking":"Activar tracking GPS"}
@@ -6703,21 +6711,19 @@ function TrackingTab({session}){
     <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
       <div style={{marginBottom:20}}>
         <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:"0 0 4px"}}>Tracking GPS</h2>
-        <p style={{fontSize:12,color:"#888",margin:0}}>Posicion en tiempo real — actualiza cada 15 seg</p>
+        <p style={{fontSize:12,color:"#888",margin:0}}>Posicion en tiempo real de los repartidores</p>
       </div>
-      {posiciones.length===0?(
-        <div style={{background:"#f9fafb",borderRadius:12,padding:32,textAlign:"center",color:"#888",fontSize:13}}>
-          <div style={{fontSize:40,marginBottom:12}}>📍</div>
-          <div style={{fontWeight:600,marginBottom:6}}>Ningun repartidor activo</div>
-          <div style={{fontSize:11}}>Cuando un operador active el tracking, aparecera aqui.</div>
-        </div>
-      ):(
+      {posiciones.length===0?(<div style={{background:"#f9fafb",borderRadius:12,padding:32,textAlign:"center",color:"#888",fontSize:13}}>
+        <div style={{fontSize:40,marginBottom:12}}>📍</div>
+        <div>Ningun repartidor activo ahora</div>
+        <div style={{fontSize:11,marginTop:6}}>Cuando un operador active el tracking, aparecera aqui. Se actualiza cada 15 seg.</div>
+      </div>):(
         <div style={{display:"grid",gap:10}}>
           {posiciones.map(p=>(
             <div key={p.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:14}}>
               <span style={{fontSize:28}}>📍</span>
               <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700}}>{p.usuario||p.id}</div>
+                <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{p.usuario||p.id}</div>
                 <div style={{fontSize:12,color:"#888"}}>Lat {Number(p.lat).toFixed(4)} · Lng {Number(p.lng).toFixed(4)}</div>
               </div>
               <div style={{textAlign:"right"}}>
@@ -6732,6 +6738,8 @@ function TrackingTab({session}){
   );
 }
 
+
+// Audit log helper - call from any component
 function auditLog(tipo, descripcion, detalle, usuario) {
   try {
     const logs = LS.get('aryes-audit-log', []);
@@ -7118,15 +7126,10 @@ function AryesApp(){
   // Sync from Supabase on mount
   useEffect(()=>{
     const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
-    keys.forEach(k=>LS.get(k,[]));
+    keys.forEach(k=>LS.load(k,[]).then(()=>{}));
   },[]);
   const handleLogin=(u)=>{LS.set('aryes-session',u);setSession(u);setTimeout(()=>window.location.reload(),50);};
-  const handleLogout=()=>{
-    const tok=(LS.get("aryes-session",{})||{}).access_token||"";
-    if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{});
-    LS.remove("aryes-session");
-    setSession(null);
-  };
+  const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   const canEdit=session.role==='admin'||session.role==='operador';
 
@@ -7464,11 +7467,13 @@ function AryesApp(){
                   );
                 })}
               </div>
-            </div>
+            <}
+        {tab==="inventory"&&(<>
+div>
           </div>
         )}
-        {tab==="inventory"&&(
 
+        {/* ══ INVENTORY ══ */}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
@@ -7513,8 +7518,11 @@ function AryesApp(){
               </table>
             </div>
           </div>
-        )})}
-        tab==="orders"&&(
+        )}
+
+     </>)}
+           {/* ══ ORDERS ══ */}
+        {tab==="orders"&&(
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
             {!orders.length?(
@@ -7688,9 +7696,10 @@ function AryesApp(){
             </div>
           </div>
         )}
-        {tab==="scanner"&&<div className="au"><Scanner products={products}
+          {/* ══ SCANNER ══ */}
+        {tab==="scanner"&&<div className="
         {tab==="config"&&(<>
- suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
+au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
         {/* ══ SETTINGS ══ */}
           <div className="au" style={{display:"grid",gap:24}}>
@@ -7754,11 +7763,11 @@ function AryesApp(){
           </div>
         )}
 
-        {/* ══ IMPORTER ══ */}
-      
-      {
+        {/*
         </>)}
-        tab==="lotes"&&<LotesTab />}
+        ══ IMPORTER ══ */}
+      
+      {tab==="lotes"&&<LotesTab />}
       {tab==="clientes"&&<ClientesTab />}
       {tab==="movimientos"&&<MovimientosTab />}
       
