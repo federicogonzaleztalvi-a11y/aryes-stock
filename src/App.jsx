@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-  const [loginError,setLoginError]=useState("");
-  const [loginLoading,setLoginLoading]=useState(false);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
@@ -2517,46 +2515,53 @@ function ImporterTab({onDone}){
 
 
 const LoginScreen=({onLogin})=>{
-  const [user,setUser]=useState('');
-  const [pass,setPass]=useState('');
-  const [err,setErr]=useState('');
+  const G="#3a7d1e";
+  const [email,setEmail]=useState("");
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
-  const go=()=>{
-    if(!user||!pass) return;
-    setLoading(true);setErr('');
-    setTimeout(()=>{
-      const users=LS.get('aryes-users',USERS);
-      const found=users.find(u=>u.username===user.trim()&&u.password===pass);
-      if(found){onLogin(found);}else{setErr('Usuario o contraseña incorrectos');setLoading(false);}
-    },350);
+  const doLogin=async()=>{
+    if(!email||!pw){setErr("Ingresa email y contrasena");return;}
+    setErr("");setLoading(true);
+    try{
+      const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})});
+      const d=await r.json();
+      if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setLoading(false);return;}
+      const m=d.user.user_metadata||{};
+      onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||email.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token});
+    }catch(e){setErr("Error de conexion. Verifica tu internet.");}
+    setLoading(false);
   };
   return(
-    <div style={{minHeight:'100vh',background:'#f9f9f7',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Inter',system-ui,sans-serif"}}>
-      <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:16,padding:'44px 40px',width:340,boxShadow:'0 4px 24px rgba(0,0,0,.07)'}}>
-        <div style={{textAlign:'center',marginBottom:28}}>
-          <img src={ARYES_LOGO_B64} height={44} alt="Aryes" style={{display:'block',margin:'0 auto 14px'}}/>
-          <div style={{fontSize:11,letterSpacing:'.12em',color:'#6a6a68',fontWeight:600,textTransform:'uppercase'}}>Gestión de Stock · UY</div>
+    <div style={{minHeight:"100vh",background:"#f5f5f0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif"}}>
+      <div style={{background:"#fff",borderRadius:16,padding:"40px 36px",width:380,boxShadow:"0 8px 40px rgba(0,0,0,.10)"}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <img src="/aryes-logo.png" alt="Aryes" style={{height:48,marginBottom:12,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
+          <h1 style={{fontFamily:"Playfair Display,serif",fontSize:26,color:"#1a1a1a",margin:"0 0 4px"}}>Aryes Stock</h1>
+          <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
         </div>
+        {err&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 14px",marginBottom:16,color:"#dc2626",fontSize:13,textAlign:"center"}}>{err}</div>}
         <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,letterSpacing:'.08em',textTransform:'uppercase'}}>Usuario</label>
-          <input value={user} onChange={e=>setUser(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()} placeholder="usuario" autoFocus
-            style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+          <label style={{fontSize:11,fontWeight:700,color:"#374151",display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Email</label>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@aryes.com"
+            style={{width:"100%",padding:"10px 12px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
+            onKeyDown={e=>e.key==="Enter"&&document.getElementById("sbpw2").focus()} />
         </div>
-        <div style={{marginBottom:20}}>
-          <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',display:'block',marginBottom:5,letterSpacing:'.08em',textTransform:'uppercase'}}>Contraseña</label>
-          <input type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&go()} placeholder="••••••••"
-            style={{width:'100%',padding:'9px 12px',border:'1px solid #e2e2de',borderRadius:8,fontSize:14,boxSizing:'border-box',fontFamily:'inherit'}}/>
+        <div style={{marginBottom:22}}>
+          <label style={{fontSize:11,fontWeight:700,color:"#374151",display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Contrasena</label>
+          <input id="sbpw2" type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••"
+            style={{width:"100%",padding:"10px 12px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
+            onKeyDown={e=>e.key==="Enter"&&doLogin()} />
         </div>
-        {err&&<div style={{color:'#dc2626',fontSize:12,marginBottom:14,textAlign:'center'}}>{err}</div>}
-        <button onClick={go} disabled={loading||!user||!pass}
-          style={{width:'100%',padding:'11px',background:(!user||!pass)?'#d0d0cc':'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:(!user||!pass)?'not-allowed':'pointer',fontFamily:'inherit',transition:'background .15s'}}>
-          {loading?'Ingresando…':'Ingresar'}
+        <button onClick={doLogin} disabled={loading}
+          style={{width:"100%",padding:"12px",background:loading?"#9ca3af":G,color:"#fff",border:"none",borderRadius:8,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>
+          {loading?"Ingresando...":"Ingresar"}
         </button>
+        <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:18,marginBottom:0}}>Aryes Distribuidora Gastronomica</p>
       </div>
     </div>
   );
 };
-
 
 const UsersTab=({session})=>{
   const [users,setUsers]=useState(()=>LS.get('aryes-users',USERS));
@@ -7133,53 +7138,35 @@ function AryesApp(){
     const keys=['aryes6-products','aryes-users','aryes-lots','aryes-price-history','aryes-clients','aryes-movements','aryes6-suppliers','aryes6-orders','aryes7-plans'];
     keys.forEach(k=>LS.load(k,[]).then(()=>{}));
   },[]);
-  const handleLogin=async(email,pw)=>{
-    setLoginError("");setLoginLoading(true);
-    try{
-      const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})});
-      const d=await r.json();
-      if(!r.ok||!d.access_token){setLoginError(d.msg||d.error_description||"Credenciales incorrectas");setLoginLoading(false);return;}
-      const m=d.user.user_metadata||{};
-      const u={id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||email.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token};
-      LS.set("aryes-session",u);setUser(u);
-      auditLog("login","Inicio de sesion",u.email,u.username);
-    }catch(e){setLoginError("Error de conexion");}
-    setLoginLoading(false);
-  };
+  const handleLogin=(u)=>{LS.set("aryes-session",u);setUser(u);auditLog("login","Inicio de sesion",u.email,u.username);};
   const handleLogout=()=>{
     const token=LS.get("aryes-session",{}).access_token||"";
     if(token)fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+token}}).catch(()=>{});
     LS.remove("aryes-session");setUser(null);
   };
-  if(!user){
-    const doLogin=()=>handleLogin((document.getElementById("sbem")||{}).value||"",(document.getElementById("sbpw")||{}).value||"");
-    return(<div style={{minHeight:"100vh",background:"#f5f5f0",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif"}}>
-      <div style={{background:"#fff",borderRadius:16,padding:"40px 36px",width:380,boxShadow:"0 8px 40px rgba(0,0,0,.10)"}}>
-        <div style={{textAlign:"center",marginBottom:28}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:48,marginBottom:12,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
-          <h1 style={{fontFamily:"Playfair Display,serif",fontSize:26,color:"#1a1a1a",margin:"0 0 4px"}}>Aryes Stock</h1>
-          <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
-        </div>
-        {loginError&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 14px",marginBottom:16,color:"#dc2626",fontSize:13,textAlign:"center"}}>{loginError}</div>}
-        <div style={{marginBottom:14}}>
-          <label style={{fontSize:11,fontWeight:700,color:"#374151",display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Email</label>
-          <input id="sbem" type="email" placeholder="usuario@aryes.com" autoComplete="email"
-            style={{width:"100%",padding:"10px 12px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
-            onKeyDown={e=>e.key==="Enter"&&document.getElementById("sbpw").focus()} />
-        </div>
-        <div style={{marginBottom:22}}>
-          <label style={{fontSize:11,fontWeight:700,color:"#374151",display:"block",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Contrasena</label>
-          <input id="sbpw" type="password" placeholder="••••••••" autoComplete="current-password"
-            style={{width:"100%",padding:"10px 12px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
-            onKeyDown={e=>e.key==="Enter"&&doLogin()} />
-        </div>
-        <button onClick={doLogin} disabled={loginLoading}
-          style={{width:"100%",padding:"12px",background:loginLoading?"#9ca3af":"#3a7d1e",color:"#fff",border:"none",borderRadius:8,cursor:loginLoading?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>
-          {loginLoading?"Ingresando...":"Ingresar"}
-        </button>
-        <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:18,marginBottom:0}}>Aryes Distribuidora Gastronomica</p>
-      </div>
-    </div>);
+  if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  const canEdit=session.role==='admin'||session.role==='operador';
+
+  const [dbReady,setDbReady]=useState(false);
+  const [syncStatus,setSyncStatus]=useState('');
+  useEffect(()=>{
+    if(!session) return;
+    setSyncStatus('sync');
+    (async()=>{
+      try{
+        const prods=await db.get('products','order=id.asc&limit=1000');
+        if(prods?.length>0){
+          const mapped=prods.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
+          LS.set('aryes6-products',mapped);
+        }
+        const sups=await db.get('suppliers','order=name.asc');
+        if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);}
+        const usrs=await db.get('users','order=id.asc');
+        if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,password:u.password,name:u.name,role:u.role,active:u.active})));
+        setDbReady(true);setSyncStatus('ok');setTimeout(()=>setSyncStatus(''),3000);
+      }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
+    })();
+  },[session]);
 
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
