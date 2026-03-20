@@ -7692,26 +7692,7 @@ function AryesApp(){
         )}
         {tab==="orders"&&(
 
-          <div className="au">
-            <PlanningView products={products} suppliers={suppliers} orders={orders} plans={plans} setPlans={setPlans}/>
-          </div>
-        )
-        {tab==="movimientos"&&(}
 
-        {/* ══ MOVEMENTS ══ */}
-          <div className="au">
-            <MovementsView
-              movements={movements}
-              products={products}
-              suppliers={suppliers}
-              onAddManual={m=>{
-                addMov(m);
-                if(m.type==="manual_in") setProducts(ps=>ps.map(p=>p.id===m.productId?{...p,stock:p.stock+m.qty}:p));
-                else if(m.type==="manual_out") setProducts(ps=>ps.map(p=>p.id===m.productId?{...p,stock:Math.max(0,p.stock-m.qty)}:p));
-              }}
-            />
-          </div>
-        )}
 
         {/* ══ SCANNER ══ */}
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
