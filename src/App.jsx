@@ -7441,10 +7441,6 @@ function AryesApp(){
             </div>
           </div>
         )}
-
-        {/* ══ ORDERS ══ */}
-        </>
-        }
         {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans}/></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
@@ -7511,10 +7507,6 @@ function AryesApp(){
             })()}
           </div>
         )}
-
-        {/* ══ IMPORTER ══ */}
-        </>
-        }
         {tab==="lotes"&&<ErrorBoundary><LotesTab /></ErrorBoundary>}
       {tab==="clientes"&&<ErrorBoundary><ClientesTab /></ErrorBoundary>}
       {tab==="movimientos"&&<ErrorBoundary><MovimientosTab /></ErrorBoundary>}
