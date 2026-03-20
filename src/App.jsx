@@ -5338,11 +5338,14 @@ function VentasTab(){
     const venta=ventas.find(v=>v.id===id);
     // If confirming delivery, discount stock
     if(estado==='entregada'&&venta&&venta.estado!=='entregada'){
+      const stockErrors=[];
+      venta.items.forEach(it=>{const p=updProds.find(x=>String(x.id)===String(it.productoId));if(p&&Number(it.cantidad)>Number(p.stock||0))stockErrors.push('Stock insuficiente: '+(p.name||p.nombre||'')+' — disponible '+(p.stock||0)+', solicitado '+it.cantidad);});
+      if(stockErrors.length>0){setMsg(stockErrors[0]);return;}
       venta.items.forEach(it=>{
         const idx=updProds.findIndex(p=>String(p.id)===String(it.productoId));
         if(idx>-1){
           const newStock=Math.max(0,Number(updProds[idx].stock||0)-Number(it.cantidad));
-          updProds[idx]={...updProds[idx],stock:newStock};
+          updProds[idx]={...updProds[idx],stock:newStock,updatedAt:new Date().toISOString()};
         }
       });
       setProds(updProds);LS.set(KPROD,updProds);
@@ -6748,13 +6751,20 @@ function auditLog(tipo, descripcion, detalle, usuario) {
     const logs = LS.get('aryes-audit-log', []);
     const entry = {
       id: crypto.randomUUID(),
-      tipo,
-      descripcion,
+      tipo, descripcion,
       detalle: typeof detalle === 'object' ? JSON.stringify(detalle) : (detalle || ''),
       usuario: usuario || (JSON.parse(localStorage.getItem('aryes-session') || '{}').username || 'sistema'),
-      fecha: new Date().toLocaleString('es-UY')
+      fecha: new Date().toLocaleString('es-UY'),
+      timestamp: new Date().toISOString(),
     };
-    LS.set('aryes-audit-log', [entry, ...logs].slice(0, 2000));
+    LS.set('aryes-audit-log', [entry, ...logs]);
+    try {
+      fetch(SURL+'/rest/v1/aryes_audit_log', {
+        method:'POST',
+        headers:{apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({id:entry.id,timestamp:entry.timestamp,user:entry.usuario,action:entry.tipo,detail:entry.detalle,product_id:null})
+      }).catch(()=>{});
+    } catch(e2) {}
   } catch(e) {}
 }
 
@@ -7297,11 +7307,17 @@ function AryesApp(){
     addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
     setModal({type:"orderDone",order:o});
   };
-  const markDelivered=id=>{
+  const markDelivered=async id=>{
     const o=orders.find(x=>x.id===id);if(!o)return;
+    const prod=products.find(p=>p.id===o.productId);if(!prod)return;
+    const newStock=prod.stock+o.qty;
+    const now=new Date().toISOString();
+    // Server-first: write to Supabase before updating local state
+    await dbWriteWithRetry(()=>db.patch('products',{stock:newStock,updated_at:now},{id:prod.id}));
     setOrders(os=>os.map(x=>x.id===id?{...x,status:"delivered"}:x));
-    const updatedProds = products.map(p=>p.id===o.productId?{...p,stock:p.stock+o.qty,updatedAt:new Date().toISOString()}:p);
-    setProducts(()=>updatedProds);
+    const updatedProds=products.map(p=>p.id===o.productId?{...p,stock:newStock,updatedAt:now}:p);
+    setProducts(updatedProds);
+    LS.set('aryes6-products',updatedProds);
     setTimeout(()=>checkAndNotify(updatedProds,suppliers,emailCfg,notified),500);
     addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercadería recibida — pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
   };
