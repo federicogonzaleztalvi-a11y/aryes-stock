@@ -36,9 +36,11 @@ const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Ty
 // Write to Supabase async - never blocks
 function sbWrite(key, value) {
   try {
+    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+    const token = session?.access_token || SB_KEY;
     fetch(SB_URL+'/rest/v1/aryes_data', {
       method: 'POST',
-      headers: SB_HEADERS,
+      headers: {'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
       body: JSON.stringify({key, value, updated_at: new Date().toISOString()})
     }).catch(()=>{});
   } catch(e) {}
@@ -47,7 +49,10 @@ function sbWrite(key, value) {
 // Read all from Supabase and refresh localStorage cache
 async function sbSyncAll() {
   try {
-    const r = await fetch(SB_URL+'/rest/v1/aryes_data?select=key,value', {headers: SB_HEADERS});
+    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+    const token = session?.access_token || SB_KEY;
+    const authH = {'apikey':SB_KEY,'Authorization':'Bearer '+token};
+    const r = await fetch(SB_URL+'/rest/v1/aryes_data?select=key,value', {headers: authH});
     if(!r.ok) return;
     const rows = await r.json();
     if(!Array.isArray(rows)) return;
@@ -106,11 +111,21 @@ setTimeout(() => sbSyncAll(), 1000);
 const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
 const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
+// getAuthHeaders: uses logged-in user's JWT when available so RLS policies fire correctly
+const getAuthHeaders = (extra={}) => {
+  try {
+    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+    const token = session?.access_token || SKEY;
+    return {apikey:SKEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+  } catch(e) {
+    return {apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+  }
+};
 const db={
-  async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:SH});return r.ok?r.json():[];},
-  async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:{...SH,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:SH,body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:SH});}
+  async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
+  async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
 };
 
 
