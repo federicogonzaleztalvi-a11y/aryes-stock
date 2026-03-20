@@ -2548,7 +2548,7 @@ const LoginScreen=({onLogin})=>{
       <button onClick={submit} disabled={busy} style={{width:"100%",padding:"13px",background:busy?"#9ca3af":G,color:"#fff",border:"none",borderRadius:10,cursor:busy?"not-allowed":"pointer",fontWeight:700,fontSize:15,boxShadow:busy?"none":"0 4px 12px rgba(58,125,30,.3)"}}>
         {busy?"Verificando...":"Ingresar"}
       </button>
-      <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:20,marginBottom:0}}>Aryes Distribuidora Gastronomica &copy; 2026</p>
+      <p style={{fontSize:11,color:"#ccc",textAlign:"center",marginTop:20,marginBottom:0}}>Aryes Distribuidora Gastronomica © 2026</p>
     </div>
   </div>);
 };
@@ -4042,7 +4042,7 @@ function MovimientosTab(){
   if(vista==='form')return(
     <section style={{padding:'32px 40px',maxWidth:600,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:28}}>
-        <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>&#8592;</button>
+        <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>←</button>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Registrar movimiento</h2>
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
@@ -4112,7 +4112,7 @@ function MovimientosTab(){
       </div>
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
-          <div style={{fontSize:40,marginBottom:12}}>&#128203;</div>
+          <div style={{fontSize:40,marginBottom:12}}>📋</div>
           <p style={{fontSize:15}}>{movs.length===0?'Todavia no hay movimientos registrados':'Sin movimientos para ese filtro'}</p>
           {movs.length===0&&<button onClick={()=>setVista('form')} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Registrar primer movimiento</button>}
         </div>
@@ -4222,7 +4222,7 @@ function LotesTab(){
   if(vista==='form')return(
     <section style={{padding:'32px 40px',maxWidth:600,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:28}}>
-        <button onClick={()=>{setVista('lista');setEditId(null);setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>&#8592;</button>
+        <button onClick={()=>{setVista('lista');setEditId(null);setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>←</button>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>{editId?'Editar lote':'Registrar lote'}</h2>
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
@@ -4287,7 +4287,7 @@ function LotesTab(){
 
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
-          <div style={{fontSize:40,marginBottom:12}}>&#128197;</div>
+          <div style={{fontSize:40,marginBottom:12}}>📅</div>
           <p style={{fontSize:15}}>{lotes.length===0?'No hay lotes registrados todavia':'Sin lotes para ese filtro'}</p>
           {lotes.length===0&&<button onClick={()=>setVista('form')} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Registrar primer lote</button>}
         </div>
@@ -4585,9 +4585,9 @@ function DepositoTab(){
 
           {/* Leyenda */}
           <div style={{display:'flex',gap:16,marginBottom:12,fontSize:12,color:'#666',alignItems:'center'}}>
-            <span>&#9632; <span style={{color:G}}>Ocupada</span></span>
-            <span>&#9632; <span style={{color:'#e5e7eb'}}>Libre</span></span>
-            <span>&#9632; <span style={{color:'#f59e0b'}}>Seleccionada</span></span>
+            <span>■ <span style={{color:G}}>Ocupada</span></span>
+            <span>■ <span style={{color:'#e5e7eb'}}>Libre</span></span>
+            <span>■ <span style={{color:'#f59e0b'}}>Seleccionada</span></span>
             <span style={{marginLeft:'auto',fontStyle:'italic'}}>Hace clic en una celda para asignar o liberar</span>
           </div>
 
@@ -4786,7 +4786,7 @@ function RutasTab(){
     return(
       <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-          <button onClick={()=>setVista("lista")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <button onClick={()=>setVista("lista")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
           <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Historial de entregas</h2>
           <button onClick={exportarHist} style={{marginLeft:"auto",padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700}}>Exportar CSV</button>
         </div>
@@ -4794,7 +4794,7 @@ function RutasTab(){
           <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
             {hist.map((h,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
-                <span style={{fontSize:16}}>&#128666;</span>
+                <span style={{fontSize:16}}>🚚</span>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:600}}>{h.clienteNombre}</div>
                   <div style={{fontSize:11,color:"#888"}}>{h.vehiculo} · {h.zona} · {h.ciudad||""}</div>
@@ -4814,9 +4814,9 @@ function RutasTab(){
     return(
       <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
-          <button onClick={()=>{setVista("lista");setRutaActiva(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <button onClick={()=>{setVista("lista");setRutaActiva(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
           <div style={{flex:1}}>
-            <h2 style={{fontFamily:"Playfair Display,serif",fontSize:22,color:"#1a1a1a",margin:0}}>&#128666; {ruta.vehiculo} — {ruta.zona}</h2>
+            <h2 style={{fontFamily:"Playfair Display,serif",fontSize:22,color:"#1a1a1a",margin:0}}>🚚 {ruta.vehiculo} — {ruta.zona}</h2>
             <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>{ruta.dia||"Sin dia asignado"} · {ruta.entregas.length} paradas</p>
           </div>
           <div style={{display:"flex",gap:8}}>
@@ -4834,7 +4834,7 @@ function RutasTab(){
           <input value={busqCli} onChange={e=>setBusqCli(e.target.value)} placeholder="Buscar cliente para agregar..." style={{...inp,marginBottom:busqCli?8:0}} />
           {busqCli&&clientesFiltrados.map(c=>(
             <div key={c.id} onClick={()=>agregarEntrega(c)} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",background:"#f9fafb",marginBottom:4}}>
-              <span style={{fontSize:14}}>&#128100;</span>
+              <span style={{fontSize:14}}>👤</span>
               <div style={{flex:1,fontSize:13,fontWeight:600}}>{c.nombre}</div>
               <span style={{fontSize:11,color:"#888"}}>{c.ciudad||""}</span>
               <span style={{fontSize:12,color:G,fontWeight:700}}>+</span>
@@ -4848,7 +4848,7 @@ function RutasTab(){
             return(
               <div key={e.clienteId} style={{background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fff",border:"1px solid "+(isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),borderRadius:10,padding:"12px 16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                  <span style={{fontSize:18,opacity:.7}}>&#128205;</span>
+                  <span style={{fontSize:18,opacity:.7}}>📍</span>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{e.clienteNombre}</div>
                     <div style={{fontSize:12,color:"#888"}}>{e.ciudad||""}{e.hora?" · "+e.hora:""}</div>
@@ -4906,14 +4906,14 @@ function RutasTab(){
             const ent=r.entregas.filter(e=>e.estado==="entregado").length;
             return(
               <div key={r.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-                <span style={{fontSize:22}}>&#128666;</span>
+                <span style={{fontSize:22}}>🚚</span>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{r.vehiculo} — {r.zona}</div>
                   <div style={{fontSize:12,color:"#888"}}>{r.dia||"Sin dia"} · {ent}/{r.entregas.length} entregas</div>
                 </div>
                 {pend>0&&<span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{pend} pendientes</span>}
                 <button onClick={()=>{setRutaActiva(r.id);setVista("detalle");}} style={{padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>Ver ruta</button>
-                <button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8,cursor:"pointer",fontSize:12}}>&#10005;</button>
+                <button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8,cursor:"pointer",fontSize:12}}>✗</button>
               </div>
             );
           })
@@ -5059,7 +5059,7 @@ function RecepcionTab(){
   if(vista==='recepcion')return(
     <section style={{padding:'28px 36px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
-        <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
+        <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>←</button>
         <div>
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Recepcion de mercaderia</h2>
           <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{pedidoSel?'Basado en pedido a '+proveedor:'Recepcion manual'}</p>
@@ -5205,7 +5205,7 @@ function RecepcionTab(){
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:14,color:'#1a1a1a'}}>{ped.productName||ped.nombre}</div>
                   <div style={{fontSize:12,color:'#666',marginTop:2}}>
-                    {ped.supplierName&&<span>&#127981; {ped.supplierName} · </span>}
+                    {ped.supplierName&&<span>🏭 {ped.supplierName} · </span>}
                     <span>{ped.qty||ped.cantidad} {ped.unit||ped.unidad}</span>
                     {ped.expectedDate&&<span> · Esperado: {ped.expectedDate}</span>}
                   </div>
@@ -5375,7 +5375,7 @@ function VentasTab(){
   if(vista==='form')return(
     <section style={{padding:'28px 36px',maxWidth:900,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
-        <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
+        <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>←</button>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Nueva orden de venta</h2>
       </div>
       {msg&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'10px 16px',marginBottom:16,color:'#dc2626',fontSize:13}}>{msg}</div>}
@@ -5481,7 +5481,7 @@ function VentasTab(){
     return(
       <section style={{padding:'28px 36px',maxWidth:800,margin:'0 auto'}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
-          <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>&#8592;</button>
+          <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>←</button>
           <div style={{flex:1}}>
             <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>{v.nroVenta} — {v.clienteNombre}</h2>
             <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{v.fecha}</p>
@@ -5547,7 +5547,7 @@ function VentasTab(){
           <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
             <span style={{color:G,fontSize:13,fontWeight:600}}>Venta entregada. Notificar a {nombre||'cliente'}?</span>
             <a href={link} target='_blank' rel='noreferrer' style={{background:'#25d366',color:'#fff',padding:'8px 18px',borderRadius:8,fontWeight:700,fontSize:13,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>
-              &#128233; Enviar WhatsApp
+              📩 Enviar WhatsApp
             </a>
           </div>
         );})()
@@ -5582,7 +5582,7 @@ function VentasTab(){
 
       {ventasFiltradas.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
-          <div style={{fontSize:40,marginBottom:12}}>&#128203;</div>
+          <div style={{fontSize:40,marginBottom:12}}>📋</div>
           <p>{ventas.length===0?'No hay ordenes de venta aun':'No hay resultados para este filtro'}</p>
           <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Crear primera venta</button>
         </div>
@@ -5662,7 +5662,7 @@ function ConfigTab(){
       {/* WhatsApp */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
         <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 6px',display:'flex',alignItems:'center',gap:8}}>
-          <span style={{color:'#25d366'}}>&#128233;</span> Plantilla WhatsApp
+          <span style={{color:'#25d366'}}>📩</span> Plantilla WhatsApp
         </h3>
         <p style={{fontSize:12,color:'#888',margin:'0 0 12px'}}>Variables: <code style={{background:'#f3f4f6',padding:'1px 6px',borderRadius:4}}>{'{cliente}'}</code> nombre del cliente · <code style={{background:'#f3f4f6',padding:'1px 6px',borderRadius:4}}>{'{detalle}'}</code> detalle de la entrega</p>
         <textarea value={waTpl} onChange={e=>setWaTpl(e.target.value)} rows={3} style={{...inp,resize:'vertical'}} />
@@ -5671,7 +5671,7 @@ function ConfigTab(){
 
       {/* Email */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
-        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>&#128231; Alertas por Email (EmailJS)</h3>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 16px'}}>📧 Alertas por Email (EmailJS)</h3>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
           {[
             {l:'Service ID',k:'serviceId',ph:'service_xxx'},
@@ -5689,7 +5689,7 @@ function ConfigTab(){
 
       {/* Accesos */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20}}>
-        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>&#128274; Usuarios del sistema</h3>
+        <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>🔒 Usuarios del sistema</h3>
         <div style={{display:'grid',gap:8}}>
           {[
             {rol:'admin',user:'admin',pass:'••••••',color:'#3a7d1e'},
@@ -5789,7 +5789,7 @@ function ImportTab(){
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Importa productos desde CSV o Excel exportado como CSV</p>
         </div>
         <button onClick={exportCSV} style={{padding:'8px 18px',border:'2px solid '+G,background:'#fff',color:G,borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>
-          &#8659; Exportar productos CSV
+          ⇓ Exportar productos CSV
         </button>
       </div>
 
@@ -5812,7 +5812,7 @@ function ImportTab(){
 
       {/* Upload */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20,textAlign:'center'}}>
-        <div style={{fontSize:40,marginBottom:8}}>&#128196;</div>
+        <div style={{fontSize:40,marginBottom:8}}>📄</div>
         <div style={{fontSize:14,fontWeight:600,color:'#374151',marginBottom:16}}>Seleccionar archivo CSV</div>
         <input type="file" accept=".csv,.txt" onChange={handleFile}
           style={{display:'block',margin:'0 auto',padding:'10px',border:'2px dashed #e5e7eb',borderRadius:8,cursor:'pointer',width:'100%',maxWidth:400,fontSize:13}} />
@@ -5910,7 +5910,7 @@ function InformesTab(){
     <button onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#fff",border:"2px solid #3a7d1e",borderRadius:10,cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left",marginBottom:8}}>
       <span style={{fontSize:20}}>{icon}</span>
       <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:"#1a1a1a"}}>{label}</div><div style={{fontSize:11,color:"#888"}}>Exportar CSV</div></div>
-      <span style={{fontSize:16,color:"#3a7d1e"}}>&#8659;</span>
+      <span style={{fontSize:16,color:"#3a7d1e"}}>⇓</span>
     </button>
   );
   return(
@@ -6037,7 +6037,7 @@ function ConteoTab(){
     return(
       <section style={{padding:"28px 36px",maxWidth:600,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-          <button onClick={()=>setVista("revision")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <button onClick={()=>setVista("revision")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
           <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Conteo fisico</h2>
         </div>
         <div style={{background:"#e5e7eb",borderRadius:99,height:8,marginBottom:20,overflow:"hidden"}}>
@@ -6054,7 +6054,7 @@ function ConteoTab(){
             style={{fontSize:36,fontWeight:700,textAlign:"center",width:160,padding:"10px",border:"2px solid #3a7d1e",borderRadius:10,outline:"none",fontFamily:"inherit"}} />
           <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:20}}>
             <button onClick={saltarItem} style={{padding:"10px 24px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Saltar</button>
-            <button onClick={registrarItem} disabled={cantFisica===""} style={{padding:"10px 32px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:15}}>Confirmar &#10003;</button>
+            <button onClick={registrarItem} disabled={cantFisica===""} style={{padding:"10px 32px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:15}}>Confirmar ✓</button>
           </div>
         </div>
       </section>
@@ -6067,7 +6067,7 @@ function ConteoTab(){
     return(
       <section style={{padding:"28px 36px",maxWidth:800,margin:"0 auto"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-          <button onClick={()=>setVista("conteo")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+          <button onClick={()=>setVista("conteo")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
           <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Revision del conteo</h2>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
@@ -6110,7 +6110,7 @@ function ConteoTab(){
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:24}}>
         <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
-          <div style={{fontSize:40,marginBottom:12}}>&#128203;</div>
+          <div style={{fontSize:40,marginBottom:12}}>📋</div>
           <div style={{fontSize:16,fontWeight:700,color:"#1a1a1a",marginBottom:8}}>Nuevo conteo</div>
           <div style={{fontSize:13,color:"#888",marginBottom:16}}>Recorre producto por producto confirmando la cantidad fisica en el deposito</div>
           <button onClick={iniciarConteo} style={{padding:"10px 24px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Iniciar conteo ({prods.length} productos)</button>
@@ -6169,7 +6169,7 @@ function PackingTab(){
   if(sel)return(
     <section style={{padding:"28px 36px",maxWidth:700,margin:"0 auto"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-        <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+        <button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
         <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Packing — {sel.nroVenta}</h2>
       </div>
       {msg&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#dc2626",fontSize:13}}>{msg}</div>}
@@ -6303,7 +6303,7 @@ function BatchPickingTab(){
   if(picking)return(
     <section style={{padding:"28px 36px",maxWidth:800,margin:"0 auto"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-        <button onClick={()=>setPicking(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+        <button onClick={()=>setPicking(null)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
         <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Batch Picking — {picking.ventas.length} ordenes</h2>
       </div>
       <div style={{background:"#e5e7eb",borderRadius:99,height:8,marginBottom:20,overflow:"hidden"}}>
@@ -6341,7 +6341,7 @@ function BatchPickingTab(){
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
         <div style={{fontSize:14,fontWeight:700,color:"#374151"}}>{selIds.length>0?selIds.length+" ordenes seleccionadas":"Selecciona ordenes para hacer batch"}</div>
-        <button onClick={generarBatch} disabled={selIds.length===0} style={{padding:"8px 20px",background:selIds.length>0?"#3a7d1e":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:selIds.length>0?"pointer":"not-allowed",fontWeight:700,fontSize:13}}>Generar batch &#8594;</button>
+        <button onClick={generarBatch} disabled={selIds.length===0} style={{padding:"8px 20px",background:selIds.length>0?"#3a7d1e":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:selIds.length>0?"pointer":"not-allowed",fontWeight:700,fontSize:13}}>Generar batch →</button>
       </div>
       {pendientes.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay ordenes pendientes</div>):(
         <div style={{display:"grid",gap:8}}>
@@ -6788,7 +6788,7 @@ function DevolucionesTab(){
   if(vista==="nueva")return(
     <section style={{padding:"28px 36px",maxWidth:800,margin:"0 auto"}}>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-        <button onClick={()=>setVista("lista")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>&#8592;</button>
+        <button onClick={()=>setVista("lista")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
         <h2 style={{fontFamily:"Playfair Display,serif",fontSize:24,color:"#1a1a1a",margin:0}}>Nueva devolucion — {form.clienteNombre}</h2>
       </div>
       {msg&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#dc2626",fontSize:13}}>{msg}</div>}
@@ -7152,6 +7152,7 @@ function AryesApp(){
   },[session]);
 
   const [tab,setTab]=useState("dashboard");
+  useEffect(()=>{ const el=document.getElementById("main-content"); if(el) el.scrollTop=0; },[tab]);
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
   const [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
@@ -7368,7 +7369,7 @@ function AryesApp(){
       </aside>
 
       {/* ── MAIN ── */}
-      <main style={{marginLeft:220,flex:1,padding:"36px 44px",minHeight:"100vh"}}>
+      <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
 
         {/* ══ DASHBOARD ══ */}
         {tab==="dashboard"&&(
@@ -7689,12 +7690,12 @@ function AryesApp(){
             </div>
           </div>
         )}
-
-        {/* ══ PLANNING ══ */}
+        {tab==="orders"&&(        {/* ══ PLANNING ══ */}
           <div className="au">
             <PlanningView products={products} suppliers={suppliers} orders={orders} plans={plans} setPlans={setPlans}/>
           </div>
-        )}
+        )
+        {tab==="movimientos"&&(}
 
         {/* ══ MOVEMENTS ══ */}
           <div className="au">
