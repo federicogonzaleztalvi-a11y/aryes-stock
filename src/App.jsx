@@ -7394,7 +7394,7 @@ function AryesApp(){
       <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
 
         {/* ══ DASHBOARD ══ */}
-        {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} lots={lots} session={session} setTab={setTab}/></ErrorBoundary>}
+        {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} setModal={setModal} modal={modal} editProd={editProd} setEditProd={setEditProd}/></ErrorBoundary>}
 
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
@@ -7441,10 +7441,10 @@ function AryesApp(){
             </div>
           </div>
         )}
-        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans}/></ErrorBoundary>}
+        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} setTab={setTab} editProd={editProd} setEditProd={setEditProd}/></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session}/></ErrorBoundary>}
+        {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} setModal={setModal} modal={modal} editSup={editSup} setEditSup={setEditSup} viewSup={viewSup} setViewSup={setViewSup}/></ErrorBoundary>}
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
           <div className="au" style={{display:"grid",gap:24}}>
@@ -7578,7 +7578,7 @@ function AryesApp(){
 // EXTRACTED INLINE TAB COMPONENTS (refactored from main render)
 // ═══════════════════════════════════════════════════════════
 
-function DashboardInline({products,suppliers,orders,movements,lots,session,setTab}) {
+function DashboardInline({products,suppliers,orders,movements,session,setTab,setModal,modal,editProd,setEditProd}) {
   return (
           <div className="au" style={{display:"grid",gap:32}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
@@ -7676,7 +7676,7 @@ function DashboardInline({products,suppliers,orders,movements,lots,session,setTa
         );
 }
 
-function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans}) {
+function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,setTab,editProd,setEditProd}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
@@ -7717,7 +7717,7 @@ function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,m
         );
 }
 
-function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session}) {
+function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session,setModal,modal,editSup,setEditSup,viewSup,setViewSup}) {
   return (
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
