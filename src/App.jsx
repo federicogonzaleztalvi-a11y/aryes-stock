@@ -7435,10 +7435,10 @@ function AryesApp(){
         {/* ══ ORDERS ══ */}
         </>
         }
-        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab}/></ErrorBoundary>}
+        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab}/></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup}/></ErrorBoundary>}
+        {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></ErrorBoundary>}
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
 {tab==="config"&&<>
@@ -7676,7 +7676,7 @@ function DashboardInline({products,suppliers,orders,movements,session,setTab,cri
         );
 }
 
-function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,tab}) {
+function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,tab,getSup,markDelivered,setTab}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
@@ -7717,7 +7717,7 @@ function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,m
         );
 }
 
-function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session,alerts,enriched,tab,setModal,setEditSup,setViewSup}) {
+function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session,alerts,enriched,tab,setModal,setEditSup,setViewSup,deleteSupplier}) {
   return (
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
