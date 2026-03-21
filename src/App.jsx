@@ -2622,6 +2622,17 @@ function AryesApp(){
   };
   let [dbReady,setDbReady]=useState(false);
   let [syncStatus,setSyncStatus]=useState('');
+  let [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
+  useEffect(()=>{ const el=document.getElementById("main-content"); if(el) el.scrollTop=0; },[tab]);
+  let [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
+  let [modal,setModal]=useState(null);
+  let [editProd,setEditProd]=useState(null);
+  let [editSup,setEditSup]=useState(null);
+  let [viewSup,setViewSup]=useState(null);
+  let [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
+  let [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
+  let [hasPendingSync,setHasPendingSync]=useState(false);
+  let [syncToast,setSyncToast]=useState(null); // {msg,type}
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   if(!dbReady) return(
     <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
@@ -2655,17 +2666,6 @@ function AryesApp(){
     })();
   },[session]);
 
-  let [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
-  useEffect(()=>{ const el=document.getElementById("main-content"); if(el) el.scrollTop=0; },[tab]);
-  let [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
-  let [modal,setModal]=useState(null);
-  let [editProd,setEditProd]=useState(null);
-  let [editSup,setEditSup]=useState(null);
-  let [viewSup,setViewSup]=useState(null);
-  let [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
-  let [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
-  let [hasPendingSync,setHasPendingSync]=useState(false);
-  let [syncToast,setSyncToast]=useState(null); // {msg,type}
 
   useEffect(()=>LS.set("aryes6-products",products),[products]);
   useEffect(()=>LS.set("aryes6-suppliers",suppliers),[suppliers]);
