@@ -654,7 +654,6 @@ const Modal=({title,sub,onClose,children,wide})=>(
 // ─────────────────────────────────────────────────────────────────────────────
 // PRODUCT FORM
 // ─────────────────────────────────────────────────────────────────────────────
-  const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
 const ProductForm=({product,suppliers,onSave,onClose})=>{
   const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,history:[]};
   const [f,setF]=useState(product?{...product}:blank);
@@ -839,7 +838,6 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
 // ─────────────────────────────────────────────────────────────────────────────
 // EXCEL IMPORT
 // ─────────────────────────────────────────────────────────────────────────────
-  const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
 const ExcelModal=({products,onApply,onClose})=>{
   const [text,setText]=useState("");
   const [headers,setHeaders]=useState([]);
@@ -1998,7 +1996,6 @@ const MovTypeTag = ({type}) => {
   );
 };
 
-  const [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
 const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
   const [filterProd, setFilterProd] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -2470,6 +2467,9 @@ function LoginScreen({onLogin}){
 }
 
 function AryesApp(){
+  let [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
+  let [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
+  let [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
   let [session,setSession]=useState(()=>{
     const s=LS.get('aryes-session',null);
     if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
