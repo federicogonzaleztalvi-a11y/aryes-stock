@@ -2895,35 +2895,35 @@ function AryesApp(){
         {/* ══ IMPORTER ══ */}
         </>
         }
-        {tab==="lotes"&&<LotesTab />}
+        {tab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
       {tab==="clientes"&&<ClientesTab />}
-      {tab==="movimientos"&&<MovimientosTab />}
+      {tab==="movimientos"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><MovimientosTab /></Suspense>}
       
-      {tab==="deposito"&&<DepositoTab />}
+      {tab==="deposito"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DepositoTab /></Suspense>}
       
       {tab==="rutas"&&<RutasTab />}
       
-        {tab==="recepcion"&&<RecepcionTab />}
+        {tab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
         
-        {tab==="ventas"&&<VentasTab />}
+        {tab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab /></Suspense>}
         
-        {tab==="config"&&<ConfigTab />}
-        {tab==="importar"&&<ImportTab />}
+        {tab==="config"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConfigTab /></Suspense>}
+        {tab==="importar"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ImportTab /></Suspense>}
         
-        {tab==="informes"&&<InformesTab />}
+        {tab==="informes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InformesTab /></Suspense>}
         
-        {tab==="conteo"&&<ConteoTab />}
+        {tab==="conteo"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConteoTab /></Suspense>}
         {tab==="packing"&&<PackingTab />}
-        {tab==="batch-picking"&&<BatchPickingTab />}
-        {tab==="transferencias"&&<TransferenciasTab />}
+        {tab==="batch-picking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><BatchPickingTab /></Suspense>}
+        {tab==="transferencias"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TransferenciasTab /></Suspense>}
         
-        {tab==="inventory"&&<InventarioTab />}
+        {tab==="inventory"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InventarioTab /></Suspense>}
         {tab==="kpis"&&<KPIsTab />}
         {tab==="tracking"&&<TrackingTab session={session} />}
         
-        {tab==="devoluciones"&&<DevolucionesTab />}
+        {tab==="devoluciones"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DevolucionesTab /></Suspense>}
         {tab==="precios"&&<PreciosTab />}
-        {tab==="demanda"&&<DemandaTab />}
+        {tab==="demanda"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DemandaTab /></Suspense>}
         {tab==="audit"&&<AuditTab />}
         </main>
 
