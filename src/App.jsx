@@ -2494,6 +2494,7 @@ function AryesApp(){
   };
   const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
+  const [dbReady,setDbReady]=useState(false);
   if(!dbReady) return(
     <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
       <style>{CSS}</style>
@@ -2506,7 +2507,6 @@ function AryesApp(){
   );
   const canEdit=session.role==='admin'||session.role==='operador';
 
-  const [dbReady,setDbReady]=useState(false);
   const [syncStatus,setSyncStatus]=useState('');
   useEffect(()=>{
     if(!session) return;
