@@ -2620,9 +2620,9 @@ function AryesApp(){
     });
     setSession(null);
   };
-  if(!session) return <LoginScreen onLogin={handleLogin}/>;
   let [dbReady,setDbReady]=useState(false);
   let [syncStatus,setSyncStatus]=useState('');
+  if(!session) return <LoginScreen onLogin={handleLogin}/>;
   if(!dbReady) return(
     <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
       <style>{CSS}</style>
