@@ -2463,7 +2463,7 @@ function AryesApp(){
     })();
   },[session]);
 
-  const [tab,setTab]=useState("dashboard");
+  const [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
   useEffect(()=>{ const el=document.getElementById("main-content"); if(el) el.scrollTop=0; },[tab]);
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
@@ -2711,6 +2711,9 @@ function AryesApp(){
     vendedor:["dashboard","clientes","ventas","kpis","informes"]
   };
   const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
+  const canTab=(id)=>(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin).includes(id);
+  const activeTab=canTab(tab)?tab:(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin)[0];
+
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
@@ -2770,9 +2773,9 @@ function AryesApp(){
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización — reconectando...</span>
       </div>}
       {/* ══ DASHBOARD ══ */}
-        {tab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
-{tab==="inventory"&&<>
+{activeTab==="inventory"&&<>
 {/* ══ INVENTORY ══ */}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
@@ -2823,13 +2826,13 @@ function AryesApp(){
         {/* ══ ORDERS ══ */}
         </>
         }
-        {tab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {tab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></Suspense></ErrorBoundary>}
-        {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
+        {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></Suspense></ErrorBoundary>}
+        {activeTab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
-{tab==="config"&&<>
+{activeTab==="config"&&<>
 {/* ══ SETTINGS ══ */}
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
@@ -2895,36 +2898,36 @@ function AryesApp(){
         {/* ══ IMPORTER ══ */}
         </>
         }
-        {tab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
-      {tab==="clientes"&&<ClientesTab />}
-      {tab==="movimientos"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><MovimientosTab /></Suspense>}
+        {activeTab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
+      {activeTab==="clientes"&&<ClientesTab />}
+      {activeTab==="movimientos"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><MovimientosTab /></Suspense>}
       
-      {tab==="deposito"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DepositoTab /></Suspense>}
+      {activeTab==="deposito"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DepositoTab /></Suspense>}
       
-      {tab==="rutas"&&<RutasTab />}
+      {activeTab==="rutas"&&<RutasTab />}
       
-        {tab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
+        {activeTab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
         
-        {tab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab /></Suspense>}
+        {activeTab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab /></Suspense>}
         
-        {tab==="config"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConfigTab /></Suspense>}
-        {tab==="importar"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ImportTab /></Suspense>}
+        {activeTab==="config"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConfigTab /></Suspense>}
+        {activeTab==="importar"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ImportTab /></Suspense>}
         
-        {tab==="informes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InformesTab /></Suspense>}
+        {activeTab==="informes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InformesTab /></Suspense>}
         
-        {tab==="conteo"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConteoTab /></Suspense>}
-        {tab==="packing"&&<PackingTab />}
-        {tab==="batch-picking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><BatchPickingTab /></Suspense>}
-        {tab==="transferencias"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TransferenciasTab /></Suspense>}
+        {activeTab==="conteo"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConteoTab /></Suspense>}
+        {activeTab==="packing"&&<PackingTab />}
+        {activeTab==="batch-picking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><BatchPickingTab /></Suspense>}
+        {activeTab==="transferencias"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TransferenciasTab /></Suspense>}
         
-        {tab==="inventory"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InventarioTab /></Suspense>}
-        {tab==="kpis"&&<KPIsTab />}
-        {tab==="tracking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TrackingTab session={session} /></Suspense>}
+        {activeTab==="inventory"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InventarioTab /></Suspense>}
+        {activeTab==="kpis"&&<KPIsTab />}
+        {activeTab==="tracking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TrackingTab session={session} /></Suspense>}
         
-        {tab==="devoluciones"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DevolucionesTab /></Suspense>}
-        {tab==="precios"&&<PreciosTab />}
-        {tab==="demanda"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DemandaTab /></Suspense>}
-        {tab==="audit"&&<AuditTab />}
+        {activeTab==="devoluciones"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DevolucionesTab /></Suspense>}
+        {activeTab==="precios"&&<PreciosTab />}
+        {activeTab==="demanda"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DemandaTab /></Suspense>}
+        {activeTab==="audit"&&<AuditTab />}
         </main>
 
       {/* ══ MODALS ══ */}
