@@ -2473,6 +2473,10 @@ function AryesApp(){
   let [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
   let [settingsTab,setSettingsTab]=useState("freight");
   let [session,setSession]=useState(()=>{
+    const s=LS.get('aryes-session',null);
+    if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
+    return s;
+  });
   let [dbReady,setDbReady]=useState(false);
   let [syncStatus,setSyncStatus]=useState('');
   let [tab,setTab]=useState('dashboard');
@@ -2485,10 +2489,6 @@ function AryesApp(){
   let [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
   let [hasPendingSync,setHasPendingSync]=useState(false);
   let [syncToast,setSyncToast]=useState(null); // {msg,type}
-    const s=LS.get('aryes-session',null);
-    if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
-    return s;
-  });
   // Auto-refresh JWT token before expiry
   useEffect(()=>{
     if(!session?.refresh_token||!session?.expiresAt) return;
