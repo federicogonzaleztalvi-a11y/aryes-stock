@@ -2546,7 +2546,7 @@ const LoginScreen=({onLogin})=>{
       const d=await r.json();
       if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setBusy(false);return;}
       const m=d.user.user_metadata||{};
-      onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token});
+      onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token,refresh_token:d.refresh_token,expires_in:d.expires_in||3600});
     }catch(e){setErr("Error de conexion");}
     setBusy(false);
   };
@@ -7171,10 +7171,39 @@ function AryesApp(){
     if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
     return s;
   });
+  // Auto-refresh JWT token before expiry
+  useEffect(()=>{
+    if(!session?.refresh_token||!session?.expiresAt) return;
+    const msUntilExpiry = session.expiresAt - Date.now();
+    const refreshIn = Math.max(0, msUntilExpiry - 5*60*1000); // 5 min before expiry
+    const timer = setTimeout(async()=>{
+      try{
+        const res = await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+          method:'POST',
+          headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+          body:JSON.stringify({refresh_token:session.refresh_token})
+        });
+        const data = await res.json();
+        if(res.ok && data.access_token){
+          const expiresIn=(data.expires_in||3600)*1000;
+          const refreshed={...session,access_token:data.access_token,refresh_token:data.refresh_token,expiresAt:Date.now()+expiresIn};
+          LS.set('aryes-session',refreshed);
+          setSession(refreshed);
+        } else {
+          // Refresh failed — force logout
+          LS.remove('aryes-session');
+          setSession(null);
+        }
+      } catch(e){ console.warn('[Aryes] token refresh failed',e); }
+    }, refreshIn);
+    return ()=>clearTimeout(timer);
+  }, [session?.refresh_token, session?.expiresAt]);
+
   // Sync from Supabase on mount
 
   const handleLogin=(u)=>{
-    const sessionWithExpiry={...u,expiresAt:Date.now()+8*60*60*1000};
+    const expiresIn=(u.expires_in||3600)*1000;
+    const sessionWithExpiry={...u,expiresAt:Date.now()+expiresIn};
     LS.set('aryes-session',sessionWithExpiry);
     setSession(sessionWithExpiry);
     setTimeout(()=>window.location.reload(),50);
