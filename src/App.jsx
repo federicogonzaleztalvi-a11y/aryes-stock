@@ -62,7 +62,10 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
 
 // Write to Supabase async - never blocks
+// Keys that must NEVER be synced to aryes_data (security)
+const _SB_BLOCKED_KEYS = new Set(['aryes-session','aryes-users','aryes9-notified']);
 function sbWrite(key, value) {
+  if(_SB_BLOCKED_KEYS.has(key)) return; // Never store session tokens or user credentials in Supabase
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token || SB_KEY;
@@ -125,9 +128,11 @@ const LS = {
   remove(key) {
     try {
       localStorage.removeItem(key);
-      fetch(SB_URL+'/rest/v1/aryes_data?key=eq.'+encodeURIComponent(key), {
-        method: 'DELETE', headers: SB_HEADERS
-      }).catch(()=>{});
+      if(!_SB_BLOCKED_KEYS.has(key)) {
+        fetch(SB_URL+'/rest/v1/aryes_data?key=eq.'+encodeURIComponent(key), {
+          method: 'DELETE', headers: SB_HEADERS
+        }).catch(()=>{});
+      }
     } catch(e) {}
   }
 };
@@ -2528,18 +2533,31 @@ function AryesApp(){
         const sbMovs = await db.get('stock_movements?order=timestamp.desc&limit=2000');
         if(sbMovs?.length > 0){
           // Map SB columns back to LS shape
-          const mapped = sbMovs.map(r=>({id:r.id,tipo:r.tipo,productoId:r.producto_id,
-            productoNombre:r.producto_nombre,cantidad:r.cantidad,referencia:r.referencia,
-            notas:r.notas,fecha:r.fecha,timestamp:r.timestamp}));
+          const mapped = sbMovs.map(r=>({id:r.id,
+            // Map DB columns (English) back to app shape
+            type:r.type||r.tipo,
+            productId:r.product_id||r.producto_id,
+            productName:r.product_name||r.producto_nombre,
+            qty:r.qty||r.cantidad,
+            note:r.note||r.referencia||r.notas,
+            ts:r.ts||r.timestamp||r.fecha,
+            unit:r.unit||'',supplierName:r.supplier_name||''}));
           setMovements(mapped);
           LS.set('aryes8-movements',mapped);
         } else {
           // One-time migration: push LS movements to Supabase
           const lsMovs = LS.get('aryes8-movements',[]);
           if(lsMovs.length>0 && session.role!=='vendedor'){
-            const rows=lsMovs.map(m=>({id:m.id,tipo:m.tipo,producto_id:m.productoId,
-              producto_nombre:m.productoNombre,cantidad:m.cantidad,referencia:m.referencia,
-              notas:m.notas,fecha:m.fecha,timestamp:m.timestamp||new Date().toISOString()}));
+            const rows=lsMovs.map(m=>({
+              id:m.id||crypto.randomUUID(),
+              type:m.type||m.tipo||'manual_in',
+              product_id:m.productId||m.productoId,
+              product_name:m.productName||m.productoNombre,
+              qty:m.qty||m.cantidad||0,
+              unit:m.unit||'',
+              note:m.note||m.referencia||m.notas||'',
+              supplier_name:m.supplierName||'',
+              ts:m.ts||m.timestamp||m.fecha||new Date().toISOString()}));
             try{ await db.insertMany('stock_movements',rows); }catch(e){}
           }
         }
@@ -2726,7 +2744,7 @@ function AryesApp(){
     else setProducts(ps=>[...ps,{...f,id:crypto.randomUUID()}]);
     setModal(null);setEditProd(null)
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit:!!editProd,id:editProd?.id||'new',nombre:f.nombre,stock:f.stock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit:!!editProd,id:editProd?.id||'new',name:f.name,stock:f.stock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
   };
   const confirmOrder=(product,qty)=>{
     const sup=getSup(product.supplierId);const lead=totalLead(sup);
@@ -2769,7 +2787,7 @@ function AryesApp(){
     else setSuppliers(ss=>[...ss,{...f,id:crypto.randomUUID().toString()}]);
     setModal(null);setEditSup(null)
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit:!!editSup,id:editSup?.id||'new',nombre:f.nombre})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit:!!editSup,id:editSup?.id||'new',name:f.name})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
   };
   const deleteSupplier=async id=>{
     if(products.some(p=>p.supplierId===id)){alert("No se puede eliminar: hay productos asociados a este proveedor.");return;}
@@ -2829,7 +2847,17 @@ function AryesApp(){
     } catch(e){ console.warn("Email error:", e); }
   };
 
-  const addMov=(m)=>setMovements(ms=>[{...m,id:crypto.randomUUID(),ts:new Date().toISOString()},...ms]);
+  const addMov=(m)=>{
+    const mov={...m,id:crypto.randomUUID(),ts:new Date().toISOString()};
+    setMovements(ms=>[mov,...ms]);
+    // Async persist to Supabase stock_movements (non-blocking)
+    try{
+      db.insert('stock_movements',{
+        id:mov.id,type:mov.type,product_id:mov.productId,product_name:mov.productName,
+        qty:mov.qty,unit:mov.unit||'',note:mov.note||'',supplier_name:mov.supplierName||'',ts:mov.ts
+      }).catch(()=>{});
+    }catch(e){}
+  };
 
   const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
     if(!cfg?.enabled) return;
