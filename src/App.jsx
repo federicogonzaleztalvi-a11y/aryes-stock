@@ -637,6 +637,7 @@ const Modal=({title,sub,onClose,children,wide})=>(
 // ─────────────────────────────────────────────────────────────────────────────
 // PRODUCT FORM
 // ─────────────────────────────────────────────────────────────────────────────
+  const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
 const ProductForm=({product,suppliers,onSave,onClose})=>{
   const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,history:[]};
   const [f,setF]=useState(product?{...product}:blank);
@@ -821,6 +822,7 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
 // ─────────────────────────────────────────────────────────────────────────────
 // EXCEL IMPORT
 // ─────────────────────────────────────────────────────────────────────────────
+  const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
 const ExcelModal=({products,onApply,onClose})=>{
   const [text,setText]=useState("");
   const [headers,setHeaders]=useState([]);
@@ -1979,6 +1981,7 @@ const MovTypeTag = ({type}) => {
   );
 };
 
+  const [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
 const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
   const [filterProd, setFilterProd] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -2409,6 +2412,7 @@ function AryesApp(){
 
   // Always remove legacy emailcfg from localStorage (even if Supabase unreachable)
     LS.remove('aryes9-emailcfg');
+  const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
     // Load emailCfg from Supabase app_config (admin only, RLS protected)
   useEffect(()=>{
     if(session?.role !== 'admin') return;
@@ -2530,16 +2534,12 @@ function AryesApp(){
 
   const [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
   useEffect(()=>{ const el=document.getElementById("main-content"); if(el) el.scrollTop=0; },[tab]);
-  const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
-  const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
   const [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
   const [modal,setModal]=useState(null);
   const [editProd,setEditProd]=useState(null);
   const [editSup,setEditSup]=useState(null);
   const [viewSup,setViewSup]=useState(null);
   const [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
-  const [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
-  const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
   const [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
   const [hasPendingSync,setHasPendingSync]=useState(false);
   const [syncToast,setSyncToast]=useState(null); // {msg,type}
