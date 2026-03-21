@@ -3558,7 +3558,7 @@ const MovementsTab=({products,setProducts,session})=>{
     .filter(m => !search || m.productName.toLowerCase().includes(search.toLowerCase()) || (m.reference||'').toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  const save=()=>{
+  const save=async ()=>{
     if(!form.productId||!form.qty||Number(form.qty)<=0){setMsg('Completá producto y cantidad');return;}
     const prod=products.find(p=>p.id===Number(form.productId));
     if(!prod){setMsg('Producto no encontrado');return;}
@@ -3579,9 +3579,10 @@ const MovementsTab=({products,setProducts,session})=>{
     LS.set('aryes-movements',updatedMovs);setMovements(updatedMovs);
     // Update product stock
     const updatedProds=products.map(p=>p.id===prod.id?{...p,stock:newStock}:p);
-    LS.set('aryes6-products',updatedProds);setProducts(updatedProds);
-    // Sync to Supabase
-    db.patch('products',{stock:newStock},{id:prod.id}).catch(e=>console.warn(e));
+    const now=new Date().toISOString();
+    await dbWriteWithRetry(()=>db.patch('products',{stock:newStock,updated_at:now},{id:prod.id}));
+    setProducts(updatedProds);
+    LS.set('aryes6-products',updatedProds);
     // Check low stock alert
     if(newStock<(prod.minStock||5)){
       const alreadySent=LS.get('aryes-alerts-sent',{});
