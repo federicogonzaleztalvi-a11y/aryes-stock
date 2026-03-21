@@ -2377,7 +2377,7 @@ const IMP_SUP_LABEL = {"arg":"🇦🇷 Argentina / Brasil","ecu":"🇪🇨 Ecuad
 const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 
 function AryesApp(){
-  const [session,setSession]=useState(()=>{
+  let [session,setSession]=useState(()=>{
     const s=LS.get('aryes-session',null);
     if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
     return s;
@@ -2412,7 +2412,7 @@ function AryesApp(){
 
   // Always remove legacy emailcfg from localStorage (even if Supabase unreachable)
     LS.remove('aryes9-emailcfg');
-  const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
+  let [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
     // Load emailCfg from Supabase app_config (admin only, RLS protected)
   useEffect(()=>{
     if(session?.role !== 'admin') return;
@@ -2498,7 +2498,7 @@ function AryesApp(){
   };
   const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
-  const [dbReady,setDbReady]=useState(false);
+  let [dbReady,setDbReady]=useState(false);
   if(!dbReady) return(
     <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
       <style>{CSS}</style>
@@ -2511,7 +2511,7 @@ function AryesApp(){
   );
   const canEdit=session.role==='admin'||session.role==='operador';
 
-  const [syncStatus,setSyncStatus]=useState('');
+  let [syncStatus,setSyncStatus]=useState('');
   useEffect(()=>{
     if(!session) return;
     setSyncStatus('sync');
@@ -2532,17 +2532,17 @@ function AryesApp(){
     })();
   },[session]);
 
-  const [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
+  let [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
   useEffect(()=>{ const el=document.getElementById("main-content"); if(el) el.scrollTop=0; },[tab]);
-  const [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
-  const [modal,setModal]=useState(null);
-  const [editProd,setEditProd]=useState(null);
-  const [editSup,setEditSup]=useState(null);
-  const [viewSup,setViewSup]=useState(null);
-  const [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
-  const [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
-  const [hasPendingSync,setHasPendingSync]=useState(false);
-  const [syncToast,setSyncToast]=useState(null); // {msg,type}
+  let [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
+  let [modal,setModal]=useState(null);
+  let [editProd,setEditProd]=useState(null);
+  let [editSup,setEditSup]=useState(null);
+  let [viewSup,setViewSup]=useState(null);
+  let [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
+  let [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
+  let [hasPendingSync,setHasPendingSync]=useState(false);
+  let [syncToast,setSyncToast]=useState(null); // {msg,type}
 
   useEffect(()=>LS.set("aryes6-products",products),[products]);
   useEffect(()=>LS.set("aryes6-suppliers",suppliers),[suppliers]);
@@ -2915,7 +2915,7 @@ function AryesApp(){
             </div>
             {/* Settings sub-tabs */}
             {(()=>{
-              const [settingsTab,setSettingsTab]=useState("freight");
+              let [settingsTab,setSettingsTab]=useState("freight");
               return(
                 <div>
                   <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:400,marginBottom:24}}>
