@@ -2919,7 +2919,7 @@ function AryesApp(){
         
         {tab==="inventory"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InventarioTab /></Suspense>}
         {tab==="kpis"&&<KPIsTab />}
-        {tab==="tracking"&&<TrackingTab session={session} />}
+        {tab==="tracking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TrackingTab session={session} /></Suspense>}
         
         {tab==="devoluciones"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DevolucionesTab /></Suspense>}
         {tab==="precios"&&<PreciosTab />}
