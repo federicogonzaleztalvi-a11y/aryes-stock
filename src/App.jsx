@@ -2992,7 +2992,6 @@ function AryesApp(){
               </table>
             </div>
           </div>
-        )}
 
         {/* ══ ORDERS ══ */}
         </>
@@ -3063,7 +3062,6 @@ function AryesApp(){
               );
             })()}
           </div>
-        )}
 
         {/* ══ IMPORTER ══ */}
         </>
