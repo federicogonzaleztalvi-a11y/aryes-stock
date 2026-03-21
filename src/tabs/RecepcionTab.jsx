@@ -146,6 +146,9 @@ function RecepcionTab(){
         creado_en: rec.creadoEn,
       });
     }catch(e){ console.warn('[Aryes] rec SB insert failed',e); }
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'recepcion',detail:JSON.stringify({id:rec.id,proveedor:rec.proveedor,items:rec.items?.length||0,diferencias:rec.diferencias})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
+
 
     setMsg('Recepcion confirmada. Stock actualizado.');
     setVista('lista');

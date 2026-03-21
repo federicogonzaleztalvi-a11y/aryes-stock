@@ -85,6 +85,9 @@ function VentasTab(){
         creado_en: venta.creadoEn,
       });
     }catch(e){ console.warn('[Aryes] venta SB insert failed',e); }
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'venta_creada',detail:JSON.stringify({id:venta.id,nroVenta:venta.nroVenta,clienteNombre:venta.clienteNombre,total:venta.total,items:venta.items?.length||0})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
+
     setForm(emptyForm);setVista('lista');
     setMsg('Venta '+venta.nroVenta+' creada');
     setTimeout(()=>setMsg(''),3000);

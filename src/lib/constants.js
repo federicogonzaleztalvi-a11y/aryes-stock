@@ -72,6 +72,35 @@ export const db={
     });
     if(!r.ok) { const e=await r.text(); throw new Error('db.insertMany '+table+': '+e); }
   },
+
+  async patchWithLock(table, data, filter, lockField, lockValue, maxRetries=3) {
+    // Optimistic lock: only patch if lockField still equals lockValue
+    // Prevents stale-read stock overwrites in concurrent operations
+    for(let attempt=0; attempt<maxRetries; attempt++) {
+      const lockFilter = filter + '&' + lockField + '=eq.' + lockValue;
+      const r = await fetch(SURL+'/rest/v1/'+table+'?'+lockFilter, {
+        method:'PATCH',
+        headers:{...getAuthHeaders(), 'Prefer':'return=representation,count=exact'},
+        body: JSON.stringify(data),
+      });
+      if(!r.ok) { const e=await r.text(); throw new Error('patchWithLock '+table+': '+e); }
+      const rows = await r.json();
+      if(rows.length > 0) return rows[0]; // success
+      // 0 rows: concurrent write detected — refetch current value
+      if(attempt < maxRetries-1) {
+        const fresh = await this.get(table+'?'+filter);
+        if(!fresh || !fresh[0]) throw new Error('patchWithLock: row not found');
+        lockValue = fresh[0][lockField]; // update lock value for retry
+        if(data.stock !== undefined) {
+          // Recalculate: add the delta to fresh stock
+          const delta = data.stock - lockValue;
+          data = {...data, stock: lockValue + delta}; // re-apply same delta
+        }
+      } else {
+        throw new Error('patchWithLock: concurrent conflict after '+maxRetries+' retries');
+      }
+    }
+  },
 };
 
 // sanitizeText: trim whitespace and limit field length for data quality

@@ -51,6 +51,9 @@ function MovimientosTab(){
         timestamp: nuevo.timestamp,
       });
     }catch(e){ console.warn('[Aryes] mov SB insert failed',e); }
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'movimiento',detail:JSON.stringify({tipo:nuevo.tipo,productoId:nuevo.productoId,productoNombre:nuevo.productoNombre,cantidad:nuevo.cantidad})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
+
     setProds(updProds);LS.set(KPROD,updProds);
     setMsg('Movimiento registrado');
     setForm(emptyForm);setVista('lista');

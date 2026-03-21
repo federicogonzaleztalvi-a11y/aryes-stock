@@ -2643,7 +2643,11 @@ function AryesApp(){
     const newStock=prod.stock+o.qty;
     const now=new Date().toISOString();
     // Server-first: write to Supabase before updating local state
-    await dbWriteWithRetry(()=>db.patch('products',{stock:newStock,updated_at:now},{id:prod.id}));
+    // Optimistic lock: only update if stock hasn't changed since we read it
+    await db.patchWithLock('products',{stock:newStock,updated_at:now},'id=eq.'+prod.id,'stock',prod.stock);
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'markDelivered',detail:JSON.stringify({orderId:o.id,productId:o.productId,qty:o.qty,newStock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
+
     setOrders(os=>os.map(x=>x.id===id?{...x,status:"delivered"}:x));
     const updatedProds=products.map(p=>p.id===o.productId?{...p,stock:newStock,updatedAt:now}:p);
     setProducts(updatedProds);
