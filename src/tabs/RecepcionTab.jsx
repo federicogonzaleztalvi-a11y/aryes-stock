@@ -19,6 +19,7 @@ function RecepcionTab(){
   const [fecha,setFecha]=useState(new Date().toISOString().split('T')[0]);
   const [notas,setNotas]=useState('');
   const [msg,setMsg]=useState('');
+  const [saving,setSaving]=useState(false);
 
   const pendientes=pedidos.filter(p=>p.status==='pending'||p.status==='ordered'||!p.status);
 
@@ -71,7 +72,10 @@ function RecepcionTab(){
     unidad:'u',lote:'',vencimiento:'',calidad:'ok',motivoRechazo:'',diferencia:0
   }]);
 
-  const confirmarRecepcion=()=>{
+  const confirmarRecepcion=async ()=>{
+    if(saving)return;
+    setSaving(true);
+    try{
     if(items.length===0){setMsg('No hay items');return;}
     const ahora=new Date().toISOString();
 
@@ -131,6 +135,7 @@ function RecepcionTab(){
     setMsg('Recepcion confirmada. Stock actualizado.');
     setVista('lista');
     setTimeout(()=>setMsg(''),4000);
+      }finally{setSaving(false);}
   };
   const inp={padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box'};
 
@@ -254,7 +259,7 @@ function RecepcionTab(){
 
       <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
         <button onClick={()=>setVista('lista')} style={{padding:'10px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
-        <button onClick={confirmarRecepcion} style={{padding:'10px 28px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:14}}>
+        <button onClick={confirmarRecepcion} disabled={saving} style={{padding:'10px 28px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:14}}>
           Confirmar recepcion y actualizar stock
         </button>
       </div>

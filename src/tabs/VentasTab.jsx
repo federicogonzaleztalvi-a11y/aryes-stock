@@ -23,6 +23,7 @@ function VentasTab(){
   const [itemProd,setItemProd]=useState('');
   const [itemCant,setItemCant]=useState(1);
   const [itemPrecio,setItemPrecio]=useState(0);
+  const [saving,setSaving]=useState(false);
 
   const totalVenta=(items,desc=0)=>{
     const sub=items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.precioUnit),0);
@@ -33,6 +34,11 @@ function VentasTab(){
     if(!itemProd||Number(itemCant)<=0)return;
     const prod=prods.find(p=>String(p.id)===String(itemProd));
     if(!prod)return;
+    // Stock guard: check available stock before adding to cart
+    const alreadyInCart=form.items.filter(i=>String(i.productoId)===String(prod.id)).reduce((s,i)=>s+(i.cantidad||0),0);
+    if(prod.stock!=null && (alreadyInCart + Number(itemCant)) > prod.stock){
+      setMsg(`Stock insuficiente. Disponible: ${prod.stock - alreadyInCart} unidades`); return;
+    }
     const precio=itemPrecio>0?itemPrecio:(prod.precio||prod.price||0);
     setForm(f=>({...f,items:[...f.items,{
       productoId:prod.id,
@@ -45,7 +51,10 @@ function VentasTab(){
     setItemProd('');setItemCant(1);setItemPrecio(0);
   };
 
-  const guardarVenta=()=>{
+  const guardarVenta=async ()=>{
+    if(saving)return;
+    setSaving(true);
+    try{
     if(!form.clienteNombre&&!form.clienteId){setMsg('Selecciona un cliente');return;}
     if(form.items.length===0){setMsg('Agrega al menos un producto');return;}
     const cl=clientes.find(c=>String(c.id)===String(form.clienteId));
@@ -63,6 +72,7 @@ function VentasTab(){
     setForm(emptyForm);setVista('lista');
     setMsg('Venta '+venta.nroVenta+' creada');
     setTimeout(()=>setMsg(''),3000);
+      }finally{setSaving(false);}
   };
 
   const cambiarEstado=(id,estado)=>{
@@ -209,7 +219,7 @@ function VentasTab(){
 
       <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
         <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{padding:'10px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
-        <button onClick={guardarVenta} style={{padding:'10px 28px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:14}}>Crear orden de venta</button>
+        <button onClick={guardarVenta} disabled={saving} style={{padding:'10px 28px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:14}}>Crear orden de venta</button>
       </div>
     </section>
   );

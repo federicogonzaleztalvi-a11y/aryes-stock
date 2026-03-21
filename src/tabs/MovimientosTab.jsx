@@ -16,9 +16,13 @@ function MovimientosTab(){
   const [filtroProd,setFiltroProd]=useState('');
   const [msg,setMsg]=useState('');
   const [pag,setPag]=useState(0);
+  const [saving,setSaving]=useState(false);
   const POR_PAG=25;
   const prodNombre=(id)=>{const p=prods.find(x=>String(x.id)===String(id));return p?p.nombre:id;};
-  const registrar=()=>{
+  const registrar=async ()=>{
+    if(saving)return;
+    setSaving(true);
+    try{
     if(!form.productoId){setMsg('Selecciona un producto');return;}
     if(!form.cantidad||form.cantidad<=0){setMsg('Cantidad debe ser mayor a 0');return;}
     const nuevo={id:crypto.randomUUID(),tipo:form.tipo,productoId:form.productoId,productoNombre:prodNombre(form.productoId),cantidad:Number(form.cantidad),referencia:form.referencia,notas:form.notas,fecha:form.fecha,timestamp:new Date().toISOString()};
@@ -37,6 +41,7 @@ function MovimientosTab(){
     setMsg('Movimiento registrado');
     setForm(emptyForm);setVista('lista');
     setTimeout(()=>setMsg(''),3000);
+      }finally{setSaving(false);}
   };
   const filtered=movs.filter(m=>{ const mt=filtroTipo==='Todos'||m.tipo===filtroTipo; const mp=!filtroProd||m.productoNombre.toLowerCase().includes(filtroProd.toLowerCase()); return mt&&mp; });
   const paginated=filtered.slice(pag*POR_PAG,(pag+1)*POR_PAG);
@@ -92,7 +97,7 @@ function MovimientosTab(){
         </div>
         <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:4}}>
           <button onClick={()=>setVista('lista')} style={{padding:'9px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
-          <button onClick={registrar} style={{padding:'9px 24px',background:TCOLOR[form.tipo]||G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Registrar {form.tipo}</button>
+          <button onClick={registrar} disabled={saving} style={{padding:'9px 24px',background:TCOLOR[form.tipo]||G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Registrar {form.tipo}</button>
         </div>
       </div>
     </section>
