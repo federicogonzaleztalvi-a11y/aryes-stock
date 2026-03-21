@@ -2402,6 +2402,18 @@ function AryesApp(){
     return ()=>clearTimeout(timer);
   }, [session?.refresh_token, session?.expiresAt]);
 
+  // Load emailCfg from Supabase app_config (admin only, RLS protected)
+  useEffect(()=>{
+    if(session?.role !== 'admin') return;
+    (async()=>{
+      try{
+        const rows = await db.get('app_config?key=eq.emailcfg');
+        if(rows?.[0]?.value) setEmailCfg(rows[0].value);
+        LS.remove('aryes9-emailcfg');
+      }catch(e){}
+    })();
+  },[session?.role]);
+
   // Sync from Supabase on mount
 
   const handleLogin=(u)=>{
@@ -2457,7 +2469,7 @@ function AryesApp(){
   const [viewSup,setViewSup]=useState(null);
   const [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
   const [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
-  const [emailCfg,setEmailCfg]=useState(()=>LS.get("aryes9-emailcfg",{serviceId:"",templateId:"",publicKey:"",toEmail:"",enabled:false}));
+  const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
   const [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
   const [hasPendingSync,setHasPendingSync]=useState(false);
   const [syncToast,setSyncToast]=useState(null); // {msg,type}
@@ -2467,7 +2479,6 @@ function AryesApp(){
   useEffect(()=>LS.set("aryes6-orders",orders),[orders]);
   useEffect(()=>LS.set("aryes7-plans",plans),[plans]);
   useEffect(()=>LS.set("aryes8-movements",movements),[movements]);
-  useEffect(()=>LS.set("aryes9-emailcfg",emailCfg),[emailCfg]);
 
   useEffect(()=>LS.set("aryes9-notified",notified),[notified]);
 

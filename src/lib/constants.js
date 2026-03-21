@@ -37,3 +37,25 @@ export const ALERT_CFG = {
 };
 
 export const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
+
+export const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
+
+export const getAuthHeaders = (extra={}) => {
+  try {
+    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+    const token = session?.access_token;
+    // Use user JWT as apikey so PostgREST runs as 'authenticated' role
+    // This is required for auth.jwt() to work in RLS policies
+    if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+  } catch(e) {
+    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+  }
+};
+
+export const db={
+  async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
+  async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
+};

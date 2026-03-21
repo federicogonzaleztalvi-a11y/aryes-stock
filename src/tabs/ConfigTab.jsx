@@ -1,17 +1,28 @@
-import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { useState, useEffect } from 'react';
+import { LS, db } from '../lib/constants.js';
 
 function ConfigTab(){
   const G="#3a7d1e";
-  const [emailCfg,setEmailCfg]=useState(()=>LS.get('aryes9-emailcfg',{serviceId:'',templateId:'',publicKey:'',toEmail:''}));
+  const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
+  const [cfgLoading,setCfgLoading]=useState(true);
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const rows=await db.get('app_config?key=eq.emailcfg');
+        if(rows?.[0]?.value) setEmailCfg(rows[0].value);
+        LS.remove('aryes9-emailcfg');
+      }catch(e){}
+      setCfgLoading(false);
+    })();
+  },[]);
   const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes');
   const [stockMin,setStockMin]=useState(()=>localStorage.getItem('aryes-stock-min-default')||'5');
   const [empresa,setEmpresa]=useState(()=>localStorage.getItem('aryes-empresa')||'Aryes');
   const [msg,setMsg]=useState('');
   const inp={padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box'};
 
-  const save=()=>{
-    LS.set('aryes9-emailcfg',emailCfg);
+  const save=async ()=>{
+    try{ await db.upsert('app_config',[{key:'emailcfg',value:emailCfg,updated_at:new Date().toISOString()}]); LS.remove('aryes9-emailcfg'); }catch(e){ console.warn('[Aryes] emailcfg save err',e); }
     localStorage.setItem('aryes-wa-template',waTpl);
     localStorage.setItem('aryes-stock-min-default',stockMin);
     localStorage.setItem('aryes-empresa',empresa);
