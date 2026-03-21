@@ -30,10 +30,10 @@ export const LS = {
 };
 
 export const ALERT_CFG = {
-  order_now:  {label:"Pedir YA",     dot:T.danger,  bg:T.dangerBg,bd:T.dangerBd,txt:T.danger, pri:3},
-  order_soon: {label:"Pedir pronto", dot:T.warning, bg:T.warnBg,  bd:T.warnBd,  txt:T.warning,pri:2},
-  watch:      {label:"Vigilar",      dot:T.watch,   bg:T.watchBg, bd:T.watchBd, txt:T.watch,  pri:1},
-  ok:         {label:"Normal",       dot:T.ok,      bg:T.okBg,    bd:T.okBd,    txt:T.ok,     pri:0},
+  order_now:  {label:"Pedir YA",     dot:"#dc2626",  bg:"#fef2f2",bd:"#fecaca",txt:"#dc2626", pri:3},
+  order_soon: {label:"Pedir pronto", dot:"#d97706", bg:"#fffbeb",  bd:"#fde68a",  txt:"#d97706",pri:2},
+  watch:      {label:"Vigilar",      dot:"#2563eb",   bg:"#eff6ff", bd:"#bfdbfe", txt:"#2563eb",  pri:1},
+  ok:         {label:"Normal",       dot:"#16a34a",      bg:"#f0fdf4",    bd:"#bbf7d0",    txt:"#16a34a",     pri:0},
 };
 
 export const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
@@ -63,7 +63,7 @@ export const db={
     if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.patch failed:',t,e?.message||r.status);}
     return r.ok?r.json():null;
   },
-  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
 
   async insert(table, row) {
     const r = await fetch(SURL+'/rest/v1/'+table, {
