@@ -59,3 +59,9 @@ export const db={
   async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
   async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
 };
+
+// sanitizeText: trim whitespace and limit field length for data quality
+export const sanitizeText = (str, maxLen = 200) => {
+  if(!str) return '';
+  return String(str).trim().replace(/\s+/g, ' ').slice(0, maxLen);
+};
