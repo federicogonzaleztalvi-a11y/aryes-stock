@@ -2470,6 +2470,7 @@ function AryesApp(){
   let [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   let [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
   let [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
+  let [settingsTab,setSettingsTab]=useState("freight");
   let [session,setSession]=useState(()=>{
     const s=LS.get('aryes-session',null);
     if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
@@ -2592,6 +2593,7 @@ function AryesApp(){
   const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   let [dbReady,setDbReady]=useState(false);
+  let [syncStatus,setSyncStatus]=useState('');
   if(!dbReady) return(
     <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
       <style>{CSS}</style>
@@ -2604,7 +2606,6 @@ function AryesApp(){
   );
   const canEdit=session.role==='admin'||session.role==='operador';
 
-  let [syncStatus,setSyncStatus]=useState('');
   useEffect(()=>{
     if(!session) return;
     setSyncStatus('sync');
@@ -3008,7 +3009,6 @@ function AryesApp(){
             </div>
             {/* Settings sub-tabs */}
             {(()=>{
-              let [settingsTab,setSettingsTab]=useState("freight");
               return(
                 <div>
                   <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:400,marginBottom:24}}>
