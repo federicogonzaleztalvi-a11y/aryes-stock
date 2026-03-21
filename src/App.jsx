@@ -2608,7 +2608,18 @@ function AryesApp(){
     setSession(sessionWithExpiry);
     setTimeout(()=>window.location.reload(),50);
   };
-  const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
+  const handleLogout=()=>{
+    const tok=(LS.get("aryes-session",{})||{}).access_token||"";
+    if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{});
+    LS.remove("aryes-session");
+    // Clean up any session/user data from aryes_data
+    ['aryes-sess','aryes-user'].forEach(prefix=>{
+      fetch(SB_URL+'/rest/v1/aryes_data?key=like.'+prefix+'*',{
+        method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+(tok||SB_KEY)}
+      }).catch(()=>{});
+    });
+    setSession(null);
+  };
   if(!session) return <LoginScreen onLogin={handleLogin}/>;
   let [dbReady,setDbReady]=useState(false);
   let [syncStatus,setSyncStatus]=useState('');
@@ -2740,8 +2751,17 @@ function AryesApp(){
   const critN=(alerts||[]).filter(p=>p.alert.level==="order_now").length;
 
   const saveProduct=async f=>{
-    if(editProd)setProducts(ps=>ps.map(p=>p.id===editProd.id?{...p,...f}:p));
-    else setProducts(ps=>[...ps,{...f,id:crypto.randomUUID()}]);
+    const pid=editProd?editProd.id:crypto.randomUUID();
+    const saved={...f,id:pid};
+    if(editProd)setProducts(ps=>ps.map(p=>p.id===pid?{...p,...f}:p));
+    else setProducts(ps=>[...ps,saved]);
+    // Persist to Supabase
+    try{db.upsert('products',[{id:saved.id,name:saved.name,barcode:saved.barcode||'',
+      supplier_id:saved.supplierId||'arg',unit:saved.unit||'kg',stock:Number(saved.stock)||0,
+      unit_cost:Number(saved.unitCost)||0,min_stock:Number(saved.minStock)||5,
+      daily_usage:Number(saved.dailyUsage)||0.5,category:saved.category||'',brand:saved.brand||'',
+      history:saved.history||[],updated_at:new Date().toISOString()
+    }]).catch(e=>console.warn('[Aryes] saveProduct SB upsert failed',e));}catch(e){}
     setModal(null);setEditProd(null)
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit:!!editProd,id:editProd?.id||'new',name:f.name,stock:f.stock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
