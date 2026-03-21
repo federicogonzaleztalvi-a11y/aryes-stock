@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { LS, db } from '../lib/constants.js';
 
 function MovimientosTab(){
   const G="#3a7d1e";
@@ -37,6 +37,20 @@ function MovimientosTab(){
     });
     const updMovs=[nuevo,...movs];
     setMovs(updMovs);LS.set(KMOV,updMovs);
+    // Supabase: persist movement server-side
+    try{
+      await db.insert('stock_movements',{
+        id: nuevo.id,
+        tipo: nuevo.tipo,
+        producto_id: nuevo.productoId,
+        producto_nombre: nuevo.productoNombre,
+        cantidad: nuevo.cantidad,
+        referencia: nuevo.referencia||null,
+        notas: nuevo.notas||null,
+        fecha: nuevo.fecha||null,
+        timestamp: nuevo.timestamp,
+      });
+    }catch(e){ console.warn('[Aryes] mov SB insert failed',e); }
     setProds(updProds);LS.set(KPROD,updProds);
     setMsg('Movimiento registrado');
     setForm(emptyForm);setVista('lista');

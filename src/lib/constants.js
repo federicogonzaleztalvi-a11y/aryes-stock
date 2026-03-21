@@ -58,6 +58,20 @@ export const db={
   async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
   async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
   async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
+
+  async insert(table, row) {
+    const r = await fetch(SURL+'/rest/v1/'+table, {
+      method:'POST', headers:{...getAuthHeaders(), 'Prefer':'return=minimal'}, body:JSON.stringify(row)
+    });
+    if(!r.ok) { const e=await r.text(); throw new Error('db.insert '+table+': '+e); }
+  },
+  async insertMany(table, rows) {
+    if(!rows.length) return;
+    const r = await fetch(SURL+'/rest/v1/'+table, {
+      method:'POST', headers:{...getAuthHeaders(), 'Prefer':'return=minimal'}, body:JSON.stringify(rows)
+    });
+    if(!r.ok) { const e=await r.text(); throw new Error('db.insertMany '+table+': '+e); }
+  },
 };
 
 // sanitizeText: trim whitespace and limit field length for data quality

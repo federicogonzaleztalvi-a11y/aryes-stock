@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { LS, db } from '../lib/constants.js';
 
 function VentasTab(){
   const G="#3a7d1e";
@@ -69,6 +69,22 @@ function VentasTab(){
     };
     const upd=[venta,...ventas];
     setVentas(upd);LS.set(KVEN,upd);
+    // Supabase: persist venta server-side
+    try{
+      await db.insert('ventas',{
+        id: venta.id,
+        nro_venta: venta.nroVenta,
+        cliente_id: venta.clienteId||null,
+        cliente_nombre: venta.clienteNombre||null,
+        items: venta.items,
+        total: venta.total,
+        descuento: venta.descuento||0,
+        estado: venta.estado,
+        notas: venta.notas||null,
+        fecha_entrega: venta.fechaEntrega||null,
+        creado_en: venta.creadoEn,
+      });
+    }catch(e){ console.warn('[Aryes] venta SB insert failed',e); }
     setForm(emptyForm);setVista('lista');
     setMsg('Venta '+venta.nroVenta+' creada');
     setTimeout(()=>setMsg(''),3000);

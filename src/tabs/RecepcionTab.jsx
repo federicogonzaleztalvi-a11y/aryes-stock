@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { LS, db } from '../lib/constants.js';
 
 function RecepcionTab(){
   const G="#3a7d1e";
@@ -131,6 +131,21 @@ function RecepcionTab(){
     const updRec=[rec,...recepciones];
     setRecepciones(updRec);
     LS.set(KREC,updRec);
+    // Supabase: persist recepcion server-side
+    try{
+      await db.insert('recepciones',{
+        id: rec.id,
+        fecha: rec.fecha||null,
+        proveedor: rec.proveedor||null,
+        nro_remito: rec.nroRemito||null,
+        notas: rec.notas||null,
+        pedido_id: rec.pedidoId||null,
+        items: rec.items,
+        estado: rec.estado,
+        diferencias: rec.diferencias||0,
+        creado_en: rec.creadoEn,
+      });
+    }catch(e){ console.warn('[Aryes] rec SB insert failed',e); }
 
     setMsg('Recepcion confirmada. Stock actualizado.');
     setVista('lista');

@@ -2418,6 +2418,68 @@ function AryesApp(){
     })();
   },[session?.role]);
 
+  // Load operational data from Supabase (movements, ventas, recepciones)
+  useEffect(()=>{
+    if(!session) return;
+    (async()=>{
+      try{
+        // Load movements
+        const sbMovs = await db.get('stock_movements?order=timestamp.desc&limit=2000');
+        if(sbMovs?.length > 0){
+          // Map SB columns back to LS shape
+          const mapped = sbMovs.map(r=>({id:r.id,tipo:r.tipo,productoId:r.producto_id,
+            productoNombre:r.producto_nombre,cantidad:r.cantidad,referencia:r.referencia,
+            notas:r.notas,fecha:r.fecha,timestamp:r.timestamp}));
+          setMovements(mapped);
+          LS.set('aryes8-movements',mapped);
+        } else {
+          // One-time migration: push LS movements to Supabase
+          const lsMovs = LS.get('aryes8-movements',[]);
+          if(lsMovs.length>0 && session.role!=='vendedor'){
+            const rows=lsMovs.map(m=>({id:m.id,tipo:m.tipo,producto_id:m.productoId,
+              producto_nombre:m.productoNombre,cantidad:m.cantidad,referencia:m.referencia,
+              notas:m.notas,fecha:m.fecha,timestamp:m.timestamp||new Date().toISOString()}));
+            try{ await db.insertMany('stock_movements',rows); }catch(e){}
+          }
+        }
+        // Load ventas
+        const sbVentas = await db.get('ventas?order=creado_en.desc&limit=500');
+        if(sbVentas?.length > 0){
+          const mapped = sbVentas.map(r=>({id:r.id,nroVenta:r.nro_venta,clienteId:r.cliente_id,
+            clienteNombre:r.cliente_nombre,items:r.items,total:r.total,descuento:r.descuento,
+            estado:r.estado,notas:r.notas,fechaEntrega:r.fecha_entrega,creadoEn:r.creado_en}));
+          LS.set('aryes-ventas',mapped);
+        } else {
+          const lsVentas=LS.get('aryes-ventas',[]);
+          if(lsVentas.length>0){
+            const rows=lsVentas.map(v=>({id:v.id,nro_venta:v.nroVenta,cliente_id:v.clienteId,
+              cliente_nombre:v.clienteNombre,items:v.items||[],total:v.total||0,
+              descuento:v.descuento||0,estado:v.estado||'pendiente',notas:v.notas,
+              fecha_entrega:v.fechaEntrega,creado_en:v.creadoEn||new Date().toISOString()}));
+            try{ await db.insertMany('ventas',rows); }catch(e){}
+          }
+        }
+        // Load recepciones
+        const sbRecs = await db.get('recepciones?order=creado_en.desc&limit=500');
+        if(sbRecs?.length > 0){
+          const mapped = sbRecs.map(r=>({id:r.id,fecha:r.fecha,proveedor:r.proveedor,
+            nroRemito:r.nro_remito,notas:r.notas,pedidoId:r.pedido_id,items:r.items,
+            estado:r.estado,diferencias:r.diferencias,creadoEn:r.creado_en}));
+          LS.set('aryes-recepciones',mapped);
+        } else {
+          const lsRecs=LS.get('aryes-recepciones',[]);
+          if(lsRecs.length>0){
+            const rows=lsRecs.map(r=>({id:r.id,fecha:r.fecha,proveedor:r.proveedor,
+              nro_remito:r.nroRemito,notas:r.notas,pedido_id:r.pedidoId,
+              items:r.items||[],estado:r.estado||'completada',
+              diferencias:r.diferencias||0,creado_en:r.creadoEn||new Date().toISOString()}));
+            try{ await db.insertMany('recepciones',rows); }catch(e){}
+          }
+        }
+      }catch(e){ console.warn('[Aryes] SB operational load failed',e); }
+    })();
+  },[session?.role]);
+
   // Sync from Supabase on mount
 
   const handleLogin=(u)=>{
