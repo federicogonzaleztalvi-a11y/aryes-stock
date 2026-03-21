@@ -44,10 +44,9 @@ export const getAuthHeaders = (extra={}) => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token;
-    // Use user JWT as apikey so PostgREST runs as 'authenticated' role
-    // This is required for auth.jwt() to work in RLS policies
-    if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
-    console.warn('[Aryes] WARNING: No valid JWT — anon key fallback, RLS will not apply');
+    // CRITICAL: apikey must ALWAYS be the anon key (SKEY)
+    // JWT goes only in Authorization header — never in apikey
+    if(token) return {'apikey':SKEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
     return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
   } catch(e) {
     return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
