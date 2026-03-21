@@ -3036,12 +3036,119 @@ function AryesApp(){
           onClose={()=>setViewSup(null)}
         />
       )}
-    </div>
+    
+      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements}/>
+      </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
 // EXTRACTED INLINE TAB COMPONENTS (refactored from main render)
 // ═══════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════════════════════════════════
+// AI CHAT FLOAT — inline (no separate file, no circular dep)
+// ══════════════════════════════════════════════════════════
+const _CHAT_KEY = typeof import_meta_env_VITE_ANTHROPIC_KEY !== 'undefined'
+  ? import_meta_env_VITE_ANTHROPIC_KEY
+  : (typeof window !== 'undefined' ? (window.__VITE_ANTHROPIC_KEY__ || '') : '');
+
+const _QUICK = {
+  admin:    ['¿Qué productos están en stock crítico?','¿Los 5 con menor stock?','Resumen del depósito','Pedidos pendientes'],
+  operador: ['¿Qué reponer urgente?','Productos en cero','Recepciones pendientes','Movimientos recientes'],
+  vendedor: ['¿Qué hay disponible?','Precios de productos','Mis ventas recientes','¿Qué puedo vender?'],
+};
+
+function _buildCtx(role,products,suppliers,orders,movements){
+  const low=(products||[]).filter(p=>Number(p.stock)<=Number(p.minStock)).slice(0,20);
+  const zero=(products||[]).filter(p=>Number(p.stock)===0).slice(0,10);
+  if(role==='vendedor') return {rol:'Vendedor',disponibles:(products||[]).map(p=>({n:p.nombre,m:p.marca,s:p.stock,p:p.precioVenta||p.precio})).slice(0,80),bajo_stock:low.map(p=>p.nombre)};
+  if(role==='operador') return {rol:'Operador',productos:(products||[]).map(p=>({n:p.nombre,s:p.stock,min:p.minStock})).slice(0,100),criticos:zero.map(p=>p.nombre),movimientos:(movements||[]).slice(0,15),pedidos:(orders||[]).filter(o=>o.estado==='pendiente').slice(0,10)};
+  return {rol:'Admin',total_productos:(products||[]).length,en_cero:zero.length,bajo_minimo:low.length,proveedores:(suppliers||[]).length,pedidos_pendientes:(orders||[]).filter(o=>o.estado==='pendiente').length,productos:(products||[]).map(p=>({n:p.nombre,m:p.marca,s:p.stock,min:p.minStock,p:p.precioVenta||p.precio})).slice(0,100),criticos:zero.map(p=>p.nombre),movimientos:(movements||[]).slice(0,20),pedidos:(orders||[]).filter(o=>o.estado==='pendiente').slice(0,15)};
+}
+
+function AIChatFloat({session,products,suppliers,orders,movements}){
+  const [open,setOpen]=React.useState(false);
+  const [msgs,setMsgs]=React.useState([]);
+  const [input,setInput]=React.useState('');
+  const [busy,setBusy]=React.useState(false);
+  const [unread,setUnread]=React.useState(0);
+  const endRef=React.useRef(null);
+  const inRef=React.useRef(null);
+  const role=session?.role||'admin';
+  const apiKey=import.meta.env.VITE_ANTHROPIC_KEY||'';
+
+  React.useEffect(()=>{if(open){setUnread(0);setTimeout(()=>inRef.current?.focus(),80);}}, [open]);
+  React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
+  React.useEffect(()=>{
+    if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy tu asistente de Aryes. Preguntame sobre stock, precios, pedidos o pedí un informe.'}]);
+  },[open]);
+
+  const send=async(txt)=>{
+    const text=txt||input.trim();
+    if(!text||busy) return;
+    if(!apiKey){setMsgs(p=>[...p,{r:'a',t:'El asistente IA no está configurado. Contactá al administrador (falta VITE_ANTHROPIC_KEY).'}]);return;}
+    setInput('');
+    const next=[...msgs,{r:'u',t:text}];
+    setMsgs(next);setBusy(true);
+    try{
+      const ctx=_buildCtx(role,products,suppliers,orders,movements);
+      const sys='Sos el asistente de Aryes Stock, WMS para depósitos de insumos gastronómicos. Respondé en español, conciso y directo. Usá solo los datos del contexto. Podés sugerir acciones concretas. Máx 200 palabras salvo informes.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
+      const r=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))})
+      });
+      const d=await r.json();
+      const reply=d.content?.[0]?.text||'No pude procesar la respuesta.';
+      setMsgs(p=>[...p,{r:'a',t:reply}]);
+      if(!open) setUnread(n=>n+1);
+    }catch(e){
+      setMsgs(p=>[...p,{r:'a',t:'Error de conexión. Verificá tu internet e intentá de nuevo.'}]);
+    }finally{setBusy(false);}
+  };
+
+  const S={
+    btn:{position:'fixed',bottom:24,right:24,zIndex:9999,width:52,height:52,borderRadius:'50%',background:open?'#222':'linear-gradient(135deg,#1a1a1a,#3a3a3a)',border:'none',cursor:'pointer',boxShadow:'0 4px 20px rgba(0,0,0,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,transition:'all .2s'},
+    panel:{position:'fixed',bottom:88,right:24,zIndex:9998,width:360,height:520,background:'#fff',borderRadius:16,boxShadow:'0 8px 40px rgba(0,0,0,0.16)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #e5e5e3'},
+    header:{background:'linear-gradient(135deg,#1a1a1a,#2d2d2d)',color:'#fff',padding:'12px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0},
+    msgs:{flex:1,overflowY:'auto',padding:'12px 14px',display:'flex',flexDirection:'column',gap:10},
+    input:{padding:'10px 12px',borderTop:'1px solid #ebebea',display:'flex',gap:8,flexShrink:0,background:'#fff'},
+  };
+
+  return React.createElement(React.Fragment,null,
+    React.createElement('button',{onClick:()=>setOpen(o=>!o),style:S.btn,title:'Asistente IA'},
+      open?'✕':'🤖',
+      unread>0&&!open&&React.createElement('span',{style:{position:'absolute',top:-4,right:-4,background:'#ef4444',color:'#fff',borderRadius:'50%',width:18,height:18,fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}},unread)
+    ),
+    open&&React.createElement('div',{style:S.panel},
+      React.createElement('div',{style:S.header},
+        React.createElement('span',{style:{fontSize:20}},'🤖'),
+        React.createElement('div',null,
+          React.createElement('div',{style:{fontWeight:600,fontSize:14}},'Asistente Aryes'),
+          React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.55)',textTransform:'capitalize'}},role)
+        ),
+        React.createElement('div',{style:{marginLeft:'auto',width:8,height:8,borderRadius:'50%',background:apiKey?'#22c55e':'#f59e0b'}})
+      ),
+      React.createElement('div',{style:S.msgs},
+        msgs.map((m,i)=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:m.r==='u'?'flex-end':'flex-start'}},
+          React.createElement('div',{style:{maxWidth:'82%',padding:'9px 13px',borderRadius:m.r==='u'?'14px 14px 4px 14px':'14px 14px 14px 4px',background:m.r==='u'?'#1a1a1a':'#f4f4f2',color:m.r==='u'?'#fff':'#1a1a1a',fontSize:13,lineHeight:1.5,whiteSpace:'pre-wrap',wordBreak:'break-word'}},m.t)
+        )),
+        busy&&React.createElement('div',{style:{display:'flex',justifyContent:'flex-start'}},React.createElement('div',{style:{padding:'9px 13px',borderRadius:'14px 14px 14px 4px',background:'#f4f4f2',color:'#aaa',fontSize:13}},'● ● ●')),
+        React.createElement('div',{ref:endRef})
+      ),
+      msgs.length<=1&&!busy&&React.createElement('div',{style:{padding:'0 14px 10px',display:'flex',flexWrap:'wrap',gap:6,flexShrink:0}},
+        (_QUICK[role]||_QUICK.admin).map((q,i)=>React.createElement('button',{key:i,onClick:()=>send(q),style:{fontSize:11,padding:'5px 10px',borderRadius:20,border:'1px solid #e0e0de',background:'#fafafa',cursor:'pointer',color:'#444',lineHeight:1.3}},q))
+      ),
+      React.createElement('div',{style:S.input},
+        React.createElement('textarea',{ref:inRef,value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}},placeholder:'Preguntá sobre stock, precios, pedidos...',rows:1,style:{flex:1,border:'1px solid #e0e0de',borderRadius:10,padding:'8px 12px',fontSize:13,resize:'none',fontFamily:'inherit',outline:'none',lineHeight:1.4,maxHeight:80,overflowY:'auto'}}),
+        React.createElement('button',{onClick:()=>send(),disabled:!input.trim()||busy,style:{width:36,height:36,borderRadius:'50%',background:input.trim()&&!busy?'#1a1a1a':'#e0e0de',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'flex-end'}},
+          React.createElement('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none'},React.createElement('path',{d:'M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2',stroke:input.trim()&&!busy?'#fff':'#999',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'}))
+        )
+      )
+    )
+  );
+}
 
 export default AryesApp;
