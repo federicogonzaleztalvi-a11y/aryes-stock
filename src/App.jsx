@@ -155,8 +155,25 @@ const getAuthHeaders = (extra={}) => {
 const db={
   async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
   async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
+  async patch(t,data,match){const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
+  async insert(t,row){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(row)});return r.ok?r.json():null;},
+  async insertMany(t,rows){if(!rows||!rows.length)return null;const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(rows)});return r.ok?r.json():null;},
+  async patchWithLock(t,data,filter,lockField,lockVal,maxRetries=3){
+    for(let i=0;i<=maxRetries;i++){
+      try{
+        const rows=await this.get(t,filter+'&select='+lockField+',id');
+        if(!rows||!rows.length)return null;
+        if(rows[0][lockField]!==lockVal&&lockVal!==undefined){
+          console.warn('[Aryes] patchWithLock: value changed, retrying');
+          await new Promise(r=>setTimeout(r,300*(i+1)));
+          continue;
+        }
+        return await this.patch(t,data,filter);
+      }catch(e){if(i===maxRetries)throw e;}
+    }
+    return null;
+  }
 };
 
 
@@ -2376,6 +2393,82 @@ const IMP_BRAND_COLORS = {"Adimix":"#e8735a","Agropalma":"#7ab648","Duas Rodas /
 const IMP_SUP_LABEL = {"arg":"🇦🇷 Argentina / Brasil","ecu":"🇪🇨 Ecuador","eur":"🇪🇺 Europa"};
 const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ERROR BOUNDARY
+// ─────────────────────────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props){super(props);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(error){return {hasError:true,error};}
+  componentDidCatch(error,info){console.error('[Aryes] ErrorBoundary caught:',error,info);}
+  render(){
+    if(this.state.hasError){
+      return React.createElement('div',{style:{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}},
+        React.createElement('p',{style:{color:'#dc2626',fontWeight:600,marginBottom:8}},'Error al cargar este módulo'),
+        React.createElement('p',{style:{color:'#7a7368',fontSize:12,marginBottom:12}},String(this.state.error?.message||'Error desconocido')),
+        React.createElement('button',{onClick:()=>this.setState({hasError:false,error:null}),style:{background:'#dc2626',color:'#fff',border:'none',padding:'8px 16px',borderRadius:4,cursor:'pointer',fontSize:12,fontWeight:600}},'Reintentar')
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+function LoginScreen({onLogin}){
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [err,setErr]=useState('');
+  const [loading,setLoading]=useState(false);
+  const handle=async(e)=>{
+    e&&e.preventDefault&&e.preventDefault();
+    if(!email||!pass){setErr('Ingresá email y contraseña');return;}
+    setLoading(true);setErr('');
+    try{
+      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({email,password:pass})
+      });
+      const data=await r.json();
+      if(!r.ok){setErr(data.error_description||data.message||'Credenciales incorrectas');setLoading(false);return;}
+      // Get role from users table
+      const userR=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&limit=1',{
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+data.access_token}
+      });
+      const users=await userR.json();
+      const role=users?.[0]?.role||'operador';
+      const name=users?.[0]?.name||email.split('@')[0];
+      onLogin({...data,email,role,name});
+    }catch(e){
+      setErr('Error de conexión. Verificá tu internet.');
+    }
+    setLoading(false);
+  };
+  return(
+    <div style={{minHeight:'100vh',background:'#f9f9f7',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <style>{'.au{animation:fadeUp .25s ease both;}@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}'}</style>
+      <div className="au" style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:'40px 44px',width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,.06)'}}>
+        <div style={{textAlign:'center',marginBottom:32}}>
+          <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:'contain'}} onError={e=>e.target.style.display='none'}/>
+          <p style={{fontFamily:"'Inter',sans-serif",fontSize:13,color:'#6a6a68',marginTop:12}}>Sistema de gestión de stock</p>
+        </div>
+        <div style={{display:'grid',gap:14}}>
+          <Field label="Email">
+            <Inp type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@aryes.com" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+          </Field>
+          <Field label="Contraseña">
+            <Inp type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&handle()}/>
+          </Field>
+          {err&&<p style={{fontFamily:"'Inter',sans-serif",fontSize:12,color:'#dc2626',textAlign:'center'}}>{err}</p>}
+          <Btn onClick={handle} full disabled={loading}>{loading?'Ingresando...':'Ingresar'}</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AryesApp(){
   let [session,setSession]=useState(()=>{
     const s=LS.get('aryes-session',null);
@@ -2389,7 +2482,7 @@ function AryesApp(){
     const refreshIn = Math.max(0, msUntilExpiry - 5*60*1000); // 5 min before expiry
     const timer = setTimeout(async()=>{
       try{
-        const res = await fetch(SB+'/auth/v1/token?grant_type=refresh_token',{
+        const res = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
           method:'POST',
           headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
           body:JSON.stringify({refresh_token:session.refresh_token})
