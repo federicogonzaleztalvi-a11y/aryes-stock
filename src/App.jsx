@@ -51,7 +51,7 @@ async function sbSyncAll() {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token || SB_KEY;
-    const authH = {apikey:token||SB_KEY,'Authorization':'Bearer '+(token||SB_KEY)};
+    const authH = {'apikey':SB_KEY,'Authorization':'Bearer '+token};
     const r = await fetch(SB_URL+'/rest/v1/aryes_data?select=key,value', {headers: authH});
     if(!r.ok) return;
     const rows = await r.json();
@@ -113,25 +113,6 @@ const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
 // getAuthHeaders: uses logged-in user's JWT when available so RLS policies fire correctly
 const getAuthHeaders = (extra={}) => {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token;
-    // Pass JWT as apikey: PostgREST runs as 'authenticated', auth.jwt() works in RLS
-    if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
-    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
-  } catch(e) {
-    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
-  }
-}) => {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token;
-    if(token) {
-      return {apikey:token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
-    }
-  } catch(e) {}
-  return {apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
-};) => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token;
