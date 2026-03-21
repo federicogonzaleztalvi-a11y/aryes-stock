@@ -2517,8 +2517,8 @@ function AryesApp(){
     return ()=>clearTimeout(timer);
   }, [session?.refresh_token, session?.expiresAt]);
 
-  // Always remove legacy emailcfg from localStorage (even if Supabase unreachable)
-    LS.remove('aryes9-emailcfg');
+
+
   let [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
     // Load emailCfg from Supabase app_config (admin only, RLS protected)
   useEffect(()=>{
@@ -2604,18 +2604,7 @@ function AryesApp(){
     setTimeout(()=>window.location.reload(),50);
   };
   const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
-  if(!session) return <LoginScreen onLogin={handleLogin}/>;
-  if(!dbReady) return(
-    <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
-      <style>{CSS}</style>
-      <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
-      <div style={{width:32,height:32,border:"3px solid #3a7d1e",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-      <p style={{fontFamily:"Inter,sans-serif",fontSize:14,color:"#6a6a68",fontWeight:500}}>Conectando...</p>
-      <p style={{fontFamily:"Inter,sans-serif",fontSize:12,color:"#aaa",marginTop:4}}>Si tarda más de 5 seg, recargué la página</p>
-      <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
-    </div>
-  );
-  const canEdit=session.role==='admin'||session.role==='operador';
+  const canEdit=session?.role==='admin'||session?.role==='operador';
 
   useEffect(()=>{
     if(!session) return;
@@ -2887,7 +2876,19 @@ function AryesApp(){
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
   return(
-    <div style={{display:"flex",minHeight:"100vh",background:T.bg}}>
+    <>
+      {!session && <LoginScreen onLogin={handleLogin}/>}
+      {session && !dbReady && (
+        <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
+          <style>{CSS}</style>
+          <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
+          <div style={{width:32,height:32,border:"3px solid #3a7d1e",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+          <p style={{fontFamily:"Inter,sans-serif",fontSize:14,color:"#6a6a68",fontWeight:500}}>Conectando...</p>
+          <p style={{fontFamily:"Inter,sans-serif",fontSize:12,color:"#aaa",marginTop:4}}>Si tardás más de 5 seg, recargá la página</p>
+          <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
+        </div>
+      )}
+      {session && dbReady && <div style={{display:"flex",minHeight:"100vh",background:T.bg}}>
       <style>{CSS}</style>
 
       {/* ── SIDEBAR ── */}
@@ -3132,7 +3133,8 @@ function AryesApp(){
       )}
     
       <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements}/>
-      </div>
+      </div>}
+    </>
   );
 }
 
