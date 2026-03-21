@@ -2903,7 +2903,48 @@ function AryesApp(){
     }
   };
 
-  const NAV_ALL=[
+
+  // ── ONE-TIME STOCK MIGRATION ──────────────────────────────────────────────
+  // Reads real stock from localStorage and upserts to Supabase products table
+  const migrateStockToSupabase = async () => {
+    const lsProds = LS.get('aryes6-products', []);
+    if (!lsProds.length) { alert('No hay productos en localStorage'); return; }
+    const withStock = lsProds.filter(p => Number(p.stock) > 0);
+    if (!withStock.length) { alert('Todos los productos tienen stock=0 en este browser. Abrí la app desde el browser donde trabajás normalmente.'); return; }
+    setSyncToast({msg:'Migrando '+lsProds.length+' productos a Supabase...', type:'info'});
+    let ok=0, fail=0;
+    // Batch in groups of 50 to avoid request size limits
+    const BATCH = 50;
+    for(let i=0; i<lsProds.length; i+=BATCH){
+      const batch = lsProds.slice(i, i+BATCH).map(p=>({
+        id: p.id,
+        name: p.name,
+        barcode: p.barcode||'',
+        supplier_id: p.supplierId||'arg',
+        unit: p.unit||'kg',
+        stock: Number(p.stock)||0,
+        unit_cost: Number(p.unitCost)||0,
+        min_stock: Number(p.minStock)||5,
+        daily_usage: Number(p.dailyUsage)||0.5,
+        category: p.category||'',
+        brand: p.brand||'',
+        history: p.history||[],
+        updated_at: new Date().toISOString()
+      }));
+      try {
+        const r = await db.upsert('products', batch);
+        if(r) ok+=batch.length; else fail+=batch.length;
+      } catch(e) { fail+=batch.length; }
+    }
+    setSyncToast({msg:'✅ Migración completa: '+ok+' productos sincronizados, '+fail+' errores', type:'info'});
+    setTimeout(()=>setSyncToast(null), 8000);
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),
+      user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),
+      action:'stock_migration',detail:JSON.stringify({total:lsProds.length,withStock:withStock.length})
+    }); }catch(e){}
+  };
+    const NAV_ALL=[
     {id:"dashboard",label:"Dashboard",icon:"📊"},
     {id:"inventory",label:"Inventario",icon:"📦"},
     {id:"orders",label:"Pedidos",icon:"🛒"},
@@ -2969,6 +3010,14 @@ function AryesApp(){
           </button>)}
         </div>
       
+        <div style={{padding:"8px 16px 0",borderTop:`1px solid ${T.border}`}}>
+          {canEdit&&session?.role==='admin'&&(
+            <button onClick={migrateStockToSupabase}
+              style={{width:"100%",background:"#fff8e1",border:"1px solid #fde68a",borderRadius:4,padding:"8px 14px",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:"#92400e",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:6}}>
+              ☁ Sincronizar stock→SB
+            </button>
+          )}
+        </div>
         <div style={{marginTop:'auto',borderTop:'1px solid #e2e2de',padding:'12px 16px 8px'}}>
           <div style={{fontSize:12,color:'#3a3a38',fontWeight:600,marginBottom:2}}>{session.name}</div>
           <div style={{fontSize:11,color:'#9a9a98',marginBottom:8,textTransform:'capitalize'}}>{session.role==='admin'?'Administrador':session.role==='operador'?'Operador':'Vendedor'}</div>
