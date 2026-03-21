@@ -47,6 +47,7 @@ export const getAuthHeaders = (extra={}) => {
     // Use user JWT as apikey so PostgREST runs as 'authenticated' role
     // This is required for auth.jwt() to work in RLS policies
     if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+    console.warn('[Aryes] WARNING: No valid JWT — anon key fallback, RLS will not apply');
     return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
   } catch(e) {
     return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
@@ -56,14 +57,23 @@ export const getAuthHeaders = (extra={}) => {
 export const db={
   async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
   async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async patch(t,data,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async patch(t,data,match){
+    const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
+    const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',
+      headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});
+    if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.patch failed:',t,e?.message||r.status);}
+    return r.ok?r.json():null;
+  },
   async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});}
 
   async insert(table, row) {
     const r = await fetch(SURL+'/rest/v1/'+table, {
-      method:'POST', headers:{...getAuthHeaders(), 'Prefer':'return=minimal'}, body:JSON.stringify(row)
+      method:'POST',
+      headers:getAuthHeaders({'Prefer':'return=representation,resolution=ignore-duplicates'}),
+      body: JSON.stringify(row)
     });
-    if(!r.ok) { const e=await r.text(); throw new Error('db.insert '+table+': '+e); }
+    if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.insert failed:',table,e?.message||r.status);}
+    return r.ok ? r.json() : null;
   },
   async insertMany(table, rows) {
     if(!rows.length) return;
