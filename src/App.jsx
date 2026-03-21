@@ -2475,7 +2475,7 @@ function AryesApp(){
   let [session,setSession]=useState(()=>{
   let [dbReady,setDbReady]=useState(false);
   let [syncStatus,setSyncStatus]=useState('');
-  let [tab,setTab]=useState(()=>{const s=LS.get('aryes-session',null);const r=s?.role||'admin';const allowed=NAV_ROLES[r]||NAV_ROLES.admin;return allowed[0]||'dashboard';});
+  let [tab,setTab]=useState('dashboard');
   let [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
   let [modal,setModal]=useState(null);
   let [editProd,setEditProd]=useState(null);
