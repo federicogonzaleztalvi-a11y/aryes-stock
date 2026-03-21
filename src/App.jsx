@@ -2406,7 +2406,9 @@ function AryesApp(){
     return ()=>clearTimeout(timer);
   }, [session?.refresh_token, session?.expiresAt]);
 
-  // Load emailCfg from Supabase app_config (admin only, RLS protected)
+  // Always remove legacy emailcfg from localStorage (even if Supabase unreachable)
+    LS.remove('aryes9-emailcfg');
+    // Load emailCfg from Supabase app_config (admin only, RLS protected)
   useEffect(()=>{
     if(session?.role !== 'admin') return;
     (async()=>{
@@ -2624,10 +2626,12 @@ function AryesApp(){
   const alerts=(enriched||[]).filter(p=>p.alert.level!=="ok").sort((a,b)=>ALERT_CFG[b.alert.level].pri-ALERT_CFG[a.alert.level].pri);
   const critN=(alerts||[]).filter(p=>p.alert.level==="order_now").length;
 
-  const saveProduct=f=>{
+  const saveProduct=async f=>{
     if(editProd)setProducts(ps=>ps.map(p=>p.id===editProd.id?{...p,...f}:p));
     else setProducts(ps=>[...ps,{...f,id:crypto.randomUUID()}]);
-    setModal(null);setEditProd(null);
+    setModal(null);setEditProd(null)
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit:!!editProd,id:editProd?.id||'new',nombre:f.nombre,stock:f.stock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
   };
   const confirmOrder=(product,qty)=>{
     const sup=getSup(product.supplierId);const lead=totalLead(sup);
@@ -2665,14 +2669,18 @@ function AryesApp(){
     });
     setModal(null);
   };
-  const saveSupplier=f=>{
+  const saveSupplier=async f=>{
     if(editSup)setSuppliers(ss=>ss.map(s=>s.id===editSup.id?{...s,...f}:s));
     else setSuppliers(ss=>[...ss,{...f,id:crypto.randomUUID().toString()}]);
-    setModal(null);setEditSup(null);
+    setModal(null);setEditSup(null)
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit:!!editSup,id:editSup?.id||'new',nombre:f.nombre})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
   };
-  const deleteSupplier=id=>{
+  const deleteSupplier=async id=>{
     if(products.some(p=>p.supplierId===id)){alert("No se puede eliminar: hay productos asociados a este proveedor.");return;}
     setSuppliers(ss=>ss.filter(s=>s.id!==id));
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_eliminado',detail:JSON.stringify({id})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
   };
 
   const sendAlertEmail = async (alertProducts, cfg) => {
