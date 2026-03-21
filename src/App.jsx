@@ -1,35 +1,35 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback , Suspense } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
-import ImporterTab from './tabs/ImporterTab.jsx';
-import VentasTab from './tabs/VentasTab.jsx';
-import DepositoTab from './tabs/DepositoTab.jsx';
-import RecepcionTab from './tabs/RecepcionTab.jsx';
-import RutasTab from './tabs/RutasTab.jsx';
-import InformesTab from './tabs/InformesTab.jsx';
-import LotesTab from './tabs/LotesTab.jsx';
-import MovimientosTab from './tabs/MovimientosTab.jsx';
-import ConteoTab from './tabs/ConteoTab.jsx';
-import DevolucionesTab from './tabs/DevolucionesTab.jsx';
-import ClientesTab from './tabs/ClientesTab.jsx';
-import PackingTab from './tabs/PackingTab.jsx';
-import ImportTab from './tabs/ImportTab.jsx';
-import InventarioTab from './tabs/InventarioTab.jsx';
-import TransferenciasTab from './tabs/TransferenciasTab.jsx';
-import BatchPickingTab from './tabs/BatchPickingTab.jsx';
-import PreciosTab from './tabs/PreciosTab.jsx';
-import KPIsTab from './tabs/KPIsTab.jsx';
-import DemandaTab from './tabs/DemandaTab.jsx';
-import ConfigTab from './tabs/ConfigTab.jsx';
-import AuditTab from './tabs/AuditTab.jsx';
-import TrackingTab from './tabs/TrackingTab.jsx';
-import DashboardInline from './tabs/DashboardInline.jsx';
-import PedidosInline from './tabs/PedidosInline.jsx';
-import ProveedoresInline from './tabs/ProveedoresInline.jsx';
+const ImporterTab = React.lazy(() => import('./tabs/ImporterTab.jsx'));
+const VentasTab = React.lazy(() => import('./tabs/VentasTab.jsx'));
+const DepositoTab = React.lazy(() => import('./tabs/DepositoTab.jsx'));
+const RecepcionTab = React.lazy(() => import('./tabs/RecepcionTab.jsx'));
+const RutasTab = React.lazy(() => import('./tabs/RutasTab.jsx'));
+const InformesTab = React.lazy(() => import('./tabs/InformesTab.jsx'));
+const LotesTab = React.lazy(() => import('./tabs/LotesTab.jsx'));
+const MovimientosTab = React.lazy(() => import('./tabs/MovimientosTab.jsx'));
+const ConteoTab = React.lazy(() => import('./tabs/ConteoTab.jsx'));
+const DevolucionesTab = React.lazy(() => import('./tabs/DevolucionesTab.jsx'));
+const ClientesTab = React.lazy(() => import('./tabs/ClientesTab.jsx'));
+const PackingTab = React.lazy(() => import('./tabs/PackingTab.jsx'));
+const ImportTab = React.lazy(() => import('./tabs/ImportTab.jsx'));
+const InventarioTab = React.lazy(() => import('./tabs/InventarioTab.jsx'));
+const TransferenciasTab = React.lazy(() => import('./tabs/TransferenciasTab.jsx'));
+const BatchPickingTab = React.lazy(() => import('./tabs/BatchPickingTab.jsx'));
+const PreciosTab = React.lazy(() => import('./tabs/PreciosTab.jsx'));
+const KPIsTab = React.lazy(() => import('./tabs/KPIsTab.jsx'));
+const DemandaTab = React.lazy(() => import('./tabs/DemandaTab.jsx'));
+const ConfigTab = React.lazy(() => import('./tabs/ConfigTab.jsx'));
+const AuditTab = React.lazy(() => import('./tabs/AuditTab.jsx'));
+const TrackingTab = React.lazy(() => import('./tabs/TrackingTab.jsx'));
+const DashboardInline = React.lazy(() => import('./tabs/DashboardInline.jsx'));
+const PedidosInline = React.lazy(() => import('./tabs/PedidosInline.jsx'));
+const ProveedoresInline = React.lazy(() => import('./tabs/ProveedoresInline.jsx'));
 
 
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -2770,7 +2770,7 @@ function AryesApp(){
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización — reconectando...</span>
       </div>}
       {/* ══ DASHBOARD ══ */}
-        {tab==="dashboard"&&<ErrorBoundary><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></ErrorBoundary>}
+        {tab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
 {tab==="inventory"&&<>
 {/* ══ INVENTORY ══ */}
@@ -2823,10 +2823,10 @@ function AryesApp(){
         {/* ══ ORDERS ══ */}
         </>
         }
-        {tab==="orders"&&<ErrorBoundary><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></ErrorBoundary>}
+        {tab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {tab==="suppliers"&&<ErrorBoundary><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></ErrorBoundary>}
+        {tab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></Suspense></ErrorBoundary>}
         {tab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
 {tab==="config"&&<>
