@@ -1,4 +1,5 @@
 import { LS, tfCols } from '../lib/constants.js';
+import { T, Cap, AlertPill, Btn, fmtDate, fmtShort } from '../lib/ui.jsx';
 
 function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,tab,getSup,markDelivered,setTab,tfCols}) {
   return (

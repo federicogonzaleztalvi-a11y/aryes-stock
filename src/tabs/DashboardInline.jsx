@@ -1,4 +1,5 @@
-import { ALERT_CFG, tfCols } from '../lib/constants.js';
+import { tfCols } from '../lib/constants.js';
+import { T, ALERT_CFG, Cap, AlertPill, StockBar, Btn, fmtDate, totalLead, rop, eoq } from '../lib/ui.jsx';
 
 function DashboardInline({products,suppliers,orders,movements,session,setTab,critN,alerts,enriched,setModal,tfCols}) {
   return (

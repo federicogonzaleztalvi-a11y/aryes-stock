@@ -1,4 +1,5 @@
 import { tfCols } from '../lib/constants.js';
+import { T, Cap, Btn, totalLead } from '../lib/ui.jsx';
 
 function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session,alerts,enriched,tab,setModal,setEditSup,setViewSup,deleteSupplier}) {
   return (

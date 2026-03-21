@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { LS, SKEY, SB_URL } from '../lib/constants.js';
+import { T, Cap, Btn } from '../lib/ui.jsx';
 
 function ImporterTab({onDone}){
   const [step,setStep]=useState("select");
