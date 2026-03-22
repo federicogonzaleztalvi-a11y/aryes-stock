@@ -117,17 +117,12 @@ export default async function handler(req, res) {
       if (active !== undefined) updates.active = active;
       if (name !== undefined) updates.name = name;
 
-      const r = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
-        method: 'PATCH',
-        headers: {
-          'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Content-Type': 'application/json', 'Prefer': 'return=representation',
-        },
-        body: JSON.stringify(updates),
+      const { ok: upOk, data: upData } = await rpc('update_user_row', {
+        p_email: email,
+        p_updates: updates,
       });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) return res.status(400).json({ error: data?.message || 'Error al actualizar usuario' });
-      return res.status(200).json({ success: true, user: Array.isArray(data) ? data[0] : data });
+      if (!upOk) return res.status(400).json({ error: typeof upData === 'string' ? upData : 'Error al actualizar usuario' });
+      return res.status(200).json({ success: true, user: Array.isArray(upData) ? upData[0] : upData });
     }
 
     // ── RESET PASSWORD ────────────────────────────────────────────────────────
@@ -152,11 +147,8 @@ export default async function handler(req, res) {
       if (!email) return res.status(400).json({ error: 'email requerido' });
       if (email === admin.email) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
 
-      // Delete from public.users (service_role bypasses RLS)
-      await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` },
-      });
+      // Delete from public.users via SECURITY DEFINER RPC (bypasses RLS + cache)
+      await rpc('delete_user_row', { p_email: email });
 
       // Delete from auth via SECURITY DEFINER RPC
       await rpc('delete_auth_user', { user_email: email });
