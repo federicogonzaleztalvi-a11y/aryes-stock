@@ -2417,69 +2417,14 @@ class ErrorBoundary extends React.Component {
 // ─────────────────────────────────────────────────────────────────────────────
 // LOGIN SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
-function LoginScreen({onLogin}){
-  const [email,setEmail]=useState('');
-  const [pass,setPass]=useState('');
-  const [err,setErr]=useState('');
-  const [loading,setLoading]=useState(false);
-  const handle=async(e)=>{
-    e&&e.preventDefault&&e.preventDefault();
-    if(!email||!pass){setErr('Ingresá email y contraseña');return;}
-    setLoading(true);setErr('');
-    try{
-      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{
-        method:'POST',
-        headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({email,password:pass})
-      });
-      const data=await r.json();
-      if(!r.ok){setErr(data.error_description||data.message||'Credenciales incorrectas');setLoading(false);return;}
-      // Get role from users table
-      const userR=await fetch(SB_URL+'/rest/v1/users?email=eq.'+encodeURIComponent(email)+'&limit=1',{
-        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+data.access_token}
-      });
-      const users=await userR.json();
-      const role=users?.[0]?.role||'operador';
-      const name=users?.[0]?.name||email.split('@')[0];
-      onLogin({...data,email,role,name});
-    }catch(e){
-      setErr('Error de conexión. Verificá tu internet.');
-    }
-    setLoading(false);
-  };
-  return(
-    <div style={{minHeight:'100vh',background:'#f9f9f7',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <style>{'.au{animation:fadeUp .25s ease both;}@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}'}</style>
-      <div className="au" style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:'40px 44px',width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,.06)'}}>
-        <div style={{textAlign:'center',marginBottom:32}}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:'contain'}} onError={e=>e.target.style.display='none'}/>
-          <p style={{fontFamily:"'Inter',sans-serif",fontSize:13,color:'#6a6a68',marginTop:12}}>Sistema de gestión de stock</p>
-        </div>
-        <div style={{display:'grid',gap:14}}>
-          <Field label="Email">
-            <Inp type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@aryes.com" onKeyDown={e=>e.key==='Enter'&&handle()}/>
-          </Field>
-          <Field label="Contraseña">
-            <Inp type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==='Enter'&&handle()}/>
-          </Field>
-          {err&&<p style={{fontFamily:"'Inter',sans-serif",fontSize:12,color:'#dc2626',textAlign:'center'}}>{err}</p>}
-          <Btn onClick={handle} full disabled={loading}>{loading?'Ingresando...':'Ingresar'}</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function AryesApp(){
+function AryesApp({session, onLogout, onSessionUpdate}){
   let [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   let [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
   let [movements,setMovements]=useState(()=>LS.get("aryes8-movements",[]));
   let [settingsTab,setSettingsTab]=useState("freight");
-  let [session,setSession]=useState(()=>{
-    const s=LS.get('aryes-session',null);
-    if(s&&s.expiresAt&&Date.now()>s.expiresAt){LS.remove('aryes-session');return null;}
-    return s;
-  });
+  // session is received as prop from Root component in main.jsx
+  // auth state is managed externally — AryesApp always has a valid session
   let [dbReady,setDbReady]=useState(false);
   let [syncStatus,setSyncStatus]=useState('');
   let [tab,setTab]=useState('dashboard');
@@ -2509,11 +2454,11 @@ function AryesApp(){
           const expiresIn=(data.expires_in||3600)*1000;
           const refreshed={...session,access_token:data.access_token,refresh_token:data.refresh_token,expiresAt:Date.now()+expiresIn};
           LS.set('aryes-session',refreshed);
-          setSession(refreshed);
+          onSessionUpdate && onSessionUpdate(refreshed);
         } else {
           // Refresh failed — force logout
           LS.remove('aryes-session');
-          setSession(null);
+          onLogout && onLogout();
         }
       } catch(e){ console.warn('[Aryes] token refresh failed',e); }
     }, refreshIn);
@@ -2599,14 +2544,8 @@ function AryesApp(){
 
   // Sync from Supabase on mount
 
-  const handleLogin=(u)=>{
-    const expiresIn=(u.expires_in||3600)*1000;
-    const sessionWithExpiry={...u,expiresAt:Date.now()+expiresIn};
-    LS.set('aryes-session',sessionWithExpiry);
-    setSession(sessionWithExpiry);
-    setTimeout(()=>window.location.reload(),50);
-  };
-  const handleLogout=()=>{ const tok=(LS.get("aryes-session",{})||{}).access_token||""; if(tok) fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"apikey":SB_KEY,"Authorization":"Bearer "+tok}}).catch(()=>{}); LS.remove("aryes-session"); setSession(null); };
+  const handleLogin=(u)=>{ /* handled by Root in main.jsx */ };
+  const handleLogout=()=>{ onLogout && onLogout(); };
   const canEdit=session?.role==='admin'||session?.role==='operador';
 
   useEffect(()=>{
@@ -2880,7 +2819,6 @@ function AryesApp(){
 
   return(
     <>
-      {!session && <LoginScreen onLogin={handleLogin}/>}
       {session && !dbReady && (
         <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
           <style>{CSS}</style>
