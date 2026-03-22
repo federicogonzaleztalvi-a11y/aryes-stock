@@ -2445,6 +2445,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
 
 
   let [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
+  let [brandCfg,setBrandCfg]=useState(()=>{try{return JSON.parse(localStorage.getItem('aryes-brand')||'null')||{name:'',logoUrl:'',color:'#3a7d1e'};}catch(e){return {name:'',logoUrl:'',color:'#3a7d1e'};}});
     // Load emailCfg from Supabase app_config (admin only, RLS protected)
   useEffect(()=>{
     if(session?.role !== 'admin') return;
@@ -2453,6 +2454,11 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         const rows = await db.get('app_config?key=eq.emailcfg');
         if(rows?.[0]?.value) setEmailCfg(rows[0].value);
         LS.remove('aryes9-emailcfg');
+        // Load brand config
+        try{
+          const brandRows = await db.get('app_config?key=eq.brandcfg');
+          if(brandRows?.[0]?.value){ setBrandCfg(brandRows[0].value); localStorage.setItem('aryes-brand',JSON.stringify(brandRows[0].value)); }
+        }catch(e){}
       }catch(e){}
     })();
   },[session?.role]);
@@ -2909,7 +2915,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     {id:"config",label:"Config",icon:"⚙"},
   ];
   const NAV_ROLES={
-    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","movimientos","lotes","conteo","transferencias","deposito","rutas","tracking","kpis","recepcion","packing","batch-picking","informes","devoluciones","precios","demanda","audit","importar","scanner","config"],
+    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","movimientos","lotes","deposito","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config"],
     operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
     vendedor:["dashboard","clientes","ventas","kpis","informes"]
   };
@@ -2938,12 +2944,12 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       <aside style={{overflowY:"auto",width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
         {/* Logo */}
         <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
-          <AryesLogo height={34}/>
+          {brandCfg.logoUrl?<img src={brandCfg.logoUrl} alt={brandCfg.name||'Logo'} style={{height:34,objectFit:'contain'}} onError={e=>{e.target.style.display='none';}}/>:<AryesLogo height={34}/>}
           {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>↻ Sincronizando...</div>}
           {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>✓ Sincronizado</div>}
           {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>⚠ Modo local</div>}
           {hasPendingSync&&<div style={{fontSize:10,color:'#d97706',marginTop:3,fontWeight:600}}>⚠ Sync pendiente</div>}
-          <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gestión de stock · UY</Cap></div>
+          <div style={{marginTop:6}}><Cap style={{color:brandCfg.color||T.green}}>{brandCfg.name||'Gestión de stock'}</Cap></div>
         </div>
 
         {/* Nav */}
@@ -2996,7 +3002,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></Suspense></ErrorBoundary>}
         {activeTab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
-        {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ConfigInline suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ConfigInline suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols} brandCfg={brandCfg} setBrandCfg={setBrandCfg}/></Suspense></ErrorBoundary>}
         {activeTab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
       {activeTab==="clientes"&&<ClientesTab />}
       {activeTab==="movimientos"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><MovimientosTab /></Suspense>}
@@ -3007,7 +3013,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       
         {activeTab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
         
-        {activeTab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab /></Suspense>}
+        {activeTab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab products={products} setProducts={setProducts} addMov={addMov}/></Suspense>}
         
         {activeTab==="importar"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ImportTab /></Suspense>}
         

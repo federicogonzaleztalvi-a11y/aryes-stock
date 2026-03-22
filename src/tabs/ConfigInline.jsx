@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { T, Cap, Btn, Inp, Field } from '../lib/ui.jsx';
 
 // ConfigInline extracted from App.jsx
-export default function ConfigInline({suppliers, setSuppliers, settingsTab, setSettingsTab, emailCfg, setEmailCfg, enriched, sendAlertEmail, EmailSettings, totalLead, tfCols}) {
+export default function ConfigInline({suppliers, setSuppliers, settingsTab, setSettingsTab, emailCfg, setEmailCfg, enriched, sendAlertEmail, EmailSettings, totalLead, tfCols, brandCfg={}, setBrandCfg}) {
   return (
     <>
       <div className="au" style={{display:"grid",gap:24}}>
@@ -14,7 +14,7 @@ export default function ConfigInline({suppliers, setSuppliers, settingsTab, setS
               return(
                 <div>
                   <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:400,marginBottom:24}}>
-                    {[{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"}].map(st=>(
+                    {[{id:"marca",l:"Marca y empresa"},{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"}].map(st=>(
                       <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                         style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
                           background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
@@ -22,6 +22,58 @@ export default function ConfigInline({suppliers, setSuppliers, settingsTab, setS
                       </button>
                     ))}
                   </div>
+                  {settingsTab==="marca"&&(
+                    <div style={{maxWidth:560}}>
+                      <p style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginBottom:20,lineHeight:1.6}}>
+                        Estos datos aparecen en el sidebar y reemplazan el logo por defecto. Guardado en la base de datos, aplica a todos los usuarios.
+                      </p>
+                      {(()=>{
+                        const [localBrand,setLocalBrand]=React.useState({name:brandCfg.name||'',logoUrl:brandCfg.logoUrl||'',color:brandCfg.color||'#3a7d1e'});
+                        const [saving,setSaving]=React.useState(false);
+                        const [saved,setSaved]=React.useState(false);
+                        const saveBrand=async()=>{
+                          setSaving(true);
+                          try{
+                            const {db}=await import('../lib/constants.js');
+                            await db.upsert('app_config',{key:'brandcfg',value:localBrand,updated_at:new Date().toISOString()});
+                            setBrandCfg(localBrand);
+                            localStorage.setItem('aryes-brand',JSON.stringify(localBrand));
+                            setSaved(true);setTimeout(()=>setSaved(false),3000);
+                          }catch(e){console.warn('brand save failed',e);}finally{setSaving(false);}
+                        };
+                        const inp2={padding:'8px 12px',border:'1px solid #e2e2de',borderRadius:6,fontSize:13,fontFamily:'Inter,sans-serif',width:'100%',boxSizing:'border-box'};
+                        return(
+                          <div style={{display:'grid',gap:16}}>
+                            <div>
+                              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Nombre de la empresa</label>
+                              <input value={localBrand.name} onChange={e=>setLocalBrand(b=>({...b,name:e.target.value}))} placeholder='Ej: Mi Distribuidora S.A.' style={inp2}/>
+                              <div style={{fontSize:11,color:'#9a9a98',marginTop:4}}>Aparece debajo del logo en el sidebar</div>
+                            </div>
+                            <div>
+                              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>URL del logo</label>
+                              <input value={localBrand.logoUrl} onChange={e=>setLocalBrand(b=>({...b,logoUrl:e.target.value}))} placeholder='https://mi-empresa.com/logo.png' style={inp2}/>
+                              <div style={{fontSize:11,color:'#9a9a98',marginTop:4}}>Imagen PNG/SVG pública. Si está vacío, se usa el logo de Aryes Stock.</div>
+                              {localBrand.logoUrl&&<img src={localBrand.logoUrl} alt='preview' style={{height:40,marginTop:8,objectFit:'contain',border:'1px solid #e2e2de',borderRadius:4,padding:4}} onError={e=>e.target.style.display='none'}/>}
+                            </div>
+                            <div>
+                              <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Color principal</label>
+                              <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                                <input type='color' value={localBrand.color||'#3a7d1e'} onChange={e=>setLocalBrand(b=>({...b,color:e.target.value}))} style={{width:48,height:36,padding:2,border:'1px solid #e2e2de',borderRadius:6,cursor:'pointer'}}/>
+                                <input value={localBrand.color||'#3a7d1e'} onChange={e=>setLocalBrand(b=>({...b,color:e.target.value}))} style={{...inp2,width:120}}/>
+                                <div style={{padding:'6px 14px',borderRadius:6,background:localBrand.color||'#3a7d1e',color:'#fff',fontSize:12,fontWeight:600}}>Vista previa</div>
+                              </div>
+                            </div>
+                            <div style={{paddingTop:8,borderTop:'1px solid #e2e2de',display:'flex',alignItems:'center',gap:12}}>
+                              <button onClick={saveBrand} disabled={saving} style={{padding:'9px 24px',background:saving?'#9ca3af':(localBrand.color||'#3a7d1e'),color:'#fff',border:'none',borderRadius:8,cursor:saving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
+                                {saving?'Guardando…':'Guardar marca'}
+                              </button>
+                              {saved&&<span style={{color:'#3a7d1e',fontSize:13,fontWeight:600}}>✓ Guardado</span>}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                   {settingsTab==="freight"&&(
                     <div style={{maxWidth:680}}>
                       <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginBottom:16,lineHeight:1.6}}>Estos valores determinan el ROP (punto de pedido). Actualizalos cuando cambien las condiciones logísticas.</p>
