@@ -3188,9 +3188,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
 // ══════════════════════════════════════════════════════════
 // AI CHAT FLOAT — inline (no separate file, no circular dep)
 // ══════════════════════════════════════════════════════════
-const _CHAT_KEY = typeof import_meta_env_VITE_ANTHROPIC_KEY !== 'undefined'
-  ? import_meta_env_VITE_ANTHROPIC_KEY
-  : (typeof window !== 'undefined' ? (window.__VITE_ANTHROPIC_KEY__ || '') : '');
+
 
 const _QUICK = {
   admin:    ['¿Qué productos están en stock crítico?','¿Los 5 con menor stock?','Resumen del depósito','Pedidos pendientes'],
@@ -3215,7 +3213,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
   const endRef=React.useRef(null);
   const inRef=React.useRef(null);
   const role=session?.role||'admin';
-  const apiKey=import.meta.env.VITE_ANTHROPIC_KEY||'';
+  // AI chat proxied via /api/chat — no key in frontend
 
   React.useEffect(()=>{if(open){setUnread(0);setTimeout(()=>inRef.current?.focus(),80);}}, [open]);
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
@@ -3226,16 +3224,17 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
   const send=async(txt)=>{
     const text=txt||input.trim();
     if(!text||busy) return;
-    if(!apiKey){setMsgs(p=>[...p,{r:'a',t:'El asistente IA no está configurado. Contactá al administrador (falta VITE_ANTHROPIC_KEY).'}]);return;}
+    // no-op: proxy handles missing key gracefully
     setInput('');
     const next=[...msgs,{r:'u',t:text}];
     setMsgs(next);setBusy(true);
     try{
       const ctx=_buildCtx(role,products,suppliers,orders,movements);
       const sys='Sos el asistente de stock, WMS para gestión de inventario. Adaptá las respuestas al negocio. Respondé en español, conciso y directo. Usá solo los datos del contexto. Podés sugerir acciones concretas. Máx 200 palabras salvo informes.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
-      const r=await fetch('https://api.anthropic.com/v1/messages',{
+      const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch(e){return '';}})();
+      const r=await fetch('/api/chat',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))})
       });
       const d=await r.json();
@@ -3276,8 +3275,8 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
         React.createElement('div',{style:{flex:1}},
           React.createElement('div',{style:{fontWeight:600,fontSize:13,color:'#1a1a18',lineHeight:1.2}},'Asistente de stock'),
           React.createElement('div',{style:{fontSize:11,color:'#9a9a98',marginTop:3,display:'flex',alignItems:'center',gap:5}},
-            React.createElement('span',{style:{width:6,height:6,borderRadius:'50%',background:apiKey?G:'#f59e0b',flexShrink:0}},null),
-            apiKey?'Activo':'Sin configurar',
+            React.createElement('span',{style:{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}},null),
+            'Activo',
             React.createElement('span',{style:{color:'#d3d3d0'}},'·'),
             React.createElement('span',{style:{textTransform:'capitalize'}},role==='admin'?'Admin':role==='operador'?'Operador':'Vendedor')
           )

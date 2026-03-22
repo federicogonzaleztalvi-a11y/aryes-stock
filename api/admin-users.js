@@ -4,13 +4,7 @@
 
 const SB_URL = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function decodeJwtPayload(token) {
-  try {
-    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
-  } catch(e) { return null; }
-}
+const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 
 // Call a SECURITY DEFINER RPC — bypasses ALL RLS, runs as postgres superuser
 async function rpc(fnName, params = {}) {
@@ -30,21 +24,33 @@ async function rpc(fnName, params = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
+// Verify caller is admin using Supabase getUser (cryptographically verifies JWT signature)
+// This replaces the insecure decodeJwtPayload which did NOT verify the signature
 async function verifyAdmin(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
-  const payload = decodeJwtPayload(token);
-  if (!payload?.sub || !payload?.email) return null;
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
   if (!SERVICE_KEY) return null;
-  const { ok, data: role } = await rpc('get_user_role_by_email', { user_email: payload.email });
-  console.log(`[VA] ${payload.email} role:${role}`);
+
+  // Step 1: Verify JWT signature via Supabase Auth — rejects tampered tokens
+  const userRes = await fetch(`${SB_URL}/auth/v1/user`, {
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!userRes.ok) return null; // invalid or expired token
+  const userData = await userRes.json();
+  if (!userData?.id || !userData?.email) return null;
+
+  // Step 2: Verify role in DB via SECURITY DEFINER RPC
+  const { ok, data: role } = await rpc('get_user_role_by_email', { user_email: userData.email });
+  console.log(`[VA] ${userData.email} role:${role}`);
   if (!ok || role !== 'admin') return null;
-  return { id: payload.sub, email: payload.email };
+  return { id: userData.id, email: userData.email };
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
