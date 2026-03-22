@@ -20,8 +20,8 @@ function readSession() {
 // ── Root Error Boundary ───────────────────────────────────────────
 class RootErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(e) { return { error: e }; }
-  componentDidCatch(e, info) { console.error('[ARYES ROOT ERROR]', e, info); }
+  static getDerivedStateFromError(e) { return { error: e, info: null }; }
+  componentDidCatch(e, info) { console.error('[ARYES ROOT ERROR]', e, info); this.setState({ info }); }
   render() {
     if (this.state.error) {
       return React.createElement('div', {
