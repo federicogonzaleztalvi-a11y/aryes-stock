@@ -140,29 +140,26 @@ const LS = {
 // This ensures data is always fresh from the server
 setTimeout(() => sbSyncAll(), 1000);
 
-const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
-const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
-const SH={apikey:SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
 // getAuthHeaders: uses logged-in user's JWT when available so RLS policies fire correctly
 const getAuthHeaders = (extra={}) => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token;
-    // Use user JWT as apikey so PostgREST runs as 'authenticated' role
-    // This is required for auth.jwt() to work in RLS policies
-    if(token) return {'apikey':token,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
-    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+    // CORRECT: apikey is always the anon key. JWT goes only in Authorization.
+    // PostgREST identifies the role from the Authorization Bearer token, not apikey.
+    if(token) return {'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
+    return {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',...extra};
   } catch(e) {
-    return {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json',...extra};
+    return {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',...extra};
   }
 };
 const db={
-  async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
-  async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async patch(t,data,match){const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
-  async insert(t,row){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(row)});return r.ok?r.json():null;},
-  async insertMany(t,rows){if(!rows||!rows.length)return null;const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(rows)});return r.ok?r.json():null;},
+  async get(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
+  async upsert(t,data){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async patch(t,data,match){const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
+  async insert(t,row){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(row)});return r.ok?r.json():null;},
+  async insertMany(t,rows){if(!rows||!rows.length)return null;const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(rows)});return r.ok?r.json():null;},
   async patchWithLock(t,data,filter,lockField,lockVal,maxRetries=3){
     for(let i=0;i<=maxRetries;i++){
       try{
@@ -2565,7 +2562,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         const sups=await db.get('suppliers','order=name.asc');
         if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);setSuppliers(mapped);}
         const usrs=await db.get('users','order=id.asc');
-        if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,password:u.password,name:u.name,role:u.role,active:u.active})));
+        if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,name:u.name,role:u.role,active:u.active})));
         setDbReady(true);setSyncStatus('ok');setTimeout(()=>setSyncStatus(''),3000);
       }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
     })();
@@ -2657,11 +2654,27 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   const critN=(alerts||[]).filter(p=>p.alert.level==="order_now").length;
 
   const saveProduct=async f=>{
-    if(editProd)setProducts(ps=>ps.map(p=>p.id===editProd.id?{...p,...f}:p));
-    else setProducts(ps=>[...ps,{...f,id:crypto.randomUUID()}]);
-    setModal(null);setEditProd(null)
+    const isEdit = !!editProd;
+    const id = isEdit ? editProd.id : crypto.randomUUID();
+    const now = new Date().toISOString();
+    const productData = {
+      id, name:f.name||f.nombre||'', barcode:f.barcode||'',
+      supplier_id:f.supplierId||'arg', unit:f.unit||'kg',
+      stock:Number(f.stock)||0, unit_cost:Number(f.unitCost)||0,
+      min_stock:Number(f.minStock)||5, daily_usage:Number(f.dailyUsage)||0.5,
+      category:f.category||'', brand:f.brand||'',
+      history:f.history||[], updated_at:now
+    };
+    // Optimistic UI update first
+    if(isEdit) setProducts(ps=>ps.map(p=>p.id===id?{...p,...f}:p));
+    else setProducts(ps=>[...ps,{...f,id}]);
+    setModal(null); setEditProd(null);
+    // Write to Supabase (source of truth)
+    try {
+      await db.upsert('products', productData);
+    } catch(e) { console.warn('[Aryes] saveProduct SB failed:',e); }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit:!!editProd,id:editProd?.id||'new',nombre:f.nombre,stock:f.stock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit,id,nombre:productData.name,stock:productData.stock})}); }catch(e){}
   };
   const confirmOrder=(product,qty)=>{
     const sup=getSup(product.supplierId);const lead=totalLead(sup);
@@ -2671,13 +2684,15 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
     setModal({type:"orderDone",order:o});
   };
+  const _deliveringIds=React.useRef(new Set());
   const markDelivered=async id=>{
+    if(_deliveringIds.current.has(id)) return; // prevent double-click
+    _deliveringIds.current.add(id);
+    try {
     const o=orders.find(x=>x.id===id);if(!o)return;
     const prod=products.find(p=>p.id===o.productId);if(!prod)return;
     const newStock=prod.stock+o.qty;
     const now=new Date().toISOString();
-    // Server-first: write to Supabase before updating local state
-    // Optimistic lock: only update if stock hasn't changed since we read it
     await db.patchWithLock('products',{stock:newStock,updated_at:now},'id=eq.'+prod.id,'stock',prod.stock);
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'markDelivered',detail:JSON.stringify({orderId:o.id,productId:o.productId,qty:o.qty,newStock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
@@ -2688,29 +2703,68 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     LS.set('aryes6-products',updatedProds);
     setTimeout(()=>checkAndNotify(updatedProds,suppliers,emailCfg,notified),500);
     addMov({type:"delivery",productId:o.productId,productName:o.productName,supplierId:o.supplierId,supplierName:o.supplierName,qty:o.qty,unit:o.unit,note:`Mercadería recibida — pedido del ${new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}`});
+    } finally { _deliveringIds.current.delete(id); }
   };
-  const applyExcel=matches=>{
+  const applyExcel=async matches=>{
     const excelProds = products.map(p=>{const m=matches.find(x=>x.product.id===p.id);return m?{...p,stock:Math.max(0,m.newStock)}:p;});
     setProducts(()=>excelProds);
+    setModal(null);
     setTimeout(()=>checkAndNotify(excelProds,suppliers,emailCfg,notified),500);
+    // Write each updated stock to Supabase
+    const now = new Date().toISOString();
+    const writes = matches.map(m=>
+      db.patch('products',{stock:Math.max(0,m.newStock),updated_at:now},'id=eq.'+m.product.id)
+        .catch(e=>console.warn('[Aryes] applyExcel SB patch failed:',m.product.id,e))
+    );
+    await Promise.allSettled(writes);
     matches.forEach(m=>{
       const diff=m.newStock-m.product.stock;
-      addMov({type:diff>=0?"excel_in":"excel_out",productId:m.product.id,productName:m.product.name,supplierId:m.product.supplierId,supplierName:"",qty:Math.abs(diff),unit:m.product.unit,stockAfter:m.newStock,note:`Stock actualizado desde Excel (${diff>=0?"+":""}${diff})`});
+      addMov({type:diff>=0?'excel_in':'excel_out',productId:m.product.id,productName:m.product.name,supplierId:m.product.supplierId,supplierName:'',qty:Math.abs(diff),unit:m.product.unit,stockAfter:m.newStock,note:`Stock actualizado desde Excel (${diff>=0?'+':''}${diff})`});
     });
-    setModal(null);
   };
   const saveSupplier=async f=>{
-    if(editSup)setSuppliers(ss=>ss.map(s=>s.id===editSup.id?{...s,...f}:s));
-    else setSuppliers(ss=>[...ss,{...f,id:crypto.randomUUID().toString()}]);
-    setModal(null);setEditSup(null)
+    const isEdit = !!editSup;
+    const id = isEdit ? editSup.id : crypto.randomUUID();
+    const now = new Date().toISOString();
+    const supplierData = {
+      id, name:f.name||f.nombre||'', flag:f.flag||'', color:f.color||'#3a7d1e',
+      times:f.times||{preparation:2,customs:1,freight:4,warehouse:1},
+      company:f.company||'', contact:f.contact||'', email:f.email||'',
+      phone:f.phone||'', country:f.country||'', city:f.city||'',
+      currency:f.currency||'USD', payment_terms:f.paymentTerms||'30',
+      payment_method:f.paymentMethod||'', min_order:f.minOrder||'',
+      discount:f.discount||'0', rating:f.rating||3,
+      active:f.active!==false, notes:f.notes||'', updated_at:now
+    };
+    // Optimistic UI update
+    if(isEdit) setSuppliers(ss=>ss.map(s=>s.id===id?{...s,...f}:s));
+    else setSuppliers(ss=>[...ss,{...f,id}]);
+    setModal(null); setEditSup(null);
+    // Write to Supabase (source of truth)
+    try {
+      await db.upsert('suppliers', supplierData);
+    } catch(e) { console.warn('[Aryes] saveSupplier SB failed:',e); }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit:!!editSup,id:editSup?.id||'new',nombre:f.nombre})}); }catch(e){ console.warn('[Aryes] audit log failed',e); };
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch(e){}
   };
   const deleteSupplier=async id=>{
-    if(products.some(p=>p.supplierId===id)){alert("No se puede eliminar: hay productos asociados a este proveedor.");return;}
+    if(products.some(p=>p.supplierId===id)){alert('No se puede eliminar: hay productos asociados a este proveedor.');return;}
+    if(!window.confirm('¿Eliminar este proveedor? Esta acción no se puede deshacer.')) return;
     setSuppliers(ss=>ss.filter(s=>s.id!==id));
+    // Delete from Supabase (source of truth)
+    try { await db.del('suppliers',{id}); } catch(e){ console.warn('[Aryes] deleteSupplier SB failed:',e); }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_eliminado',detail:JSON.stringify({id})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
+    const now=new Date().toISOString();
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_eliminado',detail:JSON.stringify({id})}); }catch(e){}
+  };
+
+  const deleteProduct=async id=>{
+    if(!window.confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
+    setProducts(ps=>ps.filter(p=>p.id!==id));
+    // Delete from Supabase (source of truth)
+    try { await db.del('products',{id}); } catch(e){ console.warn('[Aryes] deleteProduct SB failed:',e); }
+    const now=new Date().toISOString();
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_eliminado',detail:JSON.stringify({id})}); }catch(e){}
   };
 
   const sendAlertEmail = async (alertProducts, cfg) => {
@@ -2890,7 +2944,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       {/* ══ DASHBOARD ══ */}
         {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
-        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts}/></Suspense></ErrorBoundary>}
+        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={deleteProduct}/></Suspense></ErrorBoundary>}
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}

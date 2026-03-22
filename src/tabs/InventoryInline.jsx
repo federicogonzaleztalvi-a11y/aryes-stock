@@ -1,7 +1,7 @@
 import React from 'react';
 import { T, Cap, Btn, AlertPill, StockBar, Spark, totalLead } from '../lib/ui.jsx';
 
-export default function InventoryInline({products, enriched, setModal, setEditProd, setProducts}) {
+export default function InventoryInline({products, enriched, setModal, setEditProd, setProducts, deleteProduct}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
@@ -38,7 +38,7 @@ export default function InventoryInline({products, enriched, setModal, setEditPr
                         <div style={{display:"flex",gap:6}}>
                           <Btn small variant="ghost" onClick={()=>{setEditProd(products.find(x=>x.id===p.id));setModal({type:"product"});}}>Editar</Btn>
                           <Btn small onClick={()=>setModal({type:"order",product:products.find(x=>x.id===p.id)})}>Pedir</Btn>
-                          <Btn small variant="danger" onClick={()=>setProducts(ps=>ps.filter(x=>x.id!==p.id))}>×</Btn>
+                          <Btn small variant="danger" onClick={()=>deleteProduct(p.id)}>×</Btn>
                         </div>
                       </td>
                     </tr>
