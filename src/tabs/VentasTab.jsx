@@ -11,6 +11,13 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
   // Use products from App if passed, else fallback to LS
   const [ventasLocal,setVentasLocal]=useState(()=>LS.get(KVEN,[]));
   const [clientes,setClientes]=useState(()=>LS.get(KCLI,[]));
+  // Refresh client list when tab regains focus (handles cross-tab creation)
+  React.useEffect(()=>{
+    const refresh=()=>setClientes(LS.get(KCLI,[]));
+    window.addEventListener('focus',refresh);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
+    return()=>window.removeEventListener('focus',refresh);
+  },[]);
   const prodsState = prodsProp || [];
   const setProds = setProdsProp || (()=>{});
 
