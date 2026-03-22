@@ -3,6 +3,20 @@
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
+const SB_URL = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+
+// Verify JWT signature via Supabase Auth — rejects forged/expired tokens
+async function verifySession(authHeader) {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  const res = await fetch(`${SB_URL}/auth/v1/user`, {
+    headers: { 'apikey': SB_ANON_KEY, 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const user = await res.json();
+  return user?.id ? user : null;
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
@@ -11,9 +25,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Must have a valid Supabase session token — prevents unauthenticated usage
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  // Verify JWT signature via Supabase — rejects forged, expired, or fake tokens
+  const user = await verifySession(req.headers.authorization);
+  if (!user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
