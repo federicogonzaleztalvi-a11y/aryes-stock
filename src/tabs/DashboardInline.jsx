@@ -12,11 +12,9 @@ function DashboardInline({products,suppliers,orders,movements,session,setTab,cri
   // Capital inmovilizado
   const stockValue = products.reduce((s,p)=>s+(p.stock||0)*(p.unitCost||0),0);
 
-  // Cobertura promedio en días
-  const withUsage = products.filter(p=>(p.dailyUsage||0)>0);
-  const avgCoverage = withUsage.length>0
-    ? Math.round(withUsage.reduce((s,p)=>s+(p.stock/(p.dailyUsage||0.001)),0)/withUsage.length)
-    : null;
+  // Cobertura crítica: productos con stock real pero cobertura < 14 días
+  const critCoverage = products.filter(p=>(p.dailyUsage||0)>0&&p.stock>0&&(p.stock/(p.dailyUsage||0.001))<14);
+  const critCoverageCount = critCoverage.length;
 
   // Valor en tránsito
   const transitValue = pending.reduce((s,o)=>s+(+o.totalCost||0),0);
@@ -99,11 +97,11 @@ function DashboardInline({products,suppliers,orders,movements,session,setTab,cri
             accent:T.green,
           },
           {
-            label:'Cobertura promedio',
-            value:avgCoverage!=null?fmtDays(avgCoverage):'—',
-            sub:'Días de stock disponible',
-            accent:avgCoverage!=null&&avgCoverage<14?T.warning:T.border,
-            click:null,
+            label:'Cobertura < 14 días',
+            value:critCoverageCount,
+            sub:critCoverageCount>0?`producto${critCoverageCount>1?'s':''} con stock bajo`:'Todos con cobertura suficiente',
+            accent:critCoverageCount>0?T.warning:T.border,
+            click:critCoverageCount>0?()=>setTab('inventory'):null,
           },
           {
             label:'En tránsito',
