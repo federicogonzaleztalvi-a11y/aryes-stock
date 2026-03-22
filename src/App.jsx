@@ -3002,20 +3002,9 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           })()}
         </nav>
 
-        {/* Excel button */}
-        <div style={{padding:"14px 16px",borderTop:`1px solid ${T.border}`}}>
-          {canEdit&&(<button onClick={()=>setModal({type:"excel"})}
-            style={{width:"100%",background:T.greenBg,border:`1px solid ${T.greenBd}`,borderRadius:4,padding:"9px 14px",fontFamily:T.sans,fontSize:11,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",color:T.green,cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:6}}>
-            ↑ Actualizar stock
-            <span style={{fontSize:10,color:T.greenLt,fontWeight:400}}>Excel</span>
-          </button>)}
-        </div>
+
       
-        <div style={{borderTop:`1px solid ${T.border}`,padding:'12px 16px 10px'}}>
-          <button onClick={handleLogout} style={{width:'100%',background:'none',border:`1px solid ${T.border}`,padding:'7px 12px',fontSize:12,color:T.textSm,cursor:'pointer',fontFamily:T.sans,display:'flex',alignItems:'center',gap:6,borderRadius:6,fontWeight:500}}>
-            ↩ Cerrar sesión
-          </button>
-        </div>
+
       </aside>
 
       {/* ── MAIN ── */}
@@ -3039,20 +3028,59 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             />
           </div>
           <div style={{flex:1}}/>
-          {/* User pill */}
-          <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 12px 6px 8px",borderRadius:8,border:`1px solid ${T.border}`,background:T.card,transition:"background .15s"}}
-            onMouseEnter={e=>e.currentTarget.style.background=T.muted}
-            onMouseLeave={e=>e.currentTarget.style.background=T.card}
-            onClick={()=>{if(canTab('config'))setTab('config');}}
-            title="Ver configuración">
-            <div style={{width:30,height:30,borderRadius:"50%",background:T.greenBg,border:`2px solid ${T.greenBd}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}}>
-              {(session?.name||session?.email||'U')[0].toUpperCase()}
-            </div>
-            <div>
-              <div style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text,lineHeight:1.2}}>{session?.name||session?.email?.split('@')[0]||'Usuario'}</div>
-              <div style={{fontFamily:T.sans,fontSize:10,color:T.textXs,textTransform:"capitalize"}}>{session?.role==='admin'?'Administrador':session?.role==='operador'?'Operador':'Vendedor'}</div>
-            </div>
-          </div>
+          {/* Excel upload — discrete */}
+          {canEdit&&React.createElement('button',{onClick:()=>setModal({type:'excel'}),
+            title:'Actualizar stock desde Excel',
+            style:{display:'flex',alignItems:'center',gap:6,padding:'6px 12px',border:`1px solid ${T.border}`,borderRadius:8,background:T.card,cursor:'pointer',fontFamily:T.sans,fontSize:12,color:T.textSm,fontWeight:500,transition:'background .15s',whiteSpace:'nowrap'},
+            onMouseEnter:e=>e.currentTarget.style.background=T.muted,
+            onMouseLeave:e=>e.currentTarget.style.background=T.card
+          },
+            React.createElement('span',{style:{fontSize:13}},'↑'),
+            'Actualizar stock'
+          )}
+          {/* User pill with dropdown */}
+          {(()=>{
+            const [showMenu,setShowMenu]=React.useState(false);
+            const ref=React.useRef(null);
+            React.useEffect(()=>{
+              if(!showMenu) return;
+              const handler=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setShowMenu(false); };
+              document.addEventListener('mousedown',handler);
+              return ()=>document.removeEventListener('mousedown',handler);
+            },[showMenu]);
+            return React.createElement('div',{ref,style:{position:'relative'}},
+              React.createElement('div',{
+                style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 12px 6px 8px",borderRadius:8,border:`1px solid ${showMenu?T.greenBd:T.border}`,background:showMenu?T.greenBg:T.card,transition:"background .15s"},
+                onMouseEnter:e=>{ if(!showMenu) e.currentTarget.style.background=T.muted; },
+                onMouseLeave:e=>{ if(!showMenu) e.currentTarget.style.background=T.card; },
+                onClick:()=>setShowMenu(m=>!m)
+              },
+                React.createElement('div',{style:{width:30,height:30,borderRadius:"50%",background:T.greenBg,border:`2px solid ${T.greenBd}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}},
+                  (session?.name||session?.email||'U')[0].toUpperCase()
+                ),
+                React.createElement('div',null,
+                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text,lineHeight:1.2}},session?.name||session?.email?.split('@')[0]||'Usuario'),
+                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:10,color:T.textXs,textTransform:"capitalize"}},session?.role==='admin'?'Administrador':session?.role==='operador'?'Operador':'Vendedor')
+                ),
+                React.createElement('span',{style:{fontSize:10,color:T.textXs,marginLeft:2}},showMenu?'▲':'▾')
+              ),
+              showMenu&&React.createElement('div',{style:{position:'absolute',top:'calc(100% + 6px)',right:0,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,.1)',minWidth:180,zIndex:200,overflow:'hidden'}},
+                React.createElement('div',{style:{padding:'12px 16px 8px',borderBottom:`1px solid ${T.border}`}},
+                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}},session?.name||session?.email?.split('@')[0]||'Usuario'),
+                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:2}},session?.email||'')
+                ),
+                canTab('config')&&React.createElement('button',{
+                  onClick:()=>{setTab('config');setShowMenu(false);},
+                  style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',fontFamily:T.sans,fontSize:13,color:T.textMd,cursor:'pointer',display:'flex',alignItems:'center',gap:8}
+                },'⚙ Configuración'),
+                React.createElement('div',{style:{borderTop:`1px solid ${T.border}`,padding:'6px 8px'}}),
+                React.createElement('button',{
+                  onClick:()=>{ setShowMenu(false); handleLogout(); },
+                  style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',fontFamily:T.sans,fontSize:13,color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',gap:8,marginBottom:2}
+                },'↩ Cerrar sesión')
+              )
+            );
+          })()}
         </div>
 
         <div style={{padding:"36px 44px",flex:1}}>
