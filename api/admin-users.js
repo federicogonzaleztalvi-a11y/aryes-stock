@@ -1,138 +1,79 @@
 // Vercel Serverless Function — Supabase Auth Admin Proxy
-// This runs server-side only. The SERVICE_ROLE_KEY is never exposed to the client.
-// All operations require a valid admin JWT passed in the Authorization header.
+// SERVICE_ROLE_KEY stays server-side only. Never sent to client.
 
 const SB_URL = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Decode JWT payload without verification (signature is verified by Supabase internally).
-// We trust the token structure and verify the role authoritatively in the DB using service_role.
 function decodeJwtPayload(token) {
   try {
     const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const json = Buffer.from(base64, 'base64').toString('utf8');
-    return JSON.parse(json);
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
   } catch(e) { return null; }
 }
 
-// Verify the calling user is authenticated and has admin role
+// Query Supabase bypassing RLS using service_role
+async function sbQuery(path) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    }
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch(e) { data = text; }
+  return { ok: res.status >= 200 && res.status < 300, status: res.status, data };
+}
+
 async function verifyAdmin(authHeader) {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
-
-  // Decode payload to get email/sub without a network call
   const payload = decodeJwtPayload(token);
-  console.log('[verifyAdmin] payload email:', payload?.email, 'sub:', payload?.sub, 'exp:', payload?.exp);
-  if (!payload?.sub || !payload?.email) {
-    console.log('[verifyAdmin] FAIL: missing sub or email in payload');
-    return null;
-  }
+  if (!payload?.sub || !payload?.email) return null;
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+  if (!SERVICE_KEY) { console.log('[VA] no service key'); return null; }
 
-  // Check token is not expired
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.exp && payload.exp < now) {
-    console.log('[verifyAdmin] FAIL: token expired at', payload.exp, 'now:', now);
-    return null;
-  }
+  // Query users table with service_role (bypasses RLS)
+  const { ok, status, data } = await sbQuery(`users?email=eq.${payload.email}&select=role,active&limit=1`);
+  console.log(`[VA] email:${payload.email} status:${status} rows:${JSON.stringify(data)}`);
 
-  // Check SERVICE_KEY is available
-  console.log('[verifyAdmin] SERVICE_KEY present:', !!SERVICE_KEY, 'SB_URL:', SB_URL);
-  if (!SERVICE_KEY) {
-    console.log('[verifyAdmin] FAIL: SERVICE_KEY missing');
-    return null;
-  }
-
-  // Authoritatively verify role in DB using service_role key
-  const dbUrl = `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`;
-  console.log('[verifyAdmin] querying DB:', dbUrl);
-  let roleRes, rows;
-  try {
-    roleRes = await fetch(dbUrl,
-      { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
-    );
-    console.log('[verifyAdmin] DB status:', roleRes.status);
-    rows = await roleRes.json();
-    console.log('[verifyAdmin] DB rows:', JSON.stringify(rows));
-  } catch(fetchErr) {
-    console.log('[verifyAdmin] FAIL: DB fetch threw:', fetchErr.message);
-    return null;
-  }
-  if (!roleRes.ok) {
-    console.log('[verifyAdmin] FAIL: DB query not ok', roleRes.status);
-    return null;
-  }
-  if (!rows?.length || rows[0].role !== 'admin') {
-    console.log('[verifyAdmin] FAIL: role not admin, rows:', JSON.stringify(rows));
-    return null;
-  }
-  if (rows[0].active === false) {
-    console.log('[verifyAdmin] FAIL: user inactive');
-    return null;
-  }
-
+  if (!ok || !Array.isArray(data) || !data.length) return null;
+  if (data[0].role !== 'admin') return null;
+  if (data[0].active === false) return null;
   return { id: payload.sub, email: payload.email };
 }
 
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  if (!SERVICE_KEY) {
-    return res.status(500).json({ error: 'Server misconfiguration: missing service key' });
-  }
+  if (!SERVICE_KEY) return res.status(500).json({ error: 'Server misconfiguration' });
 
-  // Authenticate the calling admin
   const admin = await verifyAdmin(req.headers.authorization);
-  if (!admin) {
-    // Return debug info so we can see exactly why auth failed
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    let debugInfo = { reason: 'verifyAdmin_returned_null', has_token: !!token, token_length: token.length };
-    if (token) {
-      try {
-        const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-        const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
-        debugInfo.payload_email = payload.email;
-        debugInfo.payload_sub = payload.sub;
-        debugInfo.payload_exp = payload.exp;
-        debugInfo.is_expired = payload.exp < Math.floor(Date.now()/1000);
-        // Try DB query
-        const dbRes = await fetch(`${SB_URL}/rest/v1/users?email=eq.${payload.email}&select=role,active&limit=1`,
-          { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } });
-        const dbRows = await dbRes.json();
-        debugInfo.db_status = dbRes.status;
-        debugInfo.db_rows = dbRows;
-      } catch(e) { debugInfo.decode_error = e.message; }
-    }
-    return res.status(403).json({ error: 'Forbidden: admin only', debug: debugInfo });
-  }
+  if (!admin) return res.status(403).json({ error: 'Forbidden: admin only' });
 
   const { action } = req.query;
 
   try {
-    // ── LIST users ──────────────────────────────────────────────────────────
+    // ── LIST ────────────────────────────────────────────────────────────────
     if (req.method === 'GET' && action === 'list') {
-      const r = await fetch(`${SB_URL}/rest/v1/users?select=id,username,name,email,role,active&order=id.asc`, {
-        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
-      });
-      const rows = await r.json();
-      return res.status(200).json(rows);
+      const { ok, data } = await sbQuery('users?select=id,username,name,email,role,active&order=id.asc');
+      return res.status(200).json(ok && Array.isArray(data) ? data : []);
     }
 
-    // ── CREATE user ─────────────────────────────────────────────────────────
+    // ── CREATE ──────────────────────────────────────────────────────────────
     if (req.method === 'POST' && action === 'create') {
-      const { email, password, name, role } = req.body;
+      const { email, password, name, role } = req.body || {};
       if (!email || !password || !name || !role) {
         return res.status(400).json({ error: 'email, password, name y role son requeridos' });
       }
-      const VALID_ROLES = ['admin', 'operador', 'vendedor'];
-      if (!VALID_ROLES.includes(role)) {
+      if (!['admin','operador','vendedor'].includes(role)) {
         return res.status(400).json({ error: 'Rol inválido' });
       }
-
       // Create in Supabase Auth
       const authRes = await fetch(`${SB_URL}/auth/v1/admin/users`, {
         method: 'POST',
@@ -140,126 +81,92 @@ export default async function handler(req, res) {
         body: JSON.stringify({ email, password, email_confirm: true })
       });
       const authData = await authRes.json();
-      if (!authRes.ok) {
-        return res.status(400).json({ error: authData.message || authData.msg || 'Error al crear usuario en Auth' });
-      }
+      if (!authRes.ok) return res.status(400).json({ error: authData.message || 'Error al crear usuario en Auth' });
 
       // Insert into users table
-      const username = email.split('@')[0];
       const dbRes = await fetch(`${SB_URL}/rest/v1/users`, {
         method: 'POST',
-        headers: {
-          'apikey': SERVICE_KEY,
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({ username, name, email, role, active: true })
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify({ username: email.split('@')[0], name, email, role, active: true })
       });
       const dbData = await dbRes.json();
       if (!dbRes.ok) {
-        // Rollback: delete auth user
+        // Rollback
         await fetch(`${SB_URL}/auth/v1/admin/users/${authData.id}`, {
-          method: 'DELETE',
-          headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+          method: 'DELETE', headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
         });
-        return res.status(400).json({ error: 'Usuario creado en Auth pero falló en DB. Revertido.' });
+        return res.status(400).json({ error: 'Error al crear usuario en DB. Revertido.' });
       }
-
-      return res.status(201).json({ success: true, user: dbData[0] || dbData });
+      return res.status(201).json({ success: true, user: Array.isArray(dbData) ? dbData[0] : dbData });
     }
 
-    // ── UPDATE role / active ─────────────────────────────────────────────────
+    // ── UPDATE role/active/name ─────────────────────────────────────────────
     if (req.method === 'PATCH' && action === 'update') {
-      const { email, role, active, name } = req.body;
+      const { email, role, active, name } = req.body || {};
       if (!email) return res.status(400).json({ error: 'email requerido' });
-
       const updates = {};
       if (role !== undefined) updates.role = role;
       if (active !== undefined) updates.active = active;
       if (name !== undefined) updates.name = name;
-
       const r = await fetch(`${SB_URL}/rest/v1/users?email=eq.${email}`, {
         method: 'PATCH',
-        headers: {
-          'apikey': SERVICE_KEY,
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(updates)
       });
       const data = await r.json();
       if (!r.ok) return res.status(400).json({ error: 'Error al actualizar usuario' });
-      return res.status(200).json({ success: true, user: data[0] || data });
+      return res.status(200).json({ success: true, user: Array.isArray(data) ? data[0] : data });
     }
 
-    // ── RESET PASSWORD ───────────────────────────────────────────────────────
+    // ── RESET PASSWORD ──────────────────────────────────────────────────────
     if (req.method === 'PATCH' && action === 'reset-password') {
-      const { email, newPassword } = req.body;
+      const { email, newPassword } = req.body || {};
       if (!email || !newPassword) return res.status(400).json({ error: 'email y newPassword requeridos' });
-      if (newPassword.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
-
-      // Find the auth user ID by email
-      // Find auth user by listing and filtering (Supabase admin list supports email filter)
-      const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?page=1&per_page=1000`, {
-        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
-      });
-      const listData = await listRes.json();
-      const authUser = (listData?.users || []).find(u => u.email === email);
-      if (!authUser?.id) return res.status(404).json({ error: 'Usuario no encontrado en Auth' });
-      const authUserId = authUser.id;
-
-      const r = await fetch(`${SB_URL}/auth/v1/admin/users/${authUserId}`, {
-        method: 'PUT',
-        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: newPassword })
-      });
-      if (!r.ok) {
-        const e = await r.json();
-        return res.status(400).json({ error: e.message || 'Error al resetear contraseña' });
-      }
-      return res.status(200).json({ success: true });
-    }
-
-    // ── DELETE user ─────────────────────────────────────────────────────────
-    if (req.method === 'DELETE' && action === 'delete') {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: 'email requerido' });
-
-      // Prevent deleting yourself
-      if (email === admin.email) {
-        return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
-      }
-
-      // Find auth user ID
+      if (newPassword.length < 6) return res.status(400).json({ error: 'Mínimo 6 caracteres' });
+      // Find auth user
       const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?page=1&per_page=1000`, {
         headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
       });
       const listData = await listRes.json();
       const authUserId = (listData?.users || []).find(u => u.email === email)?.id;
+      if (!authUserId) return res.status(404).json({ error: 'Usuario no encontrado en Auth' });
+      const r = await fetch(`${SB_URL}/auth/v1/admin/users/${authUserId}`, {
+        method: 'PUT',
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: newPassword })
+      });
+      if (!r.ok) { const e = await r.json(); return res.status(400).json({ error: e.message || 'Error al resetear' }); }
+      return res.status(200).json({ success: true });
+    }
 
-      // Delete from users table first
-      await fetch(`${SB_URL}/rest/v1/users?email=eq.${email}`, {
-        method: 'DELETE',
+    // ── DELETE ──────────────────────────────────────────────────────────────
+    if (req.method === 'DELETE' && action === 'delete') {
+      const { email } = req.body || {};
+      if (!email) return res.status(400).json({ error: 'email requerido' });
+      if (email === admin.email) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
+      // Find auth user
+      const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?page=1&per_page=1000`, {
         headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
       });
-
-      // Delete from Auth if found
+      const listData = await listRes.json();
+      const authUserId = (listData?.users || []).find(u => u.email === email)?.id;
+      // Delete from users table
+      await fetch(`${SB_URL}/rest/v1/users?email=eq.${email}`, {
+        method: 'DELETE', headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+      });
+      // Delete from Auth
       if (authUserId) {
         await fetch(`${SB_URL}/auth/v1/admin/users/${authUserId}`, {
-          method: 'DELETE',
-          headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
+          method: 'DELETE', headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
         });
       }
-
       return res.status(200).json({ success: true });
     }
 
     return res.status(400).json({ error: 'Acción no reconocida' });
 
-  } catch (e) {
-    console.error('[admin-users] action:', action, 'method:', req.method, 'error:', e.message || e);
-    return res.status(500).json({ error: 'Error interno del servidor', detail: e.message });
+  } catch(e) {
+    console.error('[admin-users] action:', action, 'error:', e.message);
+    return res.status(500).json({ error: 'Error interno', detail: e.message });
   }
 }
