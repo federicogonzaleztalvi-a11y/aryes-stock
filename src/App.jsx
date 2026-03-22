@@ -3113,12 +3113,12 @@ function AryesApp({session, onLogout, onSessionUpdate}){
 
         {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ConfigInline session={session} suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols} brandCfg={brandCfg} setBrandCfg={setBrandCfg}/></Suspense></ErrorBoundary>}
         {activeTab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
-      {activeTab==="clientes"&&<ClientesTab />}
+      {activeTab==="clientes"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ClientesTab /></Suspense></ErrorBoundary>}
       {activeTab==="movimientos"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><MovimientosTab /></Suspense>}
       
       {activeTab==="deposito"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DepositoTab /></Suspense>}
       
-      {activeTab==="rutas"&&<RutasTab />}
+      {activeTab==="rutas"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RutasTab /></Suspense></ErrorBoundary>}
       
         {activeTab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
         
@@ -3129,17 +3129,17 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         {activeTab==="informes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InformesTab /></Suspense>}
         
         {activeTab==="conteo"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConteoTab /></Suspense>}
-        {activeTab==="packing"&&<PackingTab />}
+        {activeTab==="packing"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><PackingTab /></Suspense></ErrorBoundary>}
         {activeTab==="batch-picking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><BatchPickingTab /></Suspense>}
         {activeTab==="transferencias"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TransferenciasTab /></Suspense>}
         
-        {activeTab==="kpis"&&<KPIsTab />}
+        {activeTab==="kpis"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><KPIsTab /></Suspense></ErrorBoundary>}
         {activeTab==="tracking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TrackingTab session={session} /></Suspense>}
         
         {activeTab==="devoluciones"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DevolucionesTab /></Suspense>}
-        {activeTab==="precios"&&<PreciosTab />}
+        {activeTab==="precios"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><PreciosTab /></Suspense></ErrorBoundary>}
         {activeTab==="demanda"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DemandaTab /></Suspense>}
-        {activeTab==="audit"&&<AuditTab />}
+        {activeTab==="audit"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><AuditTab /></Suspense></ErrorBoundary>}
         </div>
         </main>
 
