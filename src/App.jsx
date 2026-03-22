@@ -2532,7 +2532,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       try{
         const prods=await db.get('products','order=id.asc&limit=1000');
         if(prods?.length>0){
-          const mapped=prods.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'arg',unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
+          const mapped=prods.map(p=>({id:p.uuid||String(p.id),name:p.name,barcode:p.barcode||'',supplierId:p.supplier_id||'',unit:p.unit||'kg',stock:Number(p.stock)||0,unitCost:Number(p.unit_cost)||0,minStock:Number(p.min_stock)||5,dailyUsage:Number(p.daily_usage)||0.5,category:p.category||'',brand:p.brand||'',history:p.history||[]}));
           LS.set('aryes6-products',mapped);
           setProducts(mapped);
         }
@@ -2589,7 +2589,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         if(!serverProds?.length) return;
 
         const serverMap = {};
-        serverProds.forEach(p => { serverMap[p.id] = p; });
+        serverProds.forEach(p => { serverMap[p.uuid||String(p.id)] = p; });
 
         let hasChanges = false;
         const merged = products.map(local => {
@@ -2656,18 +2656,21 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     const id = isEdit ? editProd.id : crypto.randomUUID();
     const now = new Date().toISOString();
     const productData = {
-      id, name:f.name||f.nombre||'', barcode:f.barcode||'',
-      supplier_id:f.supplierId||'arg', unit:f.unit||'kg',
+      uuid:id,                          // uuid = our TEXT id (for upsert conflict)
+      name:f.name||f.nombre||'', barcode:f.barcode||'',
+      supplier_id:f.supplierId||'', unit:f.unit||'kg',
       stock:Number(f.stock)||0, unit_cost:Number(f.unitCost)||0,
       min_stock:Number(f.minStock)||5, daily_usage:Number(f.dailyUsage)||0.5,
       category:f.category||'', brand:f.brand||'',
       history:f.history||[], updated_at:now
+      // NOTE: 'id' (INTEGER) is NOT sent — Supabase autogenerates it
     };
     // Optimistic UI update first
     if(isEdit) setProducts(ps=>ps.map(p=>p.id===id?{...p,...f}:p));
     else setProducts(ps=>[...ps,{...f,id}]);
     setModal(null); setEditProd(null);
     // Write to Supabase (source of truth)
+    // Upsert on uuid column (unique index on products.uuid)
     try {
       await db.upsert('products', productData);
     } catch(e) {
@@ -2710,7 +2713,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     const prod=products.find(p=>p.id===o.productId);if(!prod)return;
     const newStock=prod.stock+o.qty;
     const now=new Date().toISOString();
-    await db.patchWithLock('products',{stock:newStock,updated_at:now},'id=eq.'+prod.id,'stock',prod.stock);
+    await db.patchWithLock('products',{stock:newStock,updated_at:now},'uuid=eq.'+prod.id,'stock',prod.stock);
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'markDelivered',detail:JSON.stringify({orderId:o.id,productId:o.productId,qty:o.qty,newStock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
 
@@ -2732,7 +2735,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     // Write each updated stock to Supabase
     const now = new Date().toISOString();
     const writes = matches.map(m=>
-      db.patch('products',{stock:Math.max(0,m.newStock),updated_at:now},'id=eq.'+m.product.id)
+      db.patch('products',{stock:Math.max(0,m.newStock),updated_at:now},'uuid=eq.'+m.product.id)
         .catch(e=>console.warn('[Aryes] applyExcel SB patch failed:',m.product.id,e))
     );
     await Promise.allSettled(writes);
@@ -2797,7 +2800,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     setProducts(ps=>ps.filter(p=>p.id!==id));
     // Delete from Supabase (source of truth)
     try {
-      await db.del('products',{id});
+      await db.del('products',{uuid:id}); // uuid is our TEXT id
     } catch(e) {
       console.warn('[Aryes] deleteProduct SB failed:',e);
       setProducts(snapshot); // rollback UI
