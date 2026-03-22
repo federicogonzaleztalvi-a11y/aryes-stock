@@ -68,6 +68,17 @@ export default async function handler(req, res) {
   try {
     // ── LIST ────────────────────────────────────────────────────────────────
     if (req.method === 'GET' && action === 'list') {
+      // Use RPC to bypass RLS (SECURITY DEFINER runs as postgres)
+      const rpcRes = await fetch(`${SB_URL}/rest/v1/rpc/list_all_users`, {
+        method: 'POST',
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (rpcRes.ok) {
+        const users = await rpcRes.json();
+        return res.status(200).json(Array.isArray(users) ? users : []);
+      }
+      // Fallback to direct query
       const { ok, data } = await sbQuery('users?select=id,username,name,email,role,active&order=id.asc');
       return res.status(200).json(ok && Array.isArray(data) ? data : []);
     }
