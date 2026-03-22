@@ -3249,45 +3249,63 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
 
   const G='#3a7d1e';
   const S={
-    btn:{position:'fixed',bottom:24,right:24,zIndex:9999,width:48,height:48,borderRadius:12,background:open?'#f0f7ec':G,border:open?'2px solid #b8d9a8':'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(58,125,30,0.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,transition:'all .2s'},
-    panel:{position:'fixed',bottom:82,right:24,zIndex:9998,width:360,height:500,background:'#fff',borderRadius:14,boxShadow:'0 4px 24px rgba(0,0,0,0.12)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #e2e2de'},
-    header:{background:'#f9f9f7',borderBottom:'1px solid #e2e2de',padding:'12px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0},
-    msgs:{flex:1,overflowY:'auto',padding:'12px 14px',display:'flex',flexDirection:'column',gap:10,background:'#fff'},
-    input:{padding:'10px 12px',borderTop:'1px solid #e2e2de',display:'flex',gap:8,flexShrink:0,background:'#f9f9f7'},
+    btn:{position:'fixed',bottom:24,right:24,zIndex:9999,width:52,height:52,borderRadius:16,background:open?'#f0f7ec':G,border:open?'1.5px solid #b8d9a8':'none',cursor:'pointer',boxShadow:open?'none':'0 2px 8px rgba(58,125,30,.3)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .18s',flexShrink:0},
+    panel:{position:'fixed',bottom:84,right:24,zIndex:9998,width:368,height:520,background:'#ffffff',borderRadius:20,boxShadow:'0 8px 32px rgba(0,0,0,.1)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'0.5px solid #e2e2de'},
+    header:{background:'#ffffff',borderBottom:'0.5px solid #e2e2de',padding:'14px 16px',display:'flex',alignItems:'center',gap:11,flexShrink:0},
+    msgs:{flex:1,overflowY:'auto',padding:'14px 14px 6px',display:'flex',flexDirection:'column',gap:10,background:'#ffffff'},
+    input:{padding:'10px 12px',borderTop:'0.5px solid #e2e2de',display:'flex',gap:8,flexShrink:0,background:'#f9f9f7',alignItems:'flex-end'},
   };
 
+  const chatIcon=React.createElement('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'},React.createElement('path',{d:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'}));
+  const chatIconSm=React.createElement('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:G,strokeWidth:2.5,strokeLinecap:'round',strokeLinejoin:'round'},React.createElement('path',{d:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'}));
+  const sendIcon=React.createElement('svg',{width:15,height:15,viewBox:'0 0 24 24',fill:'none',stroke:'#fff',strokeWidth:2.2,strokeLinecap:'round',strokeLinejoin:'round'},React.createElement('line',{x1:22,y1:2,x2:11,y2:13}),React.createElement('polygon',{points:'22 2 15 22 11 13 2 9 22 2',fill:'#fff',stroke:'none'}));
+
   return React.createElement(React.Fragment,null,
-    React.createElement('button',{onClick:()=>setOpen(o=>!o),style:S.btn,title:'Asistente IA'},
-      open?React.createElement('span',{style:{fontSize:16,color:G}},'✕'):'💬',
-      unread>0&&!open&&React.createElement('span',{style:{position:'absolute',top:-4,right:-4,background:'#ef4444',color:'#fff',borderRadius:'50%',width:18,height:18,fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}},unread)
+    // ── Trigger button ──
+    React.createElement('button',{onClick:()=>setOpen(o=>!o),style:S.btn,'aria-label':'Asistente IA'},
+      open
+        ? React.createElement('span',{style:{fontSize:14,color:G,lineHeight:1}},'✕')
+        : React.createElement('span',{style:{color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}},chatIcon),
+      unread>0&&!open&&React.createElement('span',{style:{position:'absolute',top:-5,right:-5,background:'#e24b4a',color:'#fff',borderRadius:'50%',width:19,height:19,fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #f9f9f7'}},unread)
     ),
+    // ── Panel ──
     open&&React.createElement('div',{style:S.panel},
+      // Header
       React.createElement('div',{style:S.header},
-        React.createElement('div',{style:{width:32,height:32,borderRadius:8,background:'#f0f7ec',border:'1px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}},'💬'),
-        React.createElement('div',null,
-          React.createElement('div',{style:{fontWeight:600,fontSize:13,color:'#1a1a18'}},'Asistente de Stock'),
-          React.createElement('div',{style:{fontSize:10,color:'#9a9a98',textTransform:'capitalize'}},role)
+        React.createElement('div',{style:{width:36,height:36,borderRadius:11,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},chatIconSm),
+        React.createElement('div',{style:{flex:1}},
+          React.createElement('div',{style:{fontWeight:600,fontSize:13,color:'#1a1a18',lineHeight:1.2}},'Asistente de stock'),
+          React.createElement('div',{style:{fontSize:11,color:'#9a9a98',marginTop:3,display:'flex',alignItems:'center',gap:5}},
+            React.createElement('span',{style:{width:6,height:6,borderRadius:'50%',background:apiKey?G:'#f59e0b',flexShrink:0}},null),
+            apiKey?'Activo':'Sin configurar',
+            React.createElement('span',{style:{color:'#d3d3d0'}},'·'),
+            React.createElement('span',{style:{textTransform:'capitalize'}},role==='admin'?'Admin':role==='operador'?'Operador':'Vendedor')
+          )
         ),
-        React.createElement('div',{style:{marginLeft:'auto',display:'flex',alignItems:'center',gap:6}},
-          React.createElement('div',{style:{width:6,height:6,borderRadius:'50%',background:apiKey?G:'#f59e0b'}}),
-          React.createElement('span',{style:{fontSize:10,color:'#9a9a98'}},apiKey?'Activo':'Sin config.')
-        )
+        React.createElement('button',{onClick:()=>setOpen(false),style:{width:28,height:28,borderRadius:8,border:'0.5px solid #e2e2de',background:'#f4f4f1',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}},React.createElement('span',{style:{fontSize:13,color:'#6a6a68',lineHeight:1}},'✕'))
       ),
+      // Messages
       React.createElement('div',{style:S.msgs},
-        msgs.map((m,i)=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:m.r==='u'?'flex-end':'flex-start'}},
-          React.createElement('div',{style:{maxWidth:'82%',padding:'9px 13px',borderRadius:m.r==='u'?'14px 14px 4px 14px':'14px 14px 14px 4px',background:m.r==='u'?G:'#f4f4f2',color:m.r==='u'?'#fff':'#1a1a18',fontSize:13,lineHeight:1.5,whiteSpace:'pre-wrap',wordBreak:'break-word'}},m.t)
+        msgs.map((m,i)=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:m.r==='u'?'flex-end':'flex-start',alignItems:'flex-end',gap:7}},
+          m.r==='a'&&React.createElement('div',{style:{width:24,height:24,borderRadius:7,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginBottom:1}},chatIconSm),
+          React.createElement('div',{style:{maxWidth:'78%',padding:'10px 13px',borderRadius:m.r==='u'?'16px 16px 4px 16px':'4px 16px 16px 16px',background:m.r==='u'?G:'#f4f4f1',color:m.r==='u'?'#fff':'#1a1a18',fontSize:13,lineHeight:1.55,whiteSpace:'pre-wrap',wordBreak:'break-word'}},m.t)
         )),
-        busy&&React.createElement('div',{style:{display:'flex',justifyContent:'flex-start'}},React.createElement('div',{style:{padding:'9px 13px',borderRadius:'14px 14px 14px 4px',background:'#f4f4f2',color:'#aaa',fontSize:13}},'● ● ●')),
+        busy&&React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:7}},
+          React.createElement('div',{style:{width:24,height:24,borderRadius:7,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},chatIconSm),
+          React.createElement('div',{style:{padding:'10px 14px',borderRadius:'4px 16px 16px 16px',background:'#f4f4f1',display:'flex',gap:4,alignItems:'center'}},
+            ...[0,1,2].map(j=>React.createElement('span',{key:j,style:{width:6,height:6,borderRadius:'50%',background:'#b4b4b2',animation:`bounce 1.2s ease ${j*0.2}s infinite`}}))
+          )
+        ),
         React.createElement('div',{ref:endRef})
       ),
-      msgs.length<=1&&!busy&&React.createElement('div',{style:{padding:'0 14px 10px',display:'flex',flexWrap:'wrap',gap:6,flexShrink:0}},
-        (_QUICK[role]||_QUICK.admin).map((q,i)=>React.createElement('button',{key:i,onClick:()=>send(q),style:{fontSize:11,padding:'5px 10px',borderRadius:20,border:'1px solid #e0e0de',background:'#fafafa',cursor:'pointer',color:'#444',lineHeight:1.3}},q))
+      // Quick chips
+      msgs.length<=1&&!busy&&React.createElement('div',{style:{padding:'4px 14px 10px',display:'flex',flexWrap:'wrap',gap:6,flexShrink:0}},
+        (_QUICK[role]||_QUICK.admin).map((q,i)=>React.createElement('button',{key:i,onClick:()=>send(q),style:{fontSize:11,padding:'5px 11px',borderRadius:20,border:'0.5px solid #d8d8d4',background:'#f9f9f7',cursor:'pointer',color:'#4a4a48',lineHeight:1.3,fontFamily:'inherit',transition:'background .12s'},onMouseEnter:e=>e.currentTarget.style.background='#f0f0ec',onMouseLeave:e=>e.currentTarget.style.background='#f9f9f7'},q))
       ),
+      // Input area
       React.createElement('div',{style:S.input},
-        React.createElement('textarea',{ref:inRef,value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}},placeholder:'Preguntá sobre stock, precios, pedidos...',rows:1,style:{flex:1,border:'1px solid #e0e0de',borderRadius:10,padding:'8px 12px',fontSize:13,resize:'none',fontFamily:'inherit',outline:'none',lineHeight:1.4,maxHeight:80,overflowY:'auto'}}),
-        React.createElement('button',{onClick:()=>send(),disabled:!input.trim()||busy,style:{width:36,height:36,borderRadius:'50%',background:input.trim()&&!busy?G:'#e0e0de',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'flex-end'}},
-          React.createElement('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none'},React.createElement('path',{d:'M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2',stroke:input.trim()&&!busy?'#fff':'#999',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'}))
-        )
+        React.createElement('textarea',{ref:inRef,value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}},placeholder:'Preguntá sobre stock, precios...',rows:1,style:{flex:1,border:'0.5px solid #d8d8d4',borderRadius:12,padding:'9px 13px',fontSize:13,resize:'none',fontFamily:'inherit',outline:'none',lineHeight:1.45,maxHeight:80,overflowY:'auto',background:'#ffffff',color:'#1a1a18'}}),
+        React.createElement('button',{onClick:()=>send(),disabled:!input.trim()||busy,style:{width:36,height:36,borderRadius:10,background:input.trim()&&!busy?G:'#e0e0dc',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'background .15s'}},sendIcon)
       )
     )
   );
