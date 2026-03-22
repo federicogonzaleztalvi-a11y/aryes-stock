@@ -4,8 +4,8 @@ import { T, Cap, Btn, Inp, Field } from '../lib/ui.jsx';
 // ConfigInline extracted from App.jsx
 export default function ConfigInline({suppliers, setSuppliers, settingsTab, setSettingsTab, emailCfg, setEmailCfg, enriched, sendAlertEmail, EmailSettings, totalLead, tfCols}) {
   return (
-{/* ══ SETTINGS ══ */}
-          <div className="au" style={{display:"grid",gap:24}}>
+    <>
+      <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
               <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1></div>
             </div>
@@ -64,5 +64,6 @@ export default function ConfigInline({suppliers, setSuppliers, settingsTab, setS
             })()}
           </div>
 
+    </>
   );
 }

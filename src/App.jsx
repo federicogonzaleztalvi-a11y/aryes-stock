@@ -5,8 +5,6 @@ import React, { useState, useEffect, useRef, useMemo, useCallback , Suspense } f
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
 // ─────────────────────────────────────────────────────────────────────────────
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
 const ImporterTab = React.lazy(() => import('./tabs/ImporterTab.jsx'));
 const VentasTab = React.lazy(() => import('./tabs/VentasTab.jsx'));
 const DepositoTab = React.lazy(() => import('./tabs/DepositoTab.jsx'));
@@ -34,6 +32,9 @@ const PedidosInline = React.lazy(() => import('./tabs/PedidosInline.jsx'));
 const InventoryInline = React.lazy(() => import('./tabs/InventoryInline.jsx'));
 const ConfigInline = React.lazy(() => import('./tabs/ConfigInline.jsx'));
 const ProveedoresInline = React.lazy(() => import('./tabs/ProveedoresInline.jsx'));
+
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 
 *{box-sizing:border-box;margin:0;padding:0;}
