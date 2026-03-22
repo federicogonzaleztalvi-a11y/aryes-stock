@@ -42,7 +42,7 @@ export default function ConfigInline({
       setBrandSaved(true);
       setTimeout(() => setBrandSaved(false), 3000);
     } catch(e) {
-      console.warn('[Aryes] brand save failed', e);
+      console.warn('[Stock] brand save failed', e);
     } finally {
       setBrandSaving(false);
     }

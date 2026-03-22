@@ -125,7 +125,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
       // Persist stock to Supabase for each product
       const stockWrites=form.items.map(it=>
         db.patch('products',{stock:updProds.find(p=>String(p.id)===String(it.productoId))?.stock,updated_at:now},'uuid=eq.'+it.productoId)
-          .catch(e=>console.warn('[Aryes] venta stock patch failed',it.productoId,e))
+          .catch(e=>console.warn('[Stock] venta stock patch failed',it.productoId,e))
       );
       await Promise.allSettled(stockWrites);
 
@@ -145,7 +145,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           estado:venta.estado,notas:venta.notas||null,
           fecha_entrega:venta.fechaEntrega||null,creado_en:venta.creadoEn,
         });
-      }catch(e){console.warn('[Aryes] venta SB insert failed',e);}
+      }catch(e){console.warn('[Stock] venta SB insert failed',e);}
 
       // Audit log
       try{await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,
@@ -166,7 +166,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
     setVentas(upd);
     if(ventaSel?.id===id)setVentaSel({...ventaSel,estado});
     // Persist estado to Supabase
-    db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>console.warn('[Aryes] venta estado patch failed',e));
+    db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>console.warn('[Stock] venta estado patch failed',e));
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Restore stock on cancel
       const updProds=[...prodsState];

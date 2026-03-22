@@ -1,4 +1,4 @@
-// Aryes Stock — shared module constants
+// Shared module constants
 
 export const SB_URL = 'https://mrotnqybqvmvlexncvno.supabase.co';
 
@@ -54,12 +54,12 @@ export const getAuthHeaders = (extra={}) => {
 
 export const db={
   async get(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
-  async upsert(t,data,conflictCol=''){const url=SB_URL+'/rest/v1/'+t+(conflictCol?'?on_conflict='+conflictCol:'');const r=await fetch(url,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.upsert failed:',t,e?.message||r.status);}return r.ok?r.json():null;},
+  async upsert(t,data,conflictCol=''){const url=SB_URL+'/rest/v1/'+t+(conflictCol?'?on_conflict='+conflictCol:'');const r=await fetch(url,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Stock] db.upsert failed:',t,e?.message||r.status);}return r.ok?r.json():null;},
   async patch(t,data,match){
     const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
     const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'PATCH',
       headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});
-    if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.patch failed:',t,e?.message||r.status);}
+    if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Stock] db.patch failed:',t,e?.message||r.status);}
     return r.ok?r.json():null;
   },
   async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
@@ -70,7 +70,7 @@ export const db={
       headers:getAuthHeaders({'Prefer':'return=representation,resolution=ignore-duplicates'}),
       body: JSON.stringify(row)
     });
-    if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.insert failed:',table,e?.message||r.status);}
+    if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Stock] db.insert failed:',table,e?.message||r.status);}
     return r.ok ? r.json() : null;
   },
   async insertMany(table, rows) {

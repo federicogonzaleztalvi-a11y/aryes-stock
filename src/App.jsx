@@ -146,7 +146,7 @@ setTimeout(() => sbSyncAll(), 1000);
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DESIGN TOKENS — Aryes palette
+// DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 const T = {
   // Backgrounds — clean white like Lovable
@@ -166,7 +166,7 @@ const T = {
   textSm:   "#6a6a68",
   textXs:   "#9a9a98",
 
-  // Brand — Aryes green (bright leaf green from logo)
+  // Brand — primary green
   green:    "#3a7d1e",
   greenBg:  "#f0f7ec",
   greenBd:  "#b8d9a8",
@@ -2367,7 +2367,7 @@ const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={hasError:false,error:null};}
   static getDerivedStateFromError(error){return {hasError:true,error};}
-  componentDidCatch(error,info){console.error('[Aryes] ErrorBoundary caught:',error,info);}
+  componentDidCatch(error,info){console.error('[Stock] ErrorBoundary caught:',error,info);}
   render(){
     if(this.state.hasError){
       return React.createElement('div',{style:{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}},
@@ -2409,7 +2409,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         data:planData,
         updated_at:new Date().toISOString()
       });
-    } catch(e){ console.warn('[Aryes] savePlan SB failed:',e); setHasPendingSync(true); }
+    } catch(e){ console.warn('[Stock] savePlan SB failed:',e); setHasPendingSync(true); }
   };
   let [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
   let [hasPendingSync,setHasPendingSync]=useState(false);
@@ -2437,7 +2437,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           LS.remove('aryes-session');
           onLogout && onLogout();
         }
-      } catch(e){ console.warn('[Aryes] token refresh failed',e); }
+      } catch(e){ console.warn('[Stock] token refresh failed',e); }
     }, refreshIn);
     return ()=>clearTimeout(timer);
   }, [session?.refresh_token, session?.expiresAt]);
@@ -2521,7 +2521,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             try{ await db.insertMany('recepciones',rows); }catch(e){}
           }
         }
-      }catch(e){ console.warn('[Aryes] SB operational load failed',e); }
+      }catch(e){ console.warn('[Stock] SB operational load failed',e); }
     })();
   },[session?.role]);
 
@@ -2680,7 +2680,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     try {
       await db.upsert('products', productData, 'uuid');
     } catch(e) {
-      console.warn('[Aryes] saveProduct SB failed:',e);
+      console.warn('[Stock] saveProduct SB failed:',e);
       setSyncToast({msg:'Error al guardar producto. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
       setTimeout(()=>setSyncToast(null), 6000);
       setHasPendingSync(true);
@@ -2706,7 +2706,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         updated_at:new Date().toISOString()
       });
     } catch(e) {
-      console.warn('[Aryes] confirmOrder SB failed:',e);
+      console.warn('[Stock] confirmOrder SB failed:',e);
       setHasPendingSync(true);
     }
   };
@@ -2721,11 +2721,11 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     const now=new Date().toISOString();
     await db.patchWithLock('products',{stock:newStock,updated_at:now},'uuid=eq.'+prod.id,'stock',prod.stock);
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'markDelivered',detail:JSON.stringify({orderId:o.id,productId:o.productId,qty:o.qty,newStock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'markDelivered',detail:JSON.stringify({orderId:o.id,productId:o.productId,qty:o.qty,newStock})}); }catch(e){ console.warn('[Stock] audit log failed',e); }
 
     setOrders(os=>os.map(x=>x.id===id?{...x,status:'delivered'}:x));
     // Update order status in Supabase
-    try { await db.patch('orders',{status:'delivered',updated_at:now},'id=eq.'+id); } catch(e){ console.warn('[Aryes] markDelivered order patch failed:',e); }
+    try { await db.patch('orders',{status:'delivered',updated_at:now},'id=eq.'+id); } catch(e){ console.warn('[Stock] markDelivered order patch failed:',e); }
     const updatedProds=products.map(p=>p.id===o.productId?{...p,stock:newStock,updatedAt:now}:p);
     setProducts(updatedProds);
     LS.set('aryes6-products',updatedProds);
@@ -2742,7 +2742,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     const now = new Date().toISOString();
     const writes = matches.map(m=>
       db.patch('products',{stock:Math.max(0,m.newStock),updated_at:now},'uuid=eq.'+m.product.id)
-        .catch(e=>console.warn('[Aryes] applyExcel SB patch failed:',m.product.id,e))
+        .catch(e=>console.warn('[Stock] applyExcel SB patch failed:',m.product.id,e))
     );
     await Promise.allSettled(writes);
     matches.forEach(m=>{
@@ -2772,7 +2772,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     try {
       await db.upsert('suppliers', supplierData);
     } catch(e) {
-      console.warn('[Aryes] saveSupplier SB failed:',e);
+      console.warn('[Stock] saveSupplier SB failed:',e);
       setSyncToast({msg:'Error al guardar proveedor. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
       setTimeout(()=>setSyncToast(null), 6000);
       setHasPendingSync(true);
@@ -2789,7 +2789,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     try {
       await db.del('suppliers',{id});
     } catch(e) {
-      console.warn('[Aryes] deleteSupplier SB failed:',e);
+      console.warn('[Stock] deleteSupplier SB failed:',e);
       setSuppliers(snap); // rollback UI
       setSyncToast({msg:'Error al eliminar proveedor del servidor. El proveedor fue restaurado.', type:'error'});
       setTimeout(()=>setSyncToast(null), 6000);
@@ -2808,7 +2808,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     try {
       await db.del('products',{uuid:id}); // uuid is our TEXT id
     } catch(e) {
-      console.warn('[Aryes] deleteProduct SB failed:',e);
+      console.warn('[Stock] deleteProduct SB failed:',e);
       setProducts(snapshot); // rollback UI
       setSyncToast({msg:'Error al eliminar producto del servidor. El producto fue restaurado.', type:'error'});
       setTimeout(()=>setSyncToast(null), 6000);
@@ -2886,7 +2886,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       user_name:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch(e){return 'sistema';}})(),
       ts:mov.ts,
       created_at:mov.ts,
-    }).catch(e=>console.warn('[Aryes] addMov SB failed:',e));
+    }).catch(e=>console.warn('[Stock] addMov SB failed:',e));
   };
 
   const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
@@ -2922,13 +2922,13 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     {id:"ventas",label:"Ventas",icon:"🧾"},
     {id:"movimientos",label:"Movimientos",icon:"🔄"},
     {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↕"},
-    {id:"deposito",label:"Deposito",icon:"🗂"},
+    {id:"deposito",label:"Depósito",icon:"🗂"},
     {id:"rutas",label:"Rutas",icon:"🚛"},
     {id:"tracking",label:"Tracking",icon:"📍"},
     {id:"kpis",label:"KPIs",icon:"📈"},
     {id:"recepcion",label:"Recepcion",icon:"📥"},{id:"packing",label:"Packing",icon:"📦"},{id:"batch-picking",label:"Batch Pick",icon:"📋"},
-    {id:"informes",label:"Informes",icon:"📋"},{id:"devoluciones",label:"Devoluciones",icon:"↩"},{id:"precios",label:"Precios",icon:"💲"},{id:"demanda",label:"Demanda",icon:"📈"},{id:"audit",label:"Audit",icon:"📋"},
-    {id:"importar",label:"Importar",icon:"📂"},
+    {id:"informes",label:"Informes",icon:"📋"},{id:"devoluciones",label:"Devoluciones",icon:"↩"},{id:"precios",label:"Precios",icon:"💲"},{id:"demanda",label:"Demanda",icon:"📈"},{id:"audit",label:"Auditoría",icon:"📋"},
+    {id:"importar",label:"Importar datos",icon:"📂"},
     {id:"scanner",label:"Scanner",icon:"📷"},
     {id:"config",label:"Config",icon:"⚙"},
   ];

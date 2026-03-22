@@ -174,7 +174,7 @@ function DepositoTab(){
     <section style={{padding:'24px 32px',maxWidth:1300,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12}}>
         <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Deposito</h2>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Depósito</h2>
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Ubicaciones fisicas + picking optimizado</p>
         </div>
         <div style={{display:'flex',gap:8}}>
