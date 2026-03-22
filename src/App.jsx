@@ -2961,8 +2961,8 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       {/* ── SIDEBAR ── */}
       <aside style={{overflowY:"auto",width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
         {/* Logo */}
-        <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
-          {brandCfg.logoUrl?<img src={brandCfg.logoUrl} alt={brandCfg.name||'Logo'} style={{height:34,objectFit:'contain'}} onError={e=>{e.target.style.display='none';}}/>:<AryesLogo height={34}/>}
+        <div style={{padding:"20px 20px 16px",borderBottom:`1px solid ${T.border}`}}>
+          {brandCfg.logoUrl?<img src={brandCfg.logoUrl} alt={brandCfg.name||'Logo'} style={{height:52,objectFit:'contain',maxWidth:"100%"}} onError={e=>{e.target.style.display='none';}}/>:<AryesLogo height={52}/>}
           {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>↻ Sincronizando...</div>}
           {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>✓ Sincronizado</div>}
           {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>⚠ Modo local</div>}

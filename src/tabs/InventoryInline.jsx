@@ -5,7 +5,14 @@ export default function InventoryInline({products, enriched, setModal, setEditPr
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
-              <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                  <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>Inicio</span>
+                  <span style={{color:T.textXs,fontSize:11}}>/</span>
+                  <span style={{fontFamily:T.sans,fontSize:11,fontWeight:600,color:T.green}}>Inventario</span>
+                </div>
+                <h1 style={{fontFamily:T.serif,fontSize:38,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em"}}>Inventario</h1>
+              </div>
               <div style={{display:"flex",gap:10}}>
                 <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
                 <Btn variant="ghost" onClick={()=>{
@@ -26,16 +33,21 @@ export default function InventoryInline({products, enriched, setModal, setEditPr
             </div>
             <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
-                  {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/día","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"10px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>)}
+                <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:2}}>
+                  {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/día","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"11px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap",background:T.muted}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {enriched.map(p=>(
-                    <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`}}
-                      onMouseEnter={e=>e.currentTarget.style.background=T.cardWarm}
-                      onMouseLeave={e=>e.currentTarget.style.background=T.card}>
-                      <td style={{padding:"11px 13px"}}><div style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{p.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:T.textXs}}>{p.barcode||"—"}</div></td>
-                      <td style={{padding:"11px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>[{p.sup?.flag}] {p.sup?.name}</td>
+                  {enriched.map((p,i)=>(
+                    <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.card:T.cardWarm,transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background=T.hover}
+                      onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.card:T.cardWarm}>
+                      <td style={{padding:"11px 13px"}}><div style={{fontFamily:T.sans,fontSize:13,fontWeight:500,color:T.text,lineHeight:1.3}}>{p.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:T.textXs,marginTop:2}}>{p.barcode||"—"}</div></td>
+                      <td style={{padding:"11px 13px"}}>
+                        <span style={{display:"inline-flex",alignItems:"center",gap:4,background:T.muted,border:`1px solid ${T.border}`,borderRadius:4,padding:"2px 7px",fontFamily:T.sans,fontSize:11,color:T.textSm}}>
+                          {p.sup?.flag&&<span style={{fontSize:12}}>{p.sup.flag==='AR'?'🇦🇷':p.sup.flag==='EC'?'🇪🇨':p.sup.flag==='EU'?'🇪🇺':p.sup.flag}</span>}
+                          {p.sup?.name||'—'}
+                        </span>
+                      </td>
                       <td style={{padding:"11px 13px"}}>
                         <div style={{fontFamily:T.sans,fontSize:13,fontWeight:700,color:p.stock<=(p.alert.rop||0)?T.danger:T.text}}>{p.stock} <span style={{fontWeight:400,color:T.textXs,fontSize:11}}>{p.unit}</span></div>
                         <div style={{marginTop:5,width:72}}><StockBar stock={p.stock} r={p.alert.rop} ss={p.alert.ss} max={Math.max(p.stock*1.6,p.alert.rop*2.5)}/></div>

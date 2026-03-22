@@ -94,8 +94,8 @@ export const Cap = ({children,style:sx}) => (
 export const AlertPill = ({level}) => {
   const c = ALERT_CFG[level] || ALERT_CFG.ok;
   return (
-    <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,border:`1px solid ${c.bd}`,color:c.txt,fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",padding:"3px 9px",borderRadius:2}}>
-      <span style={{width:6,height:6,borderRadius:"50%",background:c.dot,display:"inline-block",...(level==="order_now"?{animation:"pulseDot 1.8s ease infinite"}:{})}}/>
+    <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,border:`1px solid ${c.bd}`,color:c.txt,fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.06em",textTransform:"uppercase",padding:"4px 10px",borderRadius:20,whiteSpace:"nowrap"}}>
+      <span style={{width:5,height:5,borderRadius:"50%",background:c.dot,flexShrink:0,...(level==="order_now"?{animation:"pulseDot 1.8s ease infinite"}:{})}}/>
       {c.label}
     </span>
   );

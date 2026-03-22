@@ -6,8 +6,12 @@ function DashboardInline({products,suppliers,orders,movements,session,setTab,cri
           <div className="au" style={{display:"grid",gap:32}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
               <div>
-                <Cap style={{color:T.green}}>Panel general</Cap>
-                <h1 style={{fontFamily:T.serif,fontSize:42,fontWeight:500,color:T.text,marginTop:5,letterSpacing:"-.02em",lineHeight:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                  <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>Inicio</span>
+                  <span style={{color:T.textXs,fontSize:11}}>/</span>
+                  <span style={{fontFamily:T.sans,fontSize:11,fontWeight:600,color:T.green}}>Dashboard</span>
+                </div>
+                <h1 style={{fontFamily:T.serif,fontSize:38,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em",lineHeight:1}}>
                   {new Date().toLocaleDateString("es-UY",{weekday:"long",day:"numeric",month:"long"})}
                 </h1>
               </div>
