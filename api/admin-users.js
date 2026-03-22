@@ -88,21 +88,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: raw || 'Error al crear usuario' });
       }
 
-      // Insert into public.users
+      // Insert into public.users via SECURITY DEFINER RPC (bypasses RLS + PostgREST cache)
       const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
-      const dbRes = await fetch(`${SB_URL}/rest/v1/users`, {
-        method: 'POST',
-        headers: {
-          'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Content-Type': 'application/json', 'Prefer': 'return=representation',
-        },
-        body: JSON.stringify({ username, name, email, role, active: true }),
+      const { ok: dbOk, data: dbData } = await rpc('insert_user', {
+        p_username: username, p_name: name, p_email: email, p_role: role,
       });
-      const dbData = await dbRes.json().catch(() => ({}));
 
-      if (!dbRes.ok) {
+      if (!dbOk) {
         await rpc('delete_auth_user', { user_email: email }); // rollback
-        return res.status(400).json({ error: dbData?.message || 'Error al guardar en DB. Auth revertido.' });
+        const dbErr = typeof dbData === 'string' ? dbData : (dbData?.message || 'Error al guardar en DB. Auth revertido.');
+        return res.status(400).json({ error: dbErr });
       }
 
       return res.status(201).json({ success: true, user: Array.isArray(dbData) ? dbData[0] : dbData });
