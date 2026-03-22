@@ -1,508 +1,342 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { LS, db } from '../lib/constants.js';
 
-// ── Design tokens (local, coherent with app T) ─────────────────────────────
-const G = '#3a7d1e';
-const F = {
-  sans:   "'DM Sans', 'Inter', system-ui, sans-serif",
-  serif:  "'Playfair Display', Georgia, serif",
-  mono:   "'DM Mono', 'Fira Code', monospace",
+// ─── Tokens ───────────────────────────────────────────────────────────────
+const G  = '#3a7d1e';
+const F  = {
+  sans:  "'DM Sans', system-ui, sans-serif",
+  serif: "'Playfair Display', Georgia, serif",
+  mono:  "'DM Mono', 'Fira Code', monospace",
 };
 
-// CFE status config
-const CFE_STATUS = {
-  borrador:  { label: 'Borrador',   color: '#6a6a68', bg: '#f0f0ec', dot: '#9a9a98' },
-  pendiente: { label: 'Pendiente',  color: '#d97706', bg: '#fffbeb', dot: '#f59e0b' },
-  emitida:   { label: 'Emitida',    color: '#2563eb', bg: '#eff6ff', dot: '#3b82f6' },
-  aceptada:  { label: 'Aceptada',   color: '#16a34a', bg: '#f0fdf4', dot: '#22c55e' },
-  rechazada: { label: 'Rechazada',  color: '#dc2626', bg: '#fef2f2', dot: '#ef4444' },
-  anulada:   { label: 'Anulada',    color: '#9a9a98', bg: '#f9f9f7', dot: '#d1d5db' },
-};
-
-// CFE types
-const CFE_TIPOS = {
-  'e-Factura':      { code: 'eFact',   icon: '🧾', desc: 'Factura electrónica a empresa' },
-  'e-Ticket':       { code: 'eTick',   icon: '🎫', desc: 'Ticket electrónico consumidor final' },
-  'e-Remito':       { code: 'eRem',    icon: '📦', desc: 'Remito de traslado de mercadería' },
-  'e-Nota Crédito': { code: 'eNC',     icon: '↩',  desc: 'Nota de crédito electrónica' },
-  'e-Nota Débito':  { code: 'eND',     icon: '↗',  desc: 'Nota de débito electrónica' },
-};
-
-const IVA_RATES = [
-  { label: 'IVA 22%', value: 22 },
-  { label: 'IVA 10%', value: 10 },
-  { label: 'Exento 0%', value: 0 },
+// ─── Constants ────────────────────────────────────────────────────────────
+const COND_PAGO = [
+  { value: 'contado',    label: 'Contado',        dias: 0   },
+  { value: 'credito_15', label: 'Crédito 15 días', dias: 15  },
+  { value: 'credito_30', label: 'Crédito 30 días', dias: 30  },
+  { value: 'credito_60', label: 'Crédito 60 días', dias: 60  },
+  { value: 'credito_90', label: 'Crédito 90 días', dias: 90  },
 ];
 
-const MONEDAS = ['UYU', 'USD', 'EUR'];
+const METODOS_COBRO = ['Transferencia', 'Efectivo', 'Cheque', 'Tarjeta', 'Otro'];
 
-const fmtMoney = (n, cur = 'UYU') => {
-  const sym = cur === 'UYU' ? '$' : cur === 'USD' ? 'US$' : '€';
-  return `${sym} ${Number(n || 0).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const CFE_TIPOS = {
+  'e-Factura': { icon: '🧾', code: 'eFact' },
+  'e-Ticket':  { icon: '🎫', code: 'eTick' },
+  'e-Remito':  { icon: '📦', code: 'eRem'  },
+  'e-N.Créd.': { icon: '↩',  code: 'eNC'   },
 };
 
-const fmtDate = d => d ? new Date(d).toLocaleDateString('es-UY', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const today = () => new Date().toISOString().split('T')[0];
-const newId = () => 'cfe-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7);
+const CFE_STATUS = {
+  borrador:  { label: 'Borrador',  color: '#6a6a68', bg: '#f0f0ec' },
+  pendiente: { label: 'Pendiente', color: '#d97706', bg: '#fffbeb' },
+  emitida:   { label: 'Emitida',   color: '#2563eb', bg: '#eff6ff' },
+  aceptada:  { label: 'Aceptada',  color: '#16a34a', bg: '#f0fdf4' },
+  rechazada: { label: 'Rechazada', color: '#dc2626', bg: '#fef2f2' },
+  anulada:   { label: 'Anulada',   color: '#9a9a98', bg: '#f9f9f7' },
+  cobrada:   { label: 'Cobrada',   color: '#16a34a', bg: '#f0fdf4' },
+};
 
-// ── Subcomponents ──────────────────────────────────────────────────────────
+const IVA_RATES = [22, 10, 0];
+const MONEDAS   = ['UYU', 'USD', 'EUR'];
 
-function StatusPill({ status }) {
-  const s = CFE_STATUS[status] || CFE_STATUS.borrador;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      background: s.bg, color: s.color,
-      fontFamily: F.sans, fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
-      textTransform: 'uppercase', padding: '4px 10px', borderRadius: 20, whiteSpace: 'nowrap',
-    }}>
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
-      {s.label}
-    </span>
+// ─── Helpers ──────────────────────────────────────────────────────────────
+const newId  = () => crypto.randomUUID();
+const today  = () => new Date().toISOString().split('T')[0];
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
+const daysSince = d => d ? Math.floor((Date.now() - new Date(d).getTime()) / 86400000) : 0;
+const daysUntil = d => d ? Math.floor((new Date(d).getTime() - Date.now()) / 86400000) : null;
+
+const fmtMoney = (n, cur='UYU') => {
+  const sym = cur==='UYU'?'$':cur==='USD'?'US$':'€';
+  return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+};
+const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}) : '—';
+
+const agingBucket = dias => {
+  if (dias <= 0)  return { label: 'Al día',   color: '#16a34a', bg: '#f0fdf4', pri: 0 };
+  if (dias <= 30) return { label: '1-30d',     color: '#d97706', bg: '#fffbeb', pri: 1 };
+  if (dias <= 60) return { label: '31-60d',    color: '#ea580c', bg: '#fff7ed', pri: 2 };
+  if (dias <= 90) return { label: '61-90d',    color: '#dc2626', bg: '#fef2f2', pri: 3 };
+  return                  { label: '+90d',      color: '#7f1d1d', bg: '#fef2f2', pri: 4 };
+};
+
+// ─── Small components ─────────────────────────────────────────────────────
+const Pill = ({ status }) => {
+  const s = CFE_STATUS[status] || CFE_STATUS.pendiente;
+  return <span style={{ display:'inline-flex', alignItems:'center', gap:5,
+    background:s.bg, color:s.color, fontFamily:F.sans, fontSize:10,
+    fontWeight:700, letterSpacing:'0.07em', textTransform:'uppercase',
+    padding:'3px 9px', borderRadius:20, whiteSpace:'nowrap' }}>
+    <span style={{ width:5, height:5, borderRadius:'50%', background:s.color }} />
+    {s.label}
+  </span>;
+};
+
+const TabBtn = ({ active, onClick, children }) =>
+  <button onClick={onClick} style={{
+    padding:'9px 18px', border:'none', cursor:'pointer', fontFamily:F.sans,
+    fontSize:13, fontWeight:active?700:500, background:'none',
+    borderBottom:`2px solid ${active?G:'transparent'}`,
+    color: active?G:'#6a6a68', transition:'all .15s',
+  }}>{children}</button>;
+
+const Lbl = ({ children }) =>
+  <div style={{ fontFamily:F.sans, fontSize:10, fontWeight:700, letterSpacing:'0.12em',
+    textTransform:'uppercase', color:'#9a9a98', marginBottom:5 }}>{children}</div>;
+
+const Inp = ({ style={}, ...p }) =>
+  <input {...p} style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px',
+    border:'1.5px solid #e2e2de', borderRadius:7, fontFamily:F.sans, fontSize:13,
+    color:'#1a1a18', outline:'none', background:'#fff', ...style }} />;
+
+const Sel = ({ children, style={}, ...p }) =>
+  <select {...p} style={{ width:'100%', padding:'8px 11px', border:'1.5px solid #e2e2de',
+    borderRadius:7, fontFamily:F.sans, fontSize:13, color:'#1a1a18',
+    outline:'none', background:'#fff', ...style }}>{children}</select>;
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────
+const KpiCard = ({ label, value, sub, accent='#e2e2de', danger=false, onClick }) =>
+  <div onClick={onClick} style={{
+    background:'#fff', borderRadius:12, padding:'18px 22px',
+    borderTop:`3px solid ${accent}`, cursor:onClick?'pointer':'default',
+  }}>
+    <Lbl>{label}</Lbl>
+    <div style={{ fontFamily:F.serif, fontSize:32, fontWeight:400,
+      color: danger&&Number(value)>0 ? '#dc2626' : '#1a1a18', lineHeight:1 }}>{value}</div>
+    {sub && <div style={{ fontFamily:F.sans, fontSize:11, color:'#9a9a98', marginTop:5 }}>{sub}</div>}
+  </div>;
+
+// ─── Quick Invoice Modal ───────────────────────────────────────────────────
+function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
+  const prefCliente = prefill?.clienteId
+    ? clientes.find(c=>c.id===prefill.clienteId) : null;
+
+  const condCliente = prefCliente
+    ? COND_PAGO.find(c=>c.value===prefCliente.condPago)||COND_PAGO[0]
+    : COND_PAGO[0];
+
+  const [tipo, setTipo]     = useState('e-Factura');
+  const [moneda, setMoneda] = useState('UYU');
+  const [fecha, setFecha]   = useState(today());
+  const [fechaVenc, setFechaVenc] = useState(
+    condCliente.dias > 0 ? addDays(today(), condCliente.dias) : ''
   );
-}
+  const [clienteId, setClienteId]     = useState(prefCliente?.id||'');
+  const [clienteNombre, setClienteNombre] = useState(prefCliente?.nombre||'');
+  const [clienteRut, setClienteRut]   = useState(prefCliente?.rut||'');
+  const [items, setItems]             = useState(prefill?.items||[]);
+  const [notas, setNotas]             = useState(prefill?.notas||'');
+  const [descuento, setDescuento]     = useState(0);
+  const [iForm, setIForm]             = useState({ prodId:'', desc:'', cant:1, precio:0, iva:22 });
 
-function KpiCard({ label, value, sub, accent, onClick }) {
-  return (
-    <div onClick={onClick} style={{
-      background: '#fff', borderRadius: 12, padding: '20px 24px',
-      borderTop: `3px solid ${accent || '#e2e2de'}`,
-      cursor: onClick ? 'pointer' : 'default',
-      transition: 'box-shadow .15s',
-    }}
-    onMouseEnter={e => { if (onClick) e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'; }}
-    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}>
-      <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontFamily: F.serif, fontSize: 34, fontWeight: 400, color: '#1a1a18', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontFamily: F.sans, fontSize: 11, color: '#9a9a98', marginTop: 6 }}>{sub}</div>}
-    </div>
-  );
-}
+  const handleCliente = id => {
+    const c = clientes.find(x=>x.id===id);
+    if (!c) return;
+    setClienteId(id); setClienteNombre(c.nombre); setClienteRut(c.rut||'');
+    const cond = COND_PAGO.find(p=>p.value===c.condPago)||COND_PAGO[0];
+    if (cond.dias > 0) setFechaVenc(addDays(today(), cond.dias));
+    else setFechaVenc('');
+  };
 
-function EmptyState({ onNew }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '80px 40px' }}>
-      <div style={{ fontSize: 56, marginBottom: 16, opacity: .6 }}>🧾</div>
-      <div style={{ fontFamily: F.serif, fontSize: 28, fontWeight: 400, color: '#1a1a18', marginBottom: 8 }}>Sin comprobantes aún</div>
-      <div style={{ fontFamily: F.sans, fontSize: 14, color: '#9a9a98', marginBottom: 28, maxWidth: 360, margin: '0 auto 28px' }}>
-        Emití tu primer CFE electrónico. Facturas, tickets, remitos y notas de crédito — todo desde acá.
-      </div>
-      <button onClick={onNew} style={{
-        background: G, color: '#fff', border: 'none', borderRadius: 10,
-        padding: '12px 28px', fontFamily: F.sans, fontSize: 14, fontWeight: 600,
-        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
-      }}>
-        <span style={{ fontSize: 16 }}>+</span> Nuevo CFE
-      </button>
-    </div>
-  );
-}
-
-// ── New CFE Wizard (3 steps) ───────────────────────────────────────────────
-function NuevoCFEWizard({ clientes, productos, onSave, onClose }) {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    tipo: 'e-Factura',
-    moneda: 'UYU',
-    fecha: today(),
-    fechaVenc: '',
-    clienteId: '',
-    clienteNombre: '',
-    clienteRut: '',
-    clienteDir: '',
-    items: [],
-    notas: '',
-    descuento: 0,
-  });
-  const [itemForm, setItemForm] = useState({ prodId: '', desc: '', cant: 1, precio: 0, iva: 22 });
-
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-  const setItem = (k, v) => setItemForm(p => ({ ...p, [k]: v }));
-
-  const subtotal = form.items.reduce((s, it) => s + it.cant * it.precio, 0);
-  const descMonto = subtotal * (form.descuento / 100);
-  const base = subtotal - descMonto;
-  const ivaTotal = form.items.reduce((s, it) => s + (it.cant * it.precio * (1 - form.descuento / 100)) * (it.iva / 100), 0);
-  const total = base + ivaTotal;
+  const handleProd = id => {
+    const p = productos.find(x=>x.id===id);
+    if (!p) return;
+    setIForm(f=>({...f, prodId:id, desc:p.name, precio:p.salePrice||p.unitCost||0}));
+  };
 
   const addItem = () => {
-    if (!itemForm.desc || !itemForm.cant || !itemForm.precio) return;
-    set('items', [...form.items, { ...itemForm, id: newId() }]);
-    setItemForm({ prodId: '', desc: '', cant: 1, precio: 0, iva: 22 });
+    if (!iForm.desc||!iForm.precio) return;
+    setItems(prev=>[...prev,{...iForm, id:newId(), cant:Number(iForm.cant), precio:Number(iForm.precio)}]);
+    setIForm({ prodId:'', desc:'', cant:1, precio:0, iva:22 });
   };
 
-  const removeItem = id => set('items', form.items.filter(i => i.id !== id));
-
-  const handleProdSelect = id => {
-    const p = productos.find(x => x.id === id);
-    if (!p) return;
-    setItemForm(f => ({ ...f, prodId: id, desc: p.name, precio: p.unitCost || 0 }));
-  };
-
-  const handleClienteSelect = id => {
-    const c = clientes.find(x => x.id === id);
-    if (!c) return;
-    set('clienteId', id);
-    set('clienteNombre', c.nombre || c.name || '');
-    set('clienteRut', c.rut || '');
-    set('clienteDir', c.direccion || '');
-  };
-
-  const canNext1 = form.tipo && form.fecha;
-  const canNext2 = form.clienteNombre;
-  const canSave = form.items.length > 0;
-
-  const stepLabel = ['Tipo y fecha', 'Receptor', 'Líneas'];
+  const subtotal = items.reduce((s,it)=>s+it.cant*it.precio, 0);
+  const descMonto = subtotal * (descuento/100);
+  const ivaTotal  = items.reduce((s,it)=>s+(it.cant*it.precio*(1-descuento/100))*(it.iva/100), 0);
+  const total     = subtotal - descMonto + ivaTotal;
+  const canSave   = clienteNombre && items.length > 0;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(10,10,8,.5)', backdropFilter: 'blur(4px)' }}>
-      <div style={{ background: '#fff', borderRadius: 20, width: 680, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,.18)' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center',
+      justifyContent:'center', background:'rgba(10,10,8,.55)', backdropFilter:'blur(4px)' }}>
+      <div style={{ background:'#fff', borderRadius:20, width:720, maxHeight:'92vh',
+        overflow:'hidden', display:'flex', flexDirection:'column',
+        boxShadow:'0 32px 80px rgba(0,0,0,.22)' }}>
 
         {/* Header */}
-        <div style={{ padding: '24px 32px 20px', borderBottom: '1px solid #e2e2de', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding:'22px 28px 16px', borderBottom:'1px solid #f0f0ec',
+          display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
-            <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 4 }}>Nuevo comprobante fiscal electrónico</div>
-            <div style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, color: '#1a1a18' }}>Paso {step} — {stepLabel[step - 1]}</div>
+            <Lbl>Nuevo comprobante fiscal electrónico</Lbl>
+            <div style={{ fontFamily:F.serif, fontSize:24, color:'#1a1a18', fontWeight:400 }}>Emitir CFE</div>
           </div>
-          <button onClick={onClose} style={{ background: '#f0f0ec', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#6a6a68' }}>✕</button>
+          <button onClick={onClose} style={{ background:'#f0f0ec', border:'none', borderRadius:8,
+            width:32, height:32, cursor:'pointer', fontSize:16, color:'#6a6a68' }}>✕</button>
         </div>
 
-        {/* Progress bar */}
-        <div style={{ height: 3, background: '#f0f0ec', flexShrink: 0 }}>
-          <div style={{ height: '100%', background: G, width: `${(step / 3) * 100}%`, transition: 'width .3s ease' }} />
-        </div>
+        <div style={{ overflowY:'auto', flex:1, padding:'22px 28px' }}>
 
-        {/* Step indicator */}
-        <div style={{ display: 'flex', gap: 0, padding: '0 32px', borderBottom: '1px solid #f0f0ec', flexShrink: 0 }}>
-          {stepLabel.map((l, i) => (
-            <div key={l} style={{ flex: 1, padding: '14px 0', textAlign: 'center', fontFamily: F.sans, fontSize: 12, fontWeight: i + 1 === step ? 700 : 400, color: i + 1 === step ? G : i + 1 < step ? '#9a9a98' : '#c8c8c4', borderBottom: i + 1 === step ? `2px solid ${G}` : '2px solid transparent', transition: 'all .2s', cursor: i + 1 < step ? 'pointer' : 'default' }}
-              onClick={() => { if (i + 1 < step) setStep(i + 1); }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 20, height: 20, borderRadius: '50%', background: i + 1 < step ? G : i + 1 === step ? G : '#e2e2de', color: i + 1 <= step ? '#fff' : '#9a9a98', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1 < step ? '✓' : i + 1}</span>
-                {l}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
-
-          {/* Step 1 — Tipo y fecha */}
-          {step === 1 && (
-            <div style={{ display: 'grid', gap: 20 }}>
-              <div>
-                <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 8 }}>Tipo de CFE</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {Object.entries(CFE_TIPOS).map(([tipo, cfg]) => (
-                    <button key={tipo} onClick={() => set('tipo', tipo)} style={{
-                      textAlign: 'left', padding: '14px 16px', borderRadius: 10,
-                      border: `2px solid ${form.tipo === tipo ? G : '#e2e2de'}`,
-                      background: form.tipo === tipo ? '#f0f7ec' : '#fff',
-                      cursor: 'pointer', transition: 'all .15s',
-                    }}>
-                      <span style={{ fontSize: 20, display: 'block', marginBottom: 4 }}>{cfg.icon}</span>
-                      <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 700, color: form.tipo === tipo ? G : '#1a1a18', display: 'block' }}>{tipo}</span>
-                      <span style={{ fontFamily: F.sans, fontSize: 11, color: '#9a9a98', display: 'block', marginTop: 2 }}>{cfg.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Fecha emisión</label>
-                  <input type="date" value={form.fecha} onChange={e => set('fecha', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none' }} />
-                </div>
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Vencimiento</label>
-                  <input type="date" value={form.fechaVenc} onChange={e => set('fechaVenc', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none' }} />
-                </div>
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Moneda</label>
-                  <select value={form.moneda} onChange={e => set('moneda', e.target.value)} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none', background: '#fff' }}>
-                    {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2 — Receptor */}
-          {step === 2 && (
-            <div style={{ display: 'grid', gap: 16 }}>
-              {clientes.length > 0 && (
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Seleccionar cliente existente</label>
-                  <select value={form.clienteId} onChange={e => handleClienteSelect(e.target.value)} style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none', background: '#fff' }}>
-                    <option value="">— Seleccionar —</option>
-                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre || c.name}</option>)}
-                  </select>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Razón social / Nombre *</label>
-                  <input value={form.clienteNombre} onChange={e => set('clienteNombre', e.target.value)} placeholder="Empresa S.A. o Juan Pérez" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: `1.5px solid ${form.clienteNombre ? G : '#e2e2de'}`, borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none' }} />
-                </div>
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>RUT</label>
-                  <input value={form.clienteRut} onChange={e => set('clienteRut', e.target.value)} placeholder="21XXXXXXXXXXXXXXX" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none', fontFamily: F.mono }} />
-                </div>
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Dirección</label>
-                  <input value={form.clienteDir} onChange={e => set('clienteDir', e.target.value)} placeholder="Av. 18 de Julio 1234" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none' }} />
-                </div>
-              </div>
-
-              {(form.tipo === 'e-Ticket') && (
-                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '12px 16px' }}>
-                  <span style={{ fontFamily: F.sans, fontSize: 12, color: '#92400e' }}>💡 El e-Ticket no requiere RUT del receptor — es para consumidor final.</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 3 — Líneas */}
-          {step === 3 && (
-            <div style={{ display: 'grid', gap: 20 }}>
-              {/* Add item row */}
-              <div style={{ background: '#f9f9f7', borderRadius: 10, padding: 16, border: '1px solid #e2e2de' }}>
-                <div style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 12 }}>Agregar línea</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
-                  <div>
-                    <label style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: '#6a6a68', display: 'block', marginBottom: 4 }}>Descripción</label>
-                    {productos.length > 0
-                      ? <select value={itemForm.prodId} onChange={e => { handleProdSelect(e.target.value); }} style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #e2e2de', borderRadius: 7, fontFamily: F.sans, fontSize: 13, background: '#fff', outline: 'none', color: '#1a1a18' }}>
-                          <option value="">— Producto —</option>
-                          {productos.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                      : <input value={itemForm.desc} onChange={e => setItem('desc', e.target.value)} placeholder="Descripción del ítem" style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1.5px solid #e2e2de', borderRadius: 7, fontFamily: F.sans, fontSize: 13, outline: 'none' }} />
-                    }
-                  </div>
-                  <div>
-                    <label style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: '#6a6a68', display: 'block', marginBottom: 4 }}>Cantidad</label>
-                    <input type="number" min="0.001" step="0.001" value={itemForm.cant} onChange={e => setItem('cant', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1.5px solid #e2e2de', borderRadius: 7, fontFamily: F.mono, fontSize: 13, outline: 'none', textAlign: 'right' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: '#6a6a68', display: 'block', marginBottom: 4 }}>Precio unit.</label>
-                    <input type="number" min="0" step="0.01" value={itemForm.precio} onChange={e => setItem('precio', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1.5px solid #e2e2de', borderRadius: 7, fontFamily: F.mono, fontSize: 13, outline: 'none', textAlign: 'right' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: '#6a6a68', display: 'block', marginBottom: 4 }}>IVA</label>
-                    <select value={itemForm.iva} onChange={e => setItem('iva', Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #e2e2de', borderRadius: 7, fontFamily: F.sans, fontSize: 12, background: '#fff', outline: 'none', color: '#1a1a18' }}>
-                      {IVA_RATES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
-                  </div>
-                  <button onClick={addItem} style={{ background: G, color: '#fff', border: 'none', borderRadius: 7, width: 36, height: 36, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                </div>
-              </div>
-
-              {/* Items table */}
-              {form.items.length > 0 ? (
-                <div style={{ border: '1px solid #e2e2de', borderRadius: 10, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: F.sans, fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: '#f9f9f7', borderBottom: '1px solid #e2e2de' }}>
-                        {['Descripción', 'Cant.', 'Precio', 'IVA', 'Total', ''].map(h => (
-                          <th key={h} style={{ padding: '10px 14px', textAlign: h === '' ? 'center' : 'left', fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9a9a98' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {form.items.map((it, i) => (
-                        <tr key={it.id} style={{ borderBottom: '1px solid #f0f0ec', background: i % 2 === 0 ? '#fff' : '#fafaf8' }}>
-                          <td style={{ padding: '10px 14px', fontWeight: 500 }}>{it.desc}</td>
-                          <td style={{ padding: '10px 14px', fontFamily: F.mono, textAlign: 'right' }}>{it.cant}</td>
-                          <td style={{ padding: '10px 14px', fontFamily: F.mono, textAlign: 'right' }}>{fmtMoney(it.precio, form.moneda)}</td>
-                          <td style={{ padding: '10px 14px', textAlign: 'right', color: '#6a6a68' }}>{it.iva}%</td>
-                          <td style={{ padding: '10px 14px', fontFamily: F.mono, fontWeight: 700, textAlign: 'right' }}>{fmtMoney(it.cant * it.precio * (1 + it.iva / 100), form.moneda)}</td>
-                          <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                            <button onClick={() => removeItem(it.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16 }}>×</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '24px', color: '#9a9a98', fontFamily: F.sans, fontSize: 13, border: '1.5px dashed #e2e2de', borderRadius: 10 }}>
-                  Agregá al menos una línea para continuar
-                </div>
-              )}
-
-              {/* Totals + notas */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 20 }}>
-                <div>
-                  <label style={{ fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', display: 'block', marginBottom: 6 }}>Notas</label>
-                  <textarea value={form.notas} onChange={e => set('notas', e.target.value)} rows={3} placeholder="Condición de pago, referencias, instrucciones..." style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, color: '#1a1a18', outline: 'none', resize: 'vertical' }} />
-                </div>
-                <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
-                  {[
-                    { label: 'Subtotal', val: fmtMoney(subtotal, form.moneda) },
-                    { label: `Descuento ${form.descuento}%`, val: `-${fmtMoney(descMonto, form.moneda)}`, hide: !form.descuento },
-                    { label: 'IVA', val: fmtMoney(ivaTotal, form.moneda), muted: true },
-                  ].filter(r => !r.hide).map(r => (
-                    <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: F.sans, fontSize: 12, color: r.muted ? '#9a9a98' : '#3a3a38' }}>
-                      <span>{r.label}</span><span style={{ fontFamily: F.mono }}>{r.val}</span>
-                    </div>
-                  ))}
-                  <div style={{ borderTop: '2px solid #1a1a18', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: '#1a1a18' }}>TOTAL</span>
-                    <span style={{ fontFamily: F.serif, fontSize: 18, fontWeight: 400, color: G }}>{fmtMoney(total, form.moneda)}</span>
-                  </div>
-                  <div>
-                    <label style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: '#6a6a68', display: 'block', marginBottom: 4 }}>Descuento global %</label>
-                    <input type="number" min="0" max="100" value={form.descuento} onChange={e => set('descuento', Number(e.target.value))} style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', border: '1.5px solid #e2e2de', borderRadius: 7, fontFamily: F.mono, fontSize: 13, outline: 'none', textAlign: 'right' }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: '16px 32px 24px', borderTop: '1px solid #f0f0ec', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <button onClick={() => step > 1 ? setStep(s => s - 1) : onClose()} style={{ background: '#f0f0ec', color: '#3a3a38', border: 'none', borderRadius: 8, padding: '10px 20px', fontFamily: F.sans, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-            {step === 1 ? 'Cancelar' : '← Atrás'}
-          </button>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {step === 3 && (
-              <button onClick={() => onSave({ ...form, status: 'borrador', subtotal, ivaTotal, total })} style={{ background: '#f0f0ec', color: '#3a3a38', border: 'none', borderRadius: 8, padding: '10px 20px', fontFamily: F.sans, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                Guardar borrador
-              </button>
-            )}
-            {step < 3
-              ? <button onClick={() => setStep(s => s + 1)} disabled={step === 1 ? !canNext1 : !canNext2} style={{ background: G, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontFamily: F.sans, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (step === 1 ? !canNext1 : !canNext2) ? .4 : 1 }}>
-                Siguiente →
-              </button>
-              : <button onClick={() => onSave({ ...form, status: 'pendiente', subtotal, ivaTotal, total })} disabled={!canSave} style={{ background: G, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontFamily: F.sans, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: !canSave ? .4 : 1 }}>
-                Emitir CFE →
-              </button>
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── CFE Detail Panel ───────────────────────────────────────────────────────
-function CFEDetail({ cfe, onClose, onAnular, onReenviar }) {
-  const s = CFE_STATUS[cfe.status] || CFE_STATUS.borrador;
-  const subtotal = cfe.items?.reduce((s, it) => s + it.cant * it.precio, 0) || 0;
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', justifyContent: 'flex-end', background: 'rgba(10,10,8,.4)' }} onClick={onClose}>
-      <div style={{ width: 520, height: '100%', background: '#fff', overflowY: 'auto', boxShadow: '-8px 0 40px rgba(0,0,0,.12)' }} onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div style={{ padding: '28px 32px 20px', borderBottom: '1px solid #f0f0ec' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+          {/* Row 1: tipo + moneda + fecha + venc */}
+          <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:14, marginBottom:18 }}>
             <div>
-              <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 6 }}>
-                {CFE_TIPOS[cfe.tipo]?.icon} {cfe.tipo}
-              </div>
-              <div style={{ fontFamily: F.serif, fontSize: 28, fontWeight: 400, color: '#1a1a18', lineHeight: 1 }}>
-                {cfe.numero || 'SIN NÚMERO'}
-              </div>
+              <Lbl>Tipo</Lbl>
+              <Sel value={tipo} onChange={e=>setTipo(e.target.value)}>
+                {Object.keys(CFE_TIPOS).map(t=><option key={t}>{t}</option>)}
+              </Sel>
             </div>
-            <button onClick={onClose} style={{ background: '#f0f0ec', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#6a6a68' }}>✕</button>
-          </div>
-          <StatusPill status={cfe.status} />
-        </div>
-
-        {/* Amount hero */}
-        <div style={{ padding: '24px 32px', background: '#f9f9f7', borderBottom: '1px solid #f0f0ec' }}>
-          <div style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 6 }}>Total</div>
-          <div style={{ fontFamily: F.serif, fontSize: 42, fontWeight: 400, color: G, lineHeight: 1 }}>{fmtMoney(cfe.total, cfe.moneda)}</div>
-          <div style={{ fontFamily: F.sans, fontSize: 12, color: '#9a9a98', marginTop: 6 }}>IVA incluido · {cfe.moneda}</div>
-        </div>
-
-        {/* Details */}
-        <div style={{ padding: '24px 32px' }}>
-
-          {/* Parties */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-            <div>
-              <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 8 }}>Emisor</div>
-              <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>Aryes</div>
+            <div><Lbl>Moneda</Lbl>
+              <Sel value={moneda} onChange={e=>setMoneda(e.target.value)}>
+                {MONEDAS.map(m=><option key={m}>{m}</option>)}
+              </Sel>
             </div>
-            <div>
-              <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 8 }}>Receptor</div>
-              <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{cfe.clienteNombre || '—'}</div>
-              {cfe.clienteRut && <div style={{ fontFamily: F.mono, fontSize: 11, color: '#6a6a68', marginTop: 2 }}>RUT {cfe.clienteRut}</div>}
-              {cfe.clienteDir && <div style={{ fontFamily: F.sans, fontSize: 11, color: '#9a9a98', marginTop: 2 }}>{cfe.clienteDir}</div>}
+            <div><Lbl>Fecha emisión</Lbl>
+              <Inp type="date" value={fecha} onChange={e=>setFecha(e.target.value)} />
+            </div>
+            <div><Lbl>Vencimiento pago</Lbl>
+              <Inp type="date" value={fechaVenc} onChange={e=>setFechaVenc(e.target.value)} />
             </div>
           </div>
 
-          {/* Dates */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-            {[['Fecha de emisión', fmtDate(cfe.fecha)], ['Vencimiento', fmtDate(cfe.fechaVenc)]].map(([l, v]) => (
-              <div key={l} style={{ background: '#f9f9f7', borderRadius: 8, padding: '12px 14px' }}>
-                <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 4 }}>{l}</div>
-                <div style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>{v}</div>
+          {/* Row 2: cliente */}
+          <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:14, marginBottom:18 }}>
+            <div>
+              <Lbl>Cliente *</Lbl>
+              {clientes.length > 0
+                ? <Sel value={clienteId} onChange={e=>handleCliente(e.target.value)}>
+                    <option value="">— Seleccionar cliente —</option>
+                    {clientes.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </Sel>
+                : <Inp value={clienteNombre} onChange={e=>setClienteNombre(e.target.value)}
+                    placeholder="Nombre del cliente" />
+              }
+            </div>
+            <div><Lbl>RUT</Lbl>
+              <Inp value={clienteRut} onChange={e=>setClienteRut(e.target.value)}
+                placeholder="21XXXXXXXX" style={{ fontFamily:F.mono }} />
+            </div>
+            <div><Lbl>Cond. pago detectada</Lbl>
+              <div style={{ padding:'8px 11px', background:'#f9f9f7', borderRadius:7,
+                fontFamily:F.sans, fontSize:13, color:'#6a6a68', border:'1.5px solid #f0f0ec' }}>
+                {COND_PAGO.find(c=>c.value===clientes.find(x=>x.id===clienteId)?.condPago)?.label||'—'}
               </div>
-            ))}
+            </div>
           </div>
 
           {/* Items */}
-          {cfe.items?.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 10 }}>Líneas</div>
-              <div style={{ border: '1px solid #e2e2de', borderRadius: 8, overflow: 'hidden' }}>
-                {cfe.items.map((it, i) => (
-                  <div key={it.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: i % 2 === 0 ? '#fff' : '#fafaf8', borderBottom: i < cfe.items.length - 1 ? '1px solid #f0f0ec' : 'none' }}>
-                    <div>
-                      <div style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{it.desc}</div>
-                      <div style={{ fontFamily: F.sans, fontSize: 11, color: '#9a9a98', marginTop: 2 }}>{it.cant} × {fmtMoney(it.precio, cfe.moneda)} · IVA {it.iva}%</div>
-                    </div>
-                    <div style={{ fontFamily: F.mono, fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>{fmtMoney(it.cant * it.precio * (1 + it.iva / 100), cfe.moneda)}</div>
-                  </div>
-                ))}
+          <div style={{ background:'#f9f9f7', borderRadius:10, padding:14, marginBottom:14 }}>
+            <Lbl>Agregar línea</Lbl>
+            <div style={{ display:'grid', gridTemplateColumns:'2.5fr 0.7fr 1fr 0.8fr 36px', gap:8, alignItems:'end' }}>
+              <div>
+                {productos.length > 0
+                  ? <Sel value={iForm.prodId} onChange={e=>handleProd(e.target.value)}>
+                      <option value="">— Producto —</option>
+                      {productos.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                    </Sel>
+                  : <Inp value={iForm.desc} onChange={e=>setIForm(f=>({...f,desc:e.target.value}))}
+                      placeholder="Descripción" />
+                }
               </div>
-            </div>
-          )}
-
-          {/* Totals */}
-          <div style={{ background: '#f9f9f7', borderRadius: 10, padding: '16px 20px', marginBottom: 24 }}>
-            {[
-              ['Subtotal', fmtMoney(cfe.subtotal, cfe.moneda)],
-              ['IVA', fmtMoney(cfe.ivaTotal, cfe.moneda)],
-            ].map(([l, v]) => (
-              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: F.sans, fontSize: 12, color: '#6a6a68', marginBottom: 6 }}>
-                <span>{l}</span><span style={{ fontFamily: F.mono }}>{v}</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e2de', paddingTop: 10, marginTop: 4 }}>
-              <span style={{ fontFamily: F.sans, fontSize: 14, fontWeight: 700, color: '#1a1a18' }}>TOTAL</span>
-              <span style={{ fontFamily: F.serif, fontSize: 20, color: G }}>{fmtMoney(cfe.total, cfe.moneda)}</span>
+              <Inp type="number" value={iForm.cant} min="0.001" step="0.001"
+                onChange={e=>setIForm(f=>({...f,cant:e.target.value}))}
+                style={{ textAlign:'right', fontFamily:F.mono }} />
+              <Inp type="number" value={iForm.precio} min="0" step="0.01"
+                onChange={e=>setIForm(f=>({...f,precio:e.target.value}))}
+                style={{ textAlign:'right', fontFamily:F.mono }} />
+              <Sel value={iForm.iva} onChange={e=>setIForm(f=>({...f,iva:Number(e.target.value)}))}>
+                {IVA_RATES.map(r=><option key={r} value={r}>{r===0?'Exento':r+'%'}</option>)}
+              </Sel>
+              <button onClick={addItem} style={{ background:G, color:'#fff', border:'none',
+                borderRadius:7, width:36, height:36, cursor:'pointer', fontSize:20,
+                display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
             </div>
           </div>
 
-          {cfe.notas && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '12px 14px', marginBottom: 24 }}>
-              <div style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#92400e', marginBottom: 4 }}>Notas</div>
-              <div style={{ fontFamily: F.sans, fontSize: 13, color: '#92400e' }}>{cfe.notas}</div>
+          {items.length > 0 && (
+            <div style={{ border:'1px solid #e2e2de', borderRadius:10, overflow:'hidden', marginBottom:18 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:F.sans, fontSize:13 }}>
+                <thead>
+                  <tr style={{ background:'#f9f9f7', borderBottom:'1px solid #e2e2de' }}>
+                    {['Descripción','Cant.','Precio','IVA','Total',''].map(h=>
+                      <th key={h} style={{ padding:'8px 12px', textAlign:h===''?'center':'left',
+                        fontFamily:F.sans, fontSize:10, fontWeight:700, letterSpacing:'0.1em',
+                        textTransform:'uppercase', color:'#9a9a98' }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it,i)=>(
+                    <tr key={it.id} style={{ borderBottom:'1px solid #f0f0ec',
+                      background:i%2===0?'#fff':'#fafaf8' }}>
+                      <td style={{ padding:'9px 12px', fontWeight:500 }}>{it.desc}</td>
+                      <td style={{ padding:'9px 12px', fontFamily:F.mono, textAlign:'right' }}>{it.cant}</td>
+                      <td style={{ padding:'9px 12px', fontFamily:F.mono, textAlign:'right' }}>{fmtMoney(it.precio,moneda)}</td>
+                      <td style={{ padding:'9px 12px', textAlign:'right', color:'#9a9a98' }}>{it.iva}%</td>
+                      <td style={{ padding:'9px 12px', fontFamily:F.mono, fontWeight:700, textAlign:'right' }}>{fmtMoney(it.cant*it.precio*(1+it.iva/100),moneda)}</td>
+                      <td style={{ padding:'9px 12px', textAlign:'center' }}>
+                        <button onClick={()=>setItems(prev=>prev.filter(x=>x.id!==it.id))}
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:16 }}>×</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
-          {/* Integration notice */}
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '12px 14px', marginBottom: 20 }}>
-            <div style={{ fontFamily: F.sans, fontSize: 12, color: '#1e40af', fontWeight: 600, marginBottom: 2 }}>🔗 Integración con proveedor DGI pendiente</div>
-            <div style={{ fontFamily: F.sans, fontSize: 11, color: '#3b82f6' }}>Este CFE será enviado automáticamente a DGI cuando se configure el proveedor habilitado (UCFE/pymo).</div>
+          {/* Totals row */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 220px', gap:20 }}>
+            <div>
+              <Lbl>Notas</Lbl>
+              <textarea value={notas} onChange={e=>setNotas(e.target.value)} rows={3}
+                placeholder="Condición de pago, referencia, instrucciones..."
+                style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px',
+                  border:'1.5px solid #e2e2de', borderRadius:7, fontFamily:F.sans,
+                  fontSize:13, resize:'vertical', outline:'none' }} />
+            </div>
+            <div style={{ display:'grid', gap:6, alignContent:'start' }}>
+              {[['Subtotal', fmtMoney(subtotal,moneda)],
+                ['IVA',      fmtMoney(ivaTotal,moneda)],
+              ].map(([l,v])=>(
+                <div key={l} style={{ display:'flex', justifyContent:'space-between',
+                  fontFamily:F.sans, fontSize:12, color:'#6a6a68' }}>
+                  <span>{l}</span><span style={{ fontFamily:F.mono }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ borderTop:'2px solid #1a1a18', paddingTop:8,
+                display:'flex', justifyContent:'space-between' }}>
+                <span style={{ fontFamily:F.sans, fontSize:14, fontWeight:700 }}>TOTAL</span>
+                <span style={{ fontFamily:F.serif, fontSize:20, color:G }}>{fmtMoney(total,moneda)}</span>
+              </div>
+              <div>
+                <Lbl>Descuento %</Lbl>
+                <Inp type="number" min="0" max="100" value={descuento}
+                  onChange={e=>setDescuento(Number(e.target.value))}
+                  style={{ textAlign:'right', fontFamily:F.mono }} />
+              </div>
+            </div>
           </div>
+        </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {cfe.status !== 'anulada' && cfe.status !== 'rechazada' && (
-              <button onClick={() => onAnular(cfe.id)} style={{ flex: 1, padding: '10px', background: '#fff', border: '1.5px solid #fecaca', borderRadius: 8, fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#dc2626', cursor: 'pointer' }}>
-                Anular CFE
-              </button>
-            )}
-            <button onClick={() => window.print()} style={{ flex: 1, padding: '10px', background: '#f0f0ec', border: 'none', borderRadius: 8, fontFamily: F.sans, fontSize: 12, fontWeight: 600, color: '#3a3a38', cursor: 'pointer' }}>
-              🖨 Imprimir
+        {/* Footer */}
+        <div style={{ padding:'14px 28px 20px', borderTop:'1px solid #f0f0ec',
+          display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <button onClick={onClose} style={{ background:'#f0f0ec', color:'#3a3a38',
+            border:'none', borderRadius:8, padding:'10px 20px', fontFamily:F.sans,
+            fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancelar</button>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>onSave({tipo,moneda,fecha,fechaVenc,clienteId,clienteNombre,clienteRut,items,notas,descuento,subtotal,ivaTotal,total,status:'borrador'})}
+              disabled={!canSave} style={{ background:'#f0f0ec', color:'#3a3a38', border:'none',
+              borderRadius:8, padding:'10px 20px', fontFamily:F.sans, fontSize:13,
+              fontWeight:600, cursor:'pointer', opacity:!canSave?.4:1 }}>
+              Borrador
+            </button>
+            <button onClick={()=>onSave({tipo,moneda,fecha,fechaVenc,clienteId,clienteNombre,clienteRut,items,notas,descuento,subtotal,ivaTotal,total,status:'emitida'})}
+              disabled={!canSave} style={{ background:G, color:'#fff', border:'none',
+              borderRadius:8, padding:'10px 26px', fontFamily:F.sans, fontSize:13,
+              fontWeight:600, cursor:'pointer', opacity:!canSave?.4:1,
+              boxShadow:'0 2px 8px rgba(58,125,30,.3)' }}>
+              Emitir CFE →
             </button>
           </div>
         </div>
@@ -511,174 +345,822 @@ function CFEDetail({ cfe, onClose, onAnular, onReenviar }) {
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
-function FacturacionTab({ products = [], clientes: clientesProp = [] }) {
-  const KFACT = 'aryes-cfe';
-  const [cfes, setCfes] = useState(() => LS.get(KFACT, []));
-  const [clientes, setClientes] = useState(() => {
-    const c = LS.get('aryes-clients', []);
-    return clientesProp.length > 0 ? clientesProp : c;
-  });
+// ─── Cobro Modal ───────────────────────────────────────────────────────────
+function ModalCobro({ clientes, cfes, onSave, onClose }) {
+  const [clienteId, setClienteId] = useState('');
+  const [monto, setMonto]         = useState('');
+  const [metodo, setMetodo]       = useState('Transferencia');
+  const [fecha, setFecha]         = useState(today());
+  const [fechaCheque, setFechaCheque] = useState('');
+  const [notas, setNotas]         = useState('');
+  const [facturasAplicar, setFacturasAplicar] = useState([]);
 
-  const [showWizard, setShowWizard] = useState(false);
-  const [selectedCfe, setSelectedCfe] = useState(null);
-  const [filtroStatus, setFiltroStatus] = useState('todos');
-  const [filtroTipo, setFiltroTipo] = useState('todos');
-  const [busqueda, setBusqueda] = useState('');
-  const [numActual, setNumActual] = useState(() => LS.get('aryes-cfe-seq', 1));
+  const pendientes = useMemo(()=>
+    cfes.filter(c=>c.clienteId===clienteId &&
+      ['emitida','cobrado_parcial'].includes(c.status) &&
+      (c.saldoPendiente||c.total)>0
+    ), [cfes, clienteId]
+  );
 
-  const save = (arr) => { setCfes(arr); LS.set(KFACT, arr); };
-
-  const handleSave = (form) => {
-    const seq = numActual;
-    const prefix = CFE_TIPOS[form.tipo]?.code || 'CFE';
-    const numero = `${prefix}-${String(seq).padStart(6, '0')}`;
-    const nuevo = { ...form, id: newId(), numero, createdAt: new Date().toISOString() };
-    save([nuevo, ...cfes]);
-    setNumActual(seq + 1);
-    LS.set('aryes-cfe-seq', seq + 1);
-    setShowWizard(false);
+  const toggleFactura = id => {
+    setFacturasAplicar(prev=>
+      prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]
+    );
   };
 
-  const handleAnular = (id) => {
-    if (!window.confirm('¿Anular este CFE? Esta acción no se puede deshacer.')) return;
-    save(cfes.map(c => c.id === id ? { ...c, status: 'anulada' } : c));
-    setSelectedCfe(null);
-  };
+  const montoAplicado = facturasAplicar.reduce((s,id)=>{
+    const f = cfes.find(c=>c.id===id);
+    return s + (f?.saldoPendiente||f?.total||0);
+  }, 0);
 
-  const filtered = useMemo(() => cfes.filter(c => {
-    if (filtroStatus !== 'todos' && c.status !== filtroStatus) return false;
-    if (filtroTipo !== 'todos' && c.tipo !== filtroTipo) return false;
-    if (busqueda) {
-      const q = busqueda.toLowerCase();
-      return (c.numero || '').toLowerCase().includes(q) || (c.clienteNombre || '').toLowerCase().includes(q);
-    }
-    return true;
-  }), [cfes, filtroStatus, filtroTipo, busqueda]);
-
-  // KPIs
-  const totalEmitido = cfes.filter(c => ['emitida', 'aceptada'].includes(c.status)).reduce((s, c) => s + (c.total || 0), 0);
-  const pendienteCobro = cfes.filter(c => c.status === 'emitida').reduce((s, c) => s + (c.total || 0), 0);
-  const esteMes = cfes.filter(c => {
-    const d = new Date(c.createdAt || c.fecha);
-    const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
+  const canSave = clienteId && Number(monto) > 0;
 
   return (
-    <div className="au" style={{ display: 'grid', gap: 28, maxWidth: 1200 }}>
-      {/* Google Fonts */}
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center',
+      justifyContent:'center', background:'rgba(10,10,8,.55)', backdropFilter:'blur(4px)' }}>
+      <div style={{ background:'#fff', borderRadius:20, width:560, maxHeight:'88vh',
+        overflow:'hidden', display:'flex', flexDirection:'column',
+        boxShadow:'0 32px 80px rgba(0,0,0,.22)' }}>
+
+        <div style={{ padding:'22px 28px 16px', borderBottom:'1px solid #f0f0ec',
+          display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <Lbl>Gestión de cobros</Lbl>
+            <div style={{ fontFamily:F.serif, fontSize:24, color:'#1a1a18' }}>Registrar cobro</div>
+          </div>
+          <button onClick={onClose} style={{ background:'#f0f0ec', border:'none', borderRadius:8,
+            width:32, height:32, cursor:'pointer', fontSize:16, color:'#6a6a68' }}>✕</button>
+        </div>
+
+        <div style={{ overflowY:'auto', flex:1, padding:'22px 28px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:18 }}>
+            <div style={{ gridColumn:'1/-1' }}>
+              <Lbl>Cliente</Lbl>
+              <Sel value={clienteId} onChange={e=>{ setClienteId(e.target.value); setFacturasAplicar([]); }}>
+                <option value="">— Seleccionar —</option>
+                {clientes.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </Sel>
+            </div>
+            <div>
+              <Lbl>Monto cobrado</Lbl>
+              <Inp type="number" value={monto} onChange={e=>setMonto(e.target.value)}
+                placeholder="0.00" style={{ fontFamily:F.mono, textAlign:'right', fontSize:16, fontWeight:700 }} />
+            </div>
+            <div>
+              <Lbl>Método</Lbl>
+              <Sel value={metodo} onChange={e=>setMetodo(e.target.value)}>
+                {METODOS_COBRO.map(m=><option key={m}>{m}</option>)}
+              </Sel>
+            </div>
+            <div>
+              <Lbl>Fecha cobro</Lbl>
+              <Inp type="date" value={fecha} onChange={e=>setFecha(e.target.value)} />
+            </div>
+            {metodo==='Cheque' && (
+              <div>
+                <Lbl>Fecha depósito cheque</Lbl>
+                <Inp type="date" value={fechaCheque} onChange={e=>setFechaCheque(e.target.value)} />
+              </div>
+            )}
+          </div>
+
+          {/* Facturas pendientes del cliente */}
+          {clienteId && pendientes.length > 0 && (
+            <div style={{ marginBottom:18 }}>
+              <Lbl>Aplicar a facturas pendientes (opcional)</Lbl>
+              <div style={{ border:'1px solid #e2e2de', borderRadius:10, overflow:'hidden' }}>
+                {pendientes.map((f,i)=>{
+                  const vencido = f.fechaVenc && daysUntil(f.fechaVenc) < 0;
+                  const checked = facturasAplicar.includes(f.id);
+                  return (
+                    <div key={f.id} onClick={()=>toggleFactura(f.id)} style={{
+                      display:'flex', alignItems:'center', gap:14, padding:'11px 14px',
+                      cursor:'pointer', background: checked?'#f0f7ec':i%2===0?'#fff':'#fafaf8',
+                      borderBottom: i<pendientes.length-1?'1px solid #f0f0ec':'none',
+                      transition:'background .1s',
+                    }}>
+                      <div style={{ width:18, height:18, borderRadius:5,
+                        border:`2px solid ${checked?G:'#d1d5db'}`,
+                        background:checked?G:'#fff', display:'flex', alignItems:'center',
+                        justifyContent:'center', flexShrink:0 }}>
+                        {checked && <span style={{ color:'#fff', fontSize:11, fontWeight:700 }}>✓</span>}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontFamily:F.mono, fontSize:12, fontWeight:600, color:'#1a1a18' }}>{f.numero}</div>
+                        <div style={{ fontFamily:F.sans, fontSize:11, color:vencido?'#dc2626':'#9a9a98' }}>
+                          {vencido ? `Vencida hace ${Math.abs(daysUntil(f.fechaVenc))}d` : `Vence ${fmtDateShort(f.fechaVenc)}`}
+                        </div>
+                      </div>
+                      <div style={{ fontFamily:F.serif, fontSize:16, color:G }}>
+                        {fmtMoney(f.saldoPendiente||f.total, f.moneda)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {facturasAplicar.length > 0 && (
+                <div style={{ marginTop:8, fontFamily:F.sans, fontSize:12, color:G, fontWeight:600 }}>
+                  ✓ Aplicando {fmtMoney(montoAplicado,'UYU')} a {facturasAplicar.length} factura(s)
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Lbl>Notas</Lbl>
+            <textarea value={notas} onChange={e=>setNotas(e.target.value)} rows={2}
+              placeholder="Referencia de transferencia, N° cheque, etc."
+              style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px',
+                border:'1.5px solid #e2e2de', borderRadius:7, fontFamily:F.sans,
+                fontSize:13, resize:'vertical', outline:'none' }} />
+          </div>
+        </div>
+
+        <div style={{ padding:'14px 28px 20px', borderTop:'1px solid #f0f0ec',
+          display:'flex', justifyContent:'space-between' }}>
+          <button onClick={onClose} style={{ background:'#f0f0ec', color:'#3a3a38', border:'none',
+            borderRadius:8, padding:'10px 20px', fontFamily:F.sans, fontSize:13,
+            fontWeight:600, cursor:'pointer' }}>Cancelar</button>
+          <button onClick={()=>onSave({clienteId,monto:Number(monto),metodo,fecha,fechaCheque,notas,facturasAplicar})}
+            disabled={!canSave} style={{ background:G, color:'#fff', border:'none', borderRadius:8,
+            padding:'10px 26px', fontFamily:F.sans, fontSize:13, fontWeight:600,
+            cursor:'pointer', opacity:!canSave?.4:1 }}>
+            Registrar cobro
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Tab ──────────────────────────────────────────────────────────────
+function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
+  const KCFE  = 'aryes-cfe';
+  const KCOB  = 'aryes-cobros';
+  const KCLI  = 'aryes-clients';
+  const KSEQ  = 'aryes-cfe-seq';
+
+  const [cfes,    setCfes]    = useState(()=>LS.get(KCFE,[]));
+  const [cobros,  setCobros]  = useState(()=>LS.get(KCOB,[]));
+  const [clientes,setClientes]= useState(()=>{
+    const c = LS.get(KCLI,[]);
+    return clientesProp.length>0 ? clientesProp : c;
+  });
+  const [seq,     setSeq]     = useState(()=>LS.get(KSEQ,1));
+
+  const [vista,   setVista]   = useState('comprobantes');
+  const [showCFE, setShowCFE] = useState(false);
+  const [showCob, setShowCob] = useState(false);
+  const [prefill, setPrefill] = useState(null);
+  const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroCli,    setFiltroCli]    = useState('todos');
+  const [busq,         setBusq]         = useState('');
+  const [detalleCli,   setDetalleCli]   = useState(null);
+
+  const saveCfes  = arr => { setCfes(arr);   LS.set(KCFE,arr); };
+  const saveCobros= arr => { setCobros(arr); LS.set(KCOB,arr); };
+
+  // ── Emitir CFE ────────────────────────────────────────────────────────
+  const handleSaveCFE = form => {
+    const code   = CFE_TIPOS[form.tipo]?.code||'CFE';
+    const numero = `${code}-${String(seq).padStart(6,'0')}`;
+    const nuevo  = { ...form, id:newId(), numero,
+      saldoPendiente: form.total,
+      createdAt: new Date().toISOString() };
+    saveCfes([nuevo,...cfes]);
+    setSeq(s=>{ const n=s+1; LS.set(KSEQ,n); return n; });
+    setShowCFE(false); setPrefill(null);
+    // Persist to Supabase (non-blocking)
+    db.upsert('ventas',{ id:nuevo.id, numero, tipo:nuevo.tipo,
+      cliente_id:nuevo.clienteId||null, cliente_nombre:nuevo.clienteNombre,
+      cliente_rut:nuevo.clienteRut||'', total:nuevo.total, moneda:nuevo.moneda,
+      fecha:nuevo.fecha, fecha_venc:nuevo.fechaVenc||null,
+      status:nuevo.status, items:nuevo.items, notas:nuevo.notas,
+      created_at:nuevo.createdAt
+    }).catch(()=>{});
+  };
+
+  // ── Registrar cobro ────────────────────────────────────────────────────
+  const handleSaveCobro = ({ clienteId, monto, metodo, fecha, fechaCheque, notas, facturasAplicar }) => {
+    const cobro = { id:newId(), clienteId, monto, metodo, fecha, fechaCheque, notas,
+      facturasAplicar, createdAt:new Date().toISOString() };
+    saveCobros([cobro,...cobros]);
+
+    // Update saldo pendiente en cada CFE aplicado
+    let remaining = monto;
+    const updCfes = cfes.map(c => {
+      if (!facturasAplicar.includes(c.id) || remaining<=0) return c;
+      const saldo  = c.saldoPendiente||c.total||0;
+      const aplicar= Math.min(saldo, remaining);
+      remaining   -= aplicar;
+      const newSaldo = saldo - aplicar;
+      return { ...c,
+        saldoPendiente: newSaldo,
+        status: newSaldo<=0.01 ? 'cobrada' : 'cobrado_parcial',
+      };
+    });
+    saveCfes(updCfes);
+    setShowCob(false);
+  };
+
+  const anular = id => {
+    if (!window.confirm('¿Anular este CFE?')) return;
+    saveCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
+  };
+
+  // ── Computed ──────────────────────────────────────────────────────────
+  const cfesFiltrados = useMemo(()=>cfes.filter(c=>{
+    if (filtroStatus!=='todos'&&c.status!==filtroStatus) return false;
+    if (filtroCli!=='todos'&&c.clienteId!==filtroCli) return false;
+    if (busq) { const q=busq.toLowerCase();
+      return (c.numero||'').toLowerCase().includes(q)||(c.clienteNombre||'').toLowerCase().includes(q); }
+    return true;
+  }),[cfes,filtroStatus,filtroCli,busq]);
+
+  // Deudores: CFEs emitidas/parciales con saldo
+  const deudores = useMemo(()=>{
+    const map = {};
+    cfes.filter(c=>['emitida','cobrado_parcial'].includes(c.status)&&(c.saldoPendiente||c.total)>0)
+      .forEach(c=>{
+        if (!map[c.clienteId]) map[c.clienteId]={
+          clienteId:c.clienteId, nombre:c.clienteNombre, facturas:[], totalDeuda:0, diasMaxVenc:0
+        };
+        const dias = c.fechaVenc ? Math.max(0,-daysUntil(c.fechaVenc)) : 0;
+        map[c.clienteId].facturas.push(c);
+        map[c.clienteId].totalDeuda += (c.saldoPendiente||c.total||0);
+        if (dias > map[c.clienteId].diasMaxVenc) map[c.clienteId].diasMaxVenc = dias;
+      });
+    return Object.values(map).sort((a,b)=>b.diasMaxVenc-a.diasMaxVenc);
+  },[cfes]);
+
+  const totalDeuda    = deudores.reduce((s,d)=>s+d.totalDeuda,0);
+  const vencidasHoy   = cfes.filter(c=>['emitida','cobrado_parcial'].includes(c.status)&&c.fechaVenc&&daysUntil(c.fechaVenc)<0);
+  const venceEsta     = cfes.filter(c=>['emitida','cobrado_parcial'].includes(c.status)&&c.fechaVenc&&daysUntil(c.fechaVenc)>=0&&daysUntil(c.fechaVenc)<=7);
+  const totalEmitido  = cfes.filter(c=>['emitida','aceptada','cobrada'].includes(c.status)).reduce((s,c)=>s+c.total,0);
+
+  const clienteDetalle = detalleCli ? clientes.find(c=>c.id===detalleCli)||{id:detalleCli,nombre:'Cliente'} : null;
+  const cfesCliente    = detalleCli ? cfes.filter(c=>c.clienteId===detalleCli) : [];
+  const cobrosCliente  = detalleCli ? cobros.filter(c=>c.clienteId===detalleCli) : [];
+
+  // ─────────────────────────────────────────────────────────────────────
+  return (
+    <div className="au" style={{ maxWidth:1200 }}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;500&display=swap" />
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end',
+        marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#9a9a98', marginBottom: 6 }}>Facturación electrónica · CFE Uruguay</div>
-          <h1 style={{ fontFamily: F.serif, fontSize: 38, fontWeight: 400, color: '#1a1a18', margin: 0, letterSpacing: '-.02em', lineHeight: 1 }}>Comprobantes</h1>
+          <Lbl>Facturación electrónica · Cuentas corrientes</Lbl>
+          <h1 style={{ fontFamily:F.serif, fontSize:38, fontWeight:400, color:'#1a1a18',
+            margin:0, letterSpacing:'-.02em', lineHeight:1 }}>Facturación</h1>
         </div>
-        <button onClick={() => setShowWizard(true)} style={{
-          background: G, color: '#fff', border: 'none', borderRadius: 10,
-          padding: '12px 24px', fontFamily: F.sans, fontSize: 14, fontWeight: 600,
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-          boxShadow: '0 2px 8px rgba(58,125,30,.3)', transition: 'transform .15s, box-shadow .15s',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(58,125,30,.35)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(58,125,30,.3)'; }}>
-          <span style={{ fontSize: 18 }}>+</span> Nuevo CFE
-        </button>
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={()=>setShowCob(true)} style={{ background:'#fff', color:G,
+            border:`1.5px solid ${G}`, borderRadius:10, padding:'10px 20px',
+            fontFamily:F.sans, fontSize:13, fontWeight:600, cursor:'pointer',
+            display:'flex', alignItems:'center', gap:6 }}>
+            💰 Registrar cobro
+          </button>
+          <button onClick={()=>{setPrefill(null);setShowCFE(true);}} style={{
+            background:G, color:'#fff', border:'none', borderRadius:10,
+            padding:'10px 24px', fontFamily:F.sans, fontSize:13, fontWeight:600,
+            cursor:'pointer', display:'flex', alignItems:'center', gap:8,
+            boxShadow:'0 2px 8px rgba(58,125,30,.3)',
+          }}>+ Nuevo CFE</button>
+        </div>
       </div>
 
-      {/* Integration banner */}
-      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ fontSize: 20 }}>🔗</span>
-        <div style={{ flex: 1 }}>
-          <span style={{ fontFamily: F.sans, fontSize: 13, fontWeight: 600, color: '#1e40af' }}>Proveedor habilitado DGI no configurado — </span>
-          <span style={{ fontFamily: F.sans, fontSize: 13, color: '#3b82f6' }}>Los CFEs se guardan localmente. Cuando conectes UCFE o pymo, se enviarán automáticamente a DGI.</span>
+      {/* ── Alerta proveedor DGI ───────────────────────────────────── */}
+      <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:10,
+        padding:'12px 18px', display:'flex', alignItems:'center', gap:12, marginBottom:22 }}>
+        <span style={{ fontSize:18 }}>🔗</span>
+        <div style={{ flex:1, fontFamily:F.sans, fontSize:13 }}>
+          <b style={{ color:'#1e40af' }}>Proveedor habilitado DGI no configurado — </b>
+          <span style={{ color:'#3b82f6' }}>CFEs guardados localmente. Cuando confirmes UCFE o pymo, se enviarán automáticamente.</span>
         </div>
-        <span style={{ fontFamily: F.sans, fontSize: 11, fontWeight: 600, color: '#2563eb', background: '#dbeafe', padding: '4px 10px', borderRadius: 20, cursor: 'pointer', whiteSpace: 'nowrap' }}>Configurar →</span>
+        <span style={{ background:'#dbeafe', color:'#2563eb', fontFamily:F.sans, fontSize:11,
+          fontWeight:700, padding:'4px 12px', borderRadius:20, cursor:'pointer', whiteSpace:'nowrap' }}>
+          Configurar →
+        </span>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: '#e2e2de', borderRadius: 12, overflow: 'hidden' }}>
-        <KpiCard label="Total emitido" value={totalEmitido > 0 ? `$${(totalEmitido / 1000).toFixed(1)}k` : '—'} sub="CFEs emitidas y aceptadas" accent={G} />
-        <KpiCard label="Pendiente cobro" value={pendienteCobro > 0 ? `$${(pendienteCobro / 1000).toFixed(1)}k` : '—'} sub="CFEs emitidas sin confirmar" accent={pendienteCobro > 0 ? '#d97706' : '#e2e2de'} />
-        <KpiCard label="Este mes" value={esteMes} sub="comprobantes emitidos" accent={esteMes > 0 ? '#2563eb' : '#e2e2de'} />
-        <KpiCard label="Total CFEs" value={cfes.length} sub={`${cfes.filter(c => c.status === 'aceptada').length} aceptados por DGI`} accent="#e2e2de" />
+      {/* ── KPIs ───────────────────────────────────────────────────── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:1,
+        background:'#e2e2de', borderRadius:12, overflow:'hidden', marginBottom:24 }}>
+        <KpiCard label="Deuda total" value={totalDeuda>0?fmtMoney(totalDeuda):'—'}
+          sub={`${deudores.length} clientes con saldo`} accent={totalDeuda>0?'#dc2626':'#e2e2de'} danger />
+        <KpiCard label="Facturas vencidas" value={vencidasHoy.length}
+          sub="sin cobrar" accent={vencidasHoy.length>0?'#dc2626':'#e2e2de'} danger
+          onClick={()=>{setVista('informes');}} />
+        <KpiCard label="Vencen esta semana" value={venceEsta.length}
+          sub="próximos 7 días" accent={venceEsta.length>0?'#d97706':'#e2e2de'} />
+        <KpiCard label="Emitido total" value={totalEmitido>0?fmtMoney(totalEmitido):'—'}
+          sub={`${cfes.filter(c=>c.status==='cobrada').length} cobradas`} accent={G} />
       </div>
 
-      {/* Filters */}
-      {cfes.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar por número o cliente..." style={{ flex: 1, minWidth: 220, padding: '8px 14px 8px 36px', border: '1.5px solid #e2e2de', borderRadius: 8, fontFamily: F.sans, fontSize: 13, outline: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9a98' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: '12px center' }} />
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {['todos', ...Object.keys(CFE_STATUS)].map(s => (
-              <button key={s} onClick={() => setFiltroStatus(s)} style={{ padding: '7px 14px', borderRadius: 20, fontFamily: F.sans, fontSize: 12, fontWeight: filtroStatus === s ? 700 : 500, cursor: 'pointer', border: `1.5px solid ${filtroStatus === s ? G : '#e2e2de'}`, background: filtroStatus === s ? '#f0f7ec' : '#fff', color: filtroStatus === s ? G : '#6a6a68', transition: 'all .15s' }}>
-                {s === 'todos' ? 'Todos' : CFE_STATUS[s].label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── Tabs ───────────────────────────────────────────────────── */}
+      <div style={{ borderBottom:'1px solid #e2e2de', marginBottom:22, display:'flex', gap:0 }}>
+        {[
+          ['comprobantes','🧾 Comprobantes'],
+          ['cuenta',      '📊 Cuenta corriente'],
+          ['cobros',      '💰 Cobros'],
+          ['informes',    '📋 Informes'],
+        ].map(([v,l])=>
+          <TabBtn key={v} active={vista===v} onClick={()=>setVista(v)}>{l}</TabBtn>
+        )}
+      </div>
 
-      {/* Content */}
-      {cfes.length === 0 ? (
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e2de' }}>
-          <EmptyState onNew={() => setShowWizard(true)} />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ background: '#f9f9f7', borderRadius: 12, padding: '40px', textAlign: 'center', color: '#9a9a98', fontFamily: F.sans, fontSize: 13 }}>
-          Sin resultados para los filtros seleccionados
-        </div>
-      ) : (
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e2de', overflow: 'hidden' }}>
-          {/* Table header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 1fr 100px 120px 80px', gap: 0, padding: '10px 20px', borderBottom: '1px solid #f0f0ec', background: '#f9f9f7' }}>
-            {['Número', 'Tipo', 'Receptor', 'Fecha', 'Total', 'Estado'].map(h => (
-              <div key={h} style={{ fontFamily: F.sans, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9a9a98' }}>{h}</div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {filtered.map((cfe, i) => (
-            <div key={cfe.id} onClick={() => setSelectedCfe(cfe)} style={{
-              display: 'grid', gridTemplateColumns: '140px 1fr 1fr 100px 120px 80px',
-              gap: 0, padding: '14px 20px',
-              borderBottom: i < filtered.length - 1 ? '1px solid #f0f0ec' : 'none',
-              background: i % 2 === 0 ? '#fff' : '#fafaf8',
-              cursor: 'pointer', transition: 'background .12s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = '#f0f7ec'}
-            onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafaf8'}>
-              <div style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 600, color: '#1a1a18', display: 'flex', alignItems: 'center' }}>{cfe.numero || '—'}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: F.sans, fontSize: 13 }}>
-                <span>{CFE_TIPOS[cfe.tipo]?.icon}</span>
-                <span style={{ color: '#3a3a38' }}>{cfe.tipo}</span>
-              </div>
-              <div style={{ fontFamily: F.sans, fontSize: 13, color: '#1a1a18', fontWeight: 500, display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cfe.clienteNombre || '—'}</div>
-              <div style={{ fontFamily: F.sans, fontSize: 12, color: '#9a9a98', display: 'flex', alignItems: 'center' }}>{fmtDate(cfe.fecha)}</div>
-              <div style={{ fontFamily: F.serif, fontSize: 16, color: G, display: 'flex', alignItems: 'center' }}>{fmtMoney(cfe.total, cfe.moneda)}</div>
-              <div style={{ display: 'flex', alignItems: 'center' }}><StatusPill status={cfe.status} /></div>
+      {/* ══════════════════════════════════════════════════════════════
+          VISTA: COMPROBANTES
+      ══════════════════════════════════════════════════════════════ */}
+      {vista==='comprobantes' && (
+        <div>
+          {/* Filters */}
+          <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+            <input value={busq} onChange={e=>setBusq(e.target.value)}
+              placeholder="Buscar por número o cliente..."
+              style={{ flex:1, minWidth:200, padding:'8px 14px 8px 36px', border:'1.5px solid #e2e2de',
+                borderRadius:8, fontFamily:F.sans, fontSize:13, outline:'none',
+                backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9a98' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E\")",
+                backgroundRepeat:'no-repeat', backgroundPosition:'12px center' }} />
+            <Sel value={filtroCli} onChange={e=>setFiltroCli(e.target.value)} style={{ width:180 }}>
+              <option value="todos">Todos los clientes</option>
+              {clientes.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </Sel>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+              {['todos',...Object.keys(CFE_STATUS)].map(s=>(
+                <button key={s} onClick={()=>setFiltroStatus(s)} style={{
+                  padding:'6px 14px', borderRadius:20, fontFamily:F.sans, fontSize:12,
+                  fontWeight:filtroStatus===s?700:500, cursor:'pointer',
+                  border:`1.5px solid ${filtroStatus===s?G:'#e2e2de'}`,
+                  background:filtroStatus===s?'#f0f7ec':'#fff',
+                  color:filtroStatus===s?G:'#6a6a68', transition:'all .12s',
+                }}>
+                  {s==='todos'?'Todos':CFE_STATUS[s].label}
+                </button>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {cfesFiltrados.length===0 ? (
+            <div style={{ textAlign:'center', padding:'60px 40px', background:'#fff',
+              borderRadius:12, border:'1px solid #e2e2de' }}>
+              <div style={{ fontSize:48, marginBottom:14, opacity:.5 }}>🧾</div>
+              <div style={{ fontFamily:F.serif, fontSize:26, color:'#1a1a18', marginBottom:8 }}>Sin comprobantes aún</div>
+              <div style={{ fontFamily:F.sans, fontSize:14, color:'#9a9a98', marginBottom:24 }}>
+                Emití tu primer CFE para empezar a gestionar facturación electrónica.
+              </div>
+              <button onClick={()=>setShowCFE(true)} style={{ background:G, color:'#fff',
+                border:'none', borderRadius:10, padding:'12px 28px', fontFamily:F.sans,
+                fontSize:14, fontWeight:600, cursor:'pointer' }}>+ Nuevo CFE</button>
+            </div>
+          ) : (
+            <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e2e2de', overflow:'hidden' }}>
+              <div style={{ display:'grid',
+                gridTemplateColumns:'130px 110px 1fr 90px 120px 110px 100px',
+                padding:'10px 18px', background:'#f9f9f7', borderBottom:'1px solid #e2e2de' }}>
+                {['Número','Tipo','Cliente','Fecha','Venc.','Total','Estado'].map(h=>
+                  <div key={h} style={{ fontFamily:F.sans, fontSize:10, fontWeight:700,
+                    letterSpacing:'0.1em', textTransform:'uppercase', color:'#9a9a98' }}>{h}</div>)}
+              </div>
+              {cfesFiltrados.map((c,i)=>{
+                const vencida = c.fechaVenc && daysUntil(c.fechaVenc)<0 &&
+                  ['emitida','cobrado_parcial'].includes(c.status);
+                return (
+                  <div key={c.id} style={{
+                    display:'grid',
+                    gridTemplateColumns:'130px 110px 1fr 90px 120px 110px 100px',
+                    padding:'13px 18px',
+                    borderBottom:i<cfesFiltrados.length-1?'1px solid #f0f0ec':'none',
+                    background: vencida?'#fef2f2' : i%2===0?'#fff':'#fafaf8',
+                    transition:'background .1s',
+                  }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#f0f7ec'}
+                  onMouseLeave={e=>e.currentTarget.style.background=vencida?'#fef2f2':i%2===0?'#fff':'#fafaf8'}>
+                    <div style={{ fontFamily:F.mono, fontSize:12, fontWeight:600, color:'#1a1a18',
+                      display:'flex', alignItems:'center' }}>{c.numero}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:5, fontFamily:F.sans, fontSize:12 }}>
+                      {CFE_TIPOS[c.tipo]?.icon} {c.tipo}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', fontFamily:F.sans,
+                      fontSize:13, fontWeight:500, color:'#1a1a18' }}>
+                      <button onClick={()=>{setDetalleCli(c.clienteId);setVista('cuenta');}}
+                        style={{ background:'none', border:'none', cursor:'pointer',
+                        fontFamily:F.sans, fontSize:13, fontWeight:600, color:G, padding:0,
+                        textDecoration:'underline', textDecorationColor:'#b8d9a8' }}>
+                        {c.clienteNombre||'—'}
+                      </button>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', fontFamily:F.sans,
+                      fontSize:12, color:'#9a9a98' }}>{fmtDateShort(c.fecha)}</div>
+                    <div style={{ display:'flex', alignItems:'center', fontFamily:F.sans, fontSize:12,
+                      color: vencida?'#dc2626':'#9a9a98', fontWeight:vencida?700:400 }}>
+                      {c.fechaVenc ? (vencida
+                        ? `Vencida ${Math.abs(daysUntil(c.fechaVenc))}d`
+                        : fmtDateShort(c.fechaVenc)) : '—'}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', fontFamily:F.serif,
+                      fontSize:16, color:G }}>{fmtMoney(c.total,c.moneda)}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <Pill status={c.status} />
+                      {c.status!=='anulada'&&c.status!=='cobrada' && (
+                        <button onClick={()=>anular(c.id)} title="Anular" style={{
+                          background:'none', border:'none', cursor:'pointer',
+                          color:'#9a9a98', fontSize:14, padding:0 }}>✕</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Modals */}
-      {showWizard && (
-        <NuevoCFEWizard
-          clientes={clientes}
-          productos={products}
-          onSave={handleSave}
-          onClose={() => setShowWizard(false)}
+      {/* ══════════════════════════════════════════════════════════════
+          VISTA: CUENTA CORRIENTE
+      ══════════════════════════════════════════════════════════════ */}
+      {vista==='cuenta' && (
+        <div>
+          {/* Selector de cliente */}
+          <div style={{ display:'flex', gap:14, alignItems:'center', marginBottom:20, flexWrap:'wrap' }}>
+            <div style={{ flex:1, maxWidth:320 }}>
+              <Lbl>Ver cuenta de</Lbl>
+              <Sel value={detalleCli||''} onChange={e=>setDetalleCli(e.target.value||null)}>
+                <option value="">— Seleccionar cliente —</option>
+                {clientes.map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </Sel>
+            </div>
+            {clienteDetalle && (
+              <button onClick={()=>{setPrefill({clienteId:clienteDetalle.id,clienteNombre:clienteDetalle.nombre});setShowCFE(true);}}
+                style={{ background:G, color:'#fff', border:'none', borderRadius:8,
+                padding:'9px 18px', fontFamily:F.sans, fontSize:13, fontWeight:600,
+                cursor:'pointer', marginTop:18 }}>+ Facturar</button>
+            )}
+          </div>
+
+          {!clienteDetalle ? (
+            <div style={{ textAlign:'center', padding:'48px', color:'#9a9a98',
+              fontFamily:F.sans, fontSize:13, background:'#f9f9f7', borderRadius:12 }}>
+              Seleccioná un cliente para ver su cuenta corriente
+            </div>
+          ) : (
+            <div>
+              {/* Header cliente */}
+              <div style={{ background:'#fff', borderRadius:12, padding:'20px 24px',
+                border:'1px solid #e2e2de', marginBottom:16,
+                display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:16 }}>
+                {[
+                  ['Cliente', clienteDetalle.nombre],
+                  ['RUT', clienteDetalle.rut||'—'],
+                  ['Cond. pago', COND_PAGO.find(c=>c.value===clienteDetalle.condPago)?.label||'—'],
+                  ['Límite crédito', clienteDetalle.limiteCredito
+                    ? fmtMoney(clienteDetalle.limiteCredito) : 'Sin límite'],
+                ].map(([l,v])=>(
+                  <div key={l}>
+                    <Lbl>{l}</Lbl>
+                    <div style={{ fontFamily:F.sans, fontSize:14, fontWeight:600, color:'#1a1a18' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* KPIs del cliente */}
+              {(() => {
+                const deudaCliente = cfesCliente
+                  .filter(c=>['emitida','cobrado_parcial'].includes(c.status))
+                  .reduce((s,c)=>s+(c.saldoPendiente||c.total||0),0);
+                const vencidasCli = cfesCliente.filter(c=>
+                  ['emitida','cobrado_parcial'].includes(c.status)&&
+                  c.fechaVenc&&daysUntil(c.fechaVenc)<0);
+                const cobradoCli  = cobrosCliente.reduce((s,c)=>s+c.monto,0);
+                return (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:1,
+                    background:'#e2e2de', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
+                    <KpiCard label="Saldo deudor" value={deudaCliente>0?fmtMoney(deudaCliente):'—'}
+                      accent={deudaCliente>0?'#dc2626':G} danger={deudaCliente>0} />
+                    <KpiCard label="Facturas vencidas" value={vencidasCli.length}
+                      accent={vencidasCli.length>0?'#dc2626':'#e2e2de'} danger={vencidasCli.length>0} />
+                    <KpiCard label="Total cobrado" value={cobradoCli>0?fmtMoney(cobradoCli):'—'}
+                      sub={`${cobrosCliente.length} cobros registrados`} accent={G} />
+                    <KpiCard label="CFEs totales" value={cfesCliente.length}
+                      sub={`${cfesCliente.filter(c=>c.status==='cobrada').length} cobradas`} />
+                  </div>
+                );
+              })()}
+
+              {/* Movimientos */}
+              <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e2e2de',
+                overflow:'hidden' }}>
+                <div style={{ padding:'14px 18px', borderBottom:'1px solid #f0f0ec',
+                  fontFamily:F.sans, fontSize:11, fontWeight:700, letterSpacing:'0.1em',
+                  textTransform:'uppercase', color:'#9a9a98',
+                  display:'grid', gridTemplateColumns:'90px 1fr 120px 100px 80px 110px' }}>
+                  {['Fecha','Comprobante/Cobro','Débito','Crédito','Saldo','Estado'].map(h=>
+                    <div key={h}>{h}</div>)}
+                </div>
+                {/* Combinar CFEs + cobros del cliente ordenados por fecha */}
+                {(() => {
+                  const movs = [
+                    ...cfesCliente.map(c=>({...c, _tipo:'cfe', _fecha:c.fecha})),
+                    ...cobrosCliente.map(c=>({...c, _tipo:'cobro', _fecha:c.fecha})),
+                  ].sort((a,b)=>new Date(b._fecha)-new Date(a._fecha));
+
+                  let saldo = 0;
+                  // calc saldo running (reverse)
+                  const withSaldo = [...movs].reverse().map(m=>{
+                    if (m._tipo==='cfe') saldo += m.total||0;
+                    else saldo -= m.monto||0;
+                    return {...m, _saldoAcum:saldo};
+                  }).reverse();
+
+                  if (withSaldo.length===0) return (
+                    <div style={{ padding:'32px', textAlign:'center', color:'#9a9a98',
+                      fontFamily:F.sans, fontSize:13 }}>
+                      Sin movimientos para este cliente
+                    </div>
+                  );
+
+                  return withSaldo.map((m,i)=>(
+                    <div key={m.id} style={{
+                      display:'grid', gridTemplateColumns:'90px 1fr 120px 100px 80px 110px',
+                      padding:'12px 18px', fontFamily:F.sans, fontSize:13,
+                      borderBottom:i<withSaldo.length-1?'1px solid #f0f0ec':'none',
+                      background: m._tipo==='cfe'&&m.status==='anulada'?'#f9f9f7':
+                        i%2===0?'#fff':'#fafaf8',
+                    }}>
+                      <div style={{ color:'#9a9a98', fontSize:12 }}>{fmtDateShort(m._fecha)}</div>
+                      <div style={{ fontWeight:500 }}>
+                        {m._tipo==='cfe'
+                          ? <><span style={{ fontFamily:F.mono, fontSize:12 }}>{m.numero}</span>
+                              <span style={{ color:'#9a9a98', marginLeft:8, fontSize:11 }}>{m.tipo}</span></>
+                          : <><span style={{ color:G, fontWeight:700 }}>💰 Cobro</span>
+                              <span style={{ color:'#9a9a98', marginLeft:8, fontSize:11 }}>{m.metodo}</span></>
+                        }
+                      </div>
+                      <div style={{ fontFamily:F.mono, color:'#dc2626', fontWeight:m._tipo==='cfe'?700:400 }}>
+                        {m._tipo==='cfe' ? fmtMoney(m.total,m.moneda) : ''}
+                      </div>
+                      <div style={{ fontFamily:F.mono, color:G, fontWeight:m._tipo==='cobro'?700:400 }}>
+                        {m._tipo==='cobro' ? fmtMoney(m.monto) : ''}
+                      </div>
+                      <div style={{ fontFamily:F.mono, fontSize:12, color:m._saldoAcum>0?'#dc2626':G, fontWeight:700 }}>
+                        {fmtMoney(Math.abs(m._saldoAcum))}
+                      </div>
+                      <div>{m._tipo==='cfe'&&<Pill status={m.status}/>}</div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          VISTA: COBROS
+      ══════════════════════════════════════════════════════════════ */}
+      {vista==='cobros' && (
+        <div>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+            marginBottom:16 }}>
+            <div style={{ fontFamily:F.sans, fontSize:13, color:'#6a6a68' }}>
+              {cobros.length} cobros registrados
+            </div>
+            <button onClick={()=>setShowCob(true)} style={{ background:G, color:'#fff',
+              border:'none', borderRadius:8, padding:'9px 18px', fontFamily:F.sans,
+              fontSize:13, fontWeight:600, cursor:'pointer' }}>+ Registrar cobro</button>
+          </div>
+
+          {cobros.length===0 ? (
+            <div style={{ textAlign:'center', padding:'60px', background:'#f9f9f7',
+              borderRadius:12, color:'#9a9a98', fontFamily:F.sans, fontSize:13 }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>💰</div>
+              Sin cobros registrados aún
+            </div>
+          ) : (
+            <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e2e2de',
+              overflow:'hidden' }}>
+              <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px 120px 80px',
+                padding:'10px 18px', background:'#f9f9f7', borderBottom:'1px solid #e2e2de' }}>
+                {['Fecha','Cliente','Método','Monto','Facturas'].map(h=>
+                  <div key={h} style={{ fontFamily:F.sans, fontSize:10, fontWeight:700,
+                    letterSpacing:'0.1em', textTransform:'uppercase', color:'#9a9a98' }}>{h}</div>)}
+              </div>
+              {cobros.map((c,i)=>{
+                const cli = clientes.find(x=>x.id===c.clienteId);
+                return (
+                  <div key={c.id} style={{
+                    display:'grid', gridTemplateColumns:'100px 1fr 140px 120px 80px',
+                    padding:'13px 18px', fontFamily:F.sans, fontSize:13,
+                    borderBottom:i<cobros.length-1?'1px solid #f0f0ec':'none',
+                    background:i%2===0?'#fff':'#fafaf8',
+                  }}>
+                    <div style={{ color:'#9a9a98', fontSize:12 }}>{fmtDateShort(c.fecha)}</div>
+                    <div style={{ fontWeight:600 }}>
+                      <button onClick={()=>{setDetalleCli(c.clienteId);setVista('cuenta');}}
+                        style={{ background:'none', border:'none', cursor:'pointer',
+                        fontFamily:F.sans, fontSize:13, fontWeight:600, color:G, padding:0 }}>
+                        {cli?.nombre||c.clienteId||'—'}
+                      </button>
+                    </div>
+                    <div style={{ color:'#6a6a68' }}>
+                      <span style={{ background:'#f0f0ec', padding:'2px 8px', borderRadius:20,
+                        fontSize:11, fontWeight:600 }}>{c.metodo}</span>
+                      {c.fechaCheque && <span style={{ marginLeft:6, fontSize:11, color:'#9a9a98' }}>
+                        dep. {fmtDateShort(c.fechaCheque)}</span>}
+                    </div>
+                    <div style={{ fontFamily:F.serif, fontSize:18, color:G, fontWeight:400 }}>
+                      {fmtMoney(c.monto)}
+                    </div>
+                    <div style={{ fontFamily:F.sans, fontSize:11, color:'#9a9a98' }}>
+                      {c.facturasAplicar?.length>0 ? `${c.facturasAplicar.length} fact.` : '—'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          VISTA: INFORMES
+      ══════════════════════════════════════════════════════════════ */}
+      {vista==='informes' && (
+        <div style={{ display:'grid', gap:24 }}>
+
+          {/* Resumen aging */}
+          <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e2e2de',
+            padding:'20px 24px' }}>
+            <div style={{ fontFamily:F.serif, fontSize:22, color:'#1a1a18', marginBottom:16 }}>
+              Antigüedad de deuda (Aging)
+            </div>
+            {(() => {
+              const buckets = { 'Al día':0, '1-30d':0, '31-60d':0, '61-90d':0, '+90d':0 };
+              const colors  = { 'Al día':'#16a34a', '1-30d':'#d97706', '31-60d':'#ea580c', '61-90d':'#dc2626', '+90d':'#7f1d1d' };
+              cfes.filter(c=>['emitida','cobrado_parcial'].includes(c.status)&&c.fechaVenc)
+                .forEach(c=>{
+                  const d = -daysUntil(c.fechaVenc);
+                  const b = agingBucket(d);
+                  if (buckets[b.label]!==undefined) buckets[b.label]+=(c.saldoPendiente||c.total||0);
+                });
+              const total = Object.values(buckets).reduce((s,v)=>s+v,0)||1;
+              return (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:1,
+                  background:'#e2e2de', borderRadius:10, overflow:'hidden' }}>
+                  {Object.entries(buckets).map(([label,val])=>(
+                    <div key={label} style={{ background:'#fff', padding:'16px 18px',
+                      borderTop:`3px solid ${colors[label]}` }}>
+                      <div style={{ fontFamily:F.sans, fontSize:11, fontWeight:700,
+                        color:colors[label], marginBottom:6, textTransform:'uppercase',
+                        letterSpacing:'0.08em' }}>{label}</div>
+                      <div style={{ fontFamily:F.serif, fontSize:22, color:'#1a1a18' }}>
+                        {val>0?fmtMoney(val):'—'}
+                      </div>
+                      <div style={{ height:4, background:'#f0f0ec', borderRadius:2, marginTop:8 }}>
+                        <div style={{ height:'100%', background:colors[label], borderRadius:2,
+                          width:`${(val/total)*100}%`, transition:'width .4s' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Listado de deudores */}
+          <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e2e2de',
+            overflow:'hidden' }}>
+            <div style={{ padding:'16px 20px', borderBottom:'1px solid #f0f0ec',
+              display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ fontFamily:F.serif, fontSize:22, color:'#1a1a18' }}>Listado de deudores</div>
+              <div style={{ fontFamily:F.sans, fontSize:13, color:'#9a9a98' }}>
+                {deudores.length} clientes · {fmtMoney(totalDeuda)} total
+              </div>
+            </div>
+            {deudores.length===0 ? (
+              <div style={{ padding:'40px', textAlign:'center', color:'#16a34a',
+                fontFamily:F.sans, fontSize:14, fontWeight:600 }}>
+                ✓ Sin deudores — todas las cuentas al día
+              </div>
+            ) : (
+              <>
+                <div style={{ display:'grid',
+                  gridTemplateColumns:'1fr 80px 120px 110px 80px 100px',
+                  padding:'9px 18px', background:'#f9f9f7', borderBottom:'1px solid #e2e2de' }}>
+                  {['Cliente','Facturas','Total deuda','Venc. máx.','Aging',''].map(h=>
+                    <div key={h} style={{ fontFamily:F.sans, fontSize:10, fontWeight:700,
+                      letterSpacing:'0.1em', textTransform:'uppercase', color:'#9a9a98' }}>{h}</div>)}
+                </div>
+                {deudores.map((d,i)=>{
+                  const bkt = agingBucket(d.diasMaxVenc);
+                  return (
+                    <div key={d.clienteId} style={{
+                      display:'grid', gridTemplateColumns:'1fr 80px 120px 110px 80px 100px',
+                      padding:'13px 18px', fontFamily:F.sans, fontSize:13,
+                      borderBottom:i<deudores.length-1?'1px solid #f0f0ec':'none',
+                      background:i%2===0?'#fff':'#fafaf8',
+                    }}>
+                      <div style={{ fontWeight:600 }}>
+                        <button onClick={()=>{setDetalleCli(d.clienteId);setVista('cuenta');}}
+                          style={{ background:'none', border:'none', cursor:'pointer',
+                          fontFamily:F.sans, fontSize:13, fontWeight:700, color:G, padding:0,
+                          textDecoration:'underline', textDecorationColor:'#b8d9a8' }}>
+                          {d.nombre||'—'}
+                        </button>
+                      </div>
+                      <div style={{ color:'#6a6a68' }}>{d.facturas.length}</div>
+                      <div style={{ fontFamily:F.serif, fontSize:17, color:'#dc2626', fontWeight:400 }}>
+                        {fmtMoney(d.totalDeuda)}
+                      </div>
+                      <div style={{ fontFamily:F.sans, fontSize:12,
+                        color:d.diasMaxVenc>0?'#dc2626':'#16a34a', fontWeight:d.diasMaxVenc>0?700:400 }}>
+                        {d.diasMaxVenc>0?`${d.diasMaxVenc}d vencida`:'Al día'}
+                      </div>
+                      <div>
+                        <span style={{ background:bkt.bg, color:bkt.color,
+                          fontFamily:F.sans, fontSize:10, fontWeight:700,
+                          padding:'3px 9px', borderRadius:20, textTransform:'uppercase',
+                          letterSpacing:'0.07em' }}>{bkt.label}</span>
+                      </div>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <button onClick={()=>{setDetalleCli(d.clienteId);setVista('cuenta');}}
+                          style={{ fontFamily:F.sans, fontSize:11, fontWeight:600, color:'#2563eb',
+                          background:'#eff6ff', border:'none', borderRadius:6, padding:'4px 10px',
+                          cursor:'pointer' }}>Ver</button>
+                        <button onClick={()=>setShowCob(true)}
+                          style={{ fontFamily:F.sans, fontSize:11, fontWeight:600, color:G,
+                          background:'#f0f7ec', border:'none', borderRadius:6, padding:'4px 10px',
+                          cursor:'pointer' }}>Cobrar</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          {/* Facturas vencidas detalle */}
+          {vencidasHoy.length > 0 && (
+            <div style={{ background:'#fff', borderRadius:12, border:'1px solid #fecaca',
+              overflow:'hidden' }}>
+              <div style={{ padding:'16px 20px', borderBottom:'1px solid #fecaca',
+                background:'#fef2f2', display:'flex', justifyContent:'space-between' }}>
+                <div style={{ fontFamily:F.serif, fontSize:22, color:'#dc2626' }}>
+                  ⚠ Facturas vencidas ({vencidasHoy.length})
+                </div>
+                <div style={{ fontFamily:F.sans, fontSize:13, color:'#dc2626', fontWeight:600 }}>
+                  {fmtMoney(vencidasHoy.reduce((s,c)=>s+(c.saldoPendiente||c.total||0),0))} pendiente
+                </div>
+              </div>
+              {vencidasHoy.map((c,i)=>(
+                <div key={c.id} style={{
+                  display:'grid', gridTemplateColumns:'120px 1fr 100px 110px 80px 90px',
+                  padding:'12px 20px', fontFamily:F.sans, fontSize:13,
+                  borderBottom:i<vencidasHoy.length-1?'1px solid #fef2f2':'none',
+                  background:i%2===0?'#fff':'#fafaf8',
+                }}>
+                  <div style={{ fontFamily:F.mono, fontSize:12, fontWeight:600 }}>{c.numero}</div>
+                  <div style={{ fontWeight:600 }}>
+                    <button onClick={()=>{setDetalleCli(c.clienteId);setVista('cuenta');}}
+                      style={{ background:'none', border:'none', cursor:'pointer',
+                      fontFamily:F.sans, fontSize:13, fontWeight:600, color:G, padding:0 }}>
+                      {c.clienteNombre}
+                    </button>
+                  </div>
+                  <div style={{ fontFamily:F.mono, color:G }}>{fmtMoney(c.saldoPendiente||c.total,c.moneda)}</div>
+                  <div style={{ color:'#dc2626', fontWeight:700, fontSize:12 }}>
+                    Vencida hace {Math.abs(daysUntil(c.fechaVenc))} días
+                  </div>
+                  <div><Pill status={c.status}/></div>
+                  <div>
+                    <button onClick={()=>setShowCob(true)}
+                      style={{ fontFamily:F.sans, fontSize:11, fontWeight:600, color:G,
+                      background:'#f0f7ec', border:'none', borderRadius:6, padding:'4px 10px',
+                      cursor:'pointer' }}>Cobrar</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Modales ─────────────────────────────────────────────────── */}
+      {showCFE && (
+        <ModalFactura
+          clientes={clientes} productos={products}
+          prefill={prefill}
+          onSave={handleSaveCFE}
+          onClose={()=>{setShowCFE(false);setPrefill(null);}}
         />
       )}
-
-      {selectedCfe && (
-        <CFEDetail
-          cfe={selectedCfe}
-          onClose={() => setSelectedCfe(null)}
-          onAnular={handleAnular}
-          onReenviar={() => {}}
+      {showCob && (
+        <ModalCobro
+          clientes={clientes} cfes={cfes}
+          onSave={handleSaveCobro}
+          onClose={()=>setShowCob(false)}
         />
       )}
     </div>
