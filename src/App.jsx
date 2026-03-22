@@ -3172,3 +3172,4 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
 }
 
 export default AryesApp;
+// deploy trigger Sun Mar 22 01:46:08 UTC 2026
