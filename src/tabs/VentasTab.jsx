@@ -372,7 +372,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Órdenes de Venta</h2>
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestión de ventas a clientes — remitos y estado de entrega</p>
         </div>
-        <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
+        <button onClick={()=>{setClientes(LS.get(KCLI,[]));setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
       </div>
       <MsgBanner/>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>

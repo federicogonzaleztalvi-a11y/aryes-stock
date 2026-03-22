@@ -2869,7 +2869,25 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     } catch(e){ console.warn("Email error:", e); }
   };
 
-  const addMov=(m)=>setMovements(ms=>[{...m,id:crypto.randomUUID(),ts:new Date().toISOString()},...ms]);
+  const addMov=(m)=>{
+    const mov={...m,id:crypto.randomUUID(),ts:new Date().toISOString()};
+    setMovements(ms=>[mov,...ms]);
+    // Persist to Supabase in real time (non-blocking)
+    db.insert('stock_movements',{
+      id:mov.id,
+      product_id:mov.productId||null,
+      product_name:mov.productName||null,
+      type:mov.type||'manual',
+      qty:Number(mov.qty)||0,
+      unit:mov.unit||'',
+      stock_after:mov.stockAfter!=null?Number(mov.stockAfter):null,
+      note:mov.note||null,
+      supplier_name:mov.supplierName||null,
+      user_name:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch(e){return 'sistema';}})(),
+      ts:mov.ts,
+      created_at:mov.ts,
+    }).catch(e=>console.warn('[Aryes] addMov SB failed:',e));
+  };
 
   const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
     if(!cfg?.enabled) return;
