@@ -1,3 +1,4 @@
+import React from 'react';
 import { tfCols } from '../lib/constants.js';
 import { T, Cap, Btn, totalLead } from '../lib/ui.jsx';
 

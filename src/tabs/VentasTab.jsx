@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { LS, db } from '../lib/constants.js';
 
 function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
