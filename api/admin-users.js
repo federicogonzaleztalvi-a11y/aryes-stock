@@ -22,20 +22,40 @@ async function verifyAdmin(authHeader) {
 
   // Decode payload to get email/sub without a network call
   const payload = decodeJwtPayload(token);
-  if (!payload?.sub || !payload?.email) return null;
+  console.log('[verifyAdmin] payload email:', payload?.email, 'sub:', payload?.sub, 'exp:', payload?.exp);
+  if (!payload?.sub || !payload?.email) {
+    console.log('[verifyAdmin] FAIL: missing sub or email in payload');
+    return null;
+  }
 
   // Check token is not expired
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    console.log('[verifyAdmin] FAIL: token expired at', payload.exp, 'now:', now);
+    return null;
+  }
 
   // Authoritatively verify role in DB using service_role key
-  const roleRes = await fetch(
-    `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`,
+  const dbUrl = `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`;
+  console.log('[verifyAdmin] querying DB:', dbUrl);
+  const roleRes = await fetch(dbUrl,
     { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
   );
-  if (!roleRes.ok) return null;
+  console.log('[verifyAdmin] DB status:', roleRes.status);
+  if (!roleRes.ok) {
+    console.log('[verifyAdmin] FAIL: DB query failed', roleRes.status);
+    return null;
+  }
   const rows = await roleRes.json();
-  if (!rows?.length || rows[0].role !== 'admin') return null;
-  if (rows[0].active === false) return null;
+  console.log('[verifyAdmin] DB rows:', JSON.stringify(rows));
+  if (!rows?.length || rows[0].role !== 'admin') {
+    console.log('[verifyAdmin] FAIL: role not admin, rows:', JSON.stringify(rows));
+    return null;
+  }
+  if (rows[0].active === false) {
+    console.log('[verifyAdmin] FAIL: user inactive');
+    return null;
+  }
 
   return { id: payload.sub, email: payload.email };
 }
