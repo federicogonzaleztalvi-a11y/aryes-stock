@@ -1,6 +1,7 @@
 // v126 — JSX fragments fixed, auth in Root
 // v115 — rollback to v107 + cache bust
 import React, { useState, useEffect, useRef, useMemo, useCallback , Suspense } from "react";
+import { db, getAuthHeaders, LS as _LS_CONSTANTS } from "./lib/constants.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
@@ -141,41 +142,6 @@ const LS = {
 setTimeout(() => sbSyncAll(), 1000);
 
 // getAuthHeaders: uses logged-in user's JWT when available so RLS policies fire correctly
-const getAuthHeaders = (extra={}) => {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token;
-    // CORRECT: apikey is always the anon key. JWT goes only in Authorization.
-    // PostgREST identifies the role from the Authorization Bearer token, not apikey.
-    if(token) return {'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json',...extra};
-    return {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',...extra};
-  } catch(e) {
-    return {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json',...extra};
-  }
-};
-const db={
-  async get(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
-  async upsert(t,data){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async patch(t,data,match){const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'PATCH',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
-  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
-  async insert(t,row){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(row)});return r.ok?r.json():null;},
-  async insertMany(t,rows){if(!rows||!rows.length)return null;const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(rows)});return r.ok?r.json():null;},
-  async patchWithLock(t,data,filter,lockField,lockVal,maxRetries=3){
-    for(let i=0;i<=maxRetries;i++){
-      try{
-        const rows=await this.get(t,filter+'&select='+lockField+',id');
-        if(!rows||!rows.length)return null;
-        if(rows[0][lockField]!==lockVal&&lockVal!==undefined){
-          console.warn('[Aryes] patchWithLock: value changed, retrying');
-          await new Promise(r=>setTimeout(r,300*(i+1)));
-          continue;
-        }
-        return await this.patch(t,data,filter);
-      }catch(e){if(i===maxRetries)throw e;}
-    }
-    return null;
-  }
-};
 
 
 
@@ -2434,6 +2400,17 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   let [editSup,setEditSup]=useState(null);
   let [viewSup,setViewSup]=useState(null);
   let [plans,setPlans]=useState(()=>LS.get("aryes7-plans",{}));
+  const savePlan=async(productId, planData)=>{
+    setPlans(p=>({...p,[productId]:planData}));
+    try {
+      await db.upsert('plans',{
+        product_id:productId,
+        coverage_months:Number(planData.coverageMonths)||2,
+        data:planData,
+        updated_at:new Date().toISOString()
+      });
+    } catch(e){ console.warn('[Aryes] savePlan SB failed:',e); setHasPendingSync(true); }
+  };
   let [notified,setNotified]=useState(()=>LS.get("aryes9-notified",{}));
   let [hasPendingSync,setHasPendingSync]=useState(false);
   let [syncToast,setSyncToast]=useState(null); // {msg,type}
@@ -2563,6 +2540,27 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         if(sups?.length>0){const mapped=sups.map(s=>({id:s.id,name:s.name,flag:s.flag||'',color:s.color||'#3a7d1e',times:s.times||{preparation:2,customs:1,freight:4,warehouse:1},company:s.company||'',contact:s.contact||'',email:s.email||'',phone:s.phone||'',country:s.country||'',city:s.city||'',currency:s.currency||'USD',paymentTerms:s.payment_terms||'30',paymentMethod:s.payment_method||'',minOrder:s.min_order||'',discount:s.discount||'0',rating:s.rating||3,active:s.active!==false,notes:s.notes||''}));LS.set('aryes6-suppliers',mapped);setSuppliers(mapped);}
         const usrs=await db.get('users','order=id.asc');
         if(usrs?.length>0) LS.set('aryes-users',usrs.map(u=>({username:u.username,name:u.name,role:u.role,active:u.active})));
+        // Load orders from Supabase
+        const sbOrders=await db.get('orders','order=ordered_at.desc&limit=500');
+        if(sbOrders?.length>0){
+          const mapped=sbOrders.map(o=>({
+            id:o.id,productId:o.product_id,productName:o.product_name,
+            supplierId:o.supplier_id,supplierName:o.supplier_name,
+            qty:Number(o.qty),unit:o.unit,status:o.status,
+            orderedAt:o.ordered_at,expectedArrival:o.expected_arrival,
+            totalCost:o.total_cost,leadBreakdown:o.lead_breakdown||{}
+          }));
+          setOrders(mapped);
+          LS.set('aryes6-orders',mapped);
+        }
+        // Load plans from Supabase
+        const sbPlans=await db.get('plans');
+        if(sbPlans?.length>0){
+          const plansMap={};
+          sbPlans.forEach(p=>{plansMap[p.product_id]={...(p.data||{}),coverageMonths:Number(p.coverage_months)||2};});
+          setPlans(plansMap);
+          LS.set('aryes7-plans',plansMap);
+        }
         setDbReady(true);setSyncStatus('ok');setTimeout(()=>setSyncStatus(''),3000);
       }catch(e){console.warn('Supabase offline, using local:',e);setDbReady(true);setSyncStatus('error');setTimeout(()=>setSyncStatus(''),4000);}
     })();
@@ -2672,17 +2670,36 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     // Write to Supabase (source of truth)
     try {
       await db.upsert('products', productData);
-    } catch(e) { console.warn('[Aryes] saveProduct SB failed:',e); }
+    } catch(e) {
+      console.warn('[Aryes] saveProduct SB failed:',e);
+      setSyncToast({msg:'Error al guardar producto. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
+      setTimeout(()=>setSyncToast(null), 6000);
+      setHasPendingSync(true);
+    }
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit,id,nombre:productData.name,stock:productData.stock})}); }catch(e){}
   };
-  const confirmOrder=(product,qty)=>{
+  const confirmOrder=async(product,qty)=>{
     const sup=getSup(product.supplierId);const lead=totalLead(sup);
     const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
-    const o={id:crypto.randomUUID(),productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,orderedAt:new Date().toISOString(),expectedArrival:arrival.toISOString(),status:"pending",totalCost:(qty*product.unitCost).toFixed(2),leadBreakdown:{...sup.times}};
+    const o={id:crypto.randomUUID(),productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,orderedAt:new Date().toISOString(),expectedArrival:arrival.toISOString(),status:'pending',totalCost:(qty*product.unitCost).toFixed(2),leadBreakdown:{...sup.times}};
     setOrders(os=>[o,...os]);
-    addMov({type:"order_placed",productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}`});
-    setModal({type:"orderDone",order:o});
+    addMov({type:'order_placed',productId:product.id,productName:product.name,supplierId:product.supplierId,supplierName:sup?.name,qty,unit:product.unit,note:`Pedido generado — llegada est. ${arrival.toLocaleDateString('es-UY',{day:'2-digit',month:'short',year:'numeric'})}`});
+    setModal({type:'orderDone',order:o});
+    // Persist to Supabase
+    try {
+      await db.upsert('orders',{
+        id:o.id,product_id:o.productId,product_name:o.productName,
+        supplier_id:o.supplierId,supplier_name:o.supplierName||'',
+        qty:o.qty,unit:o.unit,status:o.status,
+        ordered_at:o.orderedAt,expected_arrival:o.expectedArrival,
+        total_cost:o.totalCost,lead_breakdown:o.leadBreakdown,
+        updated_at:new Date().toISOString()
+      });
+    } catch(e) {
+      console.warn('[Aryes] confirmOrder SB failed:',e);
+      setHasPendingSync(true);
+    }
   };
   const _deliveringIds=React.useRef(new Set());
   const markDelivered=async id=>{
@@ -2697,7 +2714,9 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'markDelivered',detail:JSON.stringify({orderId:o.id,productId:o.productId,qty:o.qty,newStock})}); }catch(e){ console.warn('[Aryes] audit log failed',e); }
 
-    setOrders(os=>os.map(x=>x.id===id?{...x,status:"delivered"}:x));
+    setOrders(os=>os.map(x=>x.id===id?{...x,status:'delivered'}:x));
+    // Update order status in Supabase
+    try { await db.patch('orders',{status:'delivered',updated_at:now},'id=eq.'+id); } catch(e){ console.warn('[Aryes] markDelivered order patch failed:',e); }
     const updatedProds=products.map(p=>p.id===o.productId?{...p,stock:newStock,updatedAt:now}:p);
     setProducts(updatedProds);
     LS.set('aryes6-products',updatedProds);
@@ -2743,16 +2762,30 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     // Write to Supabase (source of truth)
     try {
       await db.upsert('suppliers', supplierData);
-    } catch(e) { console.warn('[Aryes] saveSupplier SB failed:',e); }
+    } catch(e) {
+      console.warn('[Aryes] saveSupplier SB failed:',e);
+      setSyncToast({msg:'Error al guardar proveedor. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
+      setTimeout(()=>setSyncToast(null), 6000);
+      setHasPendingSync(true);
+    }
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch(e){}
   };
   const deleteSupplier=async id=>{
     if(products.some(p=>p.supplierId===id)){alert('No se puede eliminar: hay productos asociados a este proveedor.');return;}
     if(!window.confirm('¿Eliminar este proveedor? Esta acción no se puede deshacer.')) return;
+    const snap = suppliers; // save for rollback
     setSuppliers(ss=>ss.filter(s=>s.id!==id));
     // Delete from Supabase (source of truth)
-    try { await db.del('suppliers',{id}); } catch(e){ console.warn('[Aryes] deleteSupplier SB failed:',e); }
+    try {
+      await db.del('suppliers',{id});
+    } catch(e) {
+      console.warn('[Aryes] deleteSupplier SB failed:',e);
+      setSuppliers(snap); // rollback UI
+      setSyncToast({msg:'Error al eliminar proveedor del servidor. El proveedor fue restaurado.', type:'error'});
+      setTimeout(()=>setSyncToast(null), 6000);
+      return;
+    }
     // Audit log
     const now=new Date().toISOString();
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_eliminado',detail:JSON.stringify({id})}); }catch(e){}
@@ -2760,9 +2793,18 @@ function AryesApp({session, onLogout, onSessionUpdate}){
 
   const deleteProduct=async id=>{
     if(!window.confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
+    const snapshot = products; // save for rollback
     setProducts(ps=>ps.filter(p=>p.id!==id));
     // Delete from Supabase (source of truth)
-    try { await db.del('products',{id}); } catch(e){ console.warn('[Aryes] deleteProduct SB failed:',e); }
+    try {
+      await db.del('products',{id});
+    } catch(e) {
+      console.warn('[Aryes] deleteProduct SB failed:',e);
+      setProducts(snapshot); // rollback UI
+      setSyncToast({msg:'Error al eliminar producto del servidor. El producto fue restaurado.', type:'error'});
+      setTimeout(()=>setSyncToast(null), 6000);
+      return;
+    }
     const now=new Date().toISOString();
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_eliminado',detail:JSON.stringify({id})}); }catch(e){}
   };
@@ -2945,7 +2987,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={deleteProduct}/></Suspense></ErrorBoundary>}
-        {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
         {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></Suspense></ErrorBoundary>}

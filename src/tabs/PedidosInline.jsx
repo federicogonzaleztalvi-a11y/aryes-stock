@@ -1,7 +1,7 @@
 import { LS, tfCols } from '../lib/constants.js';
 import { T, Cap, AlertPill, Btn, fmtDate, fmtShort } from '../lib/ui.jsx';
 
-function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,tab,getSup,markDelivered,setTab,tfCols}) {
+function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,savePlan,tab,getSup,markDelivered,setTab,tfCols}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>

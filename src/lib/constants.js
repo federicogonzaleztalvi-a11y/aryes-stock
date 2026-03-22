@@ -38,7 +38,6 @@ export const ALERT_CFG = {
 
 export const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
-export const SURL='https://mrotnqybqvmvlexncvno.supabase.co';
 
 export const getAuthHeaders = (extra={}) => {
   try {
@@ -54,19 +53,19 @@ export const getAuthHeaders = (extra={}) => {
 };
 
 export const db={
-  async get(t,q=''){const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
-  async upsert(t,data){const r=await fetch(SURL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async get(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
+  async upsert(t,data){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
   async patch(t,data,match){
     const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
-    const r=await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'PATCH',
+    const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'PATCH',
       headers:getAuthHeaders({'Prefer':'return=representation'}),body:JSON.stringify(data)});
     if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.patch failed:',t,e?.message||r.status);}
     return r.ok?r.json():null;
   },
-  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SURL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
+  async del(t,match){const q=Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'DELETE',headers:getAuthHeaders()});},
 
   async insert(table, row) {
-    const r = await fetch(SURL+'/rest/v1/'+table, {
+    const r = await fetch(SB_URL+'/rest/v1/'+table, {
       method:'POST',
       headers:getAuthHeaders({'Prefer':'return=representation,resolution=ignore-duplicates'}),
       body: JSON.stringify(row)
@@ -76,7 +75,7 @@ export const db={
   },
   async insertMany(table, rows) {
     if(!rows.length) return;
-    const r = await fetch(SURL+'/rest/v1/'+table, {
+    const r = await fetch(SB_URL+'/rest/v1/'+table, {
       method:'POST', headers:{...getAuthHeaders(), 'Prefer':'return=minimal'}, body:JSON.stringify(rows)
     });
     if(!r.ok) { const e=await r.text(); throw new Error('db.insertMany '+table+': '+e); }
@@ -87,7 +86,7 @@ export const db={
     // Prevents stale-read stock overwrites in concurrent operations
     for(let attempt=0; attempt<maxRetries; attempt++) {
       const lockFilter = filter + '&' + lockField + '=eq.' + lockValue;
-      const r = await fetch(SURL+'/rest/v1/'+table+'?'+lockFilter, {
+      const r = await fetch(SB_URL+'/rest/v1/'+table+'?'+lockFilter, {
         method:'PATCH',
         headers:{...getAuthHeaders(), 'Prefer':'return=representation,count=exact'},
         body: JSON.stringify(data),
