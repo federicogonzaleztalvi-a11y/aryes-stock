@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import UsersTab from './UsersTab.jsx';
 import { db } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 
 export default function ConfigInline({
+  session,
   suppliers, setSuppliers,
   settingsTab, setSettingsTab,
   emailCfg, setEmailCfg,
@@ -63,8 +65,8 @@ export default function ConfigInline({
 
         <div>
           {/* Sub-tab bar */}
-          <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:460,marginBottom:24}}>
-            {[{id:"marca",l:"Marca y empresa"},{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"}].map(st=>(
+          <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:600,marginBottom:24}}>
+            {[{id:"usuarios",l:"Usuarios"},{id:"marca",l:"Marca y empresa"},{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
@@ -72,6 +74,11 @@ export default function ConfigInline({
               </button>
             ))}
           </div>
+
+          {/* ── USUARIOS ─────────────────────────────────────────────────── */}
+          {settingsTab==="usuarios" && (
+            <UsersTab session={session} />
+          )}
 
           {/* ── MARCA ─────────────────────────────────────────────────────── */}
           {settingsTab==="marca" && (
