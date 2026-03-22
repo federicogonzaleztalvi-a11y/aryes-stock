@@ -173,3 +173,30 @@ export const Modal = ({title,sub,onClose,children,wide}) => (
     </div>
   </div>
 );
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+export function downloadCSV(rows, filename) {
+  if (!rows || !rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => {
+    const s = v == null ? '' : String(v);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+  const lines = [headers.join(',')].concat(
+    rows.map(r => headers.map(h => escape(r[h])).join(','))
+  );
+  const csv = lines.join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { T, Cap, Btn, AlertPill, StockBar, Spark, totalLead } from '../lib/ui.jsx';
+import { T, Cap, Btn, AlertPill, StockBar, Spark, totalLead , downloadCSV } from '../lib/ui.jsx';
 
 export default function InventoryInline({products, enriched, setModal, setEditProd, setProducts, deleteProduct}) {
   return (
@@ -8,7 +8,20 @@ export default function InventoryInline({products, enriched, setModal, setEditPr
               <div><Cap style={{color:T.green}}>Stock</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Inventario</h1></div>
               <div style={{display:"flex",gap:10}}>
                 <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
-                <Btn onClick={()=>{setEditProd(null);setModal({type:"product"});}}>+ Nuevo producto</Btn>
+                <Btn variant="ghost" onClick={()=>{
+          const rows=(enriched||[]).map(p=>({
+            Producto: p.name,
+            Proveedor: p.sup?.name||'',
+            Stock: p.stock,
+            Unidad: p.unit||'',
+            'Costo USD': p.unitCost||0,
+            'Stock mínimo': p.minStock||0,
+            ROP: p.alert?.rop||0,
+            Estado: p.alert?.level||''
+          }));
+          downloadCSV(rows,'inventario.csv');
+        }}>⬇ Exportar CSV</Btn>
+          <Btn onClick={()=>{setEditProd(null);setModal({type:"product"});}}>+ Nuevo producto</Btn>
               </div>
             </div>
             <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>

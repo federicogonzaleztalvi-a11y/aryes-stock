@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LS, db } from '../lib/constants.js';
+import { downloadCSV } from '../lib/ui.jsx';
 
 function MovimientosTab(){
   const G="#3a7d1e";
@@ -122,7 +123,20 @@ function MovimientosTab(){
   return(
     <section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Movimientos de Stock</h2>
+        <button onClick={()=>{
+          const rows=(movs||[]).map(m=>({
+            Fecha: m.fecha||m.timestamp?.slice(0,10)||'',
+            Tipo: m.tipo||m.type||'',
+            Producto: m.productoNombre||m.productName||'',
+            Cantidad: m.cantidad||m.qty||0,
+            Referencia: m.referencia||m.note||'',
+            Usuario: m.userName||m.user_name||''
+          }));
+          downloadCSV(rows,'movimientos.csv');
+        }} style={{padding:'7px 16px',background:'#fff',border:'1px solid #e5e7eb',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#374151',display:'flex',alignItems:'center',gap:6}}>⬇ Exportar CSV</button>
+      </div>
         <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Registrar movimiento</button>
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}

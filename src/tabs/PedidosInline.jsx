@@ -1,10 +1,25 @@
 import { LS, tfCols } from '../lib/constants.js';
+import { downloadCSV } from '../lib/ui.jsx';
 import { T, Cap, AlertPill, Btn, fmtDate, fmtShort } from '../lib/ui.jsx';
 
 function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,savePlan,tab,getSup,markDelivered,setTab,tfCols}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
-            <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1></div>
+            <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1>
+          <button onClick={()=>{
+            const rows=(orders||[]).map(o=>({
+              'N° Pedido': o.id?.slice(0,8)||'',
+              Proveedor: o.supplierName||'',
+              Producto: o.productName||'',
+              Cantidad: o.qty||0,
+              Unidad: o.unit||'',
+              Estado: o.status||'',
+              'Pedido el': o.orderedAt?.slice(0,10)||'',
+              'Llegada est.': o.expectedArrival?.slice(0,10)||'',
+              'Costo total': o.totalCost||0
+            }));
+            downloadCSV(rows,'pedidos.csv');
+          }} style={{marginTop:8,padding:'7px 16px',background:'#fff',border:`1px solid ${T.border}`,borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:T.textMd,display:'inline-flex',alignItems:'center',gap:6}}>⬇ Exportar CSV</button></div>
             {!orders.length?(
               <div style={{border:`1px solid ${T.border}`,borderRadius:8,padding:"48px 32px",textAlign:"center",background:T.card}}>
                 <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm}}>Sin pedidos aún. Generá uno desde el panel o el inventario.</p>
