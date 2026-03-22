@@ -27,7 +27,6 @@ const KPIsTab = React.lazy(() => import('./tabs/KPIsTab.jsx'));
 const DemandaTab = React.lazy(() => import('./tabs/DemandaTab.jsx'));
 const ConfigTab = React.lazy(() => import('./tabs/ConfigTab.jsx'));
 const AuditTab = React.lazy(() => import('./tabs/AuditTab.jsx'));
-const OnboardingWizard = React.lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const TrackingTab = React.lazy(() => import('./tabs/TrackingTab.jsx'));
 const DashboardInline = React.lazy(() => import('./tabs/DashboardInline.jsx'));
 const PedidosInline = React.lazy(() => import('./tabs/PedidosInline.jsx'));
@@ -2446,13 +2445,6 @@ function AryesApp({session, onLogout, onSessionUpdate}){
 
 
   let [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
-  const ONBOARDING_KEY = 'stock-onboarding-done';
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    try {
-      const done = localStorage.getItem(ONBOARDING_KEY);
-      return !done; // show if never completed or skipped
-    } catch(e) { return false; }
-  });
   let [brandCfg,setBrandCfg]=useState(()=>{try{return JSON.parse(localStorage.getItem('aryes-brand')||'null')||{name:'',logoUrl:'',color:'#3a7d1e'};}catch(e){return {name:'',logoUrl:'',color:'#3a7d1e'};}});
     // Load emailCfg from Supabase app_config (admin only, RLS protected)
   useEffect(()=>{
@@ -3202,14 +3194,6 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
           React.createElement('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none'},React.createElement('path',{d:'M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2',stroke:input.trim()&&!busy?'#fff':'#999',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'}))
         )
       )
-    ),
-    showOnboarding && React.createElement(
-      React.Suspense, { fallback: null },
-      React.createElement(OnboardingWizard, {
-        session: session,
-        onComplete: () => setShowOnboarding(false),
-        onSkip: () => setShowOnboarding(false),
-      })
     )
   );
 }

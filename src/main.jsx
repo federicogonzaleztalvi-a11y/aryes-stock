@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx'
+const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
+const ONBOARDING_KEY = 'stock-onboarding-done';
 
 // ── Constants (duplicated here to avoid circular dep with App.jsx) ──
 const SB_URL = 'https://mrotnqybqvmvlexncvno.supabase.co';
@@ -119,6 +121,10 @@ function LoginScreen({ onLogin }) {
 // ── Root: owns auth state, renders Login OR App ───────────────────
 function Root() {
   const [session, setSession] = useState(() => readSession());
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return !localStorage.getItem(ONBOARDING_KEY); }
+    catch(e) { return false; }
+  });
 
   const handleLogin = (s) => setSession(s);
   const handleLogout = () => {
@@ -136,7 +142,20 @@ function Root() {
   };
 
   if (!session) return <LoginScreen onLogin={handleLogin} />;
-  return <AryesApp session={session} onLogout={handleLogout} onSessionUpdate={setSession} />;
+  return (
+    <>
+      <AryesApp session={session} onLogout={handleLogout} onSessionUpdate={setSession} />
+      {showOnboarding && (
+        <Suspense fallback={null}>
+          <OnboardingWizard
+            session={session}
+            onComplete={() => setShowOnboarding(false)}
+            onSkip={() => setShowOnboarding(false)}
+          />
+        </Suspense>
+      )}
+    </>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
