@@ -2392,6 +2392,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   // session is received as prop from Root component in main.jsx
   // auth state is managed externally — AryesApp always has a valid session
   let [dbReady,setDbReady]=useState(false);
+  const [userMenuOpen,setUserMenuOpen]=React.useState(false);
   let [syncStatus,setSyncStatus]=useState('');
   let [tab,setTab]=useState('dashboard');
   let [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
@@ -3039,21 +3040,21 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             'Actualizar stock'
           )}
           {/* User pill with dropdown */}
-          {(()=>{
-            const [showMenu,setShowMenu]=React.useState(false);
-            const ref=React.useRef(null);
-            React.useEffect(()=>{
-              if(!showMenu) return;
-              const handler=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setShowMenu(false); };
-              document.addEventListener('mousedown',handler);
-              return ()=>document.removeEventListener('mousedown',handler);
-            },[showMenu]);
-            return React.createElement('div',{ref,style:{position:'relative'}},
+          {React.createElement((()=>{
+            const UserMenu=()=>{
+              const ref=React.useRef(null);
+              React.useEffect(()=>{
+                if(!userMenuOpen) return;
+                const handler=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setUserMenuOpen(false); };
+                document.addEventListener('mousedown',handler);
+                return ()=>document.removeEventListener('mousedown',handler);
+              },[userMenuOpen]);
+              return React.createElement('div',{ref,style:{position:'relative'}},
               React.createElement('div',{
-                style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 12px 6px 8px",borderRadius:8,border:`1px solid ${showMenu?T.greenBd:T.border}`,background:showMenu?T.greenBg:T.card,transition:"background .15s"},
+                style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 12px 6px 8px",borderRadius:8,border:`1px solid ${userMenuOpen?T.greenBd:T.border}`,background:userMenuOpen?T.greenBg:T.card,transition:"background .15s"},
                 onMouseEnter:e=>{ if(!showMenu) e.currentTarget.style.background=T.muted; },
                 onMouseLeave:e=>{ if(!showMenu) e.currentTarget.style.background=T.card; },
-                onClick:()=>setShowMenu(m=>!m)
+                onClick:()=>setUserMenuOpen(m=>!m)
               },
                 React.createElement('div',{style:{width:30,height:30,borderRadius:"50%",background:T.greenBg,border:`2px solid ${T.greenBd}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}},
                   (session?.name||session?.email||'U')[0].toUpperCase()
@@ -3062,25 +3063,27 @@ function AryesApp({session, onLogout, onSessionUpdate}){
                   React.createElement('div',{style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text,lineHeight:1.2}},session?.name||session?.email?.split('@')[0]||'Usuario'),
                   React.createElement('div',{style:{fontFamily:T.sans,fontSize:10,color:T.textXs,textTransform:"capitalize"}},session?.role==='admin'?'Administrador':session?.role==='operador'?'Operador':'Vendedor')
                 ),
-                React.createElement('span',{style:{fontSize:10,color:T.textXs,marginLeft:2}},showMenu?'▲':'▾')
+                React.createElement('span',{style:{fontSize:10,color:T.textXs,marginLeft:2}},userMenuOpen?'▲':'▾')
               ),
-              showMenu&&React.createElement('div',{style:{position:'absolute',top:'calc(100% + 6px)',right:0,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,.1)',minWidth:180,zIndex:200,overflow:'hidden'}},
+              userMenuOpen&&React.createElement('div',{style:{position:'absolute',top:'calc(100% + 6px)',right:0,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,.1)',minWidth:180,zIndex:200,overflow:'hidden'}},
                 React.createElement('div',{style:{padding:'12px 16px 8px',borderBottom:`1px solid ${T.border}`}},
                   React.createElement('div',{style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}},session?.name||session?.email?.split('@')[0]||'Usuario'),
                   React.createElement('div',{style:{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:2}},session?.email||'')
                 ),
                 canTab('config')&&React.createElement('button',{
-                  onClick:()=>{setTab('config');setShowMenu(false);},
+                  onClick:()=>{setTab('config');setUserMenuOpen(false);},
                   style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',fontFamily:T.sans,fontSize:13,color:T.textMd,cursor:'pointer',display:'flex',alignItems:'center',gap:8}
                 },'⚙ Configuración'),
                 React.createElement('div',{style:{borderTop:`1px solid ${T.border}`,padding:'6px 8px'}}),
                 React.createElement('button',{
-                  onClick:()=>{ setShowMenu(false); handleLogout(); },
+                  onClick:()=>{ setUserMenuOpen(false); handleLogout(); },
                   style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',fontFamily:T.sans,fontSize:13,color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',gap:8,marginBottom:2}
                 },'↩ Cerrar sesión')
               )
             );
-          })()}
+            };
+            return React.createElement(UserMenu);
+          })(),null)}
         </div>
 
         <div style={{padding:"36px 44px",flex:1}}>
