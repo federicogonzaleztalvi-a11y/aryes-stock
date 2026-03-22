@@ -3085,16 +3085,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             />
           </div>
           <div style={{flex:1}}/>
-          {/* Excel upload — discrete */}
-          {canEdit&&React.createElement('button',{onClick:()=>setModal({type:'excel'}),
-            title:'Actualizar stock desde Excel',
-            style:{display:'flex',alignItems:'center',gap:6,padding:'6px 12px',border:`1px solid ${T.border}`,borderRadius:8,background:T.card,cursor:'pointer',fontFamily:T.sans,fontSize:12,color:T.textSm,fontWeight:500,transition:'background .15s',whiteSpace:'nowrap'},
-            onMouseEnter:e=>e.currentTarget.style.background=T.muted,
-            onMouseLeave:e=>e.currentTarget.style.background=T.card
-          },
-            React.createElement('span',{style:{fontSize:13}},'↑'),
-            'Actualizar stock'
-          )}
+
           {/* User pill with dropdown */}
           {React.createElement(UserMenuDropdown,{session,userMenuOpen,setUserMenuOpen,canTab,setTab,handleLogout,T})}
         </div>
