@@ -2672,7 +2672,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     // Write to Supabase (source of truth)
     // Upsert on uuid column (unique index on products.uuid)
     try {
-      await db.upsert('products', productData);
+      await db.upsert('products', productData, 'uuid');
     } catch(e) {
       console.warn('[Aryes] saveProduct SB failed:',e);
       setSyncToast({msg:'Error al guardar producto. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});

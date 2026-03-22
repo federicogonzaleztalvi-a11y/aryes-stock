@@ -54,7 +54,7 @@ export const getAuthHeaders = (extra={}) => {
 
 export const db={
   async get(t,q=''){const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{headers:getAuthHeaders({'Prefer':'return=representation'})});return r.ok?r.json():[];},
-  async upsert(t,data){const r=await fetch(SB_URL+'/rest/v1/'+t,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});return r.ok?r.json():null;},
+  async upsert(t,data,conflictCol=''){const url=SB_URL+'/rest/v1/'+t+(conflictCol?'?on_conflict='+conflictCol:'');const r=await fetch(url,{method:'POST',headers:getAuthHeaders({'Prefer':'resolution=merge-duplicates,return=representation'}),body:JSON.stringify(data)});if(!r.ok){const e=await r.json().catch(()=>({}));console.warn('[Aryes] db.upsert failed:',t,e?.message||r.status);}return r.ok?r.json():null;},
   async patch(t,data,match){
     const q=typeof match==='string'?match:Object.entries(match).map(([k,v])=>k+'=eq.'+v).join('&');
     const r=await fetch(SB_URL+'/rest/v1/'+t+'?'+q,{method:'PATCH',
