@@ -98,8 +98,14 @@ export default async function handler(req, res) {
         headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, email_confirm: true })
       });
-      const authData = await authRes.json();
-      if (!authRes.ok) return res.status(400).json({ error: authData.message || 'Error al crear usuario en Auth' });
+      const authRawText = await authRes.text();
+      console.log(`[CREATE] auth status:${authRes.status} body:${authRawText.slice(0,500)}`);
+      let authData;
+      try { authData = JSON.parse(authRawText); } catch(e) { authData = { msg: authRawText }; }
+      if (!authRes.ok) {
+        const errMsg = authData.msg || authData.message || authData.error_description || authData.error || `Auth HTTP ${authRes.status}`;
+        return res.status(400).json({ error: errMsg });
+      }
 
       // Insert into users table
       const dbRes = await fetch(`${SB_URL}/rest/v1/users`, {
