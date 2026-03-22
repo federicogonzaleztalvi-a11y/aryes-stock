@@ -91,7 +91,7 @@ function LoginScreen({ onLogin }) {
       <style>{'.au{animation:fadeUp .25s ease both;}@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}'}</style>
       <div className="au" style={{ background: '#fff', border: '1px solid #e2e2de', borderRadius: 12, padding: '40px 44px', width: '100%', maxWidth: 420, boxShadow: '0 8px 40px rgba(0,0,0,.06)' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img src="/aryes-logo.png" alt="Aryes" style={{ height: 52, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />
+          <img src="/logo.png" alt="Logo" style={{ height: 52, objectFit: 'contain' }} onError={e => e.target.style.display = 'none'} />
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', marginTop: 12 }}>Sistema de gestión de stock</p>
         </div>
         <div style={{ display: 'grid', gap: 14 }}>

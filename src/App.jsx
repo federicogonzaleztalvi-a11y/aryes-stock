@@ -204,12 +204,13 @@ const T = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ARYES LOGO SVG (hoja verde + wordmark, fiel al original)
-// ─────────────────────────────────────────────────────────────────────────────
-const ARYES_LOGO_B64 = "/aryes-logo.png";
-
-const AryesLogo = ({ height = 72 }) => (
-  <img src={ARYES_LOGO_B64} height={height} alt="Aryes" style={{display:"block"}}/>
+// Generic logo fallback — replaced by brandCfg.logoUrl when configured
+const AppLogoFallback = ({ height = 52 }) => (
+  <div style={{height,display:'flex',alignItems:'center',justifyContent:'center',
+    background:'#f0f7ec',borderRadius:8,padding:'0 12px',
+    fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:700,color:'#3a7d1e',letterSpacing:'-0.02em'}}>
+    STOCK
+  </div>
 );
 
 
@@ -244,20 +245,17 @@ const alertLevel = (p, s) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const DEFAULT_SUPPLIERS = [
   {id:"arg",name:"Argentina",flag:"AR",color:"#1d4ed8",times:{preparation:2,customs:1,freight:4,warehouse:1},
-   company:"Distribuidora del Sur S.A.",contact:"Martín Rodríguez",email:"martin@distrsur.com.ar",phone:"+54 11 4523-7890",whatsapp:"+54 9 11 4523-7890",
-   country:"Argentina",city:"Buenos Aires",currency:"USD",paymentTerms:"30",paymentMethod:"Transferencia bancaria",
-   minOrder:"500",discount:"5",rating:5,active:true,
-   notes:"Proveedor principal. Envíos martes y jueves. Pedido mínimo USD 500. Descuento 5% por volumen >USD 2000."},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"Argentina",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
   {id:"ecu",name:"Ecuador",flag:"EC",color:"#15803d",times:{preparation:3,customs:4,freight:8,warehouse:2},
-   company:"Tropical Ingredients Cia. Ltda.",contact:"Andrea Vásquez",email:"avasquez@tropicalingr.ec",phone:"+593 2 234-5678",whatsapp:"+593 99 234-5678",
-   country:"Ecuador",city:"Guayaquil",currency:"USD",paymentTerms:"50",paymentMethod:"Carta de crédito",
-   minOrder:"800",discount:"0",rating:4,active:true,
-   notes:"Cacao y derivados. Temporada alta oct–dic coincide con cosecha. Precios suben ~15% en enero."},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"Ecuador",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
   {id:"eur",name:"Europa",flag:"EU",color:"#6d28d9",times:{preparation:5,customs:10,freight:25,warehouse:3},
-   company:"Europastry Ingredients GmbH",contact:"Klaus Bauer",email:"k.bauer@europastry.de",phone:"+49 89 1234-5678",whatsapp:"",
-   country:"Alemania",city:"Múnich",currency:"EUR",paymentTerms:"60",paymentMethod:"Swift / Wire transfer",
-   minOrder:"2000",discount:"8",rating:5,active:true,
-   notes:"Vainilla, especias y mejoradores premium. Lead time muy largo — planificar con 2 meses de anticipación. Descuento 8% en pedidos >EUR 5000."},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"",city:"",currency:"EUR",paymentTerms:"60",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
   {id:"other",name:"Otros",flag:"—",color:"#b45309",times:{preparation:3,customs:5,freight:12,warehouse:2},
    company:"",contact:"",email:"",phone:"",whatsapp:"",
    country:"",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
@@ -629,7 +627,7 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
-  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes');
+  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!');
   const saveWaTpl=()=>{localStorage.setItem('aryes-wa-template',waTpl);alert('Plantilla guardada');};
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const [csv,setCsv]=useState(product?.history?.map(h=>`${h.month},${h.consumed}`).join("\n")||"");
@@ -2132,7 +2130,7 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
           <button onClick={()=>{
             const rows=[["Fecha","Hora","Tipo","Producto","Proveedor","Cantidad","Unidad","Nota"],...filtered.map(m=>{const d=new Date(m.ts);return[d.toLocaleDateString("es-UY"),d.toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"}),(MOV_CFG[m.type]||{label:m.type}).label,m.productName,m.supplierName||"",m.qty,m.unit,m.note||""];})];
             const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
-            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);a.download=`aryes-movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);a.download=`movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
           }} style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.green,background:T.greenBg,border:`1px solid ${T.greenBd}`,padding:"8px 16px",borderRadius:4,cursor:"pointer"}}>
             ↓ Exportar CSV ({filtered.length} registros)
           </button>
@@ -2514,7 +2512,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         // Load brand config
         try{
           const brandRows = await db.get('app_config?key=eq.brandcfg');
-          if(brandRows?.[0]?.value){ setBrandCfg(brandRows[0].value); localStorage.setItem('aryes-brand',JSON.stringify(brandRows[0].value)); }
+          if(brandRows?.[0]?.value){ const b=brandRows[0].value; setBrandCfg(b); localStorage.setItem('aryes-brand',JSON.stringify(b)); if(b.name) document.title=b.name+' · Stock'; }
         }catch(e){}
       }catch(e){}
     })();
@@ -3019,7 +3017,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       <aside style={{overflowY:"auto",width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
         {/* Logo */}
         <div style={{padding:"20px 20px 16px",borderBottom:`1px solid ${T.border}`}}>
-          {brandCfg.logoUrl?<img src={brandCfg.logoUrl} alt={brandCfg.name||'Logo'} style={{height:52,objectFit:'contain',maxWidth:"100%"}} onError={e=>{e.target.style.display='none';}}/>:<AryesLogo height={52}/>}
+          {brandCfg.logoUrl?<img src={brandCfg.logoUrl} alt={brandCfg.name||'Logo'} style={{height:52,objectFit:'contain',maxWidth:"100%"}} onError={e=>{e.target.style.display='none';}}/>:<AppLogoFallback height={52}/>}
           {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>↻ Sincronizando...</div>}
           {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>✓ Sincronizado</div>}
           {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>⚠ Modo local</div>}

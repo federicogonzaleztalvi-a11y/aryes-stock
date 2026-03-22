@@ -65,7 +65,7 @@ function ImportTab(){
     const rows=prods.map(p=>[p.nombre||p.name||'',p.stock||0,p.unidad||p.unit||'u',p.precio||p.price||0,p.rop||5,p.proveedor||''].join(',')).join('\n');
     const blob=new Blob([headers+'\n'+rows],{type:'text/csv'});
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download='aryes-productos.csv';a.click();
+    const a=document.createElement('a');a.href=url;a.download='productos.csv';a.click();
     URL.revokeObjectURL(url);
   };
 

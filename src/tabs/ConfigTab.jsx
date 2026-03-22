@@ -15,9 +15,9 @@ function ConfigTab(){
       setCfgLoading(false);
     })();
   },[]);
-  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes');
+  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!');
   const [stockMin,setStockMin]=useState(()=>localStorage.getItem('aryes-stock-min-default')||'5');
-  const [empresa,setEmpresa]=useState(()=>localStorage.getItem('aryes-empresa')||'Aryes');
+  const [empresa,setEmpresa]=useState(()=>localStorage.getItem('aryes-empresa')||'');
   const [msg,setMsg]=useState('');
   const inp={padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box'};
 

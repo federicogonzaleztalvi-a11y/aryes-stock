@@ -212,7 +212,7 @@ const LoginScreen=({onLogin})=>{
     <div style={{background:"#fff",borderRadius:20,padding:"44px 40px 40px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,.12)"}}>
       <div style={{textAlign:"center",marginBottom:32}}>
         <img src="/aryes-logo.png" alt="Aryes" style={{height:52,marginBottom:14,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
-        <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Gestión de Stock</h1>
+        <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Importar catálogo</h1>
         <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
       </div>
       {err&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:18,color:"#dc2626",fontSize:13}}>{err}</div>}
@@ -700,7 +700,7 @@ const generateOrderPDF = (order, suppliers, products) => {
       <div class="sign-label">Autorizado por</div>
     </div>
     <div style="text-align:right;font-size:12px;color:#9a9a98;align-self:flex-end">
-      <div>Gestión de Stock</div>
+      <div>Importar catálogo</div>
       <div>Generado el ${today}</div>
     </div>
   </div>
