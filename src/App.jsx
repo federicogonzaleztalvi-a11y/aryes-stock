@@ -3011,17 +3011,51 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           </button>)}
         </div>
       
-        <div style={{marginTop:'auto',borderTop:'1px solid #e2e2de',padding:'12px 16px 8px'}}>
-          <div style={{fontSize:12,color:'#3a3a38',fontWeight:600,marginBottom:2}}>{session.name}</div>
-          <div style={{fontSize:11,color:'#9a9a98',marginBottom:8,textTransform:'capitalize'}}>{session.role==='admin'?'Administrador':session.role==='operador'?'Operador':'Vendedor'}</div>
-          <button onClick={handleLogout} style={{background:'#fef2f2',border:'1px solid #fecaca',padding:'6px 12px',fontSize:12,color:'#dc2626',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:6,borderRadius:6,fontWeight:600,marginTop:4}}>
+        <div style={{borderTop:`1px solid ${T.border}`,padding:'12px 16px 10px'}}>
+          <button onClick={handleLogout} style={{width:'100%',background:'none',border:`1px solid ${T.border}`,padding:'7px 12px',fontSize:12,color:T.textSm,cursor:'pointer',fontFamily:T.sans,display:'flex',alignItems:'center',gap:6,borderRadius:6,fontWeight:500}}>
             ↩ Cerrar sesión
           </button>
         </div>
       </aside>
 
       {/* ── MAIN ── */}
-      <main id="main-content" style={{marginLeft:220,flex:1,padding:"36px 44px",height:"100vh",overflowY:"auto"}}>
+      <main id="main-content" style={{marginLeft:220,flex:1,height:"100vh",overflowY:"auto",display:"flex",flexDirection:"column"}}>
+
+        {/* ── TOPBAR ── */}
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"0 44px",height:56,background:T.card,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:100,flexShrink:0}}>
+          {/* Search */}
+          <div style={{flex:1,maxWidth:380,position:"relative"}}>
+            <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:T.textXs,pointerEvents:"none"}}>🔍</span>
+            <input
+              placeholder="Buscar productos, proveedores..."
+              style={{width:"100%",boxSizing:"border-box",padding:"7px 12px 7px 32px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.text,background:T.muted,outline:"none"}}
+              onChange={e=>{
+                const v=e.target.value.trim().toLowerCase();
+                if(v.length>1){
+                  const match=enriched.find(p=>p.name.toLowerCase().includes(v));
+                  if(match){setTab('inventory');}
+                }
+              }}
+            />
+          </div>
+          <div style={{flex:1}}/>
+          {/* User pill */}
+          <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 12px 6px 8px",borderRadius:8,border:`1px solid ${T.border}`,background:T.card,transition:"background .15s"}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.muted}
+            onMouseLeave={e=>e.currentTarget.style.background=T.card}
+            onClick={()=>{if(canTab('config'))setTab('config');}}
+            title="Ver configuración">
+            <div style={{width:30,height:30,borderRadius:"50%",background:T.greenBg,border:`2px solid ${T.greenBd}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}}>
+              {(session?.name||session?.email||'U')[0].toUpperCase()}
+            </div>
+            <div>
+              <div style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text,lineHeight:1.2}}>{session?.name||session?.email?.split('@')[0]||'Usuario'}</div>
+              <div style={{fontFamily:T.sans,fontSize:10,color:T.textXs,textTransform:"capitalize"}}>{session?.role==='admin'?'Administrador':session?.role==='operador'?'Operador':'Vendedor'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{padding:"36px 44px",flex:1}}>
 
         {syncToast&&<div style={{position:"fixed",top:20,right:20,zIndex:9999,background:syncToast.type==="info"?"#eff6ff":"#fef3c7",border:"1px solid "+(syncToast.type==="info"?"#bfdbfe":"#fde68a"),borderRadius:8,padding:"12px 18px",boxShadow:"0 4px 16px rgba(0,0,0,.12)",display:"flex",alignItems:"center",gap:10,animation:"fadeUp .25s ease both",maxWidth:360}}>
         <span style={{fontSize:18}}>{syncToast.type==="info"?"🔄":"⚠️"}</span>
@@ -3070,6 +3104,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         {activeTab==="precios"&&<PreciosTab />}
         {activeTab==="demanda"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DemandaTab /></Suspense>}
         {activeTab==="audit"&&<AuditTab />}
+        </div>
         </main>
 
       {/* ══ MODALS ══ */}
@@ -3177,31 +3212,35 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
     }finally{setBusy(false);}
   };
 
+  const G='#3a7d1e';
   const S={
-    btn:{position:'fixed',bottom:24,right:24,zIndex:9999,width:52,height:52,borderRadius:'50%',background:open?'#222':'linear-gradient(135deg,#1a1a1a,#3a3a3a)',border:'none',cursor:'pointer',boxShadow:'0 4px 20px rgba(0,0,0,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,transition:'all .2s'},
-    panel:{position:'fixed',bottom:88,right:24,zIndex:9998,width:360,height:520,background:'#fff',borderRadius:16,boxShadow:'0 8px 40px rgba(0,0,0,0.16)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #e5e5e3'},
-    header:{background:'linear-gradient(135deg,#1a1a1a,#2d2d2d)',color:'#fff',padding:'12px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0},
-    msgs:{flex:1,overflowY:'auto',padding:'12px 14px',display:'flex',flexDirection:'column',gap:10},
-    input:{padding:'10px 12px',borderTop:'1px solid #ebebea',display:'flex',gap:8,flexShrink:0,background:'#fff'},
+    btn:{position:'fixed',bottom:24,right:24,zIndex:9999,width:48,height:48,borderRadius:12,background:open?'#f0f7ec':G,border:open?'2px solid #b8d9a8':'none',cursor:'pointer',boxShadow:'0 2px 12px rgba(58,125,30,0.25)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,transition:'all .2s'},
+    panel:{position:'fixed',bottom:82,right:24,zIndex:9998,width:360,height:500,background:'#fff',borderRadius:14,boxShadow:'0 4px 24px rgba(0,0,0,0.12)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #e2e2de'},
+    header:{background:'#f9f9f7',borderBottom:'1px solid #e2e2de',padding:'12px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0},
+    msgs:{flex:1,overflowY:'auto',padding:'12px 14px',display:'flex',flexDirection:'column',gap:10,background:'#fff'},
+    input:{padding:'10px 12px',borderTop:'1px solid #e2e2de',display:'flex',gap:8,flexShrink:0,background:'#f9f9f7'},
   };
 
   return React.createElement(React.Fragment,null,
     React.createElement('button',{onClick:()=>setOpen(o=>!o),style:S.btn,title:'Asistente IA'},
-      open?'✕':'🤖',
+      open?React.createElement('span',{style:{fontSize:16,color:G}},'✕'):'💬',
       unread>0&&!open&&React.createElement('span',{style:{position:'absolute',top:-4,right:-4,background:'#ef4444',color:'#fff',borderRadius:'50%',width:18,height:18,fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}},unread)
     ),
     open&&React.createElement('div',{style:S.panel},
       React.createElement('div',{style:S.header},
-        React.createElement('span',{style:{fontSize:20}},'🤖'),
+        React.createElement('div',{style:{width:32,height:32,borderRadius:8,background:'#f0f7ec',border:'1px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}},'💬'),
         React.createElement('div',null,
-          React.createElement('div',{style:{fontWeight:600,fontSize:14}},'Asistente de Stock'),
-          React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.55)',textTransform:'capitalize'}},role)
+          React.createElement('div',{style:{fontWeight:600,fontSize:13,color:'#1a1a18'}},'Asistente de Stock'),
+          React.createElement('div',{style:{fontSize:10,color:'#9a9a98',textTransform:'capitalize'}},role)
         ),
-        React.createElement('div',{style:{marginLeft:'auto',width:8,height:8,borderRadius:'50%',background:apiKey?'#22c55e':'#f59e0b'}})
+        React.createElement('div',{style:{marginLeft:'auto',display:'flex',alignItems:'center',gap:6}},
+          React.createElement('div',{style:{width:6,height:6,borderRadius:'50%',background:apiKey?G:'#f59e0b'}}),
+          React.createElement('span',{style:{fontSize:10,color:'#9a9a98'}},apiKey?'Activo':'Sin config.')
+        )
       ),
       React.createElement('div',{style:S.msgs},
         msgs.map((m,i)=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:m.r==='u'?'flex-end':'flex-start'}},
-          React.createElement('div',{style:{maxWidth:'82%',padding:'9px 13px',borderRadius:m.r==='u'?'14px 14px 4px 14px':'14px 14px 14px 4px',background:m.r==='u'?'#1a1a1a':'#f4f4f2',color:m.r==='u'?'#fff':'#1a1a1a',fontSize:13,lineHeight:1.5,whiteSpace:'pre-wrap',wordBreak:'break-word'}},m.t)
+          React.createElement('div',{style:{maxWidth:'82%',padding:'9px 13px',borderRadius:m.r==='u'?'14px 14px 4px 14px':'14px 14px 14px 4px',background:m.r==='u'?G:'#f4f4f2',color:m.r==='u'?'#fff':'#1a1a18',fontSize:13,lineHeight:1.5,whiteSpace:'pre-wrap',wordBreak:'break-word'}},m.t)
         )),
         busy&&React.createElement('div',{style:{display:'flex',justifyContent:'flex-start'}},React.createElement('div',{style:{padding:'9px 13px',borderRadius:'14px 14px 14px 4px',background:'#f4f4f2',color:'#aaa',fontSize:13}},'● ● ●')),
         React.createElement('div',{ref:endRef})
@@ -3211,7 +3250,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
       ),
       React.createElement('div',{style:S.input},
         React.createElement('textarea',{ref:inRef,value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}},placeholder:'Preguntá sobre stock, precios, pedidos...',rows:1,style:{flex:1,border:'1px solid #e0e0de',borderRadius:10,padding:'8px 12px',fontSize:13,resize:'none',fontFamily:'inherit',outline:'none',lineHeight:1.4,maxHeight:80,overflowY:'auto'}}),
-        React.createElement('button',{onClick:()=>send(),disabled:!input.trim()||busy,style:{width:36,height:36,borderRadius:'50%',background:input.trim()&&!busy?'#1a1a1a':'#e0e0de',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'flex-end'}},
+        React.createElement('button',{onClick:()=>send(),disabled:!input.trim()||busy,style:{width:36,height:36,borderRadius:'50%',background:input.trim()&&!busy?G:'#e0e0de',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'flex-end'}},
           React.createElement('svg',{width:16,height:16,viewBox:'0 0 24 24',fill:'none'},React.createElement('path',{d:'M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2',stroke:input.trim()&&!busy?'#fff':'#999',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'}))
         )
       )
