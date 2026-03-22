@@ -2810,7 +2810,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     {id:"config",label:"Config",icon:"⚙"},
   ];
   const NAV_ROLES={
-    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","movimientos","lotes","deposito","rutas","tracking","kpis","recepcion","informes","importar","scanner","config"],
+    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","movimientos","lotes","conteo","transferencias","deposito","rutas","tracking","kpis","recepcion","packing","batch-picking","informes","devoluciones","precios","demanda","audit","importar","scanner","config"],
     operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
     vendedor:["dashboard","clientes","ventas","kpis","informes"]
   };
