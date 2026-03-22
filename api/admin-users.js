@@ -35,19 +35,32 @@ async function verifyAdmin(authHeader) {
     return null;
   }
 
+  // Check SERVICE_KEY is available
+  console.log('[verifyAdmin] SERVICE_KEY present:', !!SERVICE_KEY, 'SB_URL:', SB_URL);
+  if (!SERVICE_KEY) {
+    console.log('[verifyAdmin] FAIL: SERVICE_KEY missing');
+    return null;
+  }
+
   // Authoritatively verify role in DB using service_role key
   const dbUrl = `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`;
   console.log('[verifyAdmin] querying DB:', dbUrl);
-  const roleRes = await fetch(dbUrl,
-    { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
-  );
-  console.log('[verifyAdmin] DB status:', roleRes.status);
-  if (!roleRes.ok) {
-    console.log('[verifyAdmin] FAIL: DB query failed', roleRes.status);
+  let roleRes, rows;
+  try {
+    roleRes = await fetch(dbUrl,
+      { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
+    );
+    console.log('[verifyAdmin] DB status:', roleRes.status);
+    rows = await roleRes.json();
+    console.log('[verifyAdmin] DB rows:', JSON.stringify(rows));
+  } catch(fetchErr) {
+    console.log('[verifyAdmin] FAIL: DB fetch threw:', fetchErr.message);
     return null;
   }
-  const rows = await roleRes.json();
-  console.log('[verifyAdmin] DB rows:', JSON.stringify(rows));
+  if (!roleRes.ok) {
+    console.log('[verifyAdmin] FAIL: DB query not ok', roleRes.status);
+    return null;
+  }
   if (!rows?.length || rows[0].role !== 'admin') {
     console.log('[verifyAdmin] FAIL: role not admin, rows:', JSON.stringify(rows));
     return null;
