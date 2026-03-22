@@ -8,6 +8,7 @@ import { db, getAuthHeaders, LS as _LS_CONSTANTS } from "./lib/constants.js";
 // ─────────────────────────────────────────────────────────────────────────────
 const ImporterTab = React.lazy(() => import('./tabs/ImporterTab.jsx'));
 const VentasTab = React.lazy(() => import('./tabs/VentasTab.jsx'));
+const FacturacionTab = React.lazy(() => import('./tabs/FacturacionTab.jsx'));
 const DepositoTab = React.lazy(() => import('./tabs/DepositoTab.jsx'));
 const RecepcionTab = React.lazy(() => import('./tabs/RecepcionTab.jsx'));
 const RutasTab = React.lazy(() => import('./tabs/RutasTab.jsx'));
@@ -2975,6 +2976,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     {id:"suppliers",label:"Proveedores",icon:"🏭"},
     {id:"clientes",label:"Clientes",icon:"👥"},
     {id:"ventas",label:"Ventas",icon:"🧾"},
+    {id:"facturacion",label:"Facturación",icon:"📄"},
     {id:"movimientos",label:"Movimientos",icon:"🔄"},
     {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↕"},
     {id:"deposito",label:"Depósito",icon:"🗂"},
@@ -2988,9 +2990,9 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     {id:"config",label:"Config",icon:"⚙"},
   ];
   const NAV_ROLES={
-    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","movimientos","lotes","deposito","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config"],
+    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config"],
     operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
-    vendedor:["dashboard","clientes","ventas","kpis","informes"]
+    vendedor:["dashboard","clientes","ventas","facturacion","kpis","informes"]
   };
   const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
   const canTab=(id)=>(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin).includes(id);
@@ -3036,7 +3038,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             const groups=[
               {label:"Principal",ids:["dashboard","inventory","orders","suppliers"]},
               {label:"Operaciones",ids:["movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"]},
-              {label:"Comercial",ids:["clientes","ventas"]},
+              {label:"Comercial",ids:["clientes","ventas","facturacion"]},
               {label:"Análisis",ids:["kpis","informes","demanda","audit"]},
               {label:"Sistema",ids:["importar","config"]},
             ];
@@ -3123,6 +3125,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         {activeTab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
         
         {activeTab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab products={products} setProducts={setProducts} addMov={addMov}/></Suspense>}
+        {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><FacturacionTab products={products} clientes={LS.get("aryes-clients",[])}/></Suspense></ErrorBoundary>}
         
         {activeTab==="importar"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ImportTab /></Suspense>}
         
