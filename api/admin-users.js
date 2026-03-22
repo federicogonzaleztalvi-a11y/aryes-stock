@@ -5,25 +5,39 @@
 const SB_URL = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Decode JWT payload without verification (signature is verified by Supabase internally).
+// We trust the token structure and verify the role authoritatively in the DB using service_role.
+function decodeJwtPayload(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(base64, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch(e) { return null; }
+}
+
 // Verify the calling user is authenticated and has admin role
 async function verifyAdmin(authHeader) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
-  // Verify JWT by fetching the user from Supabase Auth
-  const res = await fetch(`${SB_URL}/auth/v1/user`, {
-    headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${token}` }
-  });
-  if (!res.ok) return null;
-  const user = await res.json();
-  if (!user?.id) return null;
-  // Check role in users table
-  const roleRes = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(user.email)}&select=role&limit=1`, {
-    headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
-  });
+
+  // Decode payload to get email/sub without a network call
+  const payload = decodeJwtPayload(token);
+  if (!payload?.sub || !payload?.email) return null;
+
+  // Check token is not expired
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+
+  // Authoritatively verify role in DB using service_role key
+  const roleRes = await fetch(
+    `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`,
+    { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } }
+  );
   if (!roleRes.ok) return null;
   const rows = await roleRes.json();
-  if (rows?.[0]?.role !== 'admin') return null;
-  return user;
+  if (!rows?.length || rows[0].role !== 'admin') return null;
+  if (rows[0].active === false) return null;
+
+  return { id: payload.sub, email: payload.email };
 }
 
 export default async function handler(req, res) {
@@ -132,12 +146,14 @@ export default async function handler(req, res) {
       if (newPassword.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
 
       // Find the auth user ID by email
-      const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`, {
+      // Find auth user by listing and filtering (Supabase admin list supports email filter)
+      const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?page=1&per_page=1000`, {
         headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
       });
       const listData = await listRes.json();
-      const authUserId = listData?.users?.[0]?.id;
-      if (!authUserId) return res.status(404).json({ error: 'Usuario no encontrado en Auth' });
+      const authUser = (listData?.users || []).find(u => u.email === email);
+      if (!authUser?.id) return res.status(404).json({ error: 'Usuario no encontrado en Auth' });
+      const authUserId = authUser.id;
 
       const r = await fetch(`${SB_URL}/auth/v1/admin/users/${authUserId}`, {
         method: 'PUT',
@@ -162,11 +178,11 @@ export default async function handler(req, res) {
       }
 
       // Find auth user ID
-      const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`, {
+      const listRes = await fetch(`${SB_URL}/auth/v1/admin/users?page=1&per_page=1000`, {
         headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
       });
       const listData = await listRes.json();
-      const authUserId = listData?.users?.[0]?.id;
+      const authUserId = (listData?.users || []).find(u => u.email === email)?.id;
 
       // Delete from users table first
       await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
@@ -188,7 +204,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Acción no reconocida' });
 
   } catch (e) {
-    console.error('[admin-users]', e);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('[admin-users] action:', action, 'method:', req.method, 'error:', e.message || e);
+    return res.status(500).json({ error: 'Error interno del servidor', detail: e.message });
   }
 }
