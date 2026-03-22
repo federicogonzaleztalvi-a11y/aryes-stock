@@ -86,7 +86,29 @@ export default async function handler(req, res) {
 
   // Authenticate the calling admin
   const admin = await verifyAdmin(req.headers.authorization);
-  if (!admin) return res.status(403).json({ error: 'Forbidden: admin only' });
+  if (!admin) {
+    // Return debug info so we can see exactly why auth failed
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    let debugInfo = { reason: 'verifyAdmin_returned_null', has_token: !!token, token_length: token.length };
+    if (token) {
+      try {
+        const base64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+        const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+        debugInfo.payload_email = payload.email;
+        debugInfo.payload_sub = payload.sub;
+        debugInfo.payload_exp = payload.exp;
+        debugInfo.is_expired = payload.exp < Math.floor(Date.now()/1000);
+        // Try DB query
+        const dbRes = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`,
+          { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } });
+        const dbRows = await dbRes.json();
+        debugInfo.db_status = dbRes.status;
+        debugInfo.db_rows = dbRows;
+      } catch(e) { debugInfo.decode_error = e.message; }
+    }
+    return res.status(403).json({ error: 'Forbidden: admin only', debug: debugInfo });
+  }
 
   const { action } = req.query;
 
