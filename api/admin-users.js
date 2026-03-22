@@ -100,7 +100,7 @@ export default async function handler(req, res) {
         debugInfo.payload_exp = payload.exp;
         debugInfo.is_expired = payload.exp < Math.floor(Date.now()/1000);
         // Try DB query
-        const dbRes = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(payload.email)}&select=role,active&limit=1`,
+        const dbRes = await fetch(`${SB_URL}/rest/v1/users?email=eq.${payload.email}&select=role,active&limit=1`,
           { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } });
         const dbRows = await dbRes.json();
         debugInfo.db_status = dbRes.status;
@@ -179,7 +179,7 @@ export default async function handler(req, res) {
       if (active !== undefined) updates.active = active;
       if (name !== undefined) updates.name = name;
 
-      const r = await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
+      const r = await fetch(`${SB_URL}/rest/v1/users?email=eq.${email}`, {
         method: 'PATCH',
         headers: {
           'apikey': SERVICE_KEY,
@@ -240,7 +240,7 @@ export default async function handler(req, res) {
       const authUserId = (listData?.users || []).find(u => u.email === email)?.id;
 
       // Delete from users table first
-      await fetch(`${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`, {
+      await fetch(`${SB_URL}/rest/v1/users?email=eq.${email}`, {
         method: 'DELETE',
         headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
       });
