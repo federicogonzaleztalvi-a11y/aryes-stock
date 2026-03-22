@@ -3,13 +3,13 @@ import { LS } from '../lib/constants.js';
 
 function InformesTab(){
   const G="#3a7d1e";
-  const [prods]=useState(()=>LS.get("aryes6-products",[]));
-  const [movs]=useState(()=>LS.get("aryes-movements",[]));
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
-  const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
-  const [lotes]=useState(()=>LS.get("aryes-lots",[]));
-  const [clientes]=useState(()=>LS.get("aryes-clients",[]));
-  const [recepciones]=useState(()=>LS.get("aryes-recepciones",[]));
+  const [prods]=useState(()=>LS.get("sistema6-products",[]));
+  const [movs]=useState(()=>LS.get("sistema-movements",[]));
+  const [ventas]=useState(()=>LS.get("sistema-ventas",[]));
+  const [rutas]=useState(()=>LS.get("sistema-rutas",[]));
+  const [lotes]=useState(()=>LS.get("sistema-lots",[]));
+  const [clientes]=useState(()=>LS.get("sistema-clients",[]));
+  const [recepciones]=useState(()=>LS.get("sistema-recepciones",[]));
   const [periodo,setPeriodo]=useState("mes");
   const [msg,setMsg]=useState("");
   const hoy=new Date();
@@ -27,7 +27,7 @@ function InformesTab(){
   const exportClientes=()=>{const h=["Nombre","Tipo","Ciudad","Telefono","Email"];const rows=clientes.map(c=>[c.nombre||"",c.tipo||"",c.ciudad||"",c.telefono||"",c.email||""]);downloadCSV(toCSV(h,rows),"clientes.csv");};
   const exportEntregas=()=>{const h=["Vehiculo","Zona","Dia","Cliente","Estado","Hora"];const rows=rutas.flatMap(r=>(r.entregas||[]).map(e=>[r.vehiculo||"",r.zona||"",r.dia||"",e.clienteNombre||"",e.estado||"",e.hora||""]));downloadCSV(toCSV(h,rows),"entregas.csv");};
   const imprimirRemito=(venta)=>{
-    const emp=localStorage.getItem("aryes-empresa")||"Aryes";
+    const emp=localStorage.getItem("sistema-empresa")||"Stock";
     const its=venta.items||[];
     const rows=its.map(it=>"<tr><td>"+it.nombre+"</td><td>"+it.cantidad+" "+it.unidad+"</td><td>$"+Number(it.precioUnit).toLocaleString("es-UY")+"</td><td>$"+Number(it.cantidad*it.precioUnit).toLocaleString("es-UY")+"</td></tr>").join("");
     const desc=Number(venta.descuento)>0?"<p style=\"text-align:right;color:#92400e\">Descuento "+venta.descuento+"%</p>":"";

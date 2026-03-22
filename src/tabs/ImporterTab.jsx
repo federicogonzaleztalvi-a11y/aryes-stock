@@ -58,7 +58,7 @@ function ImporterTab({onDone}){
       <div style={{background:T.card,borderRadius:12,padding:48,textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
         <div style={{fontSize:52,marginBottom:16}}>✅</div>
         <h2 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.green,marginBottom:8}}>Inventario cargado</h2>
-        <p style={{color:T.textSm,marginBottom:32}}>Los productos demo fueron eliminados y reemplazados por el catálogo real de Aryes</p>
+        <p style={{color:T.textSm,marginBottom:32}}>Los productos demo fueron eliminados y reemplazados por el catálogo real</p>
         <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap",marginBottom:32}}>
           {[{n:result.total,l:"productos cargados",c:T.green},{n:11,l:"marcas",c:"#e67e22"},{n:3,l:"proveedores",c:"#8e44ad"}].map((s,i)=>(
             <div key={i} style={{background:T.cardWarm,borderRadius:10,padding:"16px 24px",textAlign:"center",minWidth:120}}>
@@ -212,13 +212,13 @@ const LoginScreen=({onLogin})=>{
     <div style={{background:"#fff",borderRadius:20,padding:"44px 40px 40px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,.12)"}}>
       <div style={{textAlign:"center",marginBottom:32}}>
         <img src="/aryes-logo.png" alt="Aryes" style={{height:52,marginBottom:14,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
-        <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Aryes Stock</h1>
+        <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Gestión de Stock</h1>
         <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
       </div>
       {err&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:18,color:"#dc2626",fontSize:13}}>{err}</div>}
       <div style={{marginBottom:16}}>
         <label style={{fontSize:11,fontWeight:700,color:"#555",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:.6}}>Email</label>
-        <input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="usuario@aryes.com" autoComplete="email" style={inp} onKeyDown={e=>e.key==="Enter"&&document.getElementById("_pw").focus()} />
+        <input type="email" value={em} onChange={e=>setEm(e.target.value)} placeholder="usuario@empresa.com" autoComplete="email" style={inp} onKeyDown={e=>e.key==="Enter"&&document.getElementById("_pw").focus()} />
       </div>
       <div style={{marginBottom:24}}>
         <label style={{fontSize:11,fontWeight:700,color:"#555",display:"block",marginBottom:6,textTransform:"uppercase",letterSpacing:.6}}>Contrasena</label>
@@ -502,7 +502,7 @@ const ExcelImportTab=({products,setProducts,session})=>{
   const downloadTemplate=()=>{
     const csv='nombre,marca,categoria,proveedor,unidad,stock,costo,barcode\nChocolate Cobertura Leche 1kg,Selecta,Chocolates,arg,kg,0,336.07,\nPasta Pistacho 1.5kg,MEC3,Gelato,eur,kg,0,1250,';
     const blob=new Blob([csv],{type:'text/csv'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='template_aryes.csv';a.click();
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='template_productos.csv';a.click();
   };
 
   return(
@@ -700,7 +700,7 @@ const generateOrderPDF = (order, suppliers, products) => {
       <div class="sign-label">Autorizado por</div>
     </div>
     <div style="text-align:right;font-size:12px;color:#9a9a98;align-self:flex-end">
-      <div>Aryes — Gestión de Stock</div>
+      <div>Gestión de Stock</div>
       <div>Generado el ${today}</div>
     </div>
   </div>
@@ -1376,7 +1376,7 @@ const MovementsTab=({products,setProducts,session})=>{
             ...filtered.map(m=>[new Date(m.date).toLocaleString('es-UY'),m.productName,m.brand,m.type,m.qty,m.stockBefore,m.stockAfter,m.reason,m.reference||'',m.user].join(','))
           ].join('\n');
           const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-          a.download='movimientos_aryes.csv';a.click();
+          a.download='movimientos.csv';a.click();
         }} style={{padding:'7px 14px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>
           ⬇ Exportar CSV
         </button>
@@ -1458,7 +1458,7 @@ const sendDailyAlertSummary = async (lowStockProducts) => {
         template_params: {
           to_email: cfg.toEmail,
           product_name: lowStockProducts.length + ' productos bajo stock mínimo',
-          brand: 'Resumen diario Aryes',
+          brand: 'Resumen diario de stock',
           current_stock: lowStockProducts.length,
           min_stock: 0,
           unit: 'productos',
@@ -1532,7 +1532,7 @@ const EmailConfigTab=({products,session})=>{
         <div style={{fontSize:13,fontWeight:700,color:'#3a7d1e',marginBottom:8}}>Cómo configurar (gratis con EmailJS):</div>
         <ol style={{fontSize:12,color:'#5a7a4a',margin:0,paddingLeft:20,lineHeight:1.8}}>
           <li>Entrá a <strong>emailjs.com</strong> y creá una cuenta gratuita</li>
-          <li>En "Email Services" conectá tu Gmail o email de Aryes</li>
+          <li>En "Email Services" conectá tu Gmail o email de la empresa</li>
           <li>En "Email Templates" creá una plantilla — usá estas variables: <code style={{background:'#fff',padding:'1px 4px',borderRadius:3}}>{'{{product_name}} {{current_stock}} {{min_stock}} {{unit}} {{date}}'}</code></li>
           <li>Copiá tu Service ID, Template ID y Public Key abajo</li>
         </ol>
@@ -1544,7 +1544,7 @@ const EmailConfigTab=({products,session})=>{
         <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:24}}>
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
             {[
-              {label:'Email destino',key:'toEmail',ph:'alertas@aryes.com.uy',type:'email'},
+              {label:'Email destino',key:'toEmail',ph:'alertas@empresa.com',type:'email'},
               {label:'Service ID (EmailJS)',key:'serviceId',ph:'service_xxxxxxx',type:'text'},
               {label:'Template ID (EmailJS)',key:'templateId',ph:'template_xxxxxxx',type:'text'},
               {label:'Public Key (EmailJS)',key:'publicKey',ph:'xxxxxxxxxxxxxxxxxxxxxx',type:'text'},

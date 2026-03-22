@@ -3,9 +3,9 @@ import { LS } from '../lib/constants.js';
 
 function DemandaTab(){
   const G="#3a7d1e";
-  const [prods]=useState(()=>LS.get("aryes6-products",[]));
-  const [movs]=useState(()=>LS.get("aryes-movements",[]));
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
+  const [prods]=useState(()=>LS.get("stock6-products",[]));
+  const [movs]=useState(()=>LS.get("stock-movements",[]));
+  const [ventas]=useState(()=>LS.get("stock-ventas",[]));
   const [periodo,setPeriodo]=useState(30);
   const hoy=new Date();
   const pStart=new Date();pStart.setDate(pStart.getDate()-periodo);

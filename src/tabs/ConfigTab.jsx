@@ -42,7 +42,7 @@ function ConfigTab(){
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Nombre de la empresa</label>
-            <input style={inp} value={empresa} onChange={e=>setEmpresa(e.target.value)} placeholder="Aryes" />
+            <input style={inp} value={empresa} onChange={e=>setEmpresa(e.target.value)} placeholder="Mi empresa" />
           </div>
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Stock minimo por defecto</label>
@@ -69,7 +69,7 @@ function ConfigTab(){
             {l:'Service ID',k:'serviceId',ph:'service_xxx'},
             {l:'Template ID',k:'templateId',ph:'template_xxx'},
             {l:'Public Key',k:'publicKey',ph:'AbCdEf...'},
-            {l:'Email destino',k:'toEmail',ph:'admin@aryes.com.uy'},
+            {l:'Email destino',k:'toEmail',ph:'admin@empresa.com'},
           ].map(f=>(
             <div key={f.k}>
               <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{f.l}</label>
@@ -84,7 +84,7 @@ function ConfigTab(){
         <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>🔒 Usuarios del sistema</h3>
         <div style={{display:'grid',gap:8}}>
           {[
-            {rol:'admin',user:'admin',pass:'aryes2024',color:'#3a7d1e'},
+            {rol:'admin',user:'admin',pass:'',color:'#3a7d1e'},
             {rol:'operador',user:'operador',pass:'stock123',color:'#3b82f6'},
             {rol:'vendedor',user:'vendedor',pass:'ventas123',color:'#8b5cf6'},
           ].map(u=>(
@@ -95,7 +95,7 @@ function ConfigTab(){
             </div>
           ))}
         </div>
-        <p style={{fontSize:11,color:'#aaa',marginTop:8}}>Para cambiar credenciales editar el codigo fuente en AryesApp USERS array.</p>
+        <p style={{fontSize:11,color:'#aaa',marginTop:8}}>Los usuarios se gestionan desde Config → Usuarios.</p>
       </div>
 
       <div style={{display:'flex',justifyContent:'flex-end'}}>

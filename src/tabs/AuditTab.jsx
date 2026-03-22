@@ -71,7 +71,7 @@ function AuditTab(){
 class ErrorBoundary extends React.Component {
   constructor(p){super(p);this.state={err:null};}
   static getDerivedStateFromError(e){return {err:e};}
-  componentDidCatch(e,i){console.error("[Aryes]",e,i);}
+  componentDidCatch(e,i){console.error("[Error]",e,i);}
   render(){
     if(this.state.err) return(<div style={{padding:40,textAlign:"center",fontFamily:"sans-serif"}}><h3 style={{color:"#c00"}}>Error en esta sección</h3><p style={{color:"#666",fontSize:13}}>{this.state.err?.message}</p><button onClick={()=>this.setState({err:null})} style={{marginTop:12,padding:"8px 20px",cursor:"pointer",borderRadius:6,border:"1px solid #ddd"}}>Reintentar</button></div>);
     return this.props.children;

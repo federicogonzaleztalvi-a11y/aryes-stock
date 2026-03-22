@@ -31,7 +31,7 @@ class RootErrorBoundary extends React.Component {
           justifyContent: 'center', padding: 32, fontFamily: 'monospace', zIndex: 99999
         }
       },
-        React.createElement('h2', { style: { color: '#dc2626', marginBottom: 16, fontSize: 18 } }, '⛔ Error en AryesApp'),
+        React.createElement('h2', { style: { color: '#dc2626', marginBottom: 16, fontSize: 18 } }, '⛔ Error de aplicación'),
         React.createElement('pre', {
           style: {
             background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
@@ -58,7 +58,7 @@ function LoginScreen({ onLogin }) {
 
   const handle = async (e) => {
     e && e.preventDefault && e.preventDefault();
-    if (!email || !pass) { setErr('Ingresá email y contraseña'); return; }
+    if (!email || !pass) { setErr('Ingresá tu email y contraseña'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
@@ -95,7 +95,7 @@ function LoginScreen({ onLogin }) {
         <div style={{ display: 'grid', gap: 14 }}>
           <div>
             <div style={{ marginBottom: 5 }}><span style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#6a6a68' }}>Email</span></div>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="usuario@aryes.com"
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com"
               onKeyDown={e => e.key === 'Enter' && handle()}
               style={{ width: '100%', fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#1a1a18', background: '#fff', border: '1px solid #e2e2de', padding: '9px 11px', borderRadius: 4 }} />
           </div>

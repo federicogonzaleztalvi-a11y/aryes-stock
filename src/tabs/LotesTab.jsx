@@ -187,7 +187,7 @@ const waLink=(telefono,mensaje)=>{
   return num?'https://wa.me/598'+num+'?text='+txt:'https://wa.me/?text='+txt;
 };
 const waMensaje=(cliente,tipo,detalle)=>{
-  const tpl=localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Aryes';
+  const tpl=localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Stock';
   return tpl.replace('{cliente}',cliente||'cliente').replace('{detalle}',detalle||'');
 };
 

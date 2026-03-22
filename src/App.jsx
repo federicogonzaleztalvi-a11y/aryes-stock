@@ -2228,7 +2228,7 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           service_id: cfg.serviceId, template_id: cfg.templateId, user_id: cfg.publicKey,
-          template_params: { to_email: cfg.toEmail, subject:"✓ Aryes — Email de prueba funcionando", html_content:"<p style='font-family:sans-serif;padding:20px;'>✅ Las notificaciones de Aryes están configuradas correctamente. Recibirás alertas automáticas cuando el stock cruce el punto de pedido.</p>", alert_count:0 }
+          template_params: { to_email: cfg.toEmail, subject:"✓ Email de prueba funcionando", html_content:"<p style='font-family:sans-serif;padding:20px;'>✅ Las notificaciones están configuradas correctamente. Recibirás alertas automáticas cuando el stock cruce el punto de pedido.</p>", alert_count:0 }
         })
       });
       setTestResult(resp.status===200?"ok":"error");
@@ -2268,7 +2268,7 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
           {[
             {n:1, t:"Creá cuenta gratis", d:<>Entrá a <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" style={{color:T.green,fontWeight:600}}>emailjs.com</a> → Sign Up gratis</>, },
             {n:2, t:"Conectá tu email",   d:"En el panel → Email Services → Add New Service → elegí Gmail, Outlook o el que uses → conectá tu cuenta"},
-            {n:3, t:"Creá un template",   d:'En Email Templates → Create New → en el cuerpo del email escribí exactamente: {{{html_content}}} — así Aryes puede enviar el HTML del reporte'},
+            {n:3, t:"Creá un template",   d:'En Email Templates → Create New → en el cuerpo del email escribí exactamente: {{{html_content}}} — así el sistema puede enviar el HTML del reporte'},
             {n:4, t:"Copiá las claves",   d:"Service ID (en Email Services), Template ID (en Email Templates), Public Key (en Account → API Keys)"},
             {n:5, t:"Pegá las claves abajo y activá", d:"Completá los 4 campos, activá el switch de arriba, y hacé click en 'Enviar email de prueba'"},
           ].map(s=>(
@@ -2832,7 +2832,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         </tr>`).join("");
       const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#2d5a1b;padding:20px 24px;">
-          <h1 style="color:#fff;font-size:22px;margin:0;">Aryes — Alerta de Stock</h1>
+          <h1 style="color:#fff;font-size:22px;margin:0;">Alerta de Stock</h1>
           <p style="color:rgba(255,255,255,.75);margin:4px 0 0;font-size:13px;">${new Date().toLocaleDateString("es-UY",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
         </div>
         <div style="padding:20px 24px;background:#fef2f2;border-left:4px solid #b91c1c;">
@@ -2849,7 +2849,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           <tbody>${rows}</tbody>
         </table>
         <div style="padding:20px 24px;background:#f5f0e8;margin-top:20px;">
-          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado automáticamente por el sistema de gestión de stock de Aryes.</p>
+          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado automáticamente por el sistema de gestión de stock.</p>
         </div>
       </div>`;
       await fetch(`https://api.emailjs.com/api/v1.0/email/send`, {
@@ -2860,7 +2860,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           user_id: cfg.publicKey,
           template_params: {
             to_email: cfg.toEmail,
-            subject: `Aryes Stock — ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atención"}`,
+            subject: `Stock — ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atención"}`,
             html_content: html,
             alert_count: alertProducts.length,
           }
@@ -3129,7 +3129,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
   React.useEffect(()=>{if(open){setUnread(0);setTimeout(()=>inRef.current?.focus(),80);}}, [open]);
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
-    if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy tu asistente de Aryes. Preguntame sobre stock, precios, pedidos o pedí un informe.'}]);
+    if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy tu asistente de inventario. Preguntame sobre stock, precios, pedidos o pedí un informe.'}]);
   },[open]);
 
   const send=async(txt)=>{
@@ -3141,7 +3141,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
     setMsgs(next);setBusy(true);
     try{
       const ctx=_buildCtx(role,products,suppliers,orders,movements);
-      const sys='Sos el asistente de Aryes Stock, WMS para depósitos de insumos gastronómicos. Respondé en español, conciso y directo. Usá solo los datos del contexto. Podés sugerir acciones concretas. Máx 200 palabras salvo informes.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
+      const sys='Sos el asistente de stock, WMS para gestión de inventario. Adaptá las respuestas al negocio. Respondé en español, conciso y directo. Usá solo los datos del contexto. Podés sugerir acciones concretas. Máx 200 palabras salvo informes.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
       const r=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -3173,7 +3173,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
       React.createElement('div',{style:S.header},
         React.createElement('span',{style:{fontSize:20}},'🤖'),
         React.createElement('div',null,
-          React.createElement('div',{style:{fontWeight:600,fontSize:14}},'Asistente Aryes'),
+          React.createElement('div',{style:{fontWeight:600,fontSize:14}},'Asistente de Stock'),
           React.createElement('div',{style:{fontSize:11,color:'rgba(255,255,255,0.55)',textTransform:'capitalize'}},role)
         ),
         React.createElement('div',{style:{marginLeft:'auto',width:8,height:8,borderRadius:'50%',background:apiKey?'#22c55e':'#f59e0b'}})

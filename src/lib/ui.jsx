@@ -200,3 +200,23 @@ export function downloadCSV(rows, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ── ComingSoon placeholder ────────────────────────────────────────────────────
+export function ComingSoon({ title, description, icon = '🔧' }) {
+  return (
+    <div style={{ padding: '48px 36px', maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>{icon}</div>
+      <h2 style={{ fontFamily: 'Playfair Display,serif', fontSize: 28, color: '#1a1a18', margin: '0 0 12px' }}>
+        {title}
+      </h2>
+      <div style={{ display: 'inline-block', background: '#f0f9f0', color: '#3a7d1e', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', padding: '4px 12px', borderRadius: 20, marginBottom: 20 }}>
+        Próximamente
+      </div>
+      {description && (
+        <p style={{ fontFamily: 'Inter,sans-serif', fontSize: 14, color: '#6a6a68', lineHeight: 1.7, margin: 0 }}>
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
