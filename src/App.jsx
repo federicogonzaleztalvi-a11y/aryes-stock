@@ -2970,15 +2970,36 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           <div style={{marginTop:6}}><Cap style={{color:brandCfg.color||T.green}}>{brandCfg.name||'Gestión de stock'}</Cap></div>
         </div>
 
-        {/* Nav */}
-        <nav style={{padding:"14px 0",flex:1}}>
-          {NAV.filter(n=>n.id!=="usuarios"||session.role==="admin").map(n=>(
-            <button key={n.id} onClick={()=>setTab(n.id)}
-              style={{width:"100%",textAlign:"left",padding:"10px 22px",background:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:"3px solid transparent",fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              {n.label}
-              {n.id==="dashboard"&&critN>0&&<span style={{background:T.danger,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10}}>{critN}</span>}
-            </button>
-          ))}
+        {/* Nav — grouped */}
+        <nav style={{padding:"10px 0",flex:1,overflowY:"auto"}}>
+          {(()=>{
+            const role=session?.role||"admin";
+            const visibleIds=NAV_ROLES[role]||NAV_ROLES.admin;
+            const groups=[
+              {label:"Principal",ids:["dashboard","inventory","orders","suppliers"]},
+              {label:"Operaciones",ids:["movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"]},
+              {label:"Comercial",ids:["clientes","ventas"]},
+              {label:"Análisis",ids:["kpis","informes","demanda","audit"]},
+              {label:"Sistema",ids:["importar","config"]},
+            ];
+            return groups.map(g=>{
+              const items=NAV.filter(n=>g.ids.includes(n.id)&&n.id!=="usuarios");
+              if(!items.length) return null;
+              return React.createElement(React.Fragment,{key:g.label},
+                React.createElement('div',{style:{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}},g.label),
+                items.map(n=>
+                  React.createElement('button',{key:n.id,onClick:()=>setTab(n.id),
+                    style:{width:"100%",textAlign:"left",padding:"8px 18px",background:tab===n.id?T.greenBg:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:`3px solid transparent`,fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,borderRadius:"0 6px 6px 0",marginRight:8,transition:"background .15s"}},
+                    React.createElement('span',{style:{display:"flex",alignItems:"center",gap:8}},
+                      React.createElement('span',{style:{fontSize:14,lineHeight:1,opacity:tab===n.id?1:0.7}},n.icon),
+                      n.label
+                    ),
+                    n.id==="dashboard"&&critN>0&&React.createElement('span',{style:{background:T.danger,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10,minWidth:18,textAlign:"center"}},critN)
+                  )
+                )
+              );
+            });
+          })()}
         </nav>
 
         {/* Excel button */}

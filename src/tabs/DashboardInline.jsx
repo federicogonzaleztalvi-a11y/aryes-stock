@@ -21,7 +21,7 @@ function DashboardInline({products,suppliers,orders,movements,session,setTab,cri
 
             {/* Stat cards */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
-              {[{l:"Total productos",v:products.length},{l:"Pedir ya",v:alerts.filter(p=>p.alert.level==="order_now").length,c:T.danger},{l:"Pedir pronto",v:alerts.filter(p=>p.alert.level==="order_soon").length,c:T.warning},{l:"En tránsito",v:orders.filter(o=>o.status==="pending").length,c:T.green}].map((s,i)=>(
+              {(()=>{const orderNow=alerts.filter(p=>p.alert.level==="order_now").length;const orderSoon=alerts.filter(p=>p.alert.level==="order_soon").length;const inTransit=orders.filter(o=>o.status==="pending").length;return [{l:"Total productos",v:products.length},{l:"Pedir ya",v:orderNow,c:orderNow>0?T.danger:undefined},{l:"Pedir pronto",v:orderSoon,c:orderSoon>0?T.warning:undefined},{l:"En tránsito",v:inTransit,c:inTransit>0?T.green:undefined}];})().map((s,i)=>(
                 <div key={i} style={{background:T.card,padding:"20px 24px"}}>
                   <Cap>{s.l}</Cap>
                   <div style={{fontFamily:T.serif,fontSize:48,fontWeight:400,color:s.c||T.text,lineHeight:1,marginTop:8}}>{s.v}</div>
