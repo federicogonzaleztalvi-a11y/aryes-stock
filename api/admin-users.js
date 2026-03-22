@@ -33,32 +33,22 @@ async function verifyAdmin(authHeader) {
   const payload = decodeJwtPayload(token);
   if (!payload?.sub || !payload?.email) return null;
   if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
-  if (!SERVICE_KEY) { console.log('[VA] no service key'); return null; }
+  if (!SERVICE_KEY) return null;
 
-  // Use Supabase Auth Admin API to get user info — bypasses RLS entirely
-  // The auth.users table is not subject to public schema RLS policies
-  const authRes = await fetch(`${SB_URL}/auth/v1/admin/users/${payload.sub}`, {
-    headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` }
-  });
-  if (!authRes.ok) { console.log('[VA] auth lookup failed', authRes.status); return null; }
-  // Auth user exists — now check role in users table via RPC (bypasses RLS)
+  // Call SECURITY DEFINER RPC — runs as postgres, bypasses RLS entirely
+  // Verifies role from the users table without trusting the JWT claims
   const rpcRes = await fetch(`${SB_URL}/rest/v1/rpc/get_user_role_by_email`, {
     method: 'POST',
-    headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify({ user_email: payload.email })
   });
-  if (rpcRes.ok) {
-    const role = await rpcRes.json();
-    console.log(`[VA] rpc role for ${payload.email}: ${role}`);
-    if (role === 'admin') return { id: payload.sub, email: payload.email };
-    console.log('[VA] not admin via rpc:', role); return null;
-  }
-  // Fallback: try direct query with service_role (works if RLS allows service_role)
-  const { ok, status, data } = await sbQuery(`users?email=eq.${payload.email}&select=role,active&limit=1`);
-  console.log(`[VA] fallback db: status:${status} rows:${JSON.stringify(data)}`);
-  if (!ok || !Array.isArray(data) || !data.length) return null;
-  if (data[0].role !== 'admin') return null;
-  if (data[0].active === false) return null;
+  const role = rpcRes.ok ? await rpcRes.json() : null;
+  console.log(`[VA] ${payload.email} rpc_status:${rpcRes.status} role:${role}`);
+  if (role !== 'admin') return null;
   return { id: payload.sub, email: payload.email };
 }
 
