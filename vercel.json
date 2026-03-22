@@ -1,7 +1,16 @@
 {
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" }
+  ],
   "functions": {
-    "api/admin-users.js": {
+    "api/*.js": {
       "runtime": "nodejs20.x"
     }
-  }
+  },
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
