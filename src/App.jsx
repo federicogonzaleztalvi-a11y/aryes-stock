@@ -2934,7 +2934,6 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             </div>
           </div>
 
-        {/* ══ ORDERS ══ */}
         </>
         }
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
@@ -3004,7 +3003,6 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             })()}
           </div>
 
-        {/* ══ IMPORTER ══ */}
         </>
         }
         {activeTab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
