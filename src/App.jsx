@@ -2384,6 +2384,62 @@ class ErrorBoundary extends React.Component {
 // LOGIN SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
+function UserMenuDropdown({session, userMenuOpen, setUserMenuOpen, canTab, setTab, handleLogout, T}) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setUserMenuOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
+
+  const initials = (session?.name || session?.email || 'U')[0].toUpperCase();
+  const displayName = session?.name || session?.email?.split('@')[0] || 'Usuario';
+  const roleLabel = session?.role === 'admin' ? 'Administrador' : session?.role === 'operador' ? 'Operador' : 'Vendedor';
+
+  return React.createElement('div', {ref, style:{position:'relative'}},
+    // Pill button
+    React.createElement('div', {
+      style:{display:'flex',alignItems:'center',gap:10,cursor:'pointer',padding:'6px 12px 6px 8px',borderRadius:8,
+        border:`1px solid ${userMenuOpen ? T.greenBd : T.border}`,
+        background: userMenuOpen ? T.greenBg : T.card, transition:'background .15s'},
+      onMouseEnter: e => { if(!userMenuOpen) e.currentTarget.style.background = T.muted; },
+      onMouseLeave: e => { if(!userMenuOpen) e.currentTarget.style.background = userMenuOpen ? T.greenBg : T.card; },
+      onClick: () => setUserMenuOpen(m => !m)
+    },
+      React.createElement('div', {style:{width:30,height:30,borderRadius:'50%',background:T.greenBg,border:`2px solid ${T.greenBd}`,
+        display:'flex',alignItems:'center',justifyContent:'center',fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}}, initials),
+      React.createElement('div', null,
+        React.createElement('div', {style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text,lineHeight:1.2}}, displayName),
+        React.createElement('div', {style:{fontFamily:T.sans,fontSize:10,color:T.textXs,textTransform:'capitalize'}}, roleLabel)
+      ),
+      React.createElement('span', {style:{fontSize:10,color:T.textXs,marginLeft:2}}, userMenuOpen ? '▲' : '▾')
+    ),
+    // Dropdown
+    userMenuOpen && React.createElement('div', {
+      style:{position:'absolute',top:'calc(100% + 6px)',right:0,background:T.card,border:`1px solid ${T.border}`,
+        borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,.1)',minWidth:200,zIndex:200,overflow:'hidden'}
+    },
+      React.createElement('div', {style:{padding:'12px 16px 10px',borderBottom:`1px solid ${T.border}`}},
+        React.createElement('div', {style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}, displayName),
+        React.createElement('div', {style:{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:2}}, session?.email || '')
+      ),
+      canTab('config') && React.createElement('button', {
+        onClick: () => { setTab('config'); setUserMenuOpen(false); },
+        style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',
+          fontFamily:T.sans,fontSize:13,color:T.textMd,cursor:'pointer',display:'flex',alignItems:'center',gap:8}
+      }, '⚙  Configuración'),
+      React.createElement('div', {style:{borderTop:`1px solid ${T.border}`,margin:'4px 0'}}),
+      React.createElement('button', {
+        onClick: () => { setUserMenuOpen(false); handleLogout(); },
+        style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',
+          fontFamily:T.sans,fontSize:13,color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',gap:8,marginBottom:4}
+      }, '↩  Cerrar sesión')
+    )
+  );
+}
+
+
 function AryesApp({session, onLogout, onSessionUpdate}){
   let [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   let [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
@@ -3040,50 +3096,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             'Actualizar stock'
           )}
           {/* User pill with dropdown */}
-          {React.createElement((()=>{
-            const UserMenu=()=>{
-              const ref=React.useRef(null);
-              React.useEffect(()=>{
-                if(!userMenuOpen) return;
-                const handler=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setUserMenuOpen(false); };
-                document.addEventListener('mousedown',handler);
-                return ()=>document.removeEventListener('mousedown',handler);
-              },[userMenuOpen]);
-              return React.createElement('div',{ref,style:{position:'relative'}},
-              React.createElement('div',{
-                style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 12px 6px 8px",borderRadius:8,border:`1px solid ${userMenuOpen?T.greenBd:T.border}`,background:userMenuOpen?T.greenBg:T.card,transition:"background .15s"},
-                onMouseEnter:e=>{ if(!showMenu) e.currentTarget.style.background=T.muted; },
-                onMouseLeave:e=>{ if(!showMenu) e.currentTarget.style.background=T.card; },
-                onClick:()=>setUserMenuOpen(m=>!m)
-              },
-                React.createElement('div',{style:{width:30,height:30,borderRadius:"50%",background:T.greenBg,border:`2px solid ${T.greenBd}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}},
-                  (session?.name||session?.email||'U')[0].toUpperCase()
-                ),
-                React.createElement('div',null,
-                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text,lineHeight:1.2}},session?.name||session?.email?.split('@')[0]||'Usuario'),
-                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:10,color:T.textXs,textTransform:"capitalize"}},session?.role==='admin'?'Administrador':session?.role==='operador'?'Operador':'Vendedor')
-                ),
-                React.createElement('span',{style:{fontSize:10,color:T.textXs,marginLeft:2}},userMenuOpen?'▲':'▾')
-              ),
-              userMenuOpen&&React.createElement('div',{style:{position:'absolute',top:'calc(100% + 6px)',right:0,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,.1)',minWidth:180,zIndex:200,overflow:'hidden'}},
-                React.createElement('div',{style:{padding:'12px 16px 8px',borderBottom:`1px solid ${T.border}`}},
-                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}},session?.name||session?.email?.split('@')[0]||'Usuario'),
-                  React.createElement('div',{style:{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:2}},session?.email||'')
-                ),
-                canTab('config')&&React.createElement('button',{
-                  onClick:()=>{setTab('config');setUserMenuOpen(false);},
-                  style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',fontFamily:T.sans,fontSize:13,color:T.textMd,cursor:'pointer',display:'flex',alignItems:'center',gap:8}
-                },'⚙ Configuración'),
-                React.createElement('div',{style:{borderTop:`1px solid ${T.border}`,padding:'6px 8px'}}),
-                React.createElement('button',{
-                  onClick:()=>{ setUserMenuOpen(false); handleLogout(); },
-                  style:{width:'100%',textAlign:'left',padding:'10px 16px',background:'none',border:'none',fontFamily:T.sans,fontSize:13,color:'#dc2626',cursor:'pointer',display:'flex',alignItems:'center',gap:8,marginBottom:2}
-                },'↩ Cerrar sesión')
-              )
-            );
-            };
-            return React.createElement(UserMenu);
-          })(),null)}
+          {React.createElement(UserMenuDropdown,{session,userMenuOpen,setUserMenuOpen,canTab,setTab,handleLogout,T})}
         </div>
 
         <div style={{padding:"36px 44px",flex:1}}>
