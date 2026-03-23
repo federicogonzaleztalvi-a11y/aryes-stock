@@ -35,6 +35,7 @@ const InventoryInline = React.lazy(() => import('./tabs/InventoryInline.jsx'));
 const ConfigInline = React.lazy(() => import('./tabs/ConfigInline.jsx'));
 const ProveedoresInline = React.lazy(() => import('./tabs/ProveedoresInline.jsx'));
 import CommandPalette from './components/CommandPalette.jsx';
+import NotificationBell from './components/NotificationBell.jsx';
 import SmartToasts from './components/SmartToasts.jsx';
 
 const CSS = `
@@ -3104,6 +3105,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             />
           </div>
           <div style={{flex:1}}/>
+          <NotificationBell critN={critN} orders={orders} setTab={setTab} />
           <button onClick={()=>setCmdOpen(true)} title="Paleta de comandos (⌘K)"
             style={{display:'flex',alignItems:'center',gap:6,background:T.muted,border:`1px solid ${T.border}`,
               borderRadius:7,padding:'5px 10px',cursor:'pointer',fontFamily:T.sans,fontSize:11,
