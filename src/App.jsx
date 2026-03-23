@@ -2439,6 +2439,172 @@ function UserMenuDropdown({session, userMenuOpen, setUserMenuOpen, canTab, setTa
 }
 
 
+// ─── Command Palette (⌘K) ─────────────────────────────────────────────────
+const CommandPalette = ({ open, onClose, products, clientes, cfes, setTab, onNewCFE, onNewOrder }) => {
+  const [q, setQ] = React.useState('');
+  const inputRef = React.useRef(null);
+  const [cursor, setCursor] = React.useState(0);
+
+  React.useEffect(() => {
+    if (open) { setQ(''); setCursor(0); setTimeout(() => inputRef.current?.focus(), 50); }
+  }, [open]);
+
+  React.useEffect(() => {
+    const handler = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); open ? onClose() : null; }
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  const NAV_ACTIONS = [
+    { type:'nav', id:'dashboard',   icon:'📊', label:'Dashboard',        group:'Navegar' },
+    { type:'nav', id:'inventory',   icon:'📦', label:'Inventario',       group:'Navegar' },
+    { type:'nav', id:'orders',      icon:'🛒', label:'Pedidos',          group:'Navegar' },
+    { type:'nav', id:'suppliers',   icon:'🏭', label:'Proveedores',      group:'Navegar' },
+    { type:'nav', id:'clientes',    icon:'👥', label:'Clientes',         group:'Navegar' },
+    { type:'nav', id:'facturacion', icon:'📄', label:'Facturación',      group:'Navegar' },
+    { type:'nav', id:'movimientos', icon:'🔄', label:'Movimientos',      group:'Navegar' },
+    { type:'nav', id:'kpis',        icon:'📈', label:'KPIs',             group:'Navegar' },
+    { type:'nav', id:'config',      icon:'⚙',  label:'Configuración',   group:'Navegar' },
+    { type:'action', icon:'🧾', label:'Nueva factura CFE',  group:'Acciones', action: () => { onNewCFE?.(); onClose(); } },
+    { type:'action', icon:'📦', label:'Nuevo pedido',       group:'Acciones', action: () => { setTab('orders'); onClose(); } },
+    { type:'action', icon:'👤', label:'Nuevo cliente',      group:'Acciones', action: () => { setTab('clientes'); onClose(); } },
+  ];
+
+  const results = React.useMemo(() => {
+    if (!q.trim()) return NAV_ACTIONS.slice(0, 8);
+    const lo = q.toLowerCase();
+    const navMatches = NAV_ACTIONS.filter(a => a.label.toLowerCase().includes(lo));
+    const prodMatches = (products||[]).filter(p => p.name.toLowerCase().includes(lo)).slice(0,4).map(p => ({
+      type:'product', icon:'📦', label:p.name,
+      sub:`Stock: ${p.stock} ${p.unit} · ${p.alert?.label||''}`,
+      group:'Productos',
+      action: () => { setTab('inventory'); onClose(); }
+    }));
+    const cliMatches = (clientes||[]).filter(c => (c.nombre||'').toLowerCase().includes(lo)).slice(0,3).map(c => ({
+      type:'client', icon:'👥', label:c.nombre,
+      sub:c.tipo||'', group:'Clientes',
+      action: () => { setTab('clientes'); onClose(); }
+    }));
+    const cfeMatches = (cfes||[]).filter(f => (f.numero||'').toLowerCase().includes(lo)||(f.clienteNombre||'').toLowerCase().includes(lo)).slice(0,3).map(f => ({
+      type:'cfe', icon:'🧾', label:f.numero||'CFE',
+      sub:`${f.clienteNombre} · $${f.total?.toFixed(0)||0}`,
+      group:'Facturas',
+      action: () => { setTab('facturacion'); onClose(); }
+    }));
+    return [...navMatches, ...prodMatches, ...cliMatches, ...cfeMatches].slice(0,12);
+  }, [q, products, clientes, cfes]);
+
+  React.useEffect(() => { setCursor(0); }, [results.length]);
+
+  const onKey = e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => Math.min(c+1, results.length-1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(c-1, 0)); }
+    else if (e.key === 'Enter' && results[cursor]) {
+      const r = results[cursor];
+      if (r.action) r.action();
+      else if (r.type === 'nav') { setTab(r.id); onClose(); }
+    }
+  };
+
+  const execResult = r => {
+    if (r.action) r.action();
+    else if (r.type === 'nav') { setTab(r.id); onClose(); }
+  };
+
+  if (!open) return null;
+
+  // Group results
+  const grouped = {};
+  results.forEach((r,i) => {
+    if (!grouped[r.group]) grouped[r.group] = [];
+    grouped[r.group].push({...r, _idx:i});
+  });
+
+  const F = { sans:"'DM Sans','Inter',system-ui,sans-serif", mono:"'DM Mono','Fira Code',monospace" };
+
+  return React.createElement('div', {
+    style:{ position:'fixed', inset:0, zIndex:9000, display:'flex', alignItems:'flex-start',
+      justifyContent:'center', paddingTop:'15vh', background:'rgba(10,10,8,.6)',
+      backdropFilter:'blur(6px)' },
+    onClick: onClose
+  },
+    React.createElement('div', {
+      style:{ width:580, background:'#fff', borderRadius:16, overflow:'hidden',
+        boxShadow:'0 24px 80px rgba(0,0,0,.25)', border:'1px solid #e2e2de' },
+      onClick: e => e.stopPropagation()
+    },
+      // Search input
+      React.createElement('div', { style:{ display:'flex', alignItems:'center', gap:12,
+        padding:'14px 18px', borderBottom:'1px solid #f0f0ec' }},
+        React.createElement('span', { style:{fontSize:18, opacity:.4} }, '🔍'),
+        React.createElement('input', {
+          ref: inputRef,
+          value: q,
+          onChange: e => setQ(e.target.value),
+          onKeyDown: onKey,
+          placeholder: 'Buscar o ejecutar… (navegar, productos, clientes, facturas)',
+          style:{ flex:1, border:'none', outline:'none', fontFamily:F.sans, fontSize:15,
+            color:'#1a1a18', background:'transparent', padding:0 }
+        }),
+        React.createElement('kbd', { style:{ background:'#f0f0ec', border:'1px solid #d4d4d0',
+          borderRadius:5, padding:'2px 7px', fontFamily:F.mono, fontSize:11,
+          color:'#6a6a68' }}, 'ESC')
+      ),
+      // Results
+      Object.entries(grouped).length === 0
+        ? React.createElement('div', { style:{ padding:'32px', textAlign:'center',
+            color:'#9a9a98', fontFamily:F.sans, fontSize:13 }}, 'Sin resultados')
+        : React.createElement('div', { style:{ maxHeight:380, overflowY:'auto', padding:'8px 0' }},
+          Object.entries(grouped).map(([group, items]) =>
+            React.createElement(React.Fragment, { key:group },
+              React.createElement('div', { style:{ padding:'8px 18px 4px', fontFamily:F.sans,
+                fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase',
+                color:'#9a9a98' }}, group),
+              items.map(r =>
+                React.createElement('button', {
+                  key:r._idx,
+                  onClick: () => execResult(r),
+                  onMouseEnter: () => setCursor(r._idx),
+                  style:{ width:'100%', textAlign:'left', padding:'9px 18px',
+                    display:'flex', alignItems:'center', gap:12, border:'none', cursor:'pointer',
+                    background: cursor === r._idx ? '#f0f7ec' : 'transparent',
+                    transition:'background .08s', fontFamily:F.sans }
+                },
+                  React.createElement('span', { style:{fontSize:16, flexShrink:0} }, r.icon),
+                  React.createElement('div', { style:{flex:1} },
+                    React.createElement('div', { style:{fontSize:13, fontWeight:cursor===r._idx?600:400,
+                      color:'#1a1a18'} }, r.label),
+                    r.sub && React.createElement('div', { style:{fontSize:11, color:'#9a9a98',
+                      marginTop:1} }, r.sub)
+                  ),
+                  r.type === 'nav' && React.createElement('span', { style:{fontSize:11,
+                    color:'#c8c8c4', fontFamily:F.mono} }, '↵')
+                )
+              )
+            )
+          )
+        ),
+      // Footer
+      React.createElement('div', { style:{ padding:'8px 18px', borderTop:'1px solid #f0f0ec',
+        display:'flex', gap:16 }},
+        [['↑↓','navegar'],['↵','abrir'],['ESC','cerrar']].map(([k,v]) =>
+          React.createElement('span', { key:k, style:{display:'flex', alignItems:'center',
+            gap:4, fontFamily:F.sans, fontSize:11, color:'#9a9a98'} },
+            React.createElement('kbd', { style:{background:'#f0f0ec', border:'1px solid #d4d4d0',
+              borderRadius:4, padding:'1px 6px', fontFamily:'monospace', fontSize:10,
+              color:'#6a6a68'} }, k),
+            v
+          )
+        )
+      )
+    )
+  );
+};
+
+
 function AryesApp({session, onLogout, onSessionUpdate}){
   let [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   let [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
@@ -2448,6 +2614,13 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   // auth state is managed externally — AryesApp always has a valid session
   let [dbReady,setDbReady]=useState(false);
   const [userMenuOpen,setUserMenuOpen]=React.useState(false);
+  const [cmdOpen,setCmdOpen]=React.useState(false);
+  // Global ⌘K shortcut
+  React.useEffect(()=>{
+    const h=e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setCmdOpen(o=>!o);} };
+    window.addEventListener('keydown',h);
+    return()=>window.removeEventListener('keydown',h);
+  },[]);
   let [syncStatus,setSyncStatus]=useState('');
   let [tab,setTab]=useState('dashboard');
   let [orders,setOrders]=useState(()=>LS.get("aryes6-orders",[]));
@@ -3054,7 +3227,16 @@ function AryesApp({session, onLogout, onSessionUpdate}){
                       React.createElement('span',{style:{fontSize:14,lineHeight:1,opacity:tab===n.id?1:0.7}},n.icon),
                       n.label
                     ),
-                    n.id==="dashboard"&&critN>0&&React.createElement('span',{style:{background:T.danger,color:"#fff",fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:10,minWidth:18,textAlign:"center"}},critN)
+                    (()=>{
+                        const cfesLS = (()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch(e){return [];}})();
+                        const vencidasN = cfesLS.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
+                        const pendOrders = orders.filter(o=>o.status==='pending').length;
+                        if(n.id==='dashboard'&&critN>0) return React.createElement('span',{style:{background:T.danger,color:'#fff',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:10,minWidth:18,textAlign:'center'}},critN);
+                        if(n.id==='inventory'&&critN>0) return React.createElement('span',{style:{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}},critN);
+                        if(n.id==='orders'&&pendOrders>0) return React.createElement('span',{style:{background:T.amber,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}},pendOrders);
+                        if(n.id==='facturacion'&&vencidasN>0) return React.createElement('span',{style:{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}},vencidasN);
+                        return null;
+                      })()
                   )
                 )
               );
@@ -3076,18 +3258,22 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           <div style={{flex:1,maxWidth:380,position:"relative"}}>
             <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:T.textXs,pointerEvents:"none"}}>🔍</span>
             <input
-              placeholder="Buscar productos, proveedores..."
-              style={{width:"100%",boxSizing:"border-box",padding:"7px 12px 7px 32px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.text,background:T.muted,outline:"none"}}
-              onChange={e=>{
-                const v=e.target.value.trim().toLowerCase();
-                if(v.length>1){
-                  const match=enriched.find(p=>p.name.toLowerCase().includes(v));
-                  if(match){setTab('inventory');}
-                }
-              }}
+              readOnly
+              onClick={()=>setCmdOpen(true)}
+              placeholder="Buscar todo…  ⌘K"
+              style={{width:"100%",boxSizing:"border-box",padding:"7px 12px 7px 32px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.textXs,background:T.muted,outline:"none",cursor:"pointer"}}
             />
           </div>
           <div style={{flex:1}}/>
+          <button onClick={()=>setCmdOpen(true)} title="Paleta de comandos (⌘K)"
+            style={{display:'flex',alignItems:'center',gap:6,background:T.muted,border:`1px solid ${T.border}`,
+              borderRadius:7,padding:'5px 10px',cursor:'pointer',fontFamily:T.sans,fontSize:11,
+              color:T.textSm,transition:'all .12s',marginRight:8}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor='#3a7d1e';e.currentTarget.style.color='#3a7d1e';}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.textSm;}}>
+            <span style={{fontSize:13}}>⌘</span>
+            <span>K</span>
+          </button>
 
           {/* User pill with dropdown */}
           {React.createElement(UserMenuDropdown,{session,userMenuOpen,setUserMenuOpen,canTab,setTab,handleLogout,T})}
@@ -3146,7 +3332,17 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         </div>
         </main>
 
-      {/* ══ MODALS ══ */}
+      {/* ══ COMMAND PALETTE ══ */}
+        {React.createElement(CommandPalette,{
+          open:cmdOpen,
+          onClose:()=>setCmdOpen(false),
+          products:enriched||[],
+          clientes:LS.get('aryes-clients',[]),
+          cfes:LS.get('aryes-cfe',[]),
+          setTab,
+          onNewCFE:()=>{setTab('facturacion');setCmdOpen(false);}
+        })}
+        {/* ══ MODALS ══ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
       {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}
       {modal?.type==="orderDone"&&(
