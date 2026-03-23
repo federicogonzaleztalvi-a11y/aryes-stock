@@ -1,6 +1,7 @@
 import React from 'react';
 import { tfCols } from '../lib/constants.js';
 import { T, ALERT_CFG, Cap, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
+import SetupChecklist from '../components/SetupChecklist.jsx';
 
 const F = {
   sans:  "'DM Sans','Inter',system-ui,sans-serif",
@@ -186,7 +187,11 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             Buenos días, {session?.name?.split(' ')[0]||session?.email?.split('@')[0]||'Admin'} 👋
           </div>
         </div>
-        {critN>0&&(
+
+      {/* ── Setup Progress Checklist ── */}
+      <SetupChecklist products={products} setTab={setTab} />
+
+      {critN>0&&(
           <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,
             padding:'10px 18px',display:'flex',gap:10,alignItems:'center',cursor:'pointer'}}
             onClick={()=>setTab('inventory')}>
