@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { LS, db } from '../lib/constants.js';
 
 function ClientesTab(){
   const G="#3a7d1e";
   const KCLI="aryes-clients";
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',tipo:'Panadería',condPago:'contado',limiteCredito:'',emailFacturacion:'',rut:'',telefono:'',email:'',direccion:'',ciudad:'',contacto:'',notas:''};
+  const emptyForm={nombre:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',rut:'',telefono:'',email:'',direccion:'',ciudad:'',contacto:'',notas:''};
   const [items,setItems]=useState(()=>LS.get(KCLI,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
@@ -18,15 +18,52 @@ function ClientesTab(){
   const [selId,setSelId]=useState(null);
   const [msg,setMsg]=useState('');
   const sel=items.find(x=>x.id===selId);
+
+  // ── persist to Supabase clients table (non-blocking) ────────
+  const syncClient = (client) => {
+    db.upsert('clients', {
+      id:                client.id,
+      nombre:            client.nombre,
+      tipo:              client.tipo              || 'Otro',
+      rut:               client.rut              || '',
+      telefono:          client.telefono          || '',
+      email:             client.email             || '',
+      email_facturacion: client.emailFacturacion  || '',
+      contacto:          client.contacto          || '',
+      direccion:         client.direccion         || '',
+      ciudad:            client.ciudad            || '',
+      cond_pago:         client.condPago          || 'credito_30',
+      limite_credito:    client.limiteCredito ? Number(client.limiteCredito) : null,
+      notas:             client.notas             || '',
+      created_at:        client.creado            || new Date().toISOString(),
+    }, 'id').catch(() => {});
+  };
+
   const save=()=>{
     if(!form.nombre.trim()){setMsg('Nombre obligatorio');return;}
-    const upd=editId?items.map(x=>x.id===editId?{...x,...form}:x):[...items,{...form,id:crypto.randomUUID(),creado:new Date().toISOString()}];
-    setItems(upd);LS.set(KCLI,upd);
+    const isNew = !editId;
+    const newId = isNew ? crypto.randomUUID() : editId;
+    const record = isNew
+      ? {...form, id: newId, creado: new Date().toISOString()}
+      : {...items.find(x=>x.id===editId), ...form};
+    const upd = isNew
+      ? [...items, record]
+      : items.map(x=>x.id===editId ? record : x);
+    setItems(upd); LS.set(KCLI, upd);
+    syncClient(record);                          // → Supabase clients table
     setMsg(editId?'Cliente actualizado':'Cliente agregado');
     setForm(emptyForm);setEditId(null);setVista('lista');
     setTimeout(()=>setMsg(''),3000);
   };
-  const del=(id)=>{if(!confirm('¿Eliminar?'))return;const upd=items.filter(x=>x.id!==id);setItems(upd);LS.set(KCLI,upd);setVista('lista');};
+
+  const del=(id)=>{
+    if(!confirm('¿Eliminar?'))return;
+    const upd=items.filter(x=>x.id!==id);
+    setItems(upd); LS.set(KCLI,upd);
+    db.del('clients',{id}).catch(()=>{});        // → Supabase clients table
+    setVista('lista');
+  };
+
   const edit=(x)=>{setForm({nombre:x.nombre,tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||''});setEditId(x.id);setVista('form');};
   const filtered=items.filter(x=>(!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase()))&&(filtro==='Todos'||x.tipo===filtro));
   const inp={width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',boxSizing:'border-box'};

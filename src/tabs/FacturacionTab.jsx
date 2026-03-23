@@ -646,7 +646,28 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     saveCfes([nuevo,...cfes]);
     setSeq(s=>{ const n=s+1; LS.set(KSEQ,n); return n; });
     setShowCFE(false); setPrefill(null);
-    // Persist to Supabase (non-blocking)
+    // → invoices table (source of truth)
+    db.upsert('invoices', {
+      id:              nuevo.id,
+      numero,
+      tipo:            nuevo.tipo,
+      moneda:          nuevo.moneda,
+      fecha:           nuevo.fecha,
+      fecha_venc:      nuevo.fechaVenc    || null,
+      cliente_id:      nuevo.clienteId    || null,
+      cliente_nombre:  nuevo.clienteNombre,
+      cliente_rut:     nuevo.clienteRut   || '',
+      subtotal:        nuevo.subtotal     || 0,
+      iva_total:       nuevo.ivaTotal     || 0,
+      descuento:       nuevo.descuento    || 0,
+      total:           nuevo.total,
+      saldo_pendiente: nuevo.total,
+      status:          nuevo.status,
+      items:           nuevo.items,
+      notas:           nuevo.notas        || '',
+      created_at:      nuevo.createdAt,
+    }, 'id').catch(()=>{});
+    // → ventas table (legacy, kept for backwards compat)
     db.upsert('ventas',{ id:nuevo.id, numero, tipo:nuevo.tipo,
       cliente_id:nuevo.clienteId||null, cliente_nombre:nuevo.clienteNombre,
       cliente_rut:nuevo.clienteRut||'', total:nuevo.total, moneda:nuevo.moneda,
@@ -662,6 +683,19 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       facturasAplicar, createdAt:new Date().toISOString() };
     saveCobros([cobro,...cobros]);
 
+    // → collections table (non-blocking)
+    db.upsert('collections', {
+      id:               cobro.id,
+      cliente_id:       clienteId  || null,
+      monto:            monto,
+      metodo:           metodo,
+      fecha:            fecha,
+      fecha_cheque:     fechaCheque || null,
+      facturas_aplicar: facturasAplicar,
+      notas:            notas       || '',
+      created_at:       cobro.createdAt,
+    }, 'id').catch(()=>{});
+
     // Update saldo pendiente en cada CFE aplicado
     let remaining = monto;
     const updCfes = cfes.map(c => {
@@ -670,10 +704,13 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       const aplicar= Math.min(saldo, remaining);
       remaining   -= aplicar;
       const newSaldo = saldo - aplicar;
-      return { ...c,
-        saldoPendiente: newSaldo,
-        status: newSaldo<=0.01 ? 'cobrada' : 'cobrado_parcial',
-      };
+      const newStatus = newSaldo<=0.01 ? 'cobrada' : 'cobrado_parcial';
+      // → update invoice in DB too
+      db.patch('invoices',
+        { saldo_pendiente: newSaldo, status: newStatus },
+        { id: c.id }
+      ).catch(()=>{});
+      return { ...c, saldoPendiente: newSaldo, status: newStatus };
     });
     saveCfes(updCfes);
     setShowCob(false);
@@ -682,6 +719,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   const anular = id => {
     if (!window.confirm('¿Anular este CFE?')) return;
     saveCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
+    db.patch('invoices', { status:'anulada' }, { id }).catch(()=>{});
   };
 
   // ── Computed ──────────────────────────────────────────────────────────
