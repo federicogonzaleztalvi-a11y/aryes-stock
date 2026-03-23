@@ -34,6 +34,7 @@ const PedidosInline = React.lazy(() => import('./tabs/PedidosInline.jsx'));
 const InventoryInline = React.lazy(() => import('./tabs/InventoryInline.jsx'));
 const ConfigInline = React.lazy(() => import('./tabs/ConfigInline.jsx'));
 const ProveedoresInline = React.lazy(() => import('./tabs/ProveedoresInline.jsx'));
+import SmartToasts from './components/SmartToasts.jsx';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -48,6 +49,7 @@ input:focus,select:focus,textarea:focus{outline:none;}
 input[type=range]{accent-color:#3a7d1e;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.85);}}
+@keyframes smartToastIn{from{opacity:0;transform:translateX(12px);}to{opacity:1;transform:translateX(0);}}
 .au{animation:fadeUp .25s ease both;}
 .pdot{animation:pulseDot 1.8s ease infinite;}
 `;
@@ -3342,6 +3344,8 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           setTab,
           onNewCFE:()=>{setTab('facturacion');setCmdOpen(false);}
         })}
+        {/* ══ SMART TOASTS ══ */}
+        <SmartToasts critN={critN} orders={orders} />
         {/* ══ MODALS ══ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
       {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}
