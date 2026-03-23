@@ -1,3 +1,4 @@
+import React from 'react';
 import { tfCols } from '../lib/constants.js';
 import { T, ALERT_CFG, Cap, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 
