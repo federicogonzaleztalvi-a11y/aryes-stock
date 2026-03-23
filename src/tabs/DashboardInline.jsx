@@ -1,4 +1,3 @@
-import React from 'react';
 import { tfCols } from '../lib/constants.js';
 import { T, ALERT_CFG, Cap, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 
@@ -186,65 +185,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             Buenos días, {session?.name?.split(' ')[0]||session?.email?.split('@')[0]||'Admin'} 👋
           </div>
         </div>
-        {/* ── Setup Progress (Intercom-style) — hides when complete ── */}
-      {(()=>{
-        const steps = [
-          { id:'brand',   label:'Configurar nombre y logo',     done: !!(brandCfg?.name),           action: ()=>setTab('config') },
-          { id:'cliente', label:'Agregar primer cliente',        done: clientes.length>0,             action: ()=>setTab('clientes') },
-          { id:'product', label:'Cargar productos en inventario',done: products.length>0,             action: ()=>setTab('inventory') },
-          { id:'cfe',     label:'Emitir primera factura CFE',    done: cfes.length>0,                 action: ()=>setTab('facturacion') },
-          { id:'dgi',     label:'Conectar proveedor DGI',        done: false,                         action: ()=>setTab('config') },
-        ];
-        const clientes2 = (()=>{try{return JSON.parse(localStorage.getItem('aryes-clients')||'[]');}catch(e){return[];}})();
-        const cfes2 = (()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch(e){return[];}})();
-        const stepsEval = [
-          { ...steps[0], done: !!(brandCfg?.name) },
-          { ...steps[1], done: clientes2.length>0 },
-          { ...steps[2], done: products.length>0 },
-          { ...steps[3], done: cfes2.length>0 },
-          { ...steps[4], done: false },
-        ];
-        const done = stepsEval.filter(s=>s.done).length;
-        const total = stepsEval.length;
-        if (done === total) return null;
-        return React.createElement('div', {
-          style:{ background:'#fff', border:'1px solid #e2e2de', borderRadius:12,
-            padding:'16px 20px', marginBottom:4 }
-        },
-          React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},
-            React.createElement('div',{},
-              React.createElement('div',{style:{fontFamily:F.sans,fontSize:10,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'#9a9a98',marginBottom:2}},'Configuración inicial'),
-              React.createElement('div',{style:{fontFamily:F.serif,fontSize:18,color:'#1a1a18'}},`${done} de ${total} pasos completados`)
-            ),
-            React.createElement('div',{style:{fontFamily:F.sans,fontSize:13,fontWeight:700,color:T.green}},`${Math.round((done/total)*100)}%`)
-          ),
-          React.createElement('div',{style:{height:6,background:'#f0f0ec',borderRadius:3,overflow:'hidden',marginBottom:12}},
-            React.createElement('div',{style:{height:'100%',width:`${(done/total)*100}%`,background:T.green,borderRadius:3,transition:'width .5s ease'}})
-          ),
-          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}},
-            stepsEval.map((s,i)=>
-              React.createElement('button',{key:s.id,onClick:s.action,
-                style:{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
-                  border:`1px solid ${s.done?'#bbf7d0':'#e2e2de'}`,borderRadius:7,
-                  background:s.done?'#f0fdf4':'#fff',cursor:'pointer',textAlign:'left',
-                  transition:'all .12s'}},
-                React.createElement('div',{style:{width:18,height:18,borderRadius:'50%',flexShrink:0,
-                  background:s.done?T.green:'transparent',
-                  border:`2px solid ${s.done?T.green:'#d1d5db'}`,
-                  display:'flex',alignItems:'center',justifyContent:'center'}},
-                  s.done&&React.createElement('span',{style:{color:'#fff',fontSize:9,fontWeight:700}},'✓')
-                ),
-                React.createElement('span',{style:{fontFamily:F.sans,fontSize:12,
-                  fontWeight:s.done?500:600,
-                  color:s.done?'#6a6a68':'#1a1a18',
-                  textDecoration:s.done?'line-through':'none'}},s.label)
-              )
-            )
-          )
-        );
-      })()}
-
-      {critN>0&&(
+        {critN>0&&(
           <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,
             padding:'10px 18px',display:'flex',gap:10,alignItems:'center',cursor:'pointer'}}
             onClick={()=>setTab('inventory')}>

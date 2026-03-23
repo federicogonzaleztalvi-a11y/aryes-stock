@@ -2605,35 +2605,6 @@ const CommandPalette = ({ open, onClose, products, clientes, cfes, setTab, onNew
 };
 
 
-// ─── Simple Toast Notifications ──────────────────────────────────────────
-const ToastContainer = ({ toasts, onDismiss }) => {
-  if (!toasts || !toasts.length) return null;
-  return React.createElement('div', {
-    style:{ position:'fixed', bottom:24, right:24, zIndex:8000,
-      display:'flex', flexDirection:'column', gap:8, maxWidth:340 }
-  }, toasts.map(t => {
-    const colors = {
-      danger:  { bg:'#fef2f2', bd:'#fecaca', cl:'#dc2626', icon:'⚠' },
-      warning: { bg:'#fffbeb', bd:'#fde68a', cl:'#d97706', icon:'⏰' },
-      info:    { bg:'#eff6ff', bd:'#bfdbfe', cl:'#2563eb', icon:'ℹ' },
-    };
-    const s = colors[t.type] || colors.info;
-    return React.createElement('div', { key:t.id,
-      style:{ background:s.bg, border:'1px solid '+s.bd, borderRadius:10,
-        padding:'12px 16px', display:'flex', gap:10, alignItems:'flex-start',
-        boxShadow:'0 4px 20px rgba(0,0,0,.1)' }
-    },
-      React.createElement('span', { style:{fontSize:16,flexShrink:0} }, s.icon),
-      React.createElement('div', { style:{flex:1, fontFamily:"'DM Sans',sans-serif",
-        fontSize:13, fontWeight:600, color:s.cl, lineHeight:1.4} }, t.msg),
-      React.createElement('button', { onClick:()=>onDismiss(t.id),
-        style:{background:'none',border:'none',cursor:'pointer',color:s.cl,
-          fontSize:16,lineHeight:1,padding:0,opacity:.6,flexShrink:0} }, '×')
-    );
-  }));
-};
-
-
 function AryesApp({session, onLogout, onSessionUpdate}){
   let [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   let [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));
@@ -2644,26 +2615,6 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   let [dbReady,setDbReady]=useState(false);
   const [userMenuOpen,setUserMenuOpen]=React.useState(false);
   const [cmdOpen,setCmdOpen]=React.useState(false);
-  // Smart alerts
-  const [smartToasts,setSmartToasts]=React.useState([]);
-  const toastShown=React.useRef(new Set());
-  const dismissToast=id=>setSmartToasts(prev=>prev.filter(t=>t.id!==id));
-  const addToast=React.useCallback((id,msg,type='info')=>{
-    if(toastShown.current.has(id))return;
-    toastShown.current.add(id);
-    setSmartToasts(prev=>[...prev.slice(-2),{id,msg,type}]);
-    setTimeout(()=>setSmartToasts(prev=>prev.filter(t=>t.id!==id)),6000);
-  },[]);
-  React.useEffect(()=>{
-    const crit=(enriched||[]).filter(p=>p.alert?.level==='order_now').length;
-    if(crit>0)addToast('crit',`${crit} producto${crit>1?'s':''} requieren pedido urgente`,'danger');
-    try{
-      const v=JSON.parse(localStorage.getItem('aryes-cfe')||'[]')
-        .filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&
-          Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
-      if(v>0)addToast('venc',`${v} factura${v>1?'s':''} vencida${v>1?'s':''} sin cobrar`,'warning');
-    }catch(e){}
-  },[enriched?.length,addToast]);
   // Global ⌘K shortcut
   React.useEffect(()=>{
     const h=e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setCmdOpen(o=>!o);} };
@@ -3391,8 +3342,6 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           setTab,
           onNewCFE:()=>{setTab('facturacion');setCmdOpen(false);}
         })}
-        {/* ══ TOASTS ══ */}
-        {React.createElement(ToastContainer,{toasts:smartToasts,onDismiss:dismissToast})}
         {/* ══ MODALS ══ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
       {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}
