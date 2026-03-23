@@ -66,7 +66,7 @@ export default function ConfigInline({
         <div>
           {/* Sub-tab bar */}
           <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:600,marginBottom:24}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"marca",l:"Marca y empresa"},{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"}].map(st=>(
+            {[{id:"usuarios",l:"Usuarios"},{id:"marca",l:"Marca y empresa"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"},{id:"integraciones",l:"Integraciones"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
@@ -190,6 +190,75 @@ export default function ConfigInline({
               onTestSend={()=>{}}
               onManualSend={(prods)=>sendAlertEmail(prods,emailCfg)}
             />
+          )}
+
+          {/* ── FACTURACIÓN DGI ───────────────────────────────────────────── */}
+          {settingsTab==="facturacion_cfg" && (
+            <div style={{maxWidth:580}}>
+              <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:10,padding:'14px 18px',marginBottom:24,display:'flex',gap:10}}>
+                <span style={{fontSize:20}}>🔗</span>
+                <div>
+                  <div style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:13,fontWeight:700,color:'#1e40af',marginBottom:2}}>Proveedor habilitado por DGI</div>
+                  <div style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:12,color:'#3b82f6'}}>
+                    Para emitir CFEs con validez legal, configurá tu proveedor habilitado. Soportamos UCFE (Uruware) y pymo.uy.
+                    Los CFEs se envían automáticamente al guardar.
+                  </div>
+                </div>
+              </div>
+              <div style={{display:'grid',gap:16}}>
+                {[{id:'ucfe',name:'UCFE (Uruware)',desc:'Proveedor de Saico. Si ya tenés contrato con Uruware podés conectarlo directamente.',logo:'🏢'},
+                  {id:'pymo',name:'pymo.uy',desc:'Proveedor moderno con API REST documentada. Plan desde USD 8/mes + CFEs.',logo:'⚡'},
+                  {id:'sicfe',name:'Sicfe',desc:'Más de 11.000 clientes en Uruguay. Integración vía API REST.',logo:'🔒'}
+                ].map(p=>(
+                  <div key={p.id} style={{border:'1.5px solid #e2e2de',borderRadius:10,padding:'16px 18px',display:'flex',alignItems:'center',gap:14,cursor:'pointer',transition:'border-color .15s'}}
+                    onMouseEnter={e=>e.currentTarget.style.borderColor='#3a7d1e'}
+                    onMouseLeave={e=>e.currentTarget.style.borderColor='#e2e2de'}>
+                    <span style={{fontSize:28}}>{p.logo}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:14,fontWeight:700,color:'#1a1a18'}}>{p.name}</div>
+                      <div style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>{p.desc}</div>
+                    </div>
+                    <span style={{background:'#f0f0ec',color:'#6a6a68',fontFamily:'DM Sans,Inter,sans-serif',fontSize:11,fontWeight:600,padding:'5px 12px',borderRadius:20}}>Próximamente</span>
+                  </div>
+                ))}
+                <div style={{background:'#f9f9f7',borderRadius:8,padding:'12px 16px',fontFamily:'DM Sans,Inter,sans-serif',fontSize:12,color:'#6a6a68'}}>
+                  ¿Tenés contrato con otro proveedor habilitado por DGI? <span style={{color:'#3a7d1e',fontWeight:600,cursor:'pointer'}}>Contactanos →</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── INTEGRACIONES ─────────────────────────────────────────────── */}
+          {settingsTab==="integraciones" && (
+            <div style={{maxWidth:600}}>
+              <p style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:13,color:'#6a6a68',marginBottom:20,lineHeight:1.6}}>
+                Conectá la plataforma con otros sistemas. Las integraciones se activan sin código — solo configurás las credenciales.
+              </p>
+              <div style={{display:'grid',gap:10}}>
+                {[
+                  {icon:'📱',name:'WhatsApp Business',desc:'Enviá alertas de stock, notificaciones de pedidos y remitos por WhatsApp.',status:'disponible',color:'#16a34a'},
+                  {icon:'📊',name:'Google Sheets',desc:'Exportá inventario y movimientos automáticamente a una hoja de cálculo.',status:'disponible',color:'#16a34a'},
+                  {icon:'🏦',name:'BROU / Santander',desc:'Importá extractos bancarios automáticamente para conciliación.',status:'pronto',color:'#d97706'},
+                  {icon:'🛍',name:'Portal B2B de pedidos',desc:'Tus clientes hacen pedidos directamente desde su portal personalizado.',status:'pronto',color:'#d97706'},
+                  {icon:'📦',name:'MercadoLibre / eCommerce',desc:'Sincronizá stock con tu tienda online automáticamente.',status:'pronto',color:'#d97706'},
+                  {icon:'📄',name:'API REST pública',desc:'Conectá cualquier sistema externo con la API documentada.',status:'próximamente',color:'#6366f1'},
+                ].map(i=>(
+                  <div key={i.name} style={{border:'1px solid #e2e2de',borderRadius:10,padding:'14px 16px',
+                    display:'flex',alignItems:'center',gap:14}}>
+                    <span style={{fontSize:24,flexShrink:0}}>{i.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:13,fontWeight:700,color:'#1a1a18'}}>{i.name}</div>
+                      <div style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>{i.desc}</div>
+                    </div>
+                    <span style={{background:i.status==='disponible'?'#f0fdf4':i.status==='pronto'?'#fffbeb':'#eff6ff',
+                      color:i.color,fontFamily:'DM Sans,Inter,sans-serif',fontSize:11,fontWeight:700,
+                      padding:'4px 11px',borderRadius:20,whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.06em'}}>
+                      {i.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

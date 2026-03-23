@@ -48,6 +48,7 @@ input:focus,select:focus,textarea:focus{outline:none;}
 input[type=range]{accent-color:#3a7d1e;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.85);}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
 .au{animation:fadeUp .25s ease both;}
 .pdot{animation:pulseDot 1.8s ease infinite;}
 `;
@@ -2439,6 +2440,101 @@ function UserMenuDropdown({session, userMenuOpen, setUserMenuOpen, canTab, setTa
 }
 
 
+// ─── Smart Notification Toast System (Xero-inspired) ─────────────────────
+const useSmartNotifications = (products, orders, cfes, brandCfg) => {
+  const [toasts, setToasts] = React.useState([]);
+  const shownRef = React.useRef(new Set());
+
+  const addToast = React.useCallback((id, msg, type='info', action=null) => {
+    if (shownRef.current.has(id)) return;
+    shownRef.current.add(id);
+    const toast = { id, msg, type, action, ts: Date.now() };
+    setToasts(prev => [...prev.slice(-3), toast]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
+  }, []);
+
+  const dismiss = id => setToasts(prev => prev.filter(t => t.id !== id));
+
+  // Check conditions every time data changes
+  React.useEffect(() => {
+    const critProducts = (products||[]).filter(p => {
+      const enriched = p.alert;
+      return enriched?.level === 'order_now';
+    });
+
+    // Critical stock alert — once per session
+    if (critProducts.length > 0) {
+      addToast('crit-stock', `${critProducts.length} producto${critProducts.length>1?'s':''} requieren pedido urgente`, 'danger');
+    }
+
+    // Overdue invoices
+    try {
+      const cfesLS = JSON.parse(localStorage.getItem('aryes-cfe')||'[]');
+      const vencidas = cfesLS.filter(f =>
+        ['emitida','cobrado_parcial'].includes(f.status) &&
+        f.fechaVenc &&
+        Math.floor((new Date(f.fechaVenc).getTime() - Date.now()) / 86400000) < 0
+      );
+      if (vencidas.length > 0) {
+        addToast('venc-cfe', `${vencidas.length} factura${vencidas.length>1?'s':''} vencida${vencidas.length>1?'s':''} sin cobrar`, 'warning');
+      }
+    } catch(e) {}
+
+    // Brand not configured
+    if (!brandCfg?.name && !shownRef.current.has('setup-brand')) {
+      addToast('setup-brand', 'Configurá el nombre y logo de tu empresa', 'info');
+    }
+  }, [products?.length, brandCfg?.name]);
+
+  return { toasts, dismiss };
+};
+
+const ToastContainer = ({ toasts, onDismiss, setTab }) => {
+  const F = { sans:"'DM Sans','Inter',system-ui,sans-serif" };
+  const cfg = {
+    danger:  { bg:'#fef2f2', border:'#fecaca', color:'#dc2626', icon:'⚠' },
+    warning: { bg:'#fffbeb', border:'#fde68a', color:'#d97706', icon:'⏰' },
+    info:    { bg:'#eff6ff', border:'#bfdbfe', color:'#2563eb', icon:'ℹ' },
+    success: { bg:'#f0fdf4', border:'#bbf7d0', color:'#16a34a', icon:'✓' },
+  };
+
+  if (!toasts.length) return null;
+
+  return React.createElement('div', {
+    style: { position:'fixed', bottom:24, right:24, zIndex:8000,
+      display:'flex', flexDirection:'column', gap:8, maxWidth:340 }
+  },
+    toasts.map(t => {
+      const s = cfg[t.type] || cfg.info;
+      return React.createElement('div', {
+        key: t.id,
+        style: { background:s.bg, border:`1px solid ${s.border}`, borderRadius:10,
+          padding:'12px 16px', display:'flex', gap:10, alignItems:'flex-start',
+          boxShadow:'0 4px 20px rgba(0,0,0,.1)',
+          animation:'slideInRight .2s ease' }
+      },
+        React.createElement('span', { style:{fontSize:16,flexShrink:0,marginTop:1} }, s.icon),
+        React.createElement('div', { style:{flex:1} },
+          React.createElement('div', { style:{fontFamily:F.sans,fontSize:13,
+            fontWeight:600,color:s.color,lineHeight:1.4} }, t.msg),
+          t.action && React.createElement('button', {
+            onClick: t.action.fn,
+            style:{ background:'none', border:'none', cursor:'pointer', fontFamily:F.sans,
+              fontSize:12, color:s.color, padding:0, marginTop:4, fontWeight:700,
+              textDecoration:'underline' }
+          }, t.action.label)
+        ),
+        React.createElement('button', {
+          onClick: () => onDismiss(t.id),
+          style:{ background:'none', border:'none', cursor:'pointer',
+            color:s.color, fontSize:16, lineHeight:1, padding:0, opacity:.6, flexShrink:0 }
+        }, '×')
+      );
+    })
+  );
+};
+
+
 // ─── Command Palette (⌘K) ─────────────────────────────────────────────────
 const CommandPalette = ({ open, onClose, products, clientes, cfes, setTab, onNewCFE, onNewOrder }) => {
   const [q, setQ] = React.useState('');
@@ -2615,6 +2711,8 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   let [dbReady,setDbReady]=useState(false);
   const [userMenuOpen,setUserMenuOpen]=React.useState(false);
   const [cmdOpen,setCmdOpen]=React.useState(false);
+  // Smart notifications
+  const { toasts: smartToasts, dismiss: dismissToast } = useSmartNotifications(enriched, orders, [], brandCfg);
   // Global ⌘K shortcut
   React.useEffect(()=>{
     const h=e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='k'){e.preventDefault();setCmdOpen(o=>!o);} };
@@ -3333,7 +3431,10 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         </main>
 
       {/* ══ COMMAND PALETTE ══ */}
-        {React.createElement(CommandPalette,{
+        {React.createElement(ToastContainer,{
+          toasts:smartToasts, onDismiss:dismissToast, setTab
+        }),
+        React.createElement(CommandPalette,{
           open:cmdOpen,
           onClose:()=>setCmdOpen(false),
           products:enriched||[],
