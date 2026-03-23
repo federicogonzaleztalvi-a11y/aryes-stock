@@ -156,10 +156,12 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error,info){console.error('[Stock] ErrorBoundary caught:',error,info);}
   render(){
     if(this.state.hasError){
-      return React.createElement('div',{style:{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}},
-        React.createElement('p',{style:{color:'#dc2626',fontWeight:600,marginBottom:8}},'Error al cargar este módulo'),
-        React.createElement('p',{style:{color:'#7a7368',fontSize:12,marginBottom:12}},String(this.state.error?.message||'Error desconocido')),
-        React.createElement('button',{onClick:()=>this.setState({hasError:false,error:null}),style:{background:'#dc2626',color:'#fff',border:'none',padding:'8px 16px',borderRadius:4,cursor:'pointer',fontSize:12,fontWeight:600}},'Reintentar')
+      return (
+        <div style={{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}}>
+          <p style={{color:'#dc2626',fontWeight:600,marginBottom:8}}>Error al cargar este módulo</p>
+          <p style={{color:'#7a7368',fontSize:12,marginBottom:12}}>{String(this.state.error?.message||'Error desconocido')}</p>
+          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:'#dc2626',color:'#fff',border:'none',padding:'8px 16px',borderRadius:4,cursor:'pointer',fontSize:12,fontWeight:600}}>Reintentar</button>
+        </div>
       );
     }
     return this.props.children;

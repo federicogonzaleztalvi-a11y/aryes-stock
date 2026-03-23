@@ -1399,10 +1399,12 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error,info){console.error('[Stock] ErrorBoundary caught:',error,info);}
   render(){
     if(this.state.hasError){
-      return React.createElement('div',{style:{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}},
-        React.createElement('p',{style:{color:'#dc2626',fontWeight:600,marginBottom:8}},'Error al cargar este módulo'),
-        React.createElement('p',{style:{color:'#7a7368',fontSize:12,marginBottom:12}},String(this.state.error?.message||'Error desconocido')),
-        React.createElement('button',{onClick:()=>this.setState({hasError:false,error:null}),style:{background:'#dc2626',color:'#fff',border:'none',padding:'8px 16px',borderRadius:4,cursor:'pointer',fontSize:12,fontWeight:600}},'Reintentar')
+      return (
+        <div style={{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}}>
+          <p style={{color:'#dc2626',fontWeight:600,marginBottom:8}}>Error al cargar este módulo</p>
+          <p style={{color:'#7a7368',fontSize:12,marginBottom:12}}>{String(this.state.error?.message||'Error desconocido')}</p>
+          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:'#dc2626',color:'#fff',border:'none',padding:'8px 16px',borderRadius:4,cursor:'pointer',fontSize:12,fontWeight:600}}>Reintentar</button>
+        </div>
       );
     }
     return this.props.children;
@@ -1651,27 +1653,28 @@ function AryesApp({session, onLogout, onSessionUpdate}){
             return groups.map(g=>{
               const items=NAV.filter(n=>g.ids.includes(n.id)&&n.id!=="usuarios");
               if(!items.length) return null;
-              return React.createElement(React.Fragment,{key:g.label},
-                React.createElement('div',{style:{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}},g.label),
-                items.map(n=>
-                  React.createElement('button',{key:n.id,onClick:()=>setTab(n.id),
-                    style:{width:"100%",textAlign:"left",padding:"8px 18px",background:tab===n.id?T.greenBg:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:`3px solid transparent`,fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,borderRadius:"0 6px 6px 0",marginRight:8,transition:"background .15s"}},
-                    React.createElement('span',{style:{display:"flex",alignItems:"center",gap:8}},
-                      React.createElement('span',{style:{fontSize:14,lineHeight:1,opacity:tab===n.id?1:0.7}},n.icon),
-                      n.label
-                    ),
-                    (()=>{
-                        const cfesLS = (()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch(e){return [];}})();
-                        const vencidasN = cfesLS.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
-                        const pendOrders = orders.filter(o=>o.status==='pending').length;
-                        if(n.id==='dashboard'&&critN>0) return React.createElement('span',{style:{background:T.danger,color:'#fff',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:10,minWidth:18,textAlign:'center'}},critN);
-                        if(n.id==='inventory'&&critN>0) return React.createElement('span',{style:{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}},critN);
-                        if(n.id==='orders'&&pendOrders>0) return React.createElement('span',{style:{background:T.amber,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}},pendOrders);
-                        if(n.id==='facturacion'&&vencidasN>0) return React.createElement('span',{style:{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}},vencidasN);
-                        return null;
-                      })()
-                  )
-                )
+              return (
+                <React.Fragment key={g.label}>
+                  <div style={{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}}>{g.label}</div>
+                  {items.map(n=>{
+                    const cfesLS=(()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch(e){return [];}})();
+                    const vencidasN=cfesLS.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
+                    const pendOrders=orders.filter(o=>o.status==='pending').length;
+                    return (
+                      <button key={n.id} onClick={()=>setTab(n.id)}
+                        style={{width:"100%",textAlign:"left",padding:"8px 18px",background:tab===n.id?T.greenBg:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:`3px solid transparent`,fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,borderRadius:"0 6px 6px 0",marginRight:8,transition:"background .15s"}}>
+                        <span style={{display:"flex",alignItems:"center",gap:8}}>
+                          <span style={{fontSize:14,lineHeight:1,opacity:tab===n.id?1:0.7}}>{n.icon}</span>
+                          {n.label}
+                        </span>
+                        {n.id==='dashboard'&&critN>0&&<span style={{background:T.danger,color:'#fff',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:10,minWidth:18,textAlign:'center'}}>{critN}</span>}
+                        {n.id==='inventory'&&critN>0&&<span style={{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{critN}</span>}
+                        {n.id==='orders'&&pendOrders>0&&<span style={{background:T.amber,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{pendOrders}</span>}
+                        {n.id==='facturacion'&&vencidasN>0&&<span style={{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{vencidasN}</span>}
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
               );
             });
           })()}
@@ -1711,7 +1714,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
           </button>
 
           {/* User pill with dropdown */}
-          {React.createElement(UserMenuDropdown,{session,userMenuOpen,setUserMenuOpen,canTab,setTab,handleLogout,T})}
+          <UserMenuDropdown session={session} userMenuOpen={userMenuOpen} setUserMenuOpen={setUserMenuOpen} canTab={canTab} setTab={setTab} handleLogout={handleLogout} />
         </div>
 
         <div style={{padding:"36px 44px",flex:1}}>
@@ -1768,15 +1771,15 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         </main>
 
       {/* ══ COMMAND PALETTE ══ */}
-        {React.createElement(CommandPalette,{
-          open:cmdOpen,
-          onClose:()=>setCmdOpen(false),
-          products:enriched||[],
-          clientes:LS.get('aryes-clients',[]),
-          cfes:LS.get('aryes-cfe',[]),
-          setTab,
-          onNewCFE:()=>{setTab('facturacion');setCmdOpen(false);}
-        })}
+        <CommandPalette
+          open={cmdOpen}
+          onClose={()=>setCmdOpen(false)}
+          products={enriched||[]}
+          clientes={LS.get('aryes-clients',[])}
+          cfes={LS.get('aryes-cfe',[])}
+          setTab={setTab}
+          onNewCFE={()=>{setTab('facturacion');setCmdOpen(false);}}
+        />
         {/* ══ SMART TOASTS ══ */}
         <SmartToasts critN={critN} orders={orders} />
         {ConfirmDialog}
@@ -1893,58 +1896,93 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
     input:{padding:'10px 12px',borderTop:'0.5px solid #e2e2de',display:'flex',gap:8,flexShrink:0,background:'#f9f9f7',alignItems:'flex-end'},
   };
 
-  const chatIcon=React.createElement('svg',{width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round'},React.createElement('path',{d:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'}));
-  const chatIconSm=React.createElement('svg',{width:14,height:14,viewBox:'0 0 24 24',fill:'none',stroke:G,strokeWidth:2.5,strokeLinecap:'round',strokeLinejoin:'round'},React.createElement('path',{d:'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'}));
-  const sendIcon=React.createElement('svg',{width:15,height:15,viewBox:'0 0 24 24',fill:'none',stroke:'#fff',strokeWidth:2.2,strokeLinecap:'round',strokeLinejoin:'round'},React.createElement('line',{x1:22,y1:2,x2:11,y2:13}),React.createElement('polygon',{points:'22 2 15 22 11 13 2 9 22 2',fill:'#fff',stroke:'none'}));
+  const ChatIcon = ({size=20, stroke='currentColor', strokeWidth=2}) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
 
-  return React.createElement(React.Fragment,null,
-    // ── Trigger button ──
-    React.createElement('button',{onClick:()=>setOpen(o=>!o),style:S.btn,'aria-label':'Asistente IA'},
-      open
-        ? React.createElement('span',{style:{fontSize:14,color:G,lineHeight:1}},'✕')
-        : React.createElement('span',{style:{color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}},chatIcon),
-      unread>0&&!open&&React.createElement('span',{style:{position:'absolute',top:-5,right:-5,background:'#e24b4a',color:'#fff',borderRadius:'50%',width:19,height:19,fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #f9f9f7'}},unread)
-    ),
-    // ── Panel ──
-    open&&React.createElement('div',{style:S.panel},
-      // Header
-      React.createElement('div',{style:S.header},
-        React.createElement('div',{style:{width:36,height:36,borderRadius:11,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},chatIconSm),
-        React.createElement('div',{style:{flex:1}},
-          React.createElement('div',{style:{fontWeight:600,fontSize:13,color:'#1a1a18',lineHeight:1.2}},'Asistente de stock'),
-          React.createElement('div',{style:{fontSize:11,color:'#9a9a98',marginTop:3,display:'flex',alignItems:'center',gap:5}},
-            React.createElement('span',{style:{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}},null),
-            'Activo',
-            React.createElement('span',{style:{color:'#d3d3d0'}},'·'),
-            React.createElement('span',{style:{textTransform:'capitalize'}},role==='admin'?'Admin':role==='operador'?'Operador':'Vendedor')
-          )
-        ),
-        React.createElement('button',{onClick:()=>setOpen(false),style:{width:28,height:28,borderRadius:8,border:'0.5px solid #e2e2de',background:'#f4f4f1',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}},React.createElement('span',{style:{fontSize:13,color:'#6a6a68',lineHeight:1}},'✕'))
-      ),
-      // Messages
-      React.createElement('div',{style:S.msgs},
-        msgs.map((m,i)=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:m.r==='u'?'flex-end':'flex-start',alignItems:'flex-end',gap:7}},
-          m.r==='a'&&React.createElement('div',{style:{width:24,height:24,borderRadius:7,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginBottom:1}},chatIconSm),
-          React.createElement('div',{style:{maxWidth:'78%',padding:'10px 13px',borderRadius:m.r==='u'?'16px 16px 4px 16px':'4px 16px 16px 16px',background:m.r==='u'?G:'#f4f4f1',color:m.r==='u'?'#fff':'#1a1a18',fontSize:13,lineHeight:1.55,whiteSpace:'pre-wrap',wordBreak:'break-word'}},m.t)
-        )),
-        busy&&React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:7}},
-          React.createElement('div',{style:{width:24,height:24,borderRadius:7,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},chatIconSm),
-          React.createElement('div',{style:{padding:'10px 14px',borderRadius:'4px 16px 16px 16px',background:'#f4f4f1',display:'flex',gap:4,alignItems:'center'}},
-            ...[0,1,2].map(j=>React.createElement('span',{key:j,style:{width:6,height:6,borderRadius:'50%',background:'#b4b4b2',animation:`bounce 1.2s ease ${j*0.2}s infinite`}}))
-          )
-        ),
-        React.createElement('div',{ref:endRef})
-      ),
-      // Quick chips
-      msgs.length<=1&&!busy&&React.createElement('div',{style:{padding:'4px 14px 10px',display:'flex',flexWrap:'wrap',gap:6,flexShrink:0}},
-        (_QUICK[role]||_QUICK.admin).map((q,i)=>React.createElement('button',{key:i,onClick:()=>send(q),style:{fontSize:11,padding:'5px 11px',borderRadius:20,border:'0.5px solid #d8d8d4',background:'#f9f9f7',cursor:'pointer',color:'#4a4a48',lineHeight:1.3,fontFamily:'inherit',transition:'background .12s'},onMouseEnter:e=>e.currentTarget.style.background='#f0f0ec',onMouseLeave:e=>e.currentTarget.style.background='#f9f9f7'},q))
-      ),
-      // Input area
-      React.createElement('div',{style:S.input},
-        React.createElement('textarea',{ref:inRef,value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}},placeholder:'Preguntá sobre stock, precios...',rows:1,style:{flex:1,border:'0.5px solid #d8d8d4',borderRadius:12,padding:'9px 13px',fontSize:13,resize:'none',fontFamily:'inherit',outline:'none',lineHeight:1.45,maxHeight:80,overflowY:'auto',background:'#ffffff',color:'#1a1a18'}}),
-        React.createElement('button',{onClick:()=>send(),disabled:!input.trim()||busy,style:{width:36,height:36,borderRadius:10,background:input.trim()&&!busy?G:'#e0e0dc',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'background .15s'}},sendIcon)
-      )
-    )
+  const SendIcon = () => (
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1={22} y1={2} x2={11} y2={13}/>
+      <polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="none"/>
+    </svg>
+  );
+
+  return (
+    <>
+      {/* Trigger button */}
+      <button onClick={()=>setOpen(o=>!o)} style={S.btn} aria-label="Asistente IA">
+        {open
+          ? <span style={{fontSize:14,color:G,lineHeight:1}}>✕</span>
+          : <span style={{color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><ChatIcon size={20}/></span>
+        }
+        {unread>0&&!open&&<span style={{position:'absolute',top:-5,right:-5,background:'#e24b4a',color:'#fff',borderRadius:'50%',width:19,height:19,fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #f9f9f7'}}>{unread}</span>}
+      </button>
+
+      {/* Panel */}
+      {open&&<div style={S.panel}>
+        {/* Header */}
+        <div style={S.header}>
+          <div style={{width:36,height:36,borderRadius:11,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <ChatIcon size={14} stroke={G} strokeWidth={2.5}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600,fontSize:13,color:'#1a1a18',lineHeight:1.2}}>Asistente de stock</div>
+            <div style={{fontSize:11,color:'#9a9a98',marginTop:3,display:'flex',alignItems:'center',gap:5}}>
+              <span style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/>
+              Activo
+              <span style={{color:'#d3d3d0'}}>·</span>
+              <span style={{textTransform:'capitalize'}}>{role==='admin'?'Admin':role==='operador'?'Operador':'Vendedor'}</span>
+            </div>
+          </div>
+          <button onClick={()=>setOpen(false)} style={{width:28,height:28,borderRadius:8,border:'0.5px solid #e2e2de',background:'#f4f4f1',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
+            <span style={{fontSize:13,color:'#6a6a68',lineHeight:1}}>✕</span>
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div style={S.msgs}>
+          {msgs.map((m,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:m.r==='u'?'flex-end':'flex-start',alignItems:'flex-end',gap:7}}>
+              {m.r==='a'&&<div style={{width:24,height:24,borderRadius:7,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginBottom:1}}><ChatIcon size={14} stroke={G} strokeWidth={2.5}/></div>}
+              <div style={{maxWidth:'78%',padding:'10px 13px',borderRadius:m.r==='u'?'16px 16px 4px 16px':'4px 16px 16px 16px',background:m.r==='u'?G:'#f4f4f1',color:m.r==='u'?'#fff':'#1a1a18',fontSize:13,lineHeight:1.55,whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{m.t}</div>
+            </div>
+          ))}
+          {busy&&<div style={{display:'flex',alignItems:'flex-end',gap:7}}>
+            <div style={{width:24,height:24,borderRadius:7,background:'#f0f7ec',border:'0.5px solid #b8d9a8',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><ChatIcon size={14} stroke={G} strokeWidth={2.5}/></div>
+            <div style={{padding:'10px 14px',borderRadius:'4px 16px 16px 16px',background:'#f4f4f1',display:'flex',gap:4,alignItems:'center'}}>
+              {[0,1,2].map(j=><span key={j} style={{width:6,height:6,borderRadius:'50%',background:'#b4b4b2',animation:`bounce 1.2s ease ${j*0.2}s infinite`}}/>)}
+            </div>
+          </div>}
+          <div ref={endRef}/>
+        </div>
+
+        {/* Quick chips */}
+        {msgs.length<=1&&!busy&&<div style={{padding:'4px 14px 10px',display:'flex',flexWrap:'wrap',gap:6,flexShrink:0}}>
+          {(_QUICK[role]||_QUICK.admin).map((q,i)=>(
+            <button key={i} onClick={()=>send(q)}
+              style={{fontSize:11,padding:'5px 11px',borderRadius:20,border:'0.5px solid #d8d8d4',background:'#f9f9f7',cursor:'pointer',color:'#4a4a48',lineHeight:1.3,fontFamily:'inherit',transition:'background .12s'}}
+              onMouseEnter={e=>e.currentTarget.style.background='#f0f0ec'}
+              onMouseLeave={e=>e.currentTarget.style.background='#f9f9f7'}
+            >{q}</button>
+          ))}
+        </div>}
+
+        {/* Input */}
+        <div style={S.input}>
+          <textarea ref={inRef} value={input} onChange={e=>setInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
+            placeholder="Preguntá sobre stock, precios..." rows={1}
+            style={{flex:1,border:'0.5px solid #d8d8d4',borderRadius:12,padding:'9px 13px',fontSize:13,resize:'none',fontFamily:'inherit',outline:'none',lineHeight:1.45,maxHeight:80,overflowY:'auto',background:'#ffffff',color:'#1a1a18'}}
+          />
+          <button onClick={()=>send()} disabled={!input.trim()||busy}
+            style={{width:36,height:36,borderRadius:10,background:input.trim()&&!busy?G:'#e0e0dc',border:'none',cursor:input.trim()&&!busy?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'background .15s'}}>
+            <SendIcon/>
+          </button>
+        </div>
+      </div>}
+    </>
   );
 }
 

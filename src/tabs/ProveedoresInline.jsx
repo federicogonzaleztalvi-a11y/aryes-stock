@@ -2,8 +2,11 @@ import React from 'react';
 import { tfCols } from '../lib/constants.js';
 import { T, Cap, Btn, totalLead } from '../lib/ui.jsx';
 
-const Stars = ({value=3}) => React.createElement('span',{style:{fontSize:13,letterSpacing:1,color:'#f59e0b'}},
-  [1,2,3,4,5].map(i=>i<=value?'★':'☆').join(''));
+const Stars = ({value=3}) => (
+  <span style={{fontSize:13,letterSpacing:1,color:'#f59e0b'}}>
+    {[1,2,3,4,5].map(i=>i<=value?'★':'☆').join('')}
+  </span>
+);
 
 function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session,alerts,enriched,tab,setModal,setEditSup,setViewSup,deleteSupplier}) {
   return (

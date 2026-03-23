@@ -24,25 +24,23 @@ class RootErrorBoundary extends React.Component {
   componentDidCatch(e, info) { console.error('[ARYES ROOT ERROR]', e, info); this.setState({ info }); }
   render() {
     if (this.state.error) {
-      return React.createElement('div', {
-        style: {
-          position: 'fixed', inset: 0, background: '#fff',
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', padding: 32, fontFamily: 'monospace', zIndex: 99999
-        }
-      },
-        React.createElement('h2', { style: { color: '#dc2626', marginBottom: 16, fontSize: 18 } }, '⛔ Error de aplicación'),
-        React.createElement('pre', {
-          style: {
-            background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
-            padding: 16, fontSize: 12, maxWidth: '90vw', overflowX: 'auto',
-            whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#7f1d1d'
-          }
-        }, String(this.state.error?.stack || this.state.error?.message || this.state.error)),
-        React.createElement('button', {
-          onClick: () => { localStorage.clear(); window.location.reload(); },
-          style: { marginTop: 20, background: '#dc2626', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 6, cursor: 'pointer', fontSize: 14 }
-        }, 'Limpiar cache y recargar')
+      return (
+        <div style={{ position:'fixed', inset:0, background:'#fff', display:'flex',
+          flexDirection:'column', alignItems:'center', justifyContent:'center',
+          padding:32, fontFamily:'monospace', zIndex:99999 }}>
+          <h2 style={{ color:'#dc2626', marginBottom:16, fontSize:18 }}>⛔ Error de aplicación</h2>
+          <pre style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8,
+            padding:16, fontSize:12, maxWidth:'90vw', overflowX:'auto',
+            whiteSpace:'pre-wrap', wordBreak:'break-all', color:'#7f1d1d' }}>
+            {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
+          </pre>
+          <button
+            onClick={() => { localStorage.clear(); window.location.reload(); }}
+            style={{ marginTop:20, background:'#dc2626', color:'#fff', border:'none',
+              padding:'10px 20px', borderRadius:6, cursor:'pointer', fontSize:14 }}>
+            Limpiar cache y recargar
+          </button>
+        </div>
       );
     }
     return this.props.children;
@@ -159,7 +157,7 @@ function Root() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  React.createElement(RootErrorBoundary, null,
-    React.createElement(Root)
-  )
+  <RootErrorBoundary>
+    <Root />
+  </RootErrorBoundary>
 );
