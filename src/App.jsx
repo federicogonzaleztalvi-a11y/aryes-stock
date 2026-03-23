@@ -1453,7 +1453,126 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   const canEdit    = session?.role === 'admin' || session?.role === 'operador';
   const handleLogout = () => onLogout?.();
 
-  // ── saveProduct still needs editProd/setEditProd/setModal (layout state) ─
+
+  const saveProduct=async f=>{
+    const isEdit = !!editProd;
+    const id = isEdit ? editProd.id : crypto.randomUUID();
+    const now = new Date().toISOString();
+    const productData = {
+      uuid:id,                          // uuid = our TEXT id (for upsert conflict)
+      name:f.name||f.nombre||'', barcode:f.barcode||'',
+      supplier_id:f.supplierId||'', unit:f.unit||'kg',
+      stock:Number(f.stock)||0, unit_cost:Number(f.unitCost)||0,
+      min_stock:Number(f.minStock)||5, daily_usage:Number(f.dailyUsage)||0.5,
+      category:f.category||'', brand:f.brand||'',
+      history:f.history||[], updated_at:now
+      // NOTE: 'id' (INTEGER) is NOT sent — Supabase autogenerates it
+    };
+    // Optimistic UI update first
+    if(isEdit) setProducts(ps=>ps.map(p=>p.id===id?{...p,...f}:p));
+    else setProducts(ps=>[...ps,{...f,id}]);
+    setModal(null); setEditProd(null);
+    // Write to Supabase (source of truth)
+    // Upsert on uuid column (unique index on products.uuid)
+    try {
+      await db.upsert('products', productData, 'uuid');
+    } catch(e) {
+      console.warn('[Stock] saveProduct SB failed:',e);
+      setSyncToast({msg:'Error al guardar producto. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
+      setTimeout(()=>setSyncToast(null), 6000);
+      setHasPendingSync(true);
+    }
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit,id,nombre:productData.name,stock:productData.stock})}); }catch(e){}
+  };
+
+  const saveSupplier=async f=>{
+    const isEdit = !!editSup;
+    const id = isEdit ? editSup.id : crypto.randomUUID();
+    const now = new Date().toISOString();
+    const supplierData = {
+      id, name:f.name||f.nombre||'', flag:f.flag||'', color:f.color||'#3a7d1e',
+      times:f.times||{preparation:2,customs:1,freight:4,warehouse:1},
+      company:f.company||'', contact:f.contact||'', email:f.email||'',
+      phone:f.phone||'', country:f.country||'', city:f.city||'',
+      currency:f.currency||'USD', payment_terms:f.paymentTerms||'30',
+      payment_method:f.paymentMethod||'', min_order:f.minOrder||'',
+      discount:f.discount||'0', rating:f.rating||3,
+      active:f.active!==false, notes:f.notes||'', updated_at:now
+    };
+    // Optimistic UI update
+    if(isEdit) setSuppliers(ss=>ss.map(s=>s.id===id?{...s,...f}:s));
+    else setSuppliers(ss=>[...ss,{...f,id}]);
+    setModal(null); setEditSup(null);
+    // Write to Supabase (source of truth)
+    try {
+      await db.upsert('suppliers', supplierData);
+    } catch(e) {
+      console.warn('[Stock] saveSupplier SB failed:',e);
+      setSyncToast({msg:'Error al guardar proveedor. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
+      setTimeout(()=>setSyncToast(null), 6000);
+      setHasPendingSync(true);
+    }
+    // Audit log
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch(e){}
+  };
+
+  const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
+    if(!cfg?.enabled) return;
+    const toAlert = [];
+    const newNotified = {...currentNotified};
+    currentProducts.forEach(p => {
+      const sup = currentSuppliers.find(s=>s.id===p.supplierId);
+      const al = alertLevel(p, sup);
+      const key = p.id;
+      const shouldAlert = al.level==="order_now"||al.level==="order_soon";
+      const alreadyNotified = currentNotified[key] === al.level;
+      if(shouldAlert && !alreadyNotified){
+        toAlert.push({...p, sup, alert:al});
+        newNotified[key] = al.level;
+      }
+      if(!shouldAlert && currentNotified[key]){
+        delete newNotified[key];
+      }
+    });
+    if(toAlert.length > 0){
+      setNotified(newNotified);
+      sendAlertEmail(toAlert, cfg);
+    }
+  };
+
+  const NAV_ALL=[
+    {id:"dashboard",label:"Dashboard",icon:"📊"},
+    {id:"inventory",label:"Inventario",icon:"📦"},
+    {id:"orders",label:"Pedidos",icon:"🛒"},
+    {id:"suppliers",label:"Proveedores",icon:"🏭"},
+    {id:"clientes",label:"Clientes",icon:"👥"},
+    {id:"ventas",label:"Ventas",icon:"🧾"},
+    {id:"facturacion",label:"Facturación",icon:"📄"},
+    {id:"movimientos",label:"Movimientos",icon:"🔄"},
+    {id:"lotes",label:"Lotes/Venc.",icon:"📅"},{id:"conteo",label:"Conteo",icon:"🔢"},{id:"transferencias",label:"Transferencias",icon:"↕"},
+    {id:"deposito",label:"Depósito",icon:"🗂"},
+    {id:"rutas",label:"Rutas",icon:"🚛"},
+    {id:"tracking",label:"Tracking",icon:"📍"},
+    {id:"kpis",label:"KPIs",icon:"📈"},
+    {id:"recepcion",label:"Recepcion",icon:"📥"},{id:"packing",label:"Packing",icon:"📦"},{id:"batch-picking",label:"Batch Pick",icon:"📋"},
+    {id:"informes",label:"Informes",icon:"📋"},{id:"devoluciones",label:"Devoluciones",icon:"↩"},{id:"precios",label:"Precios",icon:"💲"},{id:"demanda",label:"Demanda",icon:"📈"},{id:"audit",label:"Auditoría",icon:"📋"},
+    {id:"importar",label:"Importar datos",icon:"📂"},
+    {id:"scanner",label:"Scanner",icon:"📷"},
+    {id:"config",label:"Config",icon:"⚙"},
+  ];
+  const NAV_ROLES={
+    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config"],
+    operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
+    vendedor:["dashboard","clientes","ventas","facturacion","kpis","informes"]
+  };
+  const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
+  const canTab=(id)=>(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin).includes(id);
+  const activeTab=canTab(tab)?tab:(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin)[0];
+
+  const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
+
+
 
   return(
     <>
