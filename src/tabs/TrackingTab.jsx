@@ -18,8 +18,6 @@ function TrackingTab({session}){
         const loc={lat:pos.coords.latitude,lng:pos.coords.longitude,ts:new Date().toISOString(),usuario:user?.username||"?"};
         setMiPosicion(loc);
         // Sync to Supabase
-        const SB_URL="https://mrotnqybqvmvlexncvno.supabase.co";
-        const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
         fetch(SB_URL+"/rest/v1/aryes_tracking",{method:"POST",headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},body:JSON.stringify({id:user?.username||"repartidor",...loc})}).catch(()=>{});
       },
       ()=>setMsg("Error obteniendo GPS"),
@@ -35,8 +33,6 @@ function TrackingTab({session}){
   const [posiciones,setPosiciones]=useState([]);
   useEffect(()=>{
     if(esRepartidor)return;
-    const SB_URL="https://mrotnqybqvmvlexncvno.supabase.co";
-    const SKEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI";
     const fetchPos=()=>fetch(SB_URL+"/rest/v1/aryes_tracking?select=*",{headers:{"apikey":SKEY,"Authorization":"Bearer "+SKEY}}).then(r=>r.json()).then(d=>setPosiciones(Array.isArray(d)?d:[])).catch(()=>{});
     fetchPos();
     const iv=setInterval(fetchPos,15000);

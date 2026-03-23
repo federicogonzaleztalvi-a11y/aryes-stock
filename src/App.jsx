@@ -1,7 +1,7 @@
 // v126 — JSX fragments fixed, auth in Root
 // v115 — rollback to v107 + cache bust
 import React, { useState, useEffect, useRef, useMemo, useCallback , Suspense } from "react";
-import { db, getAuthHeaders, LS as _LS_CONSTANTS } from "./lib/constants.js";
+import { db, getAuthHeaders, LS, sbSyncAll, SB_URL, SKEY } from "./lib/constants.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
@@ -68,88 +68,8 @@ input[type=range]{accent-color:#3a7d1e;}
 // - Writes: localStorage immediately + Supabase async (never blocks UI)
 // - On first load: pulls all data from Supabase into localStorage
 // ============================================================
-const SB_URL = 'https://mrotnqybqvmvlexncvno.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
-const SB_HEADERS = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
-
-// Write to Supabase async - never blocks
-function sbWrite(key, value) {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token || SB_KEY;
-    fetch(SB_URL+'/rest/v1/aryes_data', {
-      method: 'POST',
-      headers: {'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({key, value, updated_at: new Date().toISOString()})
-    }).catch(()=>{});
-  } catch(e) {}
-}
-
-// Read all from Supabase and refresh localStorage cache
-async function sbSyncAll() {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token || SB_KEY;
-    const authH = {'apikey':SB_KEY,'Authorization':'Bearer '+token};
-    const r = await fetch(SB_URL+'/rest/v1/aryes_data?select=key,value', {headers: authH});
-    if(!r.ok) return;
-    const rows = await r.json();
-    if(!Array.isArray(rows)) return;
-    rows.forEach(row => {
-      try {
-        const val = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-        localStorage.setItem(row.key, val);
-      } catch(e) {}
-    });
-    localStorage.setItem('aryes-last-sync', new Date().toISOString());
-  } catch(e) {}
-}
-
-// Read single key from Supabase and refresh cache
-async function sbSyncKey(key) {
-  try {
-    const r = await fetch(SB_URL+'/rest/v1/aryes_data?key=eq.'+encodeURIComponent(key)+'&select=key,value', {headers: SB_HEADERS});
-    if(!r.ok) return;
-    const rows = await r.json();
-    if(!Array.isArray(rows) || rows.length===0) return;
-    const val = typeof rows[0].value === 'string' ? rows[0].value : JSON.stringify(rows[0].value);
-    localStorage.setItem(key, val);
-  } catch(e) {}
-}
-
-// LS: main data access object - localStorage first, Supabase background
-const LS = {
-  get(key, def) {
-    try {
-      const raw = localStorage.getItem(key);
-      if(raw===null||raw===undefined) return def;
-      try { return JSON.parse(raw); } catch(e) { return raw; }
-    } catch(e) { return def; }
-  },
-  set(key, value) {
-    try {
-      const str = typeof value === 'string' ? value : JSON.stringify(value);
-      localStorage.setItem(key, str);
-      sbWrite(key, value); // async, non-blocking
-    } catch(e) {}
-  },
-  remove(key) {
-    try {
-      localStorage.removeItem(key);
-      fetch(SB_URL+'/rest/v1/aryes_data?key=eq.'+encodeURIComponent(key), {
-        method: 'DELETE', headers: SB_HEADERS
-      }).catch(()=>{});
-    } catch(e) {}
-  }
-};
-
-// On app load: trigger background sync from Supabase
-// This ensures data is always fresh from the server
+// ─── App load: sync from Supabase in background ────────────────────────────
 setTimeout(() => sbSyncAll(), 1000);
-
-// getAuthHeaders: uses logged-in user's JWT when available so RLS policies fire correctly
-
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS

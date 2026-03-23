@@ -1,12 +1,9 @@
 import React, { useState, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx'
+import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
-
-// ── Constants (duplicated here to avoid circular dep with App.jsx) ──
-const SB_URL = 'https://mrotnqybqvmvlexncvno.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
 
 function readSession() {
   try {
