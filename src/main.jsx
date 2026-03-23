@@ -1,6 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
-import AryesApp from './App.jsx'
+import AryesApp from './App.jsx';
+import { AppProvider } from './context/AppContext.jsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
@@ -141,7 +142,9 @@ function Root() {
   if (!session) return <LoginScreen onLogin={handleLogin} />;
   return (
     <>
-      <AryesApp session={session} onLogout={handleLogout} onSessionUpdate={setSession} />
+      <AppProvider session={session} onLogout={handleLogout} onSessionUpdate={setSession}>
+        <AryesApp session={session} onLogout={handleLogout} onSessionUpdate={setSession} />
+      </AppProvider>
       {showOnboarding && (
         <Suspense fallback={null}>
           <OnboardingWizard
