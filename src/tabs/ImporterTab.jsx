@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, SKEY, SB_URL } from '../lib/constants.js';
 import { T, Cap, Btn } from '../lib/ui.jsx';
 
 function ImporterTab({onDone}){
+  const { confirm, ConfirmDialog } = useConfirm();
   const [step,setStep]=useState("select");
   const [sel,setSel]=useState(()=>Object.fromEntries(LOVABLE_CATALOG.map(p=>[p.id,true])));
   const [fb,setFb]=useState("all");
@@ -128,7 +130,7 @@ function ImporterTab({onDone}){
   filtered.forEach(p=>{visByBrand[p.brand]=(visByBrand[p.brand]||0)+1;});
 
   return(
-    <div className="au" style={{display:"grid",gap:24}}>
+    <>{ConfirmDialog}<div className="au" style={{display:"grid",gap:24}}>
       <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
         <div><Cap style={{color:T.green}}>Sistema</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Importar catálogo</h1></div>
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -187,7 +189,7 @@ function ImporterTab({onDone}){
           {filtered.length===0&&<div style={{textAlign:"center",padding:48,color:T.textXs}}>Sin resultados</div>}
         </div>
       </div>
-    </div>
+    </div></>
   );
 }
 
@@ -250,9 +252,10 @@ const UsersTab=({session})=>{
     setTimeout(()=>setMsg(''),2000);
   };
 
-  const del=(username)=>{
+  const del=async(username)=>{
     if(username===session.username){setMsg('No podés eliminarte a vos mismo');return;}
-    if(!confirm(`¿Eliminar usuario "${username}"?`)) return;
+    const ok = await confirm({ title:`¿Eliminar usuario "${username}"?`, description:'Esta acción no se puede deshacer.', variant:'danger' });
+    if(!ok) return;
     const updated=users.filter(u=>u.username!==username);
     LS.set('aryes-users',updated); setUsers(updated);
   };
@@ -432,7 +435,7 @@ const LotsTab=({products,session})=>{
               </div>
               {canEdit&&<div style={{display:'flex',gap:8}}>
                 <button onClick={()=>{setSelProd(String(l.productId));setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
-                <button onClick={()=>{if(!confirm('¿Eliminar?'))return;const u=lots.filter(x=>x.id!==l.id);LS.set('aryes-lots',u);setLots(u);}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
+                <button onClick={async()=>{ const ok=await confirm({title:'¿Eliminar este lote?',variant:'danger'}); if(!ok)return; const u=lots.filter(x=>x.id!==l.id);LS.set('aryes-lots',u);setLots(u);}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
               </div>}
             </div>;
           })}
@@ -1016,8 +1019,9 @@ const ClientsTab=({products,session})=>{
     setEditing(null);setMsg('Guardado ✓');setTimeout(()=>setMsg(''),2000);
   };
 
-  const del=(id)=>{
-    if(!confirm('¿Eliminar cliente?')) return;
+  const del=async(id)=>{
+    const ok = await confirm({ title:'¿Eliminar cliente?', description:'Esta acción no se puede deshacer.', variant:'danger' });
+    if(!ok) return;
     const updated=clients.filter(c=>c.id!==id);
     LS.set('aryes-clients',updated);setClients(updated);
     if(detail?.id===id) setDetail(null);

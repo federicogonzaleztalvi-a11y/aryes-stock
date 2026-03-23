@@ -7,16 +7,17 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
 
   // WA template in localStorage
   const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!');
-  const saveWaTpl=()=>{localStorage.setItem('aryes-wa-template',waTpl);alert('Plantilla guardada');};
+  const saveWaTpl=()=>{localStorage.setItem('aryes-wa-template',waTpl);setCsvMsg('✓ Plantilla guardada');setTimeout(()=>setCsvMsg(''),2500);};
+  const [csvMsg, setCsvMsg] = useState('');
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const [csv,setCsv]=useState(product?.history?.map(h=>`${h.month},${h.consumed}`).join("\n")||"");
   const bRef=useRef();
   const parseCSV=()=>{
     try{
       const rows=csv.trim().split("\n").map(r=>{const[m,c]=r.split(",");return{month:m?.trim(),consumed:+c?.trim()};}).filter(r=>r.month&&!isNaN(r.consumed)&&r.consumed>0);
-      if(!rows.length){alert("No se encontraron datos válidos.");return;}
+      if(!rows.length){setCsvMsg("Sin datos válidos. Formato: YYYY-MM,cantidad");return;}
       setF(p=>({...p,history:rows}));
-    }catch{alert("Formato incorrecto. Usar: YYYY-MM,cantidad");}
+    }catch{setCsvMsg("Formato incorrecto. Usar: YYYY-MM,cantidad");}
   };
   const sup=suppliers.find(s=>s.id===f.supplierId);
   const lead=sup?totalLead(sup):0;
@@ -60,7 +61,7 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
           <textarea value={csv} onChange={e=>setCsv(e.target.value)} placeholder={"2024-09,410\n2024-10,420\n2024-11,380\n2024-12,460\n2025-01,410\n2025-02,430"}
             style={{width:"100%",height:90,fontFamily:"monospace",fontSize:12,color:T.text,background:T.muted,border:`1px solid ${T.border}`,padding:"9px 11px",resize:"vertical",borderRadius:4,marginTop:5}}/>
           <div style={{display:"flex",gap:10,marginTop:8,alignItems:"center"}}>
-            <Btn onClick={parseCSV} variant="ghost" small>Importar historial</Btn>
+            <Btn onClick={parseCSV}  variant="ghost" small>Importar historial</Btn>
             {f.history.length>0&&<span style={{fontFamily:T.sans,fontSize:11,color:T.ok}}>✓ {f.history.length} meses · prom. {Math.round(f.history.reduce((s,h)=>s+h.consumed,0)/f.history.length)} {f.unit}/mes</span>}
           </div>
         </Field>

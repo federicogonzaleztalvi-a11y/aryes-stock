@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { LS, db } from '../lib/constants.js';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 function ClientesTab(){
   const G="#3a7d1e";
+  const { confirm, ConfirmDialog } = useConfirm();
   const KCLI="aryes-clients";
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
@@ -56,8 +58,9 @@ function ClientesTab(){
     setTimeout(()=>setMsg(''),3000);
   };
 
-  const del=(id)=>{
-    if(!confirm('¿Eliminar?'))return;
+  const del=async(id)=>{
+    const ok = await confirm({ title:'¿Eliminar cliente?', description:'Esta acción no se puede deshacer.', variant:'danger' });
+    if(!ok) return;
     const upd=items.filter(x=>x.id!==id);
     setItems(upd); LS.set(KCLI,upd);
     db.del('clients',{id}).catch(()=>{});        // → Supabase clients table
@@ -107,7 +110,7 @@ function ClientesTab(){
     </section>
   );
   return(
-    <section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
+    <>{ConfirmDialog}<section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Clientes <span style={{fontSize:16,color:'#888',fontWeight:400}}>({filtered.length})</span></h2>
         <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>
@@ -140,7 +143,7 @@ function ClientesTab(){
           ))}
         </div>
       )}
-    </section>
+    </section></>
   );
 }
 

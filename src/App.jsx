@@ -46,6 +46,7 @@ import ManualMovModal from './components/ManualMovModal.jsx';
 import EmailSettings from './components/EmailSettings.jsx';
 import UserMenuDropdown from './components/UserMenuDropdown.jsx';
 import { AppProvider, useApp } from './context/AppContext.jsx';
+import { useConfirm } from './components/ConfirmDialog.jsx';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -1452,6 +1453,37 @@ function AryesApp({session, onLogout, onSessionUpdate}){
 
   const canEdit    = session?.role === 'admin' || session?.role === 'operador';
   const handleLogout = () => onLogout?.();
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  // ── Confirmed wrappers — UI confirmation before context mutations ─────────
+  const confirmedDeleteProduct = async (id) => {
+    const ok = await confirm({
+      title: '¿Eliminar este producto?',
+      description: 'Esta acción no se puede deshacer.',
+      variant: 'danger',
+    });
+    if (ok) await deleteProduct(id);
+  };
+
+  const confirmedDeleteSupplier = async (id) => {
+    const hasProducts = products.some(p => p.supplierId === id);
+    if (hasProducts) {
+      await confirm({
+        title: 'No se puede eliminar este proveedor',
+        description: 'Hay productos asociados a este proveedor.',
+        variant: 'warning',
+        confirmLabel: 'Entendido',
+        cancelLabel: null,
+      });
+      return;
+    }
+    const ok = await confirm({
+      title: '¿Eliminar este proveedor?',
+      description: 'Esta acción no se puede deshacer.',
+      variant: 'danger',
+    });
+    if (ok) await deleteSupplier(id);
+  };
 
 
   const saveProduct=async f=>{
@@ -1695,11 +1727,11 @@ function AryesApp({session, onLogout, onSessionUpdate}){
       {/* ══ DASHBOARD ══ */}
         {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
-        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={deleteProduct}/></Suspense></ErrorBoundary>}
+        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={confirmedDeleteProduct}/></Suspense></ErrorBoundary>}
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={deleteSupplier}/></Suspense></ErrorBoundary>}
+        {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={confirmedDeleteSupplier}/></Suspense></ErrorBoundary>}
         {activeTab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
         {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ConfigInline session={session} suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols} brandCfg={brandCfg} setBrandCfg={setBrandCfg}/></Suspense></ErrorBoundary>}
@@ -1747,6 +1779,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
         })}
         {/* ══ SMART TOASTS ══ */}
         <SmartToasts critN={critN} orders={orders} />
+        {ConfirmDialog}
         {/* ══ MODALS ══ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
       {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}

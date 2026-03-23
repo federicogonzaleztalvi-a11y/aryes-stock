@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 const G = '#3a7d1e';
 const ROLES = ['admin', 'operador', 'vendedor'];
@@ -27,6 +28,7 @@ async function apiCall(action, method, body) {
 }
 
 export default function UsersTab({ session }) {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: '', type: 'ok' });
@@ -129,7 +131,8 @@ export default function UsersTab({ session }) {
     if (user.email === session?.email) {
       showMsg('No podés eliminarte a vos mismo', 'err'); return;
     }
-    if (!window.confirm(`¿Eliminar al usuario ${user.name} (${user.email})? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirm({ title:`¿Eliminar a ${user.name}?`, description:`${user.email} — Esta acción no se puede deshacer.`, variant:'danger' });
+    if (!ok) return;
     try {
       await apiCall('delete', 'DELETE', { email: user.email });
       setUsers(us => us.filter(u => u.email !== user.email));

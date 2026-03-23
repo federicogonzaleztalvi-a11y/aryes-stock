@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS } from '../lib/constants.js';
 
 function LotesTab(){
   const G="#3a7d1e";
+  const { confirm, ConfirmDialog } = useConfirm();
   const KLOTES="aryes-lots";
   const KPROD="aryes6-products";
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
@@ -41,8 +43,9 @@ function LotesTab(){
     setForm(emptyForm);setEditId(null);setVista('lista');
     setTimeout(()=>setMsg(''),3000);
   };
-  const eliminar=(id)=>{
-    if(!confirm('Eliminar este lote?'))return;
+  const eliminar=async(id)=>{
+    const ok = await confirm({ title:'¿Eliminar este lote?', variant:'danger' });
+    if(!ok) return;
     const upd=lotes.filter(l=>l.id!==id);
     setLotes(upd);LS.set(KLOTES,upd);
   };
@@ -103,7 +106,7 @@ function LotesTab(){
     </section>
   );
   return(
-    <section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
+    <>{ConfirmDialog}<section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <div>
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Lotes / Vencimientos</h2>
@@ -176,7 +179,7 @@ function LotesTab(){
           <div style={{padding:'10px 14px',fontSize:12,color:'#aaa',textAlign:'right'}}>{filtered.length} lotes (ordenados por FEFO)</div>
         </div>
       )}
-    </section>
+    </section></>
   );
 }
 

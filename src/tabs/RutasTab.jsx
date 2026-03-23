@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS } from '../lib/constants.js';
 
 function RutasTab(){
   const G="#3a7d1e";
+  const { confirm, ConfirmDialog } = useConfirm();
   const [rutas,setRutas]=useState(()=>LS.get("aryes-rutas",[]));
   const [clientes]=useState(()=>LS.get("aryes-clients",[]));
   const [vista,setVista]=useState("lista");
@@ -23,8 +25,9 @@ function RutasTab(){
     setMsg("Ruta creada");setTimeout(()=>setMsg(""),3000);
   };
 
-  const eliminarRuta=(id)=>{
-    if(!confirm("Eliminar esta ruta?"))return;
+  const eliminarRuta=async(id)=>{
+    const ok = await confirm({ title:'¿Eliminar esta ruta?', variant:'danger' });
+    if(!ok) return;
     const upd=rutas.filter(r=>r.id!==id);
     setRutas(upd);LS.set("aryes-rutas",upd);
   };
@@ -179,7 +182,7 @@ function RutasTab(){
 
   // LISTA VIEW (default)
   return(
-    <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+    <>{ConfirmDialog}<section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>Rutas de Reparto</h2>
@@ -220,7 +223,7 @@ function RutasTab(){
           })
         )}
       </div>
-    </section>
+    </section></>
   );
 }
 

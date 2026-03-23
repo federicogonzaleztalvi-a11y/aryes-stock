@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, db } from '../lib/constants.js';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────
@@ -616,6 +617,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   const KCLI  = 'aryes-clients';
   const KSEQ  = 'aryes-cfe-seq';
 
+  const { confirm, ConfirmDialog } = useConfirm();
   const [cfes,    setCfes]    = useState(()=>LS.get(KCFE,[]));
   const [cobros,  setCobros]  = useState(()=>LS.get(KCOB,[]));
   const [clientes,setClientes]= useState(()=>{
@@ -716,8 +718,9 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     setShowCob(false);
   };
 
-  const anular = id => {
-    if (!window.confirm('¿Anular este CFE?')) return;
+  const anular = async id => {
+    const ok = await confirm({ title:'¿Anular este CFE?', description:'El comprobante quedará marcado como anulado.', variant:'warning', confirmLabel:'Anular' });
+    if (!ok) return;
     saveCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
     db.patch('invoices', { status:'anulada' }, { id }).catch(()=>{});
   };

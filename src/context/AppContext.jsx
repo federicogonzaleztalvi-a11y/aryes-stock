@@ -258,19 +258,23 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
     db.upsert('orders', { id:o.id, product_id:o.productId, product_name:o.productName, supplier_id:o.supplierId, supplier_name:o.supplierName, qty:o.qty, unit:o.unit, status:o.status, ordered_at:o.orderedAt, expected_arrival:o.expectedArrival, total_cost:o.totalCost, lead_breakdown:o.leadBreakdown }, 'id').catch(() => {});
   };
 
+  // Note: callers must confirm before calling these — no window.confirm here.
   const deleteSupplier = async (id) => {
-    if (products.some(p => p.supplierId === id)) { alert('No se puede eliminar: hay productos asociados a este proveedor.'); return; }
-    if (!window.confirm('¿Eliminar este proveedor? Esta acción no se puede deshacer.')) return;
+    if (products.some(p => p.supplierId === id)) {
+      // Return error string so caller can show it via proper UI
+      return { error: 'No se puede eliminar: hay productos asociados a este proveedor.' };
+    }
     const snap = suppliers;
     setSuppliers(ss => ss.filter(s => s.id !== id));
     db.del('suppliers', { id }).catch(() => setSuppliers(snap));
+    return { ok: true };
   };
 
   const deleteProduct = async (id) => {
-    if (!window.confirm('¿Eliminar este producto? Esta acción no se puede deshacer.')) return;
     const snap = products;
     setProducts(ps => ps.filter(p => p.id !== id));
     db.del('products', { uuid: id }).catch(() => setProducts(snap));
+    return { ok: true };
   };
 
   const applyExcel = async (matches) => {
