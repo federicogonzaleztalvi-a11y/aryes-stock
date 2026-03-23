@@ -400,6 +400,26 @@ const CommandPalette = ({ open, onClose, products, clientes, cfes, setTab, onNew
 };
 
 
+
+const DEFAULT_SUPPLIERS = [
+  {id:"arg",name:"Argentina",flag:"AR",color:"#1d4ed8",times:{preparation:2,customs:1,freight:4,warehouse:1},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"Argentina",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
+  {id:"ecu",name:"Ecuador",flag:"EC",color:"#15803d",times:{preparation:3,customs:4,freight:8,warehouse:2},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"Ecuador",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
+  {id:"eur",name:"Europa",flag:"EU",color:"#6d28d9",times:{preparation:5,customs:10,freight:25,warehouse:3},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"",city:"",currency:"EUR",paymentTerms:"60",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
+  {id:"other",name:"Otros",flag:"—",color:"#b45309",times:{preparation:3,customs:5,freight:12,warehouse:2},
+   company:"",contact:"",email:"",phone:"",whatsapp:"",
+   country:"",city:"",currency:"USD",paymentTerms:"30",paymentMethod:"",
+   minOrder:"0",discount:"0",rating:3,active:true,notes:""},
+];
+
 const gh=(base,v)=>Array.from({length:6},(_,i)=>{
   const d=new Date();d.setMonth(d.getMonth()-(5-i));
   return{month:d.toISOString().slice(0,7),consumed:Math.max(1,Math.round(base*(1+(Math.random()-.5)*v)))};
