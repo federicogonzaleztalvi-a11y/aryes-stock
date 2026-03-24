@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { LS } from '../../lib/constants.js';
+import { useApp } from '../../context/AppContext.tsx';
+import { db } from '../../lib/constants.js';
 
 // ── Lotes Tab ────────────────────────────────────────────────────────────
  
 const LotsTab=({products,session})=>{
-  const [lots,setLots]=useState(()=>LS.get('aryes-lots',[]));
+  const { lotes: lots, setLotes: setLots } = useApp();
   const [filter,setFilter]=useState('all');
   const [editing,setEditing]=useState(null);
   const [selProd,setSelProd]=useState('');
@@ -13,7 +14,7 @@ const LotsTab=({products,session})=>{
   const canEdit=session.role==='admin'||session.role==='operador';
   const today=new Date(); today.setHours(0,0,0,0);
   const daysTo=d=>Math.floor((new Date(d)-today)/86400000);
-  const st=l=>!l.expiryDate?'ok':daysTo(l.expiryDate)<0?'expired':daysTo(l.expiryDate)<=30?'expiring':'ok';
+  const st=l=>!l.fechaVenc?'ok':daysTo(l.fechaVenc)<0?'expired':daysTo(l.fechaVenc)<=30?'expiring':'ok';
   const stColor=s=>s==='expired'?'#dc2626':s==='expiring'?'#d97706':'#16a34a';
   const stBg=s=>s==='expired'?'#fef2f2':s==='expiring'?'#fffbeb':'#f0fdf4';
   const stLabel=s=>s==='expired'?'VENCIDO':s==='expiring'?'POR VENCER':'OK';
@@ -24,9 +25,24 @@ const LotsTab=({products,session})=>{
   const save=()=>{
     if(!selProd||!form.lotNumber||!form.quantity){setMsg('Completá producto, lote y cantidad');return;}
     const prod=products.find(p=>p.id===selProd);
-    const lot={id:editing&&editing!=='new'?editing:'lot-'+Date.now(),productId:Number(selProd),productName:prod?.name||'',lotNumber:form.lotNumber,quantity:Number(form.quantity),expiryDate:form.expiryDate||null,entryDate:new Date().toISOString().split('T')[0],notes:form.notes};
+    // Normalize to canonical Lote shape (same as LotesTab)
+    const lotId = editing&&editing!=='new' ? editing : 'lot-'+Date.now();
+    const lot={
+      id:lotId, productoId:String(selProd), productoNombre:prod?.name||prod?.nombre||'',
+      lote:form.lotNumber, cantidad:Number(form.quantity),
+      fechaVenc:form.expiryDate||null, proveedor:'', notas:form.notes||'',
+      creadoEn:new Date().toISOString(),
+    };
     const updated=editing&&editing!=='new'?lots.map(l=>l.id===editing?lot:l):[...lots,lot];
-    LS.set('aryes-lots',updated);setLots(updated);setEditing(null);setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');
+    setLots(updated);
+    // Persist to Supabase lotes table
+    db.upsert('lotes',{
+      id:lot.id, producto_id:lot.productoId, producto_nombre:lot.productoNombre,
+      lote:lot.lote||'', fecha_venc:lot.fechaVenc||null, cantidad:lot.cantidad,
+      proveedor:'', notas:lot.notas||'', creado_en:lot.creadoEn,
+      updated_at:new Date().toISOString(),
+    },'id').catch(e=>console.warn('[importer/LotsTab] upsert failed:',e?.message||e));
+    setEditing(null);setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');
     setMsg('Guardado ✓');setTimeout(()=>setMsg(''),2000);
   };
 
@@ -77,23 +93,23 @@ const LotsTab=({products,session})=>{
       {filtered.length===0?<div style={{textAlign:'center',padding:'48px 0',color:'#9a9a98'}}><div style={{fontSize:40,marginBottom:12}}>📦</div><div>{lots.length===0?'No hay lotes registrados':'Sin resultados en este filtro'}</div></div>:(
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {filtered.sort((a,b)=>(!a.expiryDate?1:!b.expiryDate?-1:new Date(a.expiryDate)-new Date(b.expiryDate))).map(l=>{
-            const s=st(l),d=l.expiryDate?daysTo(l.expiryDate):null;
+            const s=st(l),d=l.fechaVenc?daysTo(l.fechaVenc):null;
             return <div key={l.id} style={{background:'#fff',border:'1px solid '+stColor(s)+'40',borderLeft:'4px solid '+stColor(s),borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
               <div style={{flex:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
-                  <span style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{l.productName}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{l.productoNombre}</span>
                   <span style={{fontSize:11,background:stBg(s),color:stColor(s),padding:'2px 8px',borderRadius:10,fontWeight:600}}>{stLabel(s)}</span>
                 </div>
                 <div style={{display:'flex',gap:16,fontSize:12,color:'#6a6a68',flexWrap:'wrap'}}>
-                  <span>Lote: <strong>{l.lotNumber}</strong></span>
-                  <span>Cant: <strong>{l.quantity}</strong></span>
-                  {l.expiryDate&&<span style={{color:stColor(s)}}>Vence: <strong>{l.expiryDate} ({d<0?Math.abs(d)+' días vencido':d+' días'})</strong></span>}
-                  {l.notes&&<span>{l.notes}</span>}
+                  <span>Lote: <strong>{l.lote}</strong></span>
+                  <span>Cant: <strong>{l.cantidad}</strong></span>
+                  {l.fechaVenc&&<span style={{color:stColor(s)}}>Vence: <strong>{l.fechaVenc} ({d<0?Math.abs(d)+' días vencido':d+' días'})</strong></span>}
+                  {l.notas&&<span>{l.notas}</span>}
                 </div>
               </div>
               {canEdit&&<div style={{display:'flex',gap:8}}>
-                <button onClick={()=>{setSelProd(l.productId);setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
-                <button onClick={async()=>{ const ok=await confirm({title:'¿Eliminar este lote?',variant:'danger'}); if(!ok)return; const u=lots.filter(x=>x.id!==l.id);LS.set('aryes-lots',u);setLots(u);}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
+                <button onClick={()=>{setSelProd(l.productId);setForm({lotNumber:l.lote,quantity:String(l.cantidad),expiryDate:l.fechaVenc||'',notes:l.notas||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
+                <button onClick={async()=>{ const ok=await confirm({title:'¿Eliminar este lote?',variant:'danger'}); if(!ok)return; const u=lots.filter(x=>x.id!==l.id);setLots(u);db.del('lotes',{id:l.id}).catch(e=>console.warn('[importer/LotsTab] delete failed:',e?.message||e));}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
               </div>}
             </div>;
           })}

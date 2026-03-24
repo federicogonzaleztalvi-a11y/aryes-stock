@@ -3,10 +3,9 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function KPIsTab(){
-  const { products: prods, movements: movs , ventas} = useApp();
+  const { products: prods, movements: movs , ventas, lotes} = useApp();
   const G="#3a7d1e";
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
-  const [lotes]=useState(()=>LS.get("aryes-lots",[]));
   const [periodo,setPeriodo]=useState("mes");
   const hoy=new Date();
   const diasAtras=(n)=>{const d=new Date();d.setDate(d.getDate()-n);return d;};

@@ -3,11 +3,9 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS, db } from '../lib/constants.js';
 
 function RecepcionTab(){
-  const { products: prods, setProducts: setProds, orders: pedidos, addMov } = useApp();
+  const { products: prods, setProducts: setProds, orders: pedidos, addMov, lotes, setLotes } = useApp();
   const G="#3a7d1e";
-  const KLOTES="aryes-lots";
   const KREC="aryes-recepciones";
-  const [lotes,setLotes]=useState(()=>LS.get(KLOTES,[]));
   const [recepciones,setRecepciones]=useState(()=>LS.get(KREC,[]));
   const [vista,setVista]=useState('lista');
   const [pedidoSel,setPedidoSel]=useState(null);
@@ -139,22 +137,34 @@ function RecepcionTab(){
 
     // 2. Create lots for items with vencimiento
     const updLotes=[...lotes];
+    const nuevosLotes=[];
     items.forEach(it=>{
       if(!it.vencimiento||Number(it.cantidadRecibida)===0)return;
       const prod=updProds.find(p=>p.id===it.productoId||p.nombre?.toLowerCase()===it.nombre.toLowerCase()||p.name?.toLowerCase()===it.nombre.toLowerCase());
-      updLotes.push({
-        id:crypto.randomUUID()+Math.random(),
+      const nuevoLote={
+        id:crypto.randomUUID(),
         productoId:prod?.id||it.productoId,
         productoNombre:it.nombre,
         lote:it.lote||('REC-'+Date.now()),
         cantidad:Number(it.cantidadRecibida),
         fechaVenc:it.vencimiento,
-        fechaIngreso:ahora,
-        proveedor:proveedor
-      });
+        proveedor:proveedor,
+        notas:'Ingreso por recepcion',
+        creadoEn:ahora,
+      };
+      updLotes.push(nuevoLote);
+      nuevosLotes.push(nuevoLote);
     });
     setLotes(updLotes);
-    LS.set(KLOTES,updLotes);
+    // Persist new lots to Supabase (non-blocking)
+    nuevosLotes.forEach(l=>{
+      db.upsert('lotes',{
+        id:l.id, producto_id:l.productoId, producto_nombre:l.productoNombre,
+        lote:l.lote, fecha_venc:l.fechaVenc||null, cantidad:l.cantidad,
+        proveedor:l.proveedor||'', notas:l.notas||'', creado_en:l.creadoEn,
+        updated_at:l.creadoEn,
+      },'id').catch(e=>console.warn('[RecepcionTab] lote upsert failed:',e?.message||e));
+    });
 
     // 3. Save recepcion record
     const rec={

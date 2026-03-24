@@ -3,9 +3,8 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function InformesTab(){
-  const { products: prods, movements: movs , ventas, clientes} = useApp();
+  const { products: prods, movements: movs , ventas, clientes, lotes} = useApp();
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
-  const [lotes]=useState(()=>LS.get("aryes-lots",[]));
     const [periodo,setPeriodo]=useState("mes");
   const [msg,setMsg]=useState("");
   const hoy=new Date();

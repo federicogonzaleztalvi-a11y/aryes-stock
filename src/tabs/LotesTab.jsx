@@ -1,15 +1,13 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
+import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { LS } from '../lib/constants.js';
 
 function LotesTab(){
-  const { products: prods } = useApp();
+  const { products: prods, lotes, setLotes } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
-  const KLOTES="aryes-lots";
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
-  const [lotes,setLotes]=useState(()=>LS.get(KLOTES,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   const [vista,setVista]=useState('lista');
@@ -37,7 +35,18 @@ function LotesTab(){
     const pNombre=prods.find(p=>p.id===form.productoId)?.nombre||form.productoId;
     const item={...form,productoNombre:pNombre,cantidad:Number(form.cantidad),id:editId||Date.now(),creado:new Date().toISOString()};
     const upd=editId?lotes.map(l=>l.id===editId?item:l):[...lotes,item];
-    setLotes(upd);LS.set(KLOTES,upd);
+    setLotes(upd);
+    // Persist to Supabase lotes table
+    db.upsert('lotes',{
+      id:item.id, producto_id:item.productoId, producto_nombre:item.productoNombre,
+      lote:item.lote||'', fecha_venc:item.fechaVenc||null, cantidad:Number(item.cantidad)||0,
+      proveedor:item.proveedor||'', notas:item.notas||'',
+      creado_en:item.creado, updated_at:new Date().toISOString(),
+    },'id').catch(e=>{
+      console.warn('[LotesTab] upsert failed:',e?.message||e);
+      setMsg('⚠ Guardado localmente — no se sincronizó con el servidor');
+      setTimeout(()=>setMsg(''),5000);
+    });
     setMsg(editId?'Lote actualizado':'Lote registrado');
     setForm(emptyForm);setEditId(null);setVista('lista');
     setTimeout(()=>setMsg(''),3000);
@@ -46,7 +55,8 @@ function LotesTab(){
     const ok = await confirm({ title:'¿Eliminar este lote?', variant:'danger' });
     if(!ok) return;
     const upd=lotes.filter(l=>l.id!==id);
-    setLotes(upd);LS.set(KLOTES,upd);
+    setLotes(upd);
+    db.del('lotes',{id}).catch(e=>console.warn('[LotesTab] delete failed:',e?.message||e));
   };
   const editar=(l)=>{
     setForm({productoId:l.productoId,productoNombre:l.productoNombre,lote:l.lote||'',fechaVenc:l.fechaVenc,cantidad:l.cantidad,proveedor:l.proveedor||'',notas:l.notas||''});
