@@ -1,5 +1,3 @@
-// v126 — JSX fragments fixed, auth in Root
-// v115 — rollback to v107 + cache bust
 import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { db, LS } from "./lib/constants.js";
 
@@ -63,27 +61,6 @@ input[type=range]{accent-color:#3a7d1e;}
 .au{animation:fadeUp .25s ease both;}
 .pdot{animation:pulseDot 1.8s ease infinite;}
 `;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STORAGE
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ============================================================
-// SUPABASE-FIRST DATA LAYER
-// Strategy: localStorage as cache, Supabase as source of truth
-// - Reads: localStorage first (instant), then sync from Supabase in background
-// - Writes: localStorage immediately + Supabase async (never blocks UI)
-// - On first load: pulls all data from Supabase into localStorage
-// ============================================================
-// ─── aryes_data blob sync REMOVED (Priority 7) ──────────────────────────────
-// sbSyncAll() was called here to hydrate localStorage from aryes_data table.
-// Removed because:
-//   1. AppContext.tsx now loads all data directly from proper relational tables
-//      (products, suppliers, orders, etc.) — the real source of truth.
-//   2. sbSyncAll() could overwrite fresh AppContext data with stale aryes_data
-//      values, causing silent data divergence.
-//   3. aryes_data is write-only going forward (sbWrite is also now a no-op).
-// Next step: drop aryes_data table from Supabase.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -1569,30 +1546,6 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch(e){}
   };
 
-  // eslint-disable-next-line no-unused-vars
-  const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
-    if(!cfg?.enabled) return;
-    const toAlert = [];
-    const newNotified = {...currentNotified};
-    currentProducts.forEach(p => {
-      const sup = currentSuppliers.find(s=>s.id===p.supplierId);
-      const al = alertLevel(p, sup);
-      const key = p.id;
-      const shouldAlert = al.level==="order_now"||al.level==="order_soon";
-      const alreadyNotified = currentNotified[key] === al.level;
-      if(shouldAlert && !alreadyNotified){
-        toAlert.push({...p, sup, alert:al});
-        newNotified[key] = al.level;
-      }
-      if(!shouldAlert && currentNotified[key]){
-        delete newNotified[key];
-      }
-    });
-    if(toAlert.length > 0){
-      setNotified(newNotified);
-      sendAlertEmail(toAlert, cfg);
-    }
-  };
 
   const NAV_ALL=[
     {id:"dashboard",label:"Dashboard",icon:"📊"},

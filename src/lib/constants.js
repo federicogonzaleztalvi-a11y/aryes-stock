@@ -1,14 +1,8 @@
-// ─── Single source of truth for Supabase config ──────────────────────────────
-// All files import SB_URL and SKEY from here — never hardcode inline.
-// Values come from environment variables (Vite exposes VITE_* to the browser).
-// No fallbacks — missing env vars throw immediately at startup.
-
-// ── Mandatory env-var validation ──────────────────────────────────────────────
-// These values MUST come from environment variables. There is no fallback.
-// In development: set them in .env.local (gitignored).
-// In production:  set them in Vercel dashboard → Settings → Environment Variables.
-// The app will throw immediately on startup if either is missing — intentional.
-// This prevents silent operation against a wrong or missing Supabase project.
+// ─── Supabase config — single source of truth ────────────────────────────────
+// Values come from environment variables. No fallbacks — the app throws
+// immediately on startup if either is missing. This prevents silent operation
+// against a wrong or missing Supabase project.
+// Dev: set in .env.local (gitignored). Prod: Vercel dashboard → Env Vars.
 function requireEnv(name) {
   const val = import.meta.env[name];
   if (!val) {
@@ -23,50 +17,29 @@ function requireEnv(name) {
 export const SB_URL = requireEnv('VITE_SUPABASE_URL');
 export const SKEY   = requireEnv('VITE_SUPABASE_ANON_KEY');
 
-// ─── Auth headers helper ──────────────────────────────────────────────────────
-// Reads the live session token from localStorage on every call so it's
-// always fresh after a JWT refresh.
+// ─── Auth headers ─────────────────────────────────────────────────────────────
+// Reads the live session token from localStorage on every call so headers
+// stay fresh after a JWT refresh.
+// CRITICAL: apikey must always be the anon key (SKEY).
+// The user JWT goes only in Authorization — never in apikey.
 export const getAuthHeaders = (extra = {}) => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
     const token = session?.access_token;
-    // CRITICAL: apikey must ALWAYS be the anon key (SKEY).
-    // The user JWT goes only in Authorization — never in apikey.
-    const base = {
+    return {
       'apikey': SKEY,
       'Authorization': `Bearer ${token || SKEY}`,
       'Content-Type': 'application/json',
+      ...extra,
     };
-    return { ...base, ...extra };
   } catch {
     return { 'apikey': SKEY, 'Authorization': `Bearer ${SKEY}`, 'Content-Type': 'application/json', ...extra };
   }
 };
 
-// ─── aryes_data blob sync (DEPRECATED — Priority 7) ─────────────────────────
-// sbWrite: no-op since Priority 7. Was called by LS.set.
-// sbSyncAll: called once on app startup — BEING REMOVED in this commit.
-// Next step (Priority 7 final): drop aryes_data table from Supabase.
-// sbWrite — DEPRECATED (Priority 7 — aryes_data blob sync removal)
-// Was called by LS.set() to duplicate every localStorage write to aryes_data.
-// Now a no-op. The function is kept to avoid import errors in case any
-// remaining code imports it. Will be deleted once aryes_data table is dropped.
-// eslint-disable-next-line no-unused-vars
-function sbWrite(_key, _value) { /* no-op — deprecated */ }
-
-// Reads all rows from aryes_data and hydrates localStorage cache.
-// Called once on app load to pull any server-side changes.
-// sbSyncAll — DEPRECATED no-op (Priority 7)
-// Was: reads all aryes_data rows and hydrates localStorage.
-// Now: no-op. Not called anywhere since sbSyncAll startup call was removed
-// from App.jsx. Kept exported to avoid breaking any external callers.
-// Will be deleted when aryes_data table is dropped from Supabase.
-export async function sbSyncAll() { /* no-op — deprecated */ }
-
-// ─── LS — localStorage with async Supabase backup ────────────────────────────
-// Primary store: localStorage (instant reads/writes).
-// Secondary store: aryes_data table in Supabase (async, non-blocking).
-// Strategy: write localStorage first, fire Supabase write in background.
+// ─── LS — localStorage cache ──────────────────────────────────────────────────
+// Supabase is the source of truth. localStorage is a read cache populated by
+// AppContext on login and updated optimistically on every mutation.
 export const LS = {
   get(key, def) {
     try {
@@ -80,21 +53,17 @@ export const LS = {
     try {
       const str = typeof value === 'string' ? value : JSON.stringify(value);
       localStorage.setItem(key, str);
-      // sbWrite removed — aryes_data blob sync deprecated (Priority 7).
-      // Data is persisted via AppContext's direct table writes (products,
-      // suppliers, orders, etc.) which are the source of truth.
     } catch { /* never block */ }
   },
 
   remove(key) {
     try {
       localStorage.removeItem(key);
-      // aryes_data DELETE removed — blob sync deprecated (Priority 7).
     } catch { /* never block */ }
   },
 };
 
-// ─── db — typed Supabase REST client ─────────────────────────────────────────
+// ─── db — Supabase REST client ────────────────────────────────────────────────
 export const db = {
   async get(table, query = '') {
     const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
@@ -168,7 +137,8 @@ export const db = {
   },
 
   // Optimistic concurrency: only patches if lockField still equals lockValue.
-  // Prevents stale-read stock overwrites in concurrent operations.
+  // Prevents stale-read stock overwrites under concurrent writes.
+  // On conflict (0 rows updated): re-fetches, recalculates delta, retries.
   async patchWithLock(table, data, filter, lockField, lockValue, maxRetries = 3) {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const lockFilter = `${filter}&${lockField}=eq.${lockValue}`;
@@ -182,9 +152,8 @@ export const db = {
         throw new Error(`patchWithLock ${table}: ${e}`);
       }
       const rows = await r.json();
-      if (rows.length > 0) return rows[0]; // success
+      if (rows.length > 0) return rows[0];
 
-      // 0 rows updated: concurrent write beat us — refetch and retry
       if (attempt < maxRetries - 1) {
         const fresh = await this.get(`${table}?${filter}`);
         if (!fresh?.[0]) throw new Error('patchWithLock: row not found');
@@ -198,7 +167,7 @@ export const db = {
   },
 };
 
-// ─── Alert config ─────────────────────────────────────────────────────────────
+// ─── Alert severity config ────────────────────────────────────────────────────
 export const ALERT_CFG = {
   order_now:  { label: 'Pedir YA',     dot: '#dc2626', bg: '#fef2f2', bd: '#fecaca', txt: '#dc2626', pri: 3 },
   order_soon: { label: 'Pedir pronto', dot: '#d97706', bg: '#fffbeb', bd: '#fde68a', txt: '#d97706', pri: 2 },
