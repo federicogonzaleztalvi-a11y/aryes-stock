@@ -52,9 +52,9 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
 
   const agregarItem=()=>{
     if(!itemProd||Number(itemCant)<=0)return;
-    const prod=prodsState.find(p=>String(p.id)===String(itemProd));
+    const prod=prodsState.find(p=>p.id===itemProd);
     if(!prod)return;
-    const alreadyInCart=form.items.filter(i=>String(i.productoId)===String(prod.id)).reduce((s,i)=>s+(i.cantidad||0),0);
+    const alreadyInCart=form.items.filter(i=>i.productoId===prod.id).reduce((s,i)=>s+(i.cantidad||0),0);
     const disponible=(prod.stock||0)-alreadyInCart;
     if(disponible < Number(itemCant)){
       showMsg(`Stock insuficiente. Disponible: ${disponible} ${prod.unit||'u'}`,'err');return;
@@ -89,7 +89,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
     const stockErrors=[];
     const updProds=[...prodsState];
     form.items.forEach(it=>{
-      const idx=updProds.findIndex(p=>String(p.id)===String(it.productoId));
+      const idx=updProds.findIndex(p=>p.id===it.productoId);
       if(idx>-1){
         if(Number(it.cantidad)>Number(updProds[idx].stock||0)){
           stockErrors.push(`Stock insuficiente: ${it.nombre} — disponible ${updProds[idx].stock||0}, solicitado ${it.cantidad}`);
@@ -100,7 +100,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
 
     setSaving(true);
     try{
-      const cl=clientes.find(c=>String(c.id)===String(form.clienteId));
+      const cl=clientes.find(c=>c.id===form.clienteId);
       const venta={
         ...form,
         id:crypto.randomUUID(),
@@ -114,7 +114,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
       // DESCUENTA STOCK INMEDIATAMENTE al crear la venta
       const now=new Date().toISOString();
       form.items.forEach(it=>{
-        const idx=updProds.findIndex(p=>String(p.id)===String(it.productoId));
+        const idx=updProds.findIndex(p=>p.id===it.productoId);
         if(idx>-1){
           const newStock=Math.max(0,Number(updProds[idx].stock||0)-Number(it.cantidad));
           updProds[idx]={...updProds[idx],stock:newStock,updatedAt:now};
@@ -124,7 +124,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
 
       // Persist stock to Supabase for each product
       const stockWrites=form.items.map(it=>
-        db.patch('products',{stock:updProds.find(p=>String(p.id)===String(it.productoId))?.stock,updated_at:now},'uuid=eq.'+it.productoId)
+        db.patch('products',{stock:updProds.find(p=>p.id===it.productoId)?.stock,updated_at:now},'uuid=eq.'+it.productoId)
           .catch(e=>console.warn('[Stock] venta stock patch failed',it.productoId,e))
       );
       await Promise.allSettled(stockWrites);
@@ -132,7 +132,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
       // Register movements for each item
       if(addMov){
         form.items.forEach(it=>{
-          addMov({type:'venta',productId:it.productoId,productName:it.nombre,supplierId:'',supplierName:'',qty:it.cantidad,unit:it.unidad,stockAfter:updProds.find(p=>String(p.id)===String(it.productoId))?.stock,note:`Venta ${venta.nroVenta} — ${cl?.nombre||venta.clienteNombre}`});
+          addMov({type:'venta',productId:it.productoId,productName:it.nombre,supplierId:'',supplierName:'',qty:it.cantidad,unit:it.unidad,stockAfter:updProds.find(p=>p.id===it.productoId)?.stock,note:`Venta ${venta.nroVenta} — ${cl?.nombre||venta.clienteNombre}`});
         });
       }
 
@@ -172,7 +172,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
       const updProds=[...prodsState];
       const now=new Date().toISOString();
       venta.items?.forEach(it=>{
-        const idx=updProds.findIndex(p=>String(p.id)===String(it.productoId));
+        const idx=updProds.findIndex(p=>p.id===it.productoId);
         if(idx>-1){
           const restoredStock=Number(updProds[idx].stock||0)+Number(it.cantidad);
           updProds[idx]={...updProds[idx],stock:restoredStock,updatedAt:now};
@@ -182,7 +182,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
       setProds(updProds);LS.set(KPROD,updProds);
       showMsg('Venta cancelada — stock restaurado','ok');
     } else if(estado==='entregada'){
-      const cl=clientes.find(c=>String(c.id)===String(venta?.clienteId));
+      const cl=clientes.find(c=>c.id===venta?.clienteId);
       const tel=cl?.telefono||'';
       if(tel){
         const det=`su pedido ${venta?.nroVenta} fue entregado hoy ${new Date().toLocaleDateString('es-UY')}`;
@@ -237,7 +237,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           {/* CLIENTE — siempre desde lista */}
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Cliente</label>
-            <select value={form.clienteId} onChange={e=>{const cl=clientes.find(c=>String(c.id)===e.target.value);setForm(f=>({...f,clienteId:e.target.value,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}} style={inp}>
+            <select value={form.clienteId} onChange={e=>{const cl=clientes.find(c=>c.id===e.target.value);setForm(f=>({...f,clienteId:e.target.value,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}} style={inp}>
               <option value=''>— Seleccionar cliente —</option>
               {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
@@ -266,7 +266,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           <div style={{fontSize:12,fontWeight:600,color:'#666',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Agregar producto</div>
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
-              <select value={itemProd} onChange={e=>{setItemProd(e.target.value);const p=prodsState.find(x=>String(x.id)===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
+              <select value={itemProd} onChange={e=>{setItemProd(e.target.value);const p=prodsState.find(x=>x.id===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
                 <option value=''>— Producto —</option>
                 {prodsState.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} — stock: {p.stock} {p.unit||''}</option>)}
               </select>

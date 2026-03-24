@@ -13,7 +13,7 @@ function TransferenciasTab(){
   // Build list of locations from deposito
   const locs=Object.values(deposito||{}).filter(l=>l&&l.codigo);
 
-  const selProd=prods.find(p=>String(p.id)===String(form.productoId));
+  const selProd=prods.find(p=>p.id===form.productoId);
 
   const guardarTransfer=()=>{
     if(!form.productoId||!form.cantidad||!form.origen||!form.destino){

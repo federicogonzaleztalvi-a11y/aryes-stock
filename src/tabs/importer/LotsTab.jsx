@@ -23,7 +23,7 @@ const LotsTab=({products,session})=>{
 
   const save=()=>{
     if(!selProd||!form.lotNumber||!form.quantity){setMsg('Completá producto, lote y cantidad');return;}
-    const prod=products.find(p=>String(p.id)===String(selProd));
+    const prod=products.find(p=>p.id===selProd);
     const lot={id:editing&&editing!=='new'?editing:'lot-'+Date.now(),productId:Number(selProd),productName:prod?.name||'',lotNumber:form.lotNumber,quantity:Number(form.quantity),expiryDate:form.expiryDate||null,entryDate:new Date().toISOString().split('T')[0],notes:form.notes};
     const updated=editing&&editing!=='new'?lots.map(l=>l.id===editing?lot:l):[...lots,lot];
     LS.set('aryes-lots',updated);setLots(updated);setEditing(null);setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');
@@ -92,7 +92,7 @@ const LotsTab=({products,session})=>{
                 </div>
               </div>
               {canEdit&&<div style={{display:'flex',gap:8}}>
-                <button onClick={()=>{setSelProd(String(l.productId));setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
+                <button onClick={()=>{setSelProd(l.productId);setForm({lotNumber:l.lotNumber,quantity:String(l.quantity),expiryDate:l.expiryDate||'',notes:l.notes||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
                 <button onClick={async()=>{ const ok=await confirm({title:'¿Eliminar este lote?',variant:'danger'}); if(!ok)return; const u=lots.filter(x=>x.id!==l.id);LS.set('aryes-lots',u);setLots(u);}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
               </div>}
             </div>;

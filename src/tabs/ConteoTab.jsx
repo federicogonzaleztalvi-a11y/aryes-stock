@@ -36,7 +36,7 @@ function ConteoTab(){
     // Update stock with physical count
     const updProds=[...prods];
     conteoActivo.items.filter(it=>it.cantFisica!==null).forEach(it=>{
-      const idx=updProds.findIndex(p=>String(p.id)===String(it.id));
+      const idx=updProds.findIndex(p=>p.id===it.id);
       if(idx>-1)updProds[idx]={...updProds[idx],stock:it.cantFisica};
     });
     setProds(updProds);LS.set("aryes6-products",updProds);

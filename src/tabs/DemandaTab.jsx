@@ -11,8 +11,8 @@ function DemandaTab(){
   // Calcular rotacion y proyeccion por producto
   const analisis=prods.map(p=>{
     // Salidas del periodo (ventas + movimientos de salida)
-    const salidaMovs=movs.filter(m=>m.timestamp&&new Date(m.timestamp)>=pStart&&(m.tipo==="salida"||m.tipo==="venta")&&(String(m.productoId)===String(p.id)||m.productoNombre===(p.nombre||p.name)));
-    const salidaVentas=ventas.filter(v=>v.creadoEn&&new Date(v.creadoEn)>=pStart&&v.estado!=="cancelada").flatMap(v=>v.items||[]).filter(it=>String(it.productoId)===String(p.id)||(it.nombre===(p.nombre||p.name)));
+    const salidaMovs=movs.filter(m=>m.timestamp&&new Date(m.timestamp)>=pStart&&(m.tipo==="salida"||m.tipo==="venta")&&(m.productoId===p.id||m.productoNombre===(p.nombre||p.name)));
+    const salidaVentas=ventas.filter(v=>v.creadoEn&&new Date(v.creadoEn)>=pStart&&v.estado!=="cancelada").flatMap(v=>v.items||[]).filter(it=>it.productoId===p.id||(it.nombre===(p.nombre||p.name)));
     const totalSalidas=salidaMovs.reduce((a,m)=>a+Number(m.cantidad||0),0)+salidaVentas.reduce((a,it)=>a+Number(it.cantidad||0),0);
     const salidaDiaria=totalSalidas/periodo;
     const stock=Number(p.stock||0);

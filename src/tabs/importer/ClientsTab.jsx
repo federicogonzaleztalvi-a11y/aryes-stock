@@ -64,7 +64,7 @@ const ClientsTab=({products,session})=>{
         <div style={{fontSize:12,fontWeight:700,color:'#9a9a98',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:14}}>Productos que compra ({detail.products.length})</div>
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
           {detail.products.map(pid=>{
-            const p=products.find(x=>x.id===pid||String(x.id)===String(pid));
+            const p=products.find(x=>x.id===pid);
             if(!p) return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f9f9f7"}}><div style={{textAlign:"center",fontFamily:"sans-serif"}}><div style={{fontSize:40,marginBottom:12}}>🌿</div><p style={{color:"#666",fontSize:14}}>Cargando...</p></div></div>);
             return <div key={pid} style={{display:'flex',justifyContent:'space-between',padding:'8px 12px',background:'#f9f9f7',borderRadius:8,fontSize:13}}>
               <span style={{color:'#3a3a38',fontWeight:500}}>{p.name}</span>
@@ -151,7 +151,7 @@ const ClientsTab=({products,session})=>{
               <div style={{maxHeight:200,overflowY:'auto',border:'1px solid #e2e2de',borderRadius:8,padding:8}}>
                 {products.sort((a,b)=>a.name.localeCompare(b.name)).map(p=>(
                   <label key={p.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 8px',cursor:'pointer',borderRadius:6,fontSize:13,':hover':{background:'#f0f0ec'}}}>
-                    <input type="checkbox" checked={(form.products||[]).includes(p.id)||(form.products||[]).includes(String(p.id))}
+                    <input type="checkbox" checked={(form.products||[]).includes(p.id)}
                       onChange={()=>toggleProduct(p.id)} style={{accentColor:'#3a7d1e'}}/>
                     <span style={{color:'#3a3a38'}}>{p.name}</span>
                     <span style={{color:'#9a9a98',fontSize:11}}>{p.brand}</span>

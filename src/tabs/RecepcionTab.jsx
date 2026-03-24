@@ -85,7 +85,7 @@ function RecepcionTab(){
       if(!it.nombre||Number(it.cantidadRecibida)===0)return;
       // Find product by name or id
       const idx=updProds.findIndex(p=>
-        String(p.id)===String(it.productoId)||
+        p.id===it.productoId||
         p.nombre?.toLowerCase()===it.nombre.toLowerCase()||
         p.name?.toLowerCase()===it.nombre.toLowerCase()
       );
@@ -100,7 +100,7 @@ function RecepcionTab(){
     const updLotes=[...lotes];
     items.forEach(it=>{
       if(!it.vencimiento||Number(it.cantidadRecibida)===0)return;
-      const prod=updProds.find(p=>String(p.id)===String(it.productoId)||p.nombre?.toLowerCase()===it.nombre.toLowerCase()||p.name?.toLowerCase()===it.nombre.toLowerCase());
+      const prod=updProds.find(p=>p.id===it.productoId||p.nombre?.toLowerCase()===it.nombre.toLowerCase()||p.name?.toLowerCase()===it.nombre.toLowerCase());
       updLotes.push({
         id:crypto.randomUUID()+Math.random(),
         productoId:prod?.id||it.productoId,

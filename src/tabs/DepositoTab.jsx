@@ -22,7 +22,7 @@ function DepositoTab(){
     zona+'-'+String(pasillo).padStart(2,'0')+'-'+estante+'-'+nivel+'-'+String(pos).padStart(2,'0');
 
   const getUbicacion=(id)=>ubicaciones.find(u=>u.id===id);
-  const getProducto=(id)=>prods.find(p=>String(p.id)===String(id));
+  const getProducto=(id)=>prods.find(p=>p.id===id);
 
   const asignar=(ubId,prodId)=>{
     if(!prodId){setMsg('Selecciona un producto');return;}
@@ -52,9 +52,9 @@ function DepositoTab(){
     // items = [{productoId, cantidad}]
     const picks=[];
     for(const item of items){
-      const ub=ubicaciones.find(u=>String(u.productoId)===String(item.productoId));
+      const ub=ubicaciones.find(u=>u.productoId===item.productoId);
       const prod=getProducto(item.productoId);
-      const lotesItem=lotes.filter(l=>String(l.productoId)===String(item.productoId))
+      const lotesItem=lotes.filter(l=>l.productoId===item.productoId)
         .sort((a,b)=>new Date(a.fechaVenc)-new Date(b.fechaVenc));
       picks.push({
         ubId:ub?ub.id:'SIN UBICACION',

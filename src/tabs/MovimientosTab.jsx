@@ -19,7 +19,7 @@ function MovimientosTab(){
   const [pag,setPag]=useState(0);
   const [saving,setSaving]=useState(false);
   const POR_PAG=25;
-  const prodNombre=(id)=>{const p=prods.find(x=>String(x.id)===String(id));return p?p.nombre:id;};
+  const prodNombre=(id)=>{const p=prods.find(x=>x.id===id);return p?p.nombre:id;};
   const registrar=async ()=>{
     if(saving)return;
     setSaving(true);
@@ -29,7 +29,7 @@ function MovimientosTab(){
     const nuevo={id:crypto.randomUUID(),tipo:form.tipo,productoId:form.productoId,productoNombre:prodNombre(form.productoId),cantidad:Number(form.cantidad),referencia:form.referencia,notas:form.notas,fecha:form.fecha,timestamp:new Date().toISOString()};
     const esEntrada=(form.tipo==='Entrada'||form.tipo==='Devolucion');
     const updProds=prods.map(p=>{
-      if(String(p.id)===String(form.productoId)){
+      if(p.id===form.productoId){
         const stock=Number(p.stock)||0;
         const delta=esEntrada?Number(form.cantidad):-Number(form.cantidad);
         return {...p,stock:Math.max(0,stock+delta)};

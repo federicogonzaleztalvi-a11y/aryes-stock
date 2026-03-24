@@ -24,7 +24,7 @@ function DevolucionesTab(){
     const updProds=[...prods];
     itemsDevueltos.forEach(it=>{
       if(it.inspeccion==="aprobado"){
-        const idx=updProds.findIndex(p=>String(p.id)===String(it.productoId));
+        const idx=updProds.findIndex(p=>p.id===it.productoId);
         if(idx>-1)updProds[idx]={...updProds[idx],stock:Number(updProds[idx].stock||0)+Number(it.cantDevolver)};
       }
     });

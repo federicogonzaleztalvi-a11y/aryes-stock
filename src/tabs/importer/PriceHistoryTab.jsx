@@ -8,7 +8,7 @@ const PriceHistoryTab=({products,session})=>{
   const [search,setSearch]=useState('');
 
   const filtered = selProduct
-    ? priceHistory.filter(h=>String(h.productId)===String(selProduct))
+    ? priceHistory.filter(h=>h.productId===selProduct)
     : search
     ? priceHistory.filter(h=>h.productName.toLowerCase().includes(search.toLowerCase()))
     : priceHistory;
@@ -78,7 +78,7 @@ const PriceHistoryTab=({products,session})=>{
         // Detail view for specific product
         <div>
           {selProduct&&<div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'12px 16px',marginBottom:16,fontSize:13,color:'#3a7d1e',fontWeight:600}}>
-            {products.find(p=>String(p.id)===String(selProduct))?.name}
+            {products.find(p=>p.id===selProduct)?.name}
           </div>}
           {sorted.length===0
             ?<div style={{textAlign:'center',padding:'32px',color:'#9a9a98'}}>Sin registros</div>
