@@ -9,7 +9,7 @@ const ONBOARDING_KEY = 'stock-onboarding-done';
 function readSession() {
   try {
     const s = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    if (s && s.expiresAt && Date.now() > s.expiresAt) {
+    if (s && s.expiresAt != null && Date.now() > s.expiresAt) {
       localStorage.removeItem('aryes-session');
       return null;
     }
