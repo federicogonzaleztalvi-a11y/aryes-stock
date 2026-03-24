@@ -723,7 +723,8 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     dbReady, syncStatus, hasPendingSync, syncToast, setSyncToast, setHasPendingSync,
     enriched, alerts, critN, getSup,
     addMov, savePlan, markDelivered, confirmOrder,
-    deleteSupplier, deleteProduct, applyExcel,
+    deleteSupplier, deleteProduct: _deleteProduct, applyExcel,
+    saveProduct: saveProductCtx,
     sendAlertEmail, dbWriteWithRetry: _dbWriteWithRetry,
   } = useApp();
 
@@ -764,15 +765,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   const handleLogout = () => onLogout?.();
   const { confirm, ConfirmDialog } = useConfirm();
 
-  // ── Confirmed wrappers — UI confirmation before context mutations ─────────
-  const confirmedDeleteProduct = async (id) => {
-    const ok = await confirm({
-      title: '¿Eliminar este producto?',
-      description: 'Esta acción no se puede deshacer.',
-      variant: 'danger',
-    });
-    if (ok) await deleteProduct(id);
-  };
+  // confirmedDeleteProduct removed — InventoryInline now handles its own confirm
 
   const confirmedDeleteSupplier = async (id) => {
     const hasProducts = products.some(p => p.supplierId === id);
@@ -795,36 +788,12 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   };
 
 
+  // saveProduct — data logic lives in AppContext; App.jsx only handles layout cleanup
   const saveProduct=async f=>{
     const isEdit = !!editProd;
     const id = isEdit ? editProd.id : crypto.randomUUID();
-    const now = new Date().toISOString();
-    const productData = {
-      uuid:id,                          // uuid = our TEXT id (for upsert conflict)
-      name:f.name||f.nombre||'', barcode:f.barcode||'',
-      supplier_id:f.supplierId||'', unit:f.unit||'kg',
-      stock:Number(f.stock)||0, unit_cost:Number(f.unitCost)||0,
-      min_stock:Number(f.minStock)||5, daily_usage:Number(f.dailyUsage)||0.5,
-      category:f.category||'', brand:f.brand||'',
-      history:f.history||[], updated_at:now
-      // NOTE: 'id' (INTEGER) is NOT sent — Supabase autogenerates it
-    };
-    // Optimistic UI update first
-    if(isEdit) setProducts(ps=>ps.map(p=>p.id===id?{...p,...f}:p));
-    else setProducts(ps=>[...ps,{...f,id}]);
-    setModal(null); setEditProd(null);
-    // Write to Supabase (source of truth)
-    // Upsert on uuid column (unique index on products.uuid)
-    try {
-      await db.upsert('products', productData, 'uuid');
-    } catch(e) {
-      console.warn('[Stock] saveProduct SB failed:',e);
-      setSyncToast({msg:'Error al guardar producto. Cambio guardado localmente — se sincronizará al reconectar.', type:'error'});
-      setTimeout(()=>setSyncToast(null), 6000);
-      setHasPendingSync(true);
-    }
-    // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch{return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit,id,nombre:productData.name,stock:productData.stock})}); }catch{ /* safe to ignore — audit log is non-critical */ }
+    setModal(null); setEditProd(null);        // layout cleanup (App.jsx concern)
+    await saveProductCtx(f, isEdit, id);      // data + Supabase (AppContext concern)
   };
 
   const saveSupplier=async f=>{
@@ -1015,7 +984,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
       {/* ══ DASHBOARD ══ */}
         {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
-        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={confirmedDeleteProduct}/></Suspense></ErrorBoundary>}
+        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline setModal={setModal} setEditProd={setEditProd}/></Suspense></ErrorBoundary>}
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}

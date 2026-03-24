@@ -244,6 +244,7 @@ export interface AppContextValue {
   markDelivered: (orderId: string) => Promise<void>;
   confirmOrder: (order: Omit<Order, 'id' | 'orderedAt' | 'status'>) => Promise<void>;
   deleteSupplier: (id: string) => Promise<{ ok: true } | { error: string }>;
+  saveProduct: (formData: Record<string, unknown>, isEdit: boolean, id: string) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   applyExcel: (matches: Array<{ product: Product; newStock: number }>) => Promise<void>;
   sendAlertEmail: (alertProducts: Product[], cfg: EmailCfg) => void;

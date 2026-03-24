@@ -1,8 +1,18 @@
 import React from 'react';
+import { useConfirm } from '../components/ConfirmDialog.jsx';
+import { useApp } from '../context/AppContext.tsx';
 import { T, Btn, AlertPill, StockBar, Spark, totalLead , downloadCSV } from '../lib/ui.jsx';
 
-export default function InventoryInline({products, enriched, setModal, setEditProd, _setProducts, deleteProduct}) {
+export default function InventoryInline({setModal, setEditProd}) {
+  const { products, enriched, deleteProduct } = useApp();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const handleDelete = async (id) => {
+    const ok = await confirm({ title: '¿Eliminar este producto?', description: 'Esta acción no se puede deshacer.', variant: 'danger' });
+    if (ok) await deleteProduct(id);
+  };
   return (
+    <>
+    <ConfirmDialog />
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div>
@@ -63,7 +73,7 @@ export default function InventoryInline({products, enriched, setModal, setEditPr
                         <div style={{display:"flex",gap:6}}>
                           <Btn small variant="ghost" onClick={()=>{setEditProd(products.find(x=>x.id===p.id));setModal({type:"product"});}}>Editar</Btn>
                           <Btn small onClick={()=>setModal({type:"order",product:products.find(x=>x.id===p.id)})}>Pedir</Btn>
-                          <Btn small variant="danger" onClick={()=>deleteProduct(p.id)}>×</Btn>
+                          <Btn small variant="danger" onClick={()=>handleDelete(p.id)}>×</Btn>
                         </div>
                       </td>
                     </tr>
@@ -72,5 +82,6 @@ export default function InventoryInline({products, enriched, setModal, setEditPr
               </table>
             </div>
           </div>
+  </>
   );
 }

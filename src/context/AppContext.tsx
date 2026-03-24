@@ -296,6 +296,51 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     return { ok: true };
   };
 
+  const saveProduct = async (
+    f: Record<string, unknown>,
+    isEdit: boolean,
+    id: string
+  ): Promise<void> => {
+    const now = new Date().toISOString();
+    const productData = {
+      uuid: id,
+      name: (f.name || f.nombre || '') as string,
+      barcode: (f.barcode || '') as string,
+      supplier_id: (f.supplierId || '') as string,
+      unit: (f.unit || 'kg') as string,
+      stock: Number(f.stock) || 0,
+      unit_cost: Number(f.unitCost) || 0,
+      min_stock: Number(f.minStock) || 5,
+      daily_usage: Number(f.dailyUsage) || 0.5,
+      category: (f.category || '') as string,
+      brand: (f.brand || '') as string,
+      history: (f.history || []) as unknown[],
+      updated_at: now,
+    };
+    // Optimistic update
+    if (isEdit) setProducts(ps => ps.map(p => p.id === id ? { ...p, ...(f as Partial<Product>) } : p));
+    else setProducts(ps => [...ps, { ...(f as unknown as Product), id }]);
+    // Persist to Supabase
+    try {
+      await db.upsert('products', productData, 'uuid');
+    } catch(e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[saveProduct] SB failed:', msg);
+      setSyncToast({ msg: 'Error al guardar producto. Guardado localmente — se sincronizará al reconectar.', type: 'error' });
+      setTimeout(() => setSyncToast(null), 6000);
+      setHasPendingSync(true);
+    }
+    // Audit log (non-critical)
+    try {
+      await db.insert('audit_log', {
+        id: crypto.randomUUID(), timestamp: now,
+        user: (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.email || 'unknown'; } catch { return 'unknown'; } })(),
+        action: 'producto_guardado',
+        detail: JSON.stringify({ isEdit, id, nombre: productData.name, stock: productData.stock }),
+      });
+    } catch { /* non-critical */ }
+  };
+
   const deleteProduct = async (id: string): Promise<void> => {
     const snap = products;
     setProducts(ps => ps.filter(p => p.id !== id));
@@ -352,6 +397,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     // Derived
     enriched: enriched as unknown as EnrichedProduct[], alerts: alerts as unknown as EnrichedProduct[], critN, getSup,
     // Mutations
+    saveProduct,
     addMov: addMov as AppContextValue['addMov'], savePlan: savePlan as unknown as AppContextValue['savePlan'], markDelivered, confirmOrder: confirmOrder as unknown as AppContextValue['confirmOrder'],
     deleteSupplier, deleteProduct, applyExcel,
     sendAlertEmail, dbWriteWithRetry,
