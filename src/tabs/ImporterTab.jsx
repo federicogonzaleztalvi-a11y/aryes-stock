@@ -1,7 +1,23 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { LS, SKEY, SB_URL } from '../lib/constants.js';
+import { LS, SKEY, SB_URL, db } from '../lib/constants.js';
 import { T, Cap, Btn } from '../lib/ui.jsx';
+
+// ── Brand / supplier catalog ─────────────────────────────────────────────────
+const LOVABLE_CATALOG = [{"id":"p-0001","name":"Chocolate Cobertura Confeiteiro con Leche 1 kg.","supplierId":"arg","unit":"kg","minStock":10,"dailyUsage":0.5,"category":"Chocolates","brand":"Selecta"},{"id":"p-0002","name":"Chocolate Cobertura Confeiteiro Semiamargo 1 kg.","supplierId":"arg","unit":"kg","minStock":10,"dailyUsage":0.5,"category":"Chocolates","brand":"Selecta"},{"id":"p-0003","name":"Chocolate Cobertura Confeiteiro Blanco 1 kg.","supplierId":"arg","unit":"kg","minStock":5,"dailyUsage":0.3,"category":"Chocolates","brand":"Selecta"}];
+const IMP_BRAND_COLORS = {"Adimix":"#e8735a","Agropalma":"#7ab648","Duas Rodas / Dreidoppel":"#4a90d9","Ledevit":"#f5a623","MEC3":"#9b59b6","Pernigotti":"#2c3e50","Selecta":"#e74c3c"};
+const IMP_SUP_LABEL = {"arg":"🇦🇷 Argentina / Brasil","ecu":"🇪🇨 Ecuador","eur":"🇪🇺 Europa"};
+const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
+const USERS = [];
+const SB_KEY = SKEY;
+
+const dbWriteWithRetry = async (fn) => {
+  for (let i = 0; i <= 2; i++) {
+    try { const r = await fn(); if (r !== null) return r; } catch { /* retry */ }
+    if (i < 2) await new Promise(r => setTimeout(r, [500,1000][i]||1000));
+  }
+  return null;
+};
 
 function ImporterTab({onDone}){
   const { confirm, ConfirmDialog } = useConfirm();
@@ -180,7 +196,7 @@ function ImporterTab({onDone}){
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
                   <div style={{fontSize:12,fontWeight:600,color:T.text}}>{prod.unitCost>0?`$${prod.unitCost.toFixed(0)} / ${prod.unit}`:"—"}</div>
-              {p.salePrice>0&&<span style={{fontSize:11,color:'#16a34a',marginLeft:8}}>Venta: $${p.salePrice.toFixed(2)} · <strong>${p.unitCost>0?Math.round((p.salePrice-p.unitCost)/p.salePrice*100):0}% margen</strong></span>}
+              {prod.salePrice>0&&<span style={{fontSize:11,color:'#16a34a',marginLeft:8}}>Venta: $${prod.salePrice.toFixed(2)} · <strong>${prod.unitCost>0?Math.round((prod.salePrice-prod.unitCost)/prod.salePrice*100):0}% margen</strong></span>}
                   <div style={{fontSize:11,color:IMP_SUP_COLOR[prod.supplierId],fontWeight:500}}>{IMP_SUP_LABEL[prod.supplierId]}</div>
                 </div>
               </div>
@@ -194,6 +210,7 @@ function ImporterTab({onDone}){
 }
 
 
+// eslint-disable-next-line no-unused-vars
 const LoginScreen=({onLogin})=>{
   const G="#3a7d1e";
   const [em,setEm]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
@@ -233,6 +250,7 @@ const LoginScreen=({onLogin})=>{
   </div>);
 };
 
+// eslint-disable-next-line no-unused-vars
 const UsersTab=({session})=>{
   const [users,setUsers]=useState(()=>LS.get('aryes-users',USERS));
   const [editing,setEditing]=useState(null);
@@ -345,6 +363,7 @@ const UsersTab=({session})=>{
 
 
 // ── Lotes Tab ────────────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const LotsTab=({products,session})=>{
   const [lots,setLots]=useState(()=>LS.get('aryes-lots',[]));
   const [filter,setFilter]=useState('all');
@@ -446,6 +465,7 @@ const LotsTab=({products,session})=>{
 };
 
 // ── Excel Importer Tab ───────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const ExcelImportTab=({products,setProducts,session})=>{
   const [step,setStep]=useState('upload'); // upload | preview | done
   const [rows,setRows]=useState([]);
@@ -590,6 +610,7 @@ const ExcelImportTab=({products,setProducts,session})=>{
 
 
 // ── Generar PDF de Orden de Compra ───────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const generateOrderPDF = (order, suppliers, products) => {
   const sup = suppliers.find(s => s.id === order.supplierId) || {};
   const today = new Date().toLocaleDateString('es-UY');
@@ -726,6 +747,7 @@ const MiniBar=({value,max,color='#3a7d1e'})=>{
   </div>;
 };
 
+// eslint-disable-next-line no-unused-vars
 const DashboardExtra=({products,suppliers,orders})=>{
   // Valor total inventario
   const totalValue = products.reduce((s,p)=>s+(p.stock||0)*(p.unitCost||0),0);
@@ -887,6 +909,7 @@ const DashboardExtra=({products,suppliers,orders})=>{
 
 
 // ── Price History Tab ────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const PriceHistoryTab=({products,session})=>{
   const [priceHistory,setPriceHistory]=useState(()=>LS.get('aryes-price-history',[]));
   const [selProduct,setSelProduct]=useState('');
@@ -1000,6 +1023,7 @@ const PriceHistoryTab=({products,session})=>{
 
 
 // ── Clients Tab ──────────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const ClientsTab=({products,session})=>{
   const [clients,setClients]=useState(()=>LS.get('aryes-clients',[]));
   const [editing,setEditing]=useState(null);
@@ -1195,6 +1219,7 @@ const ClientsTab=({products,session})=>{
 
 
 // ── Movements Tab ────────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const MovementsTab=({products,setProducts,session})=>{
   const [movements,setMovements]=useState(()=>LS.get('aryes-movements',[]));
   const [form,setForm]=useState({productId:'',type:'entrada',qty:'',reason:'compra',reference:'',notes:''});
@@ -1475,6 +1500,7 @@ const sendDailyAlertSummary = async (lowStockProducts) => {
 };
 
 // ── Email Config Tab ─────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 const EmailConfigTab=({products,session})=>{
   const [cfg,setCfg]=useState(()=>LS.get('aryes-email-config',{serviceId:'',templateId:'',publicKey:'',toEmail:''}));
   const [msg,setMsg]=useState('');

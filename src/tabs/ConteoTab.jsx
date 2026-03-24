@@ -34,7 +34,7 @@ function ConteoTab(){
 
   const confirmarConteo=()=>{
     // Update stock with physical count
-    let updProds=[...prods];
+    const updProds=[...prods];
     conteoActivo.items.filter(it=>it.cantFisica!==null).forEach(it=>{
       const idx=updProds.findIndex(p=>String(p.id)===String(it.id));
       if(idx>-1)updProds[idx]={...updProds[idx],stock:it.cantFisica};

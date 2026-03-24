@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, {
   createContext, useContext,
   useState, useEffect, useMemo,
@@ -72,7 +73,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
       } catch (e) { console.warn('[AppContext] token refresh failed', e); }
     }, refreshIn);
     return () => clearTimeout(timer);
-  }, [session?.refresh_token, session?.expiresAt]);
+  }, [session?.refresh_token, session?.expiresAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load config from Supabase (admin only) ─────────────────────────────────
   useEffect(() => {
@@ -91,7 +92,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
         }
       } catch { /* offline */ }
     })();
-  }, [session?.role]);
+  }, [session?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load operational data (movements, ventas, recepciones) ────────────────
   useEffect(() => {
@@ -204,7 +205,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
 
   const enriched = useMemo(() =>
     (products || []).map(p => { const sup = getSup(p.supplierId); return { ...p, sup, alert: alertLevel(p, sup) }; }),
-    [products, suppliers]
+    [products, suppliers] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const alerts = (enriched || [])

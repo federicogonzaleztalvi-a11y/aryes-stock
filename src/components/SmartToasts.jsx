@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 // Self-contained toast notification system.
 // Fires alerts once per session via a ref-based deduplication set.
 // Zero references to the T theme object — all colors are inline literals.
-// Receives only: critN (number), orders (array).
+// Receives only: critN (number), _orders (array).
 // Reads CFE overdue count from localStorage internally.
 
 const TOAST_STYLES = {

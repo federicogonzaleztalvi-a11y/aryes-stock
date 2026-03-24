@@ -21,7 +21,7 @@ function DevolucionesTab(){
     if(itemsDevueltos.length===0){setMsg("Ingresa al menos un item a devolver");return;}
     if(!form.motivo){setMsg("Ingresa el motivo de la devolucion");return;}
     // Reingresar stock de items aprobados
-    let updProds=[...prods];
+    const updProds=[...prods];
     itemsDevueltos.forEach(it=>{
       if(it.inspeccion==="aprobado"){
         const idx=updProds.findIndex(p=>String(p.id)===String(it.productoId));

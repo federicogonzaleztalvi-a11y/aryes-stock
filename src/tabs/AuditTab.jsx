@@ -68,6 +68,7 @@ function AuditTab(){
 }
 
 // Error Boundary
+// eslint-disable-next-line no-unused-vars
 class ErrorBoundary extends React.Component {
   constructor(p){super(p);this.state={err:null};}
   static getDerivedStateFromError(e){return {err:e};}

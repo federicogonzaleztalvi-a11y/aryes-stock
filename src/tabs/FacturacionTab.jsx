@@ -617,7 +617,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   const KCLI  = 'aryes-clients';
   const KSEQ  = 'aryes-cfe-seq';
 
-  const { confirm, ConfirmDialog } = useConfirm();
+  const { confirm, ConfirmDialog: _ConfirmDialog } = useConfirm();
   const [cfes,    setCfes]    = useState(()=>LS.get(KCFE,[]));
   const [cobros,  setCobros]  = useState(()=>LS.get(KCOB,[]));
   const [clientes,setClientes]= useState(()=>{

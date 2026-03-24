@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { T } from '../lib/ui.jsx';
-import { db } from '../lib/constants.js';
 
 const CameraScanner = ({ onDetected, onClose }) => {
   const videoRef = useRef(null);

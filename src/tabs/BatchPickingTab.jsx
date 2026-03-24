@@ -39,7 +39,7 @@ function BatchPickingTab(){
 
   const confirmarBatch=()=>{
     // Descontar stock
-    let updProds=[...prods];
+    const updProds=[...prods];
     picking.items.forEach(it=>{
       const idx=updProds.findIndex(p=>(p.nombre||p.name)===it.nombre);
       if(idx>-1){

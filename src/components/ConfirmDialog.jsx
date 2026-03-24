@@ -148,6 +148,7 @@ function Dialog({ open, title, description, variant = 'danger', confirmLabel, ca
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
 export function useConfirm() {
   const [state, setState] = useState({ open: false, title: '', description: '', variant: 'danger', confirmLabel: null, cancelLabel: null });
   const resolveRef = useRef(null);

@@ -80,7 +80,7 @@ function RecepcionTab(){
     const ahora=new Date().toISOString();
 
     // 1. Update stock
-    let updProds=[...prods];
+    const updProds=[...prods];
     items.forEach(it=>{
       if(!it.nombre||Number(it.cantidadRecibida)===0)return;
       // Find product by name or id
@@ -97,7 +97,7 @@ function RecepcionTab(){
     LS.set(KPROD,updProds);
 
     // 2. Create lots for items with vencimiento
-    let updLotes=[...lotes];
+    const updLotes=[...lotes];
     items.forEach(it=>{
       if(!it.vencimiento||Number(it.cantidadRecibida)===0)return;
       const prod=updProds.find(p=>String(p.id)===String(it.productoId)||p.nombre?.toLowerCase()===it.nombre.toLowerCase()||p.name?.toLowerCase()===it.nombre.toLowerCase());

@@ -14,7 +14,7 @@ function readSession() {
       return null;
     }
     return s;
-  } catch(e) { return null; }
+  } catch { return null; }
 }
 
 // ── Root Error Boundary ───────────────────────────────────────────
@@ -76,7 +76,7 @@ function LoginScreen({ onLogin }) {
       const session = { ...data, email, role, name, expiresAt: Date.now() + expiresIn };
       localStorage.setItem('aryes-session', JSON.stringify(session));
       onLogin(session);
-    } catch(e) {
+    } catch {
       setErr('Error de conexión. Verificá tu internet.');
     }
     setLoading(false);
@@ -119,7 +119,7 @@ function Root() {
   const [session, setSession] = useState(() => readSession());
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem(ONBOARDING_KEY); }
-    catch(e) { return false; }
+    catch { return false; }
   });
 
   const handleLogin = (s) => setSession(s);
@@ -132,7 +132,7 @@ function Root() {
           headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + s.access_token }
         }).catch(() => {});
       }
-    } catch(e) {}
+    } catch {}
     localStorage.removeItem('aryes-session');
     setSession(null);
   };

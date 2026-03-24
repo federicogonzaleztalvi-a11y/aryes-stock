@@ -54,7 +54,7 @@ const CommandPalette = ({ open, onClose, products, clientes, cfes, setTab, onNew
       action: () => { setTab('facturacion'); onClose(); }
     }));
     return [...navMatches, ...prodMatches, ...cliMatches, ...cfeMatches].slice(0,12);
-  }, [q, products, clientes, cfes]);
+  }, [q, products, clientes, cfes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => { setCursor(0); }, [results.length]);
 

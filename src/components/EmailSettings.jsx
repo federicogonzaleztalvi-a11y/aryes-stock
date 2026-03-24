@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { T, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
+import { T, Inp, Field, Btn, Cap } from '../lib/ui.jsx';
 
 const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
   const [testing, setTesting] = useState(false);
@@ -150,6 +150,7 @@ const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 // ─────────────────────────────────────────────────────────────────────────────
 // ERROR BOUNDARY
 // ─────────────────────────────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={hasError:false,error:null};}
   static getDerivedStateFromError(error){return {hasError:true,error};}

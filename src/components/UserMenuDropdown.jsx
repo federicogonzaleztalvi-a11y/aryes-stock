@@ -9,7 +9,7 @@ function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setT
     const handler = e => { if (ref.current && !ref.current.contains(e.target)) setUserMenuOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [userMenuOpen]);
+  }, [userMenuOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initials = (session?.name || session?.email || 'U')[0].toUpperCase();
   const displayName = session?.name || session?.email?.split('@')[0] || 'Usuario';

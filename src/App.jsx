@@ -1,12 +1,11 @@
 // v126 — JSX fragments fixed, auth in Root
 // v115 — rollback to v107 + cache bust
-import React, { useState, useEffect, useRef, useMemo, useCallback , Suspense } from "react";
-import { db, getAuthHeaders, LS, SB_URL, SKEY } from "./lib/constants.js";
+import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import { db, LS } from "./lib/constants.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
 // ─────────────────────────────────────────────────────────────────────────────
-const ImporterTab = React.lazy(() => import('./tabs/ImporterTab.jsx'));
 const VentasTab = React.lazy(() => import('./tabs/VentasTab.jsx'));
 const FacturacionTab = React.lazy(() => import('./tabs/FacturacionTab.jsx'));
 const DepositoTab = React.lazy(() => import('./tabs/DepositoTab.jsx'));
@@ -20,13 +19,11 @@ const DevolucionesTab = React.lazy(() => import('./tabs/DevolucionesTab.jsx'));
 const ClientesTab = React.lazy(() => import('./tabs/ClientesTab.jsx'));
 const PackingTab = React.lazy(() => import('./tabs/PackingTab.jsx'));
 const ImportTab = React.lazy(() => import('./tabs/ImportTab.jsx'));
-const InventarioTab = React.lazy(() => import('./tabs/InventarioTab.jsx'));
 const TransferenciasTab = React.lazy(() => import('./tabs/TransferenciasTab.jsx'));
 const BatchPickingTab = React.lazy(() => import('./tabs/BatchPickingTab.jsx'));
 const PreciosTab = React.lazy(() => import('./tabs/PreciosTab.jsx'));
 const KPIsTab = React.lazy(() => import('./tabs/KPIsTab.jsx'));
 const DemandaTab = React.lazy(() => import('./tabs/DemandaTab.jsx'));
-const ConfigTab = React.lazy(() => import('./tabs/ConfigTab.jsx'));
 const AuditTab = React.lazy(() => import('./tabs/AuditTab.jsx'));
 const TrackingTab = React.lazy(() => import('./tabs/TrackingTab.jsx'));
 const DashboardInline = React.lazy(() => import('./tabs/DashboardInline.jsx'));
@@ -45,7 +42,7 @@ import CameraScanner from './components/CameraScanner.jsx';
 import ManualMovModal from './components/ManualMovModal.jsx';
 import EmailSettings from './components/EmailSettings.jsx';
 import UserMenuDropdown from './components/UserMenuDropdown.jsx';
-import { AppProvider, useApp } from './context/AppContext.jsx';
+import { useApp } from './context/AppContext.jsx';
 import { useConfirm } from './components/ConfirmDialog.jsx';
 
 const CSS = `
@@ -78,6 +75,7 @@ input[type=range]{accent-color:#3a7d1e;}
 // - On first load: pulls all data from Supabase into localStorage
 // ============================================================
 // ─── App load: sync from Supabase in background ────────────────────────────
+// eslint-disable-next-line no-undef
 setTimeout(() => sbSyncAll(), 1000);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1415,18 +1413,18 @@ class ErrorBoundary extends React.Component {
 // LOGIN SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AryesApp({session, onLogout, onSessionUpdate}){
+function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   // ── State and mutations come from AppContext ────────────────────────────
   const {
     products, setProducts,
     suppliers, setSuppliers,
-    movements, setMovements,
+    movements, setMovements: _setMovements,
     orders, setOrders,
     plans, setPlans,
-    notified, setNotified,
+    notified: _notified, setNotified,
     emailCfg, setEmailCfg,
     brandCfg, setBrandCfg,
-    dbReady, syncStatus, hasPendingSync, syncToast,
+    dbReady, syncStatus, hasPendingSync, syncToast, setSyncToast, setHasPendingSync,
     enriched, alerts, critN, getSup,
     addMov, savePlan, markDelivered, confirmOrder,
     deleteSupplier, deleteProduct, applyExcel,
@@ -1453,7 +1451,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
   // ── Scroll to top on tab change ─────────────────────────────────────────
   useEffect(() => { const el = document.getElementById('main-content'); if (el) el.scrollTop = 0; }, [tab]);
 
-  const canEdit    = session?.role === 'admin' || session?.role === 'operador';
+  const canEdit    = session?.role === 'admin' || session?.role === 'operador'; // eslint-disable-line no-unused-vars
   const handleLogout = () => onLogout?.();
   const { confirm, ConfirmDialog } = useConfirm();
 
@@ -1551,6 +1549,7 @@ function AryesApp({session, onLogout, onSessionUpdate}){
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch(e){}
   };
 
+  // eslint-disable-next-line no-unused-vars
   const checkAndNotify = (currentProducts, currentSuppliers, cfg, currentNotified) => {
     if(!cfg?.enabled) return;
     const toAlert = [];

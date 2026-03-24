@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // ─────────────────────────────────────────────────────────────────────────────
 // ARYES SHARED UI — theme, atoms, helpers
 // Exported so lazy-loaded tabs can import them without depending on App.jsx scope

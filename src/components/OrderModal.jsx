@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { T, totalLead, avgDaily, rop, safetyStock, eoq, alertLevel, ALERT_CFG,
-         Modal, Inp, Btn, Cap, StockBar, fmtDate, fmtShort, tfCols } from '../lib/ui.jsx';
+         Modal, Inp, Btn, Cap, StockBar, fmtDate, fmtShort } from '../lib/ui.jsx';
 
 const OrderModal=({product,supplier,onConfirm,onClose})=>{
   const lead=totalLead(supplier);
@@ -11,6 +11,7 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
   const {level,daysToROP,daysOut}=alertLevel(product,supplier);
   const [qty,setQty]=useState(eq||Math.ceil(daily*lead*1.5));
   const [useEOQ,setUseEOQ]=useState(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{if(useEOQ)setQty(eq||Math.ceil(daily*lead*1.5));},[useEOQ]);
   const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
   const stockAfter=product.stock+qty;
