@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 
 function ConteoTab(){
-  const { products: prods, setProducts: setProds, conteos, setConteos } = useApp();
+  const { products: prods, setProducts: setProds, conteos, setConteos, setHasPendingSync } = useApp();
   const G="#3a7d1e";
   const [conteoActivo,setConteoActivo]=useState(null);
   const [itemIdx,setItemIdx]=useState(0);
@@ -48,7 +48,10 @@ function ConteoTab(){
       .map(it => db.patchWithLock('products', { stock: it.cantFisica, updated_at: now }, 'uuid=eq.' + it.id, 'stock', it.stockSistema));
     Promise.allSettled(patches).then(results => {
       const failed = results.filter(r => r.status === 'rejected').length;
-      if (failed > 0) console.warn('[Conteo] ' + failed + ' patchWithLock(s) failed — data safe in context');
+      if (failed > 0) {
+        console.warn('[Conteo] ' + failed + ' patchWithLock(s) failed — stock safe in AppContext');
+        setHasPendingSync(true);
+      }
     });
     const finalConteo={...conteoActivo,completado:true,finalizadoEn:new Date().toISOString()};
     const upd=[finalConteo,...conteos];
