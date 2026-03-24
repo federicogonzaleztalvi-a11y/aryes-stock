@@ -1,13 +1,27 @@
 // ─── Single source of truth for Supabase config ──────────────────────────────
 // All files import SB_URL and SKEY from here — never hardcode inline.
 // Values come from environment variables (Vite exposes VITE_* to the browser).
-// Fallback to hardcoded only in case of misconfigured env (should not happen in prod).
+// No fallbacks — missing env vars throw immediately at startup.
 
-export const SB_URL = import.meta.env.VITE_SUPABASE_URL
-  || 'https://mrotnqybqvmvlexncvno.supabase.co';
+// ── Mandatory env-var validation ──────────────────────────────────────────────
+// These values MUST come from environment variables. There is no fallback.
+// In development: set them in .env.local (gitignored).
+// In production:  set them in Vercel dashboard → Settings → Environment Variables.
+// The app will throw immediately on startup if either is missing — intentional.
+// This prevents silent operation against a wrong or missing Supabase project.
+function requireEnv(name) {
+  const val = import.meta.env[name];
+  if (!val) {
+    throw new Error(
+      `[Aryes] Missing required environment variable: ${name}\n` +
+      `Set it in .env.local (dev) or Vercel dashboard (production).`
+    );
+  }
+  return val;
+}
 
-export const SKEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+export const SB_URL = requireEnv('VITE_SUPABASE_URL');
+export const SKEY   = requireEnv('VITE_SUPABASE_ANON_KEY');
 
 // ─── Auth headers helper ──────────────────────────────────────────────────────
 // Reads the live session token from localStorage on every call so it's

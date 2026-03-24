@@ -50,6 +50,11 @@ async function verifyAdmin(authHeader) {
 }
 
 export default async function handler(req, res) {
+  // Fast-fail: SERVICE_KEY must exist. Missing = server misconfiguration, not auth failure.
+  // Log it explicitly so it shows in Vercel function logs, not just as a 500.
+  if (!SERVICE_KEY) {
+    console.error('[admin-users] SUPABASE_SERVICE_ROLE_KEY is not set — all requests will fail');
+  }
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');

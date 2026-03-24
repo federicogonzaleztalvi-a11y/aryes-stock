@@ -3,8 +3,10 @@
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
-const SB_URL = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
-const SB_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb3RucXlicXZtdmxleG5jdm5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDMxOTksImV4cCI6MjA4OTE3OTE5OX0.KiLs0eI43f32htpb3dEhX9agYTbK91I82d2vqR-nPrI';
+const SB_URL       = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
+// No fallback — missing key causes verifySession() to always return null → 401 on every call.
+// Fail loudly: a missing anon key means auth is broken, not silently degraded.
+const SB_ANON_KEY  = process.env.SUPABASE_ANON_KEY;
 
 // Verify JWT signature via Supabase Auth — rejects forged/expired tokens
 async function verifySession(authHeader) {
@@ -29,6 +31,11 @@ export default async function handler(req, res) {
   const user = await verifySession(req.headers.authorization);
   if (!user) {
     return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!SB_ANON_KEY) {
+    console.error('[chat] SUPABASE_ANON_KEY env var is not set');
+    return res.status(503).json({ error: 'Auth service misconfigured' });
   }
 
   if (!ANTHROPIC_KEY) {
