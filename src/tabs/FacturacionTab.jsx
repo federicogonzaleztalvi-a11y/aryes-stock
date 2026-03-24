@@ -6,8 +6,8 @@ import ModalFactura from './facturacion/ModalFactura.jsx';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
 import { Pill, TabBtn, KpiCard } from './facturacion/components.jsx';
 
-function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
-  const { cfes, setCfes, cobros, setCobros } = useApp();
+function FacturacionTab({ products=[] }) {
+  const { cfes, setCfes, cobros, setCobros, clientes } = useApp();
   // Sync error banner: shown when a DB write fails but local state is safe
   const [syncErr, setSyncErr] = useState('');
   const clearSyncErr = () => setSyncErr('');
@@ -16,14 +16,10 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     setSyncErr('⚠ ' + op + ' no se sincronizó con el servidor. Los datos están guardados localmente y se sincronizarán al reconectar.');
     setTimeout(clearSyncErr, 8000);
   };
-  const KCLI  = 'aryes-clients';
   const KSEQ  = 'aryes-cfe-seq';
 
   const { confirm, ConfirmDialog: _ConfirmDialog } = useConfirm();
-  const [clientes]=useState(()=>{
-    const c = LS.get(KCLI,[]);
-    return clientesProp.length>0 ? clientesProp : c;
-  });
+  // clientes now from useApp() — reactive and always current
   const [seq,     setSeq]     = useState(()=>LS.get(KSEQ,1));
 
   const [vista,   setVista]   = useState('comprobantes');

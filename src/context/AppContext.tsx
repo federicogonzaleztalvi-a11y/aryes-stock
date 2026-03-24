@@ -7,7 +7,7 @@ import { LS, db, SB_URL, SKEY } from '../lib/constants.js';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
-              Venta, Cfe, Cobro } from '../types.js';
+              Venta, Cfe, Cobro, Cliente } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -42,6 +42,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
   const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
   const [cobros,    setCobros]    = useState<Cobro[]>(() => LS.get('aryes-cobros',       []));
+  const [clientes,  setClientes]  = useState<Cliente[]>(() => LS.get('aryes-clients',     []));
   const [plans,     setPlans]     = useState<Plans>(() => LS.get('aryes7-plans',     {}));
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
@@ -65,6 +66,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
   useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
   useEffect(() => LS.set('aryes-cobros',      cobros),    [cobros]);
+  useEffect(() => LS.set('aryes-clients',     clientes),  [clientes]);
   useEffect(() => LS.set('aryes9-notified',  notified),  [notified]);
 
   // ── JWT auto-refresh 5 min before expiry ───────────────────────────────────
@@ -160,6 +162,20 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             createdAt: r.created_at||'',
           }));
           setCobros(mappedCobros); // reactive — LS.set handled by useEffect
+        }
+        // Load clients from Supabase
+        const sbClients = await db.get<Record<string, any>[]>('clients?order=created_at.asc&limit=2000');
+        if (sbClients?.length > 0) {
+          const mappedClientes: Cliente[] = sbClients.map(r => ({
+            id: r.id, nombre: r.nombre||r.name||'', tipo: r.tipo||r.type||'',
+            rut: r.rut||'', telefono: r.telefono||r.phone||'',
+            email: r.email||'', emailFacturacion: r.email_facturacion||'',
+            contacto: r.contacto||r.contact||'', direccion: r.direccion||r.address||'',
+            ciudad: r.ciudad||'', condPago: r.cond_pago||'credito_30',
+            limiteCredito: r.limite_credito ? String(r.limite_credito) : '',
+            notas: r.notas||'', creado: r.created_at||'',
+          }));
+          setClientes(mappedClientes); // reactive — LS.set handled by useEffect
         }
         const sbRecs = await db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500');
         if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
@@ -429,6 +445,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     ventas, setVentas,
     cfes, setCfes,
     cobros, setCobros,
+    clientes, setClientes,
     suppliers, setSuppliers,
     movements, setMovements,
     orders, setOrders,

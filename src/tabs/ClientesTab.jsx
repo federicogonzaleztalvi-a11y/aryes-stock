@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { LS, db } from '../lib/constants.js';
+import { useApp } from '../context/AppContext.tsx';
+import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 function ClientesTab(){
+  const { clientes: items, setClientes: setItems } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
-  const KCLI="aryes-clients";
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
   const emptyForm={nombre:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',rut:'',telefono:'',email:'',direccion:'',ciudad:'',contacto:'',notas:''};
-  const [items,setItems]=useState(()=>LS.get(KCLI,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
@@ -55,7 +55,7 @@ function ClientesTab(){
     const upd = isNew
       ? [...items, record]
       : items.map(x=>x.id===editId ? record : x);
-    setItems(upd); LS.set(KCLI, upd);
+    setItems(upd);
     syncClient(record);                          // → Supabase clients table
     setMsg(editId?'Cliente actualizado':'Cliente agregado');
     setForm(emptyForm);setEditId(null);setVista('lista');
@@ -66,7 +66,7 @@ function ClientesTab(){
     const ok = await confirm({ title:'¿Eliminar cliente?', description:'Esta acción no se puede deshacer.', variant:'danger' });
     if(!ok) return;
     const upd=items.filter(x=>x.id!==id);
-    setItems(upd); LS.set(KCLI,upd);
+    setItems(upd);
     db.del('clients',{id}).catch(e=>{
       console.warn('[ClientesTab] delete client failed:', e?.message||e);
       setMsg('⚠ Eliminado localmente — no se pudo sincronizar con el servidor');

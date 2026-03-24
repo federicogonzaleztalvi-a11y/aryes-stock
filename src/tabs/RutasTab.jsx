@@ -1,12 +1,13 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS } from '../lib/constants.js';
 
 function RutasTab(){
+  const { clientes } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const [rutas,setRutas]=useState(()=>LS.get("aryes-rutas",[]));
-  const [clientes]=useState(()=>LS.get("aryes-clients",[]));
   const [vista,setVista]=useState("lista");
   const [rutaActiva,setRutaActiva]=useState(null);
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});

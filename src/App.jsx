@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
-import { db, LS } from "./lib/constants.js";
+import { db } from "./lib/constants.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GLOBAL STYLES
@@ -719,6 +719,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     ventas: _ventas,
     cfes, setCfes: _setCfes,
     cobros, setCobros: _setCobros,
+    clientes, setClientes: _setClientes,
     plans, setPlans,
     notified: _notified, setNotified: _setNotified,
     emailCfg, setEmailCfg,
@@ -743,7 +744,6 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
 
   // ── Reactive localStorage state for CommandPalette ────────────────────────
   // Read once on mount; refreshed when ⌘K opens so data is fresh without polling.
-  const [cmdClientes, setCmdClientes] = useState(() => LS.get('aryes-clients', []));
 
   // ── Global ⌘K shortcut ──────────────────────────────────────────────────
   React.useEffect(() => {
@@ -751,7 +751,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         // Refresh LS-backed data when palette opens so clientes/cfes are current
-        setCmdClientes(LS.get('aryes-clients', []));
+        // clientes now reactive from AppContext — no manual refresh needed
         // cfes now reactive from AppContext — no manual refresh needed
         setCmdOpen(o => !o);
       }
@@ -1004,7 +1004,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         {activeTab==="recepcion"&&<Suspense fallback={<TabLoader />}><RecepcionTab /></Suspense>}
         
         {activeTab==="ventas"&&<Suspense fallback={<TabLoader />}><VentasTab /></Suspense>}
-        {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products} clientes={LS.get("aryes-clients",[])}/></Suspense></ErrorBoundary>}
+        {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products}/></Suspense></ErrorBoundary>}
         
         {activeTab==="importar"&&<Suspense fallback={<TabLoader />}><ImportTab /></Suspense>}
         
@@ -1030,7 +1030,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
           open={cmdOpen}
           onClose={()=>setCmdOpen(false)}
           products={enriched||[]}
-          clientes={cmdClientes}
+          clientes={clientes}
           cfes={cfes}
           setTab={setTab}
           onNewCFE={()=>{setTab('facturacion');setCmdOpen(false);}}

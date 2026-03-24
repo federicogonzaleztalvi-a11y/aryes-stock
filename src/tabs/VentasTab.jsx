@@ -1,21 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, db } from '../lib/constants.js';
+import { db } from '../lib/constants.js';
 
 function VentasTab(){
-  const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas } = useApp();
+  const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
+          clientes, setClientes } = useApp();
   const G="#3a7d1e";
-  const KCLI="aryes-clients";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
-  const [clientes,setClientes]=useState(()=>LS.get(KCLI,[]));
-  // Refresh client list when tab regains focus (handles cross-tab creation)
-  React.useEffect(()=>{
-    const refresh=()=>setClientes(LS.get(KCLI,[]));
-    window.addEventListener('focus',refresh);
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
-    return()=>window.removeEventListener('focus',refresh);
-  },[]);
+  // clientes now reactive from AppContext — no focus refresh needed
 
 
   const [vista,setVista]=useState('lista');
@@ -69,7 +62,7 @@ function VentasTab(){
     if(!newClientNombre.trim())return;
     const cli={id:crypto.randomUUID(),nombre:newClientNombre.trim(),tipo:'Otro',creado:new Date().toISOString()};
     const updCli=[...clientes,cli];
-    setClientes(updCli);LS.set(KCLI,updCli);
+    setClientes(updCli);
     setForm(f=>({...f,clienteId:cli.id,clienteNombre:cli.nombre}));
     setNewClientNombre('');setShowNewClient(false);
   };
@@ -393,7 +386,7 @@ function VentasTab(){
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Órdenes de Venta</h2>
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestión de ventas a clientes — remitos y estado de entrega</p>
         </div>
-        <button onClick={()=>{setClientes(LS.get(KCLI,[]));setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
+        <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
       </div>
       <MsgBanner/>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>

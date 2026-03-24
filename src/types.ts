@@ -203,6 +203,24 @@ export interface SyncToast {
 // Every value returned by useApp() is typed here.
 // This is the interface a top engineer reads to understand what the app can do.
 
+// ── Cliente ──────────────────────────────────────────────────────────────────
+export interface Cliente {
+  id:               string;
+  nombre:           string;
+  tipo:             string;
+  rut:              string;
+  telefono:         string;
+  email:            string;
+  emailFacturacion: string;
+  contacto:         string;
+  direccion:        string;
+  ciudad:           string;
+  condPago:         string;
+  limiteCredito:    string;
+  notas:            string;
+  creado:           string;
+}
+
 // ── Facturación (CFE / Cobro) ─────────────────────────────────────────────────
 export interface Cfe {
   id:             string;
@@ -271,6 +289,8 @@ export interface AppContextValue {
   setCfes:   React.Dispatch<React.SetStateAction<Cfe[]>>;
   cobros:    Cobro[];
   setCobros: React.Dispatch<React.SetStateAction<Cobro[]>>;
+  clientes:    Cliente[];
+  setClientes: React.Dispatch<React.SetStateAction<Cliente[]>>;
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
   movements: Movement[];
