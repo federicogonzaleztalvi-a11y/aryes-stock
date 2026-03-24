@@ -61,7 +61,7 @@ function SectionHeader({ title, action, actionLabel }) {
   );
 }
 
-function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols}) {
+function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[]}) {
 
   const today = new Date();
 
@@ -73,13 +73,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   const transitVal = pending.reduce((s,o)=>s+(+o.totalCost||0),0);
   const critCov    = products.filter(p=>(p.dailyUsage||0)>0&&p.stock>0&&(p.stock/(p.dailyUsage||0.001))<14).length;
 
-  // ── Billing metrics (from localStorage) ──────────────────────────────────
-  const cfes = React.useMemo(()=>{
-    try{ return JSON.parse(localStorage.getItem('aryes-cfe')||'[]'); }catch{ return []; }
-  },[]);
-  const cobros = React.useMemo(()=>{
-    try{ return JSON.parse(localStorage.getItem('aryes-cobros')||'[]'); }catch{ return []; }
-  },[]);
+  // ── Billing metrics — cfes and cobros received as reactive props from AppContext
 
   const deudaTotal = cfes
     .filter(f=>['emitida','cobrado_parcial'].includes(f.status))

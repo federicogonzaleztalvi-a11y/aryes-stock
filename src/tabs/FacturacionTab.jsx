@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, db } from '../lib/constants.js';
 import ModalFactura from './facturacion/ModalFactura.jsx';
@@ -6,6 +7,7 @@ import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, 
 import { Pill, TabBtn, KpiCard } from './facturacion/components.jsx';
 
 function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
+  const { cfes, setCfes, cobros, setCobros } = useApp();
   // Sync error banner: shown when a DB write fails but local state is safe
   const [syncErr, setSyncErr] = useState('');
   const clearSyncErr = () => setSyncErr('');
@@ -14,14 +16,10 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     setSyncErr('⚠ ' + op + ' no se sincronizó con el servidor. Los datos están guardados localmente y se sincronizarán al reconectar.');
     setTimeout(clearSyncErr, 8000);
   };
-  const KCFE  = 'aryes-cfe';
-  const KCOB  = 'aryes-cobros';
   const KCLI  = 'aryes-clients';
   const KSEQ  = 'aryes-cfe-seq';
 
   const { confirm, ConfirmDialog: _ConfirmDialog } = useConfirm();
-  const [cfes,    setCfes]    = useState(()=>LS.get(KCFE,[]));
-  const [cobros,  setCobros]  = useState(()=>LS.get(KCOB,[]));
   const [clientes]=useState(()=>{
     const c = LS.get(KCLI,[]);
     return clientesProp.length>0 ? clientesProp : c;
@@ -37,8 +35,6 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   const [busq,         setBusq]         = useState('');
   const [detalleCli,   setDetalleCli]   = useState(null);
 
-  const saveCfes  = arr => { setCfes(arr);   LS.set(KCFE,arr); };
-  const saveCobros= arr => { setCobros(arr); LS.set(KCOB,arr); };
 
   // ── Emitir CFE ────────────────────────────────────────────────────────
   const handleSaveCFE = form => {
@@ -47,7 +43,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     const nuevo  = { ...form, id:newId(), numero,
       saldoPendiente: form.total,
       createdAt: new Date().toISOString() };
-    saveCfes([nuevo,...cfes]);
+    setCfes([nuevo,...cfes]);
     setSeq(s=>{ const n=s+1; LS.set(KSEQ,n); return n; });
     setShowCFE(false); setPrefill(null);
     // → invoices table (source of truth)
@@ -85,7 +81,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   const handleSaveCobro = ({ clienteId, monto, metodo, fecha, fechaCheque, notas, facturasAplicar }) => {
     const cobro = { id:newId(), clienteId, monto, metodo, fecha, fechaCheque, notas,
       facturasAplicar, createdAt:new Date().toISOString() };
-    saveCobros([cobro,...cobros]);
+    setCobros([cobro,...cobros]);
 
     // → collections table (non-blocking)
     db.upsert('collections', {
@@ -116,14 +112,14 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       ).catch(e=>notifyDbErr('CFE actualización', e));
       return { ...c, saldoPendiente: newSaldo, status: newStatus };
     });
-    saveCfes(updCfes);
+    setCfes(updCfes);
     setShowCob(false);
   };
 
   const anular = async id => {
     const ok = await confirm({ title:'¿Anular este CFE?', description:'El comprobante quedará marcado como anulado.', variant:'warning', confirmLabel:'Anular' });
     if (!ok) return;
-    saveCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
+    setCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
     db.patch('invoices', { status:'anulada' }, { id }).catch(e=>notifyDbErr('Factura (ventas)', e));
   };
 

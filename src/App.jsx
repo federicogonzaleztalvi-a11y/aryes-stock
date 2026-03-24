@@ -716,6 +716,9 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     suppliers, setSuppliers,
     movements, setMovements: _setMovements,
     orders, setOrders,
+    ventas: _ventas,
+    cfes, setCfes: _setCfes,
+    cobros, setCobros: _setCobros,
     plans, setPlans,
     notified: _notified, setNotified: _setNotified,
     emailCfg, setEmailCfg,
@@ -741,7 +744,6 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   // ── Reactive localStorage state for CommandPalette ────────────────────────
   // Read once on mount; refreshed when ⌘K opens so data is fresh without polling.
   const [cmdClientes, setCmdClientes] = useState(() => LS.get('aryes-clients', []));
-  const [cmdCfes,     setCmdCfes]     = useState(() => LS.get('aryes-cfe',     []));
 
   // ── Global ⌘K shortcut ──────────────────────────────────────────────────
   React.useEffect(() => {
@@ -750,7 +752,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         e.preventDefault();
         // Refresh LS-backed data when palette opens so clientes/cfes are current
         setCmdClientes(LS.get('aryes-clients', []));
-        setCmdCfes(LS.get('aryes-cfe', []));
+        // cfes now reactive from AppContext — no manual refresh needed
         setCmdOpen(o => !o);
       }
     };
@@ -909,8 +911,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
                 <React.Fragment key={g.label}>
                   <div style={{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}}>{g.label}</div>
                   {(()=>{
-                    const cfesLS=(()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch{return [];}})();
-                    const vencidasN=cfesLS.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
+                    const vencidasN=cfes.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
                     const pendOrders=orders.filter(o=>o.status==='pending').length;
                     return items.map(n=>{
                     return (
@@ -982,7 +983,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización — reconectando...</span>
       </div>}
       {/* ══ DASHBOARD ══ */}
-        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols} cfes={cfes} cobros={cobros}/></Suspense></ErrorBoundary>}
 
         {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline setModal={setModal} setEditProd={setEditProd}/></Suspense></ErrorBoundary>}
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
@@ -1030,7 +1031,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
           onClose={()=>setCmdOpen(false)}
           products={enriched||[]}
           clientes={cmdClientes}
-          cfes={cmdCfes}
+          cfes={cfes}
           setTab={setTab}
           onNewCFE={()=>{setTab('facturacion');setCmdOpen(false);}}
         />

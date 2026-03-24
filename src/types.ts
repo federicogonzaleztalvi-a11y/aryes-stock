@@ -203,6 +203,40 @@ export interface SyncToast {
 // Every value returned by useApp() is typed here.
 // This is the interface a top engineer reads to understand what the app can do.
 
+// ── Facturación (CFE / Cobro) ─────────────────────────────────────────────────
+export interface Cfe {
+  id:             string;
+  numero:         string;
+  tipo:           string;
+  moneda:         string;
+  fecha:          string;
+  fechaVenc:      string | null;
+  clienteId:      string | null;
+  clienteNombre:  string;
+  clienteRut:     string;
+  subtotal:       number;
+  ivaTotal:       number;
+  descuento:      number;
+  total:          number;
+  saldoPendiente: number;
+  status:         string;
+  items:          unknown[];
+  notas:          string;
+  createdAt:      string;
+}
+
+export interface Cobro {
+  id:              string;
+  clienteId:       string | null;
+  monto:           number;
+  metodo:          string;
+  fecha:           string;
+  fechaCheque:     string | null;
+  notas:           string;
+  facturasAplicar: string[];
+  createdAt:       string;
+}
+
 // ── Venta ────────────────────────────────────────────────────────────────────
 export interface VentaItem {
   productoId: string;
@@ -233,6 +267,10 @@ export interface AppContextValue {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   ventas:    Venta[];
   setVentas: React.Dispatch<React.SetStateAction<Venta[]>>;
+  cfes:      Cfe[];
+  setCfes:   React.Dispatch<React.SetStateAction<Cfe[]>>;
+  cobros:    Cobro[];
+  setCobros: React.Dispatch<React.SetStateAction<Cobro[]>>;
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
   movements: Movement[];

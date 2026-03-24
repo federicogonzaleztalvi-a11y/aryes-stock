@@ -7,7 +7,7 @@ import { LS, db, SB_URL, SKEY } from '../lib/constants.js';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
-              Venta } from '../types.js';
+              Venta, Cfe, Cobro } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -40,6 +40,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [movements, setMovements] = useState<Movement[]>(() => LS.get('aryes8-movements', []));
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
   const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
+  const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
+  const [cobros,    setCobros]    = useState<Cobro[]>(() => LS.get('aryes-cobros',       []));
   const [plans,     setPlans]     = useState<Plans>(() => LS.get('aryes7-plans',     {}));
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
@@ -61,6 +63,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes7-plans',     plans),     [plans]);
   useEffect(() => LS.set('aryes8-movements', movements), [movements]);
   useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
+  useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
+  useEffect(() => LS.set('aryes-cobros',      cobros),    [cobros]);
   useEffect(() => LS.set('aryes9-notified',  notified),  [notified]);
 
   // ── JWT auto-refresh 5 min before expiry ───────────────────────────────────
@@ -130,6 +134,32 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
           }));
           setVentas(mappedVentas); // ← updates AppContext state — reactive
           // LS.set is handled by the useEffect above
+        }
+        // Load invoices (cfes) from Supabase
+        const sbInvoices = await db.get<Record<string, any>[]>('invoices?order=created_at.desc&limit=500');
+        if (sbInvoices?.length > 0) {
+          const mappedCfes: Cfe[] = sbInvoices.map(r => ({
+            id: r.id, numero: r.numero||'', tipo: r.tipo||'', moneda: r.moneda||'UYU',
+            fecha: r.fecha||'', fechaVenc: r.fecha_venc||null,
+            clienteId: r.cliente_id||null, clienteNombre: r.cliente_nombre||'',
+            clienteRut: r.cliente_rut||'', subtotal: r.subtotal||0,
+            ivaTotal: r.iva_total||0, descuento: r.descuento||0,
+            total: r.total||0, saldoPendiente: r.saldo_pendiente||0,
+            status: r.status||'borrador', items: r.items||[], notas: r.notas||'',
+            createdAt: r.created_at||'',
+          }));
+          setCfes(mappedCfes); // reactive — LS.set handled by useEffect
+        }
+        // Load collections (cobros) from Supabase
+        const sbCollections = await db.get<Record<string, any>[]>('collections?order=created_at.desc&limit=500');
+        if (sbCollections?.length > 0) {
+          const mappedCobros: Cobro[] = sbCollections.map(r => ({
+            id: r.id, clienteId: r.cliente_id||null, monto: r.monto||0,
+            metodo: r.metodo||'', fecha: r.fecha||'', fechaCheque: r.fecha_cheque||null,
+            notas: r.notas||'', facturasAplicar: r.facturas_aplicar||[],
+            createdAt: r.created_at||'',
+          }));
+          setCobros(mappedCobros); // reactive — LS.set handled by useEffect
         }
         const sbRecs = await db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500');
         if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
@@ -397,6 +427,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     // Data
     products, setProducts,
     ventas, setVentas,
+    cfes, setCfes,
+    cobros, setCobros,
     suppliers, setSuppliers,
     movements, setMovements,
     orders, setOrders,
