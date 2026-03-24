@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { G, F, COND_PAGO, CFE_TIPOS, MONEDAS,
-         today, addDays, fmtMoney, Inp, Sel, Lbl } from './constants.js';
 import ItemSearchRow from './ItemSearchRow.jsx';
 import ItemsTable from './ItemsTable.jsx';
+import { G, F, COND_PAGO, CFE_TIPOS, MONEDAS, today, addDays, fmtMoney } from './constants.js';
+import { Inp, Sel, Lbl } from './components.jsx';
 
 function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
   const prefCliente = prefill?.clienteId
