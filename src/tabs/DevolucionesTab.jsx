@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, db } from '../lib/constants.js';
+import { db } from '../lib/constants.js';
 
 function DevolucionesTab(){
-  const { products: prods, setProducts: setProds } = useApp();
+  const { products: prods, setProducts: setProds,
+          devoluciones, setDevoluciones, ventas } = useApp();
   const G="#3a7d1e";
-  const [devoluciones,setDevoluciones]=useState(()=>LS.get("aryes-devoluciones",[]));
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
   const [vista,setVista]=useState("lista");
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});
   const [msg,setMsg]=useState("");
@@ -23,31 +22,53 @@ function DevolucionesTab(){
     if(!form.motivo){setMsg("Ingresa el motivo de la devolucion");return;}
     // Reingresar stock de items aprobados
     const updProds=[...prods];
+    // Capture stock BEFORE reingress — needed as lock value for patchWithLock
+    const stockBefore={};
     itemsDevueltos.forEach(it=>{
       if(it.inspeccion==="aprobado"){
         const idx=updProds.findIndex(p=>p.id===it.productoId);
-        if(idx>-1)updProds[idx]={...updProds[idx],stock:Number(updProds[idx].stock||0)+Number(it.cantDevolver)};
+        if(idx>-1){
+          stockBefore[updProds[idx].id]=Number(updProds[idx].stock||0);
+          updProds[idx]={...updProds[idx],stock:Number(updProds[idx].stock||0)+Number(it.cantDevolver)};
+        }
       }
     });
     setProds(updProds);
-    // Persist approved stock increments to Supabase (non-blocking)
+    // Persist approved stock increments to Supabase — patchWithLock prevents overwrites
     const now = new Date().toISOString();
     const stockWrites = itemsDevueltos
       .filter(it => it.inspeccion === 'aprobado')
       .map(it => {
         const p = updProds.find(x => x.id === it.productoId);
-        if (!p) return Promise.resolve();
-        return db.patch('products', { stock: p.stock, updated_at: now }, 'uuid=eq.' + it.productoId);
+        if (!p || stockBefore[p.id] === undefined) return Promise.resolve();
+        return db.patchWithLock('products', { stock: p.stock, updated_at: now }, 'uuid=eq.' + it.productoId, 'stock', stockBefore[p.id]);
       });
     Promise.allSettled(stockWrites).then(results => {
       const failed = results.filter(r => r.status === 'rejected').length;
-      if (failed > 0) console.warn('[Devoluciones] ' + failed + ' stock patch(es) failed — data safe in localStorage');
+      if (failed > 0) console.warn('[Devoluciones] ' + failed + ' patchWithLock(s) failed — data safe in localStorage');
     });
     const dev={id:crypto.randomUUID(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
       ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
       items:itemsDevueltos,estado:"procesada",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
     const upd=[dev,...devoluciones];
-    setDevoluciones(upd);LS.set("aryes-devoluciones",upd);
+    setDevoluciones(upd);
+    // Persist to Supabase devoluciones table (non-blocking)
+    db.insert('devoluciones',{
+      id:              dev.id,
+      nro_devolucion:  dev.nroDevolucion,
+      venta_id:        dev.ventaId||null,
+      cliente_nombre:  dev.clienteNombre,
+      motivo:          dev.motivo,
+      notas:           dev.notas||'',
+      items:           dev.items,
+      estado:          dev.estado,
+      fecha:           dev.fecha||null,
+      creado_en:       dev.creadoEn,
+    }).catch(e=>{
+      console.warn('[DevolucionesTab] insert failed:',e?.message||e);
+      setMsg('⚠ Devolucion guardada localmente — no se sincronizó con el servidor. Datos seguros.');
+      setTimeout(()=>setMsg(''),6000);
+    });
     setVista("lista");
     setMsg("Devolucion "+dev.nroDevolucion+" procesada. Stock actualizado para items aprobados.");
     setTimeout(()=>setMsg(""),5000);

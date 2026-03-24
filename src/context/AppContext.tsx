@@ -7,7 +7,7 @@ import { LS, db, SB_URL, SKEY } from '../lib/constants.js';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
-              Venta, Cfe, Cobro, Cliente, Lote } from '../types.js';
+              Venta, Cfe, Cobro, Cliente, Lote, Devolucion } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -44,6 +44,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [cobros,    setCobros]    = useState<Cobro[]>(() => LS.get('aryes-cobros',       []));
   const [clientes,  setClientes]  = useState<Cliente[]>(() => LS.get('aryes-clients',     []));
   const [lotes,     setLotes]     = useState<Lote[]>(() => LS.get('aryes-lots',          []));
+  const [devoluciones, setDevoluciones] = useState<Devolucion[]>(() => LS.get('aryes-devoluciones', []));
   const [plans,     setPlans]     = useState<Plans>(() => LS.get('aryes7-plans',     {}));
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
@@ -69,6 +70,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes-cobros',      cobros),    [cobros]);
   useEffect(() => LS.set('aryes-clients',     clientes),  [clientes]);
   useEffect(() => LS.set('aryes-lots',         lotes),     [lotes]);
+  useEffect(() => LS.set('aryes-devoluciones', devoluciones), [devoluciones]);
   useEffect(() => LS.set('aryes9-notified',  notified),  [notified]);
 
   // ── JWT auto-refresh 5 min before expiry ───────────────────────────────────
@@ -189,6 +191,17 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             notas: r.notas||'', creadoEn: r.creado_en||'',
           }));
           setLotes(mappedLotes); // reactive — LS.set handled by useEffect
+        }
+        // Load devoluciones from Supabase
+        const sbDevs = await db.get<Record<string, any>[]>('devoluciones?order=creado_en.desc&limit=500');
+        if (sbDevs?.length > 0) {
+          const mappedDevs: Devolucion[] = sbDevs.map(r => ({
+            id: r.id, nroDevolucion: r.nro_devolucion||'', ventaId: r.venta_id||'',
+            clienteNombre: r.cliente_nombre||'', motivo: r.motivo||'',
+            notas: r.notas||'', items: r.items||[], estado: r.estado||'procesada',
+            fecha: r.fecha||'', creadoEn: r.creado_en||'',
+          }));
+          setDevoluciones(mappedDevs); // reactive — LS.set handled by useEffect
         }
         const sbRecs = await db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500');
         if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
@@ -460,6 +473,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     cobros, setCobros,
     clientes, setClientes,
     lotes, setLotes,
+    devoluciones, setDevoluciones,
     suppliers, setSuppliers,
     movements, setMovements,
     orders, setOrders,
