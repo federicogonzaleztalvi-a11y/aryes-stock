@@ -2,7 +2,7 @@
 import React, { useState, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx';
-import { AppProvider } from './context/AppContext.jsx';
+import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';

@@ -39,7 +39,7 @@ import ExcelModal from './components/ExcelModal.jsx';
 import CameraScanner from './components/CameraScanner.jsx';
 import EmailSettings from './components/EmailSettings.jsx';
 import UserMenuDropdown from './components/UserMenuDropdown.jsx';
-import { useApp } from './context/AppContext.jsx';
+import { useApp } from './context/AppContext.tsx';
 import { useConfirm } from './components/ConfirmDialog.jsx';
 import TabLoader from './components/TabLoader.jsx';
 

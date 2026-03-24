@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "^4.1.1",
     "eslint": "^9.39.4",
@@ -25,6 +27,7 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^15.15.0",
     "jsdom": "^29.0.1",
+    "typescript": "^6.0.2",
     "vite": "^4.4.0",
     "vitest": "^4.1.1"
   },

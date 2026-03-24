@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // ── Language ────────────────────────────────────────────────────────────
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    // ── JSX ─────────────────────────────────────────────────────────────────
+    "jsx": "react-jsx",
+
+    // ── Interop ─────────────────────────────────────────────────────────────
+    // allowJs + allowImportingTsExtensions: .tsx files can import .jsx and vice versa.
+    // This is the safe migration path — the compiler sees all files but only
+    // type-checks the .ts/.tsx ones. Existing .jsx files continue to work as-is.
+    "allowJs": true,
+    "checkJs": false,
+
+    // ── Strictness (applied only to .ts/.tsx files) ──────────────────────
+    // Start with the most useful strict checks without going full strict.
+    // noImplicitAny: forces explicit types on new code — the biggest ROI.
+    // strictNullChecks: catches null/undefined bugs before they hit runtime.
+    // We avoid strict:true for now to keep the migration manageable.
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+
+    // ── Output ───────────────────────────────────────────────────────────────
+    // noEmit: Vite handles transpilation; tsc is used only for type checking.
+    "noEmit": true,
+    "isolatedModules": true,
+
+    // ── Paths ────────────────────────────────────────────────────────────────
+    // ── Skip type checking of node_modules ──────────────────────────────────
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "api/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.*"
+  ]
+}
