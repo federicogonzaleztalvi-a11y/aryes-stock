@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { LS, db } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
+import { LS } from '../../lib/constants.js';
 
 // ── Lotes Tab ────────────────────────────────────────────────────────────
-// eslint-disable-next-line no-unused-vars
+ 
 const LotsTab=({products,session})=>{
   const [lots,setLots]=useState(()=>LS.get('aryes-lots',[]));
   const [filter,setFilter]=useState('all');
@@ -105,6 +104,6 @@ const LotsTab=({products,session})=>{
 };
 
 // ── Excel Importer Tab ───────────────────────────────────────────────────
-// eslint-disable-next-line no-unused-vars
+ 
 
 export { LotsTab };

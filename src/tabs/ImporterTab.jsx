@@ -21,7 +21,7 @@ import { LOVABLE_CATALOG, IMP_BRAND_COLORS, IMP_SUP_LABEL, IMP_SUP_COLOR } from 
 export { LOVABLE_CATALOG, IMP_BRAND_COLORS, IMP_SUP_LABEL, IMP_SUP_COLOR };
 
 function ImporterTab({onDone}){
-  const { confirm, ConfirmDialog } = useConfirm();
+  const { ConfirmDialog } = useConfirm();
   const [step,setStep]=useState("select");
   const [sel,setSel]=useState(()=>Object.fromEntries(LOVABLE_CATALOG.map(p=>[p.id,true])));
   const [fb,setFb]=useState("all");
@@ -211,6 +211,6 @@ function ImporterTab({onDone}){
 }
 
 
-// eslint-disable-next-line no-unused-vars
+ 
 
 export default ImporterTab;

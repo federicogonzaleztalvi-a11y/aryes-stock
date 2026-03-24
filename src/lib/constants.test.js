@@ -64,7 +64,7 @@ describe('patchWithLock', () => {
   beforeEach(async () => {
     // Reset fetch mock before each test
     fetchMock = vi.fn();
-    global.fetch = fetchMock;
+    globalThis.fetch = fetchMock;
 
     // Re-import db fresh so it uses the mocked fetch
     // (vitest module cache is reset via vi.resetModules if needed)

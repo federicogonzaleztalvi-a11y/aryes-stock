@@ -1,6 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState } from 'react';
 import { LS } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
 
 // ── Email Alerts via EmailJS ─────────────────────────────────────────────
 const sendLowStockAlert = async (product, currentStock) => {
@@ -59,7 +59,7 @@ const sendDailyAlertSummary = async (lowStockProducts) => {
 };
 
 // ── Email Config Tab ─────────────────────────────────────────────────────
-// eslint-disable-next-line no-unused-vars
+ 
 const EmailConfigTab=({products,session})=>{
   const [cfg,setCfg]=useState(()=>LS.get('aryes-email-config',{serviceId:'',templateId:'',publicKey:'',toEmail:''}));
   const [msg,setMsg]=useState('');

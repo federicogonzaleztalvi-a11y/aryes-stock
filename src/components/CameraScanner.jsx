@@ -45,7 +45,7 @@ const CameraScanner = ({ onDetected, onClose }) => {
         readerRef.current = codeReader;
         setStatus("scanning");
 
-        codeReader.decodeFromVideoElement(videoRef.current, (result, err) => {
+        codeReader.decodeFromVideoElement(videoRef.current, (result, _err) => {
           if (cancelled) return;
           if (result) {
             const text = result.getText();
@@ -75,6 +75,7 @@ const CameraScanner = ({ onDetected, onClose }) => {
       readerRef.current?.reset?.();
       streamRef.current?.getTracks().forEach(t => t.stop());
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: scanner starts once on mount; onDetected is a stable callback ref
   }, []);
 
   return (

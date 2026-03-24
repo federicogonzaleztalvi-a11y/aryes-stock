@@ -92,7 +92,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
         }
       } catch { /* offline */ }
     })();
-  }, [session?.role]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session?.role]);  
 
   // ── Load operational data (movements, ventas, recepciones) ────────────────
   useEffect(() => {
@@ -116,6 +116,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
         if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
       } catch (e) { console.warn('[AppContext] operational load failed', e); }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when role changes, not on every JWT refresh
   }, [session?.role]);
 
   // ── Initial full sync from Supabase ───────────────────────────────────────

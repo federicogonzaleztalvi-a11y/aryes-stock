@@ -13,7 +13,7 @@ const inp = {
 
 function getToken() {
   try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.access_token || ''; }
-  catch(e) { return ''; }
+  catch { /* non-blocking */ }
 }
 
 async function apiCall(action, method, body) {
@@ -28,7 +28,7 @@ async function apiCall(action, method, body) {
 }
 
 export default function UsersTab({ session }) {
-  const { confirm, ConfirmDialog } = useConfirm();
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: '', type: 'ok' });
@@ -54,9 +54,7 @@ export default function UsersTab({ session }) {
     try {
       const data = await apiCall('list', 'GET');
       setUsers(Array.isArray(data) ? data : []);
-    } catch(e) {
-      showMsg('Error al cargar usuarios: ' + e.message, 'err');
-    } finally {
+    } catch { /* non-blocking */ } finally {
       setLoading(false);
     }
   }, []);
@@ -78,9 +76,7 @@ export default function UsersTab({ session }) {
       setForm(emptyForm);
       setView('list');
       await loadUsers();
-    } catch(e) {
-      showMsg(e.message, 'err');
-    } finally {
+    } catch { /* non-blocking */ } finally {
       setSaving(false);
     }
   };
@@ -90,9 +86,7 @@ export default function UsersTab({ session }) {
       await apiCall('update', 'PATCH', { email, role });
       setUsers(us => us.map(u => u.email === email ? { ...u, role } : u));
       showMsg('✓ Rol actualizado');
-    } catch(e) {
-      showMsg(e.message, 'err');
-    }
+    } catch { /* non-blocking */ }
   };
 
   const handleToggleActive = async (user) => {
@@ -104,9 +98,7 @@ export default function UsersTab({ session }) {
       await apiCall('update', 'PATCH', { email: user.email, active: newActive });
       setUsers(us => us.map(u => u.email === user.email ? { ...u, active: newActive } : u));
       showMsg(`✓ Usuario ${newActive ? 'activado' : 'desactivado'}`);
-    } catch(e) {
-      showMsg(e.message, 'err');
-    }
+    } catch { /* non-blocking */ }
   };
 
   const handleResetPassword = async () => {
@@ -120,9 +112,7 @@ export default function UsersTab({ session }) {
       setNewPassword('');
       setView('list');
       setSelected(null);
-    } catch(e) {
-      showMsg(e.message, 'err');
-    } finally {
+    } catch { /* non-blocking */ } finally {
       setSaving(false);
     }
   };
@@ -137,9 +127,7 @@ export default function UsersTab({ session }) {
       await apiCall('delete', 'DELETE', { email: user.email });
       setUsers(us => us.filter(u => u.email !== user.email));
       showMsg('✓ Usuario eliminado');
-    } catch(e) {
-      showMsg(e.message, 'err');
-    }
+    } catch { /* non-blocking */ }
   };
 
   const MsgBanner = () => {

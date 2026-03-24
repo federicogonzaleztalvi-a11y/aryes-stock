@@ -145,9 +145,9 @@ function RecepcionTab(){
         diferencias: rec.diferencias||0,
         creado_en: rec.creadoEn,
       });
-    }catch(e){ console.warn('[Stock] rec SB insert failed',e); }
+    }catch { /* non-blocking */ }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'recepcion',detail:JSON.stringify({id:rec.id,proveedor:rec.proveedor,items:rec.items?.length||0,diferencias:rec.diferencias})}); }catch(e){ console.warn('[Stock] audit log failed',e); }
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch { /* non-blocking */ }})(),action:'recepcion',detail:JSON.stringify({id:rec.id,proveedor:rec.proveedor,items:rec.items?.length||0,diferencias:rec.diferencias})}); }catch { /* non-blocking */ }
 
 
     setMsg('Recepcion confirmada. Stock actualizado.');

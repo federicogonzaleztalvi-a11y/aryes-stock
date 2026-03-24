@@ -136,7 +136,7 @@ function ConteoTab(){
         <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial de conteos</div>
           {conteos.length===0?(<div style={{color:"#888",fontSize:13,textAlign:"center",padding:"20px 0"}}>Sin conteos previos</div>):(
-            conteos.slice(0,5).map((c,i)=>{
+            conteos.slice(0,5).map((c,_i)=>{
               const difs=c.items?.filter(it=>it.cantFisica!==null&&it.diferencia!==0).length||0;
               return(<div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #f3f4f6"}}>
                 <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{c.fecha}</div><div style={{fontSize:11,color:"#888"}}>{c.items?.filter(it=>it.cantFisica!==null).length||0} contados</div></div>

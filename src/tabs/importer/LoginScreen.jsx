@@ -14,7 +14,7 @@ const LoginScreen=({onLogin})=>{
       if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setBusy(false);return;}
       const m=d.user.user_metadata||{};
       onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token,refresh_token:d.refresh_token,expires_in:d.expires_in||3600});
-    }catch(e){setErr("Error de conexion");}
+    }catch {setErr("Error de conexion");}
     setBusy(false);
   };
   const inp={width:"100%",padding:"11px 14px",border:"2px solid #e5e7eb",borderRadius:8,fontSize:14,fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
@@ -41,6 +41,6 @@ const LoginScreen=({onLogin})=>{
   </div>);
 };
 
-// eslint-disable-next-line no-unused-vars
+ 
 
 export { LoginScreen };

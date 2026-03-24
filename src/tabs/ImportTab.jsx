@@ -8,8 +8,7 @@ function ImportTab(){
   const [preview,setPreview]=useState([]);
   const [msg,setMsg]=useState('');
   const [importing,setImporting]=useState(false);
-  const [mode,setMode]=useState('csv');
-
+  
   const parseCSV=(text)=>{
     const lines=text.split('\n').filter(l=>l.trim());
     if(lines.length<2)return[];

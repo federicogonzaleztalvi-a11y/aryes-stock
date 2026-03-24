@@ -4,7 +4,6 @@ import { LS } from '../lib/constants.js';
 function TransferenciasTab(){
   const G="#3a7d1e";
   const [prods]=useState(()=>LS.get("aryes6-products",[]));
-  const [ubicaciones]=useState(()=>LS.get("aryes-ubicaciones",[]));
   const [deposito]=useState(()=>LS.get("aryes-deposito",{}));
   const [transfers,setTransfers]=useState(()=>LS.get("aryes-transfers",[]));
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});

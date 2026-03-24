@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { LS, db } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
 
-// eslint-disable-next-line no-unused-vars
+ 
 const ClientsTab=({products,session})=>{
   const [clients,setClients]=useState(()=>LS.get('aryes-clients',[]));
   const [editing,setEditing]=useState(null);

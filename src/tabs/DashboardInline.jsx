@@ -1,6 +1,5 @@
 import React from 'react';
-import { tfCols } from '../lib/constants.js';
-import { T, ALERT_CFG, Cap, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
+import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 import SetupChecklist from '../components/SetupChecklist.jsx';
 
 const F = {
@@ -10,17 +9,8 @@ const F = {
 };
 
 const fmtUSD  = n => n>=1000?`USD ${(n/1000).toFixed(1)}k`:`USD ${n.toFixed(0)}`;
-const fmtDays = n => n>=999?'∞':`${n}d`;
 const fmtMoney= (n,c='UYU')=>`${c==='UYU'?'$':c==='USD'?'US$':'€'} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
 
-function MiniBar({ value, max, color }) {
-  const pct = max>0?Math.min((value/max)*100,100):0;
-  return (
-    <div style={{height:4,background:'#f0f0ec',borderRadius:2,overflow:'hidden',marginTop:6}}>
-      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:2,transition:'width .4s ease'}}/>
-    </div>
-  );
-}
 
 function Sparkline({ data=[], color=T.green, height=32, width=80 }) {
   if (data.length < 2) return null;
@@ -85,10 +75,10 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
   // ── Billing metrics (from localStorage) ──────────────────────────────────
   const cfes = React.useMemo(()=>{
-    try{ return JSON.parse(localStorage.getItem('aryes-cfe')||'[]'); }catch(e){ return []; }
+    try{ return JSON.parse(localStorage.getItem('aryes-cfe')||'[]'); }catch{ return []; }
   },[]);
   const cobros = React.useMemo(()=>{
-    try{ return JSON.parse(localStorage.getItem('aryes-cobros')||'[]'); }catch(e){ return []; }
+    try{ return JSON.parse(localStorage.getItem('aryes-cobros')||'[]'); }catch{ return []; }
   },[]);
 
   const deudaTotal = cfes
@@ -164,8 +154,6 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   };
 
   // ── Billing bar chart (last 6 months) ──────────────────────────────────────
-  const MONTH_LABELS = ['6m','5m','4m','3m','2m','1m','hoy'];
-  const maxFac = Math.max(...facSpark,1);
 
   return (
     <div className="au" style={{display:'grid',gap:24,fontFamily:F.sans}}>
@@ -259,7 +247,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           <SectionHeader title="Acciones requeridas" action={()=>setTab('inventory')} actionLabel="Ver inventario"/>
           {alerts.length>0?(
             <div style={{display:'grid',gap:1,background:'#e2e2de',borderRadius:10,overflow:'hidden'}}>
-              {alerts.slice(0,6).map(({id,name,stock,unit,sup,alert})=>{
+              {alerts.slice(0,6).map(({id,name,stock, _unit,sup,alert})=>{
                 const ropDate=new Date(); ropDate.setDate(ropDate.getDate()+alert.daysToROP);
                 return(
                   <div key={id} style={{background:'#fff',padding:'12px 16px',display:'flex',

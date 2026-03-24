@@ -312,14 +312,14 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
         { key: 'brandcfg', value: brandToSave, updated_at: new Date().toISOString() },
         'key'
       );
-    } catch (e) { /* non-blocking */ }
+    } catch { /* non-blocking */ }
     // Also save company info to app_config
     try {
       await db.upsert('app_config',
         { key: 'companycfg', value: company, updated_at: new Date().toISOString() },
         'key'
       );
-    } catch (e) { /* non-blocking */ }
+    } catch { /* non-blocking */ }
   };
 
   const saveSupplierData = async () => {
@@ -339,7 +339,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
     const existing = LS.get('aryes6-suppliers', []);
     LS.set('aryes6-suppliers', [...existing, { ...supData, id, paymentTerms: '30', paymentMethod: '' }]);
     setSavedSuppliers(s => [...s, { id, name: supplier.name }]);
-    try { await db.upsert('suppliers', supData); } catch (e) { /* non-blocking */ }
+    try { await db.upsert('suppliers', supData); } catch { /* non-blocking */ }
     return id;
   };
 
@@ -369,7 +369,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
       unit: prod.unit, stock: prod.stock, unitCost: prod.unit_cost,
       minStock: prod.min_stock, history: [],
     }]);
-    try { await db.upsert('products', prod, 'uuid'); } catch (e) { /* non-blocking */ }
+    try { await db.upsert('products', prod, 'uuid'); } catch { /* non-blocking */ }
   };
 
   const createUser = async () => {
@@ -394,7 +394,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
         return false;
       }
       return true;
-    } catch (e) {
+    } catch {
       setUserError('Error de conexión. Podés crear el usuario desde Config → Usuarios.');
       return false;
     }

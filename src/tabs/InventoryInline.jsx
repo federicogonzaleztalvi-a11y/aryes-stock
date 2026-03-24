@@ -1,7 +1,7 @@
 import React from 'react';
-import { T, Cap, Btn, AlertPill, StockBar, Spark, totalLead , downloadCSV } from '../lib/ui.jsx';
+import { T, Btn, AlertPill, StockBar, Spark, totalLead , downloadCSV } from '../lib/ui.jsx';
 
-export default function InventoryInline({products, enriched, setModal, setEditProd, setProducts, deleteProduct}) {
+export default function InventoryInline({products, enriched, setModal, setEditProd, _setProducts, deleteProduct}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>

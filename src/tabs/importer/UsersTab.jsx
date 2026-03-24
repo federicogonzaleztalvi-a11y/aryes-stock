@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { LS } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
-import { useConfirm } from '../../components/ConfirmDialog.jsx';
-import { USERS, SB_KEY } from './catalog-data.js';
+import { USERS } from './catalog-data.js';
 
 const UsersTab=({session})=>{
   const [users,setUsers]=useState(()=>LS.get('aryes-users',USERS));

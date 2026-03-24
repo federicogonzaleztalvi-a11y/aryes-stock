@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { db, LS } from "./lib/constants.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,7 +37,6 @@ import ProductForm from './components/ProductForm.jsx';
 import OrderModal from './components/OrderModal.jsx';
 import ExcelModal from './components/ExcelModal.jsx';
 import CameraScanner from './components/CameraScanner.jsx';
-import ManualMovModal from './components/ManualMovModal.jsx';
 import EmailSettings from './components/EmailSettings.jsx';
 import UserMenuDropdown from './components/UserMenuDropdown.jsx';
 import { useApp } from './context/AppContext.jsx';
@@ -122,14 +121,6 @@ const T = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic logo fallback — replaced by brandCfg.logoUrl when configured
-const AppLogoFallback = ({ height = 52 }) => (
-  <div style={{height,display:'flex',alignItems:'center',justifyContent:'center',
-    background:'#f0f7ec',borderRadius:8,padding:'0 12px',
-    fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:700,color:'#3a7d1e',letterSpacing:'-0.02em'}}>
-    STOCK
-  </div>
-);
-
 
 const avgDaily   = h => (!h?.length ? 0 : h.reduce((s,x)=>s+x.consumed,0)/h.length/30);
 const stdDev     = h => {
@@ -161,10 +152,6 @@ const alertLevel = (p, s) => {
 // DEFAULT DATA
 // ─────────────────────────────────────────────────────────────────────────────
 
-const gh=(base,v)=>Array.from({length:6},(_,i)=>{
-  const d=new Date();d.setMonth(d.getMonth()-(5-i));
-  return{month:d.toISOString().slice(0,7),consumed:Math.max(1,Math.round(base*(1+(Math.random()-.5)*v)))};
-});
 
 
 const ALERT_CFG = {
@@ -175,7 +162,6 @@ const ALERT_CFG = {
 };
 
 const fmtDate  = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"}):"—";
-const fmtShort = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short"}):"—";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ATOMS
@@ -207,17 +193,7 @@ const StockBar = ({stock,r,ss,max})=>{
   );
 };
 
-const Spark = ({history,color=T.textXs})=>{
-  if(!history?.length||history.length<2) return <span style={{fontSize:10,color:T.textXs}}>—</span>;
-  const v=history.map(h=>h.consumed),mx=Math.max(...v),mn=Math.min(...v),W=60,H=20;
-  const pts=v.map((x,i)=>`${i/(v.length-1)*W},${H-((mx===mn?.5:(x-mn)/(mx-mn))*(H-3))-1.5}`).join(" ");
-  return(<svg width={W} height={H}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" opacity=".7"/>
-    <circle cx={(v.length-1)/(v.length-1)*W} cy={H-((mx===mn?.5:(v[v.length-1]-mn)/(mx-mn))*(H-3))-1.5} r="2.5" fill={color}/></svg>);
-};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FORM ATOMS
-// ─────────────────────────────────────────────────────────────────────────────
 const inp={width:"100%",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4};
 const Inp=({value,onChange,type="text",placeholder,min,step,style:sx,inputRef,onKeyDown,autoFocus})=>(
   <input ref={inputRef} type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} step={step} onKeyDown={onKeyDown} autoFocus={autoFocus} style={{...inp,...sx}}/>
@@ -510,7 +486,7 @@ const SupplierForm = ({ supplier, onSave, onClose }) => {
           <Cap>Total: {Object.values(f.times).reduce((a,b)=>a+b,0)} días</Cap>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-          {tfs.map(([k,l],i)=>(
+          {tfs.map(([k,l],_i)=>(
             <Field key={k} label={l}>
               <div style={{display:"flex",gap:6,alignItems:"center",marginTop:4}}>
                 <Inp type="number" min="0" value={f.times[k]} onChange={e=>setTime(k,e.target.value)} style={{textAlign:"center"}}/>
@@ -630,9 +606,9 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             {tfs.map(([k],i)=><div key={k} style={{flex:supplier.times[k]||0.1,background:tfCols[i]}}/>)}
           </div>
           <div style={{display:"flex",gap:2,marginTop:6}}>
-            {tfs.map(([k,l],i)=>(
+            {tfs.map(([k,l],_i)=>(
               <div key={k} style={{flex:supplier.times[k]||0.1}}>
-                <div style={{fontFamily:T.sans,fontSize:9,fontWeight:700,color:tfCols[i]}}>{l}</div>
+                <div style={{fontFamily:T.sans,fontSize:9,fontWeight:700,color:tfCols[_i]}}>{l}</div>
                 <div style={{fontFamily:T.sans,fontSize:11,color:T.textSm,fontWeight:600}}>{supplier.times[k]}d</div>
               </div>
             ))}
@@ -705,676 +681,12 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Months helper
-const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-
-const getNextMonths = (n=6) => {
-  const out = [];
-  const d = new Date();
-  for(let i=0;i<n;i++){
-    const m = new Date(d.getFullYear(), d.getMonth()+i, 1);
-    out.push({ key: m.toISOString().slice(0,7), label: MONTHS_ES[m.getMonth()]+" "+m.getFullYear().toString().slice(2) });
-  }
-  return out;
-};
-
-const SEASON_PRESETS = [
-  { id:"none",    label:"Sin ajuste",      mult:1.0 },
-  { id:"low",     label:"Temporada baja",  mult:0.7 },
-  { id:"normal",  label:"Normal",          mult:1.0 },
-  { id:"high",    label:"Temporada alta",  mult:1.3 },
-  { id:"peak",    label:"Pico (diciembre/SS)", mult:1.6 },
-];
-
-const SeasonBadge = ({ mult }) => {
-  const cfg = mult >= 1.5 ? {c:"#92400e",bg:"#fffbeb",bd:"#fde68a",l:"Pico"} :
-              mult >= 1.2 ? {c:"#166534",bg:"#f0fdf4",bd:"#bbf7d0",l:"Alta"} :
-              mult <= 0.8 ? {c:"#1e40af",bg:"#eff6ff",bd:"#bfdbfe",l:"Baja"} :
-                            {c:T.textSm,bg:T.muted,bd:T.border,l:"Normal"};
-  return <span style={{fontFamily:T.sans,fontSize:10,fontWeight:700,color:cfg.c,background:cfg.bg,border:`1px solid ${cfg.bd}`,padding:"2px 7px",borderRadius:2}}>{cfg.l} ×{mult}</span>;
-};
-
-// Main planning view
-const PlanningView = ({ products, suppliers, orders, plans, setPlans }) => {
-  const months = getNextMonths(6);
-  const [selProduct, setSelProduct] = useState(products[0]?.id || null);
-  const [viewMode, setViewMode]     = useState("product"); // "product" | "summary"
-
-  const getSup = id => suppliers.find(s=>s.id===id);
-
-  // Get or init plan for a product
-  const getPlan = (pid) => plans[pid] || {
-    months: Object.fromEntries(months.map(m=>[m.key,{mult:1.0,manualQty:null}])),
-    coverageMonths: 2,
-  };
-
-  const updateMonth = (pid, monthKey, field, val) => {
-    setPlans(p => {
-      const plan = getPlan(pid);
-      return { ...p, [pid]: { ...plan, months: { ...plan.months, [monthKey]: { ...(plan.months[monthKey]||{}), [field]: val } } } };
-    });
-  };
-
-  const updateCoverage = (pid, val) => {
-    setPlans(p => { const plan = getPlan(pid); return { ...p, [pid]: { ...plan, coverageMonths: val } }; });
-  };
-
-  // Calculate projected demand for a product in a month
-  const projectedDemand = (product, monthKey) => {
-    const base = avgDaily(product.history) * 30;
-    const plan = getPlan(product.id);
-    const m = plan.months[monthKey] || {};
-    if(m.manualQty !== null && m.manualQty !== undefined && m.manualQty !== "") return +m.manualQty;
-    return Math.ceil(base * (m.mult || 1.0));
-  };
-
-  // How much to order considering lead time and coverage target
-  const calcOrderQty = (product) => {
-    const sup = getSup(product.supplierId);
-    const lead = totalLead(sup);
-    const plan = getPlan(product.id);
-    const coverage = plan.coverageMonths || 2;
-
-    // Total projected demand over lead + coverage period
-    const totalDays = lead + coverage * 30;
-    const dailyBase = avgDaily(product.history);
-
-    // Sum projected monthly demand for coverage window
-    let projected = 0;
-    for(let i=0; i<coverage; i++) {
-      const mkey = months[i]?.key;
-      if(mkey) projected += projectedDemand(product, mkey);
-      else projected += dailyBase * 30;
-    }
-    // Add safety stock
-    const ss = safetyStock(product.history, lead);
-    const needed = projected + ss;
-    return Math.max(0, Math.ceil(needed - product.stock));
-  };
-
-  // Total projected cost for all products needing order
-  const allProductsWithOrders = useMemo(() => {
-    return products.map(p => {
-      const sup = getSup(p.supplierId);
-      const plan = getPlan(p.id);
-      const qtyNeeded = calcOrderQty(p);
-      const projections = months.map(m => projectedDemand(p, m.key));
-      const totalProjected = projections.reduce((a,b)=>a+b,0);
-      return { ...p, sup, plan, qtyNeeded, projections, totalProjected };
-    });
-  }, [products, plans, suppliers]);
-
-  const needsOrder = allProductsWithOrders.filter(p=>p.qtyNeeded>0);
-  const totalOrderCost = needsOrder.reduce((s,p)=>s+(p.qtyNeeded*(p.unitCost||0)),0);
-
-  const selectedProduct = allProductsWithOrders.find(p=>p.id===selProduct);
-  const selPlan = selectedProduct ? getPlan(selectedProduct.id) : null;
-
-  return (
-    <div style={{display:"grid",gap:28}}>
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
-        <div>
-          <Cap style={{color:T.green}}>Proyección</Cap>
-          <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>
-            Planificación · próximos 6 meses
-          </h1>
-          <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm,marginTop:6,lineHeight:1.6}}>
-            Ajustá la demanda esperada por mes, definí temporadas altas y bajas, y el sistema calcula exactamente cuánto pedir de cada producto.
-          </p>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          {["product","summary"].map(m=>(
-            <button key={m} onClick={()=>setViewMode(m)}
-              style={{padding:"8px 16px",fontFamily:T.sans,fontSize:12,fontWeight:600,cursor:"pointer",borderRadius:4,
-                background:viewMode===m?T.green:"transparent",color:viewMode===m?"#fff":T.textSm,
-                border:`1px solid ${viewMode===m?T.green:T.border}`}}>
-              {m==="product"?"Por producto":"Resumen general"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── PRODUCT VIEW ── */}
-      {viewMode==="product" && (
-        <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:16,alignItems:"start"}}>
-          {/* Product list sidebar */}
-          <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden",background:T.card,position:"sticky",top:20}}>
-            <div style={{padding:"10px 14px",background:T.muted,borderBottom:`1px solid ${T.border}`}}><Cap>Productos</Cap></div>
-            {allProductsWithOrders.map(p=>(
-              <button key={p.id} onClick={()=>setSelProduct(p.id)}
-                style={{width:"100%",textAlign:"left",padding:"10px 14px",background:selProduct===p.id?T.greenBg:"transparent",
-                  border:"none",borderLeft:selProduct===p.id?`3px solid ${T.green}`:"3px solid transparent",
-                  borderBottom:`1px solid ${T.border}`,cursor:"pointer"}}>
-                <div style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:selProduct===p.id?T.green:T.text}}>{p.name}</div>
-                <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
-                  <span style={{fontFamily:T.sans,fontSize:10,color:T.textXs}}>[{p.sup?.flag}] {p.sup?.name}</span>
-                  {p.qtyNeeded>0 && <span style={{fontFamily:T.sans,fontSize:10,fontWeight:700,color:T.danger}}>+{p.qtyNeeded} {p.unit}</span>}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Product detail planner */}
-          {selectedProduct && selPlan && (
-            <div style={{display:"grid",gap:16}}>
-              {/* Product header */}
-              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"18px 22px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-                  <div>
-                    <Cap style={{color:T.green}}>[{selectedProduct.sup?.flag}] {selectedProduct.sup?.name} · Lead {totalLead(selectedProduct.sup)}d</Cap>
-                    <h2 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.text,marginTop:4}}>{selectedProduct.name}</h2>
-                    <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
-                      <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Stock actual: <strong>{selectedProduct.stock} {selectedProduct.unit}</strong></span>
-                      <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Consumo histórico prom.: <strong>{Math.round(avgDaily(selectedProduct.history)*30)} {selectedProduct.unit}/mes</strong></span>
-                      <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Costo unit.: <strong>{selectedProduct.currency||"USD"} {selectedProduct.unitCost}</strong></span>
-                    </div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <Cap>Cobertura objetivo</Cap>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
-                      <input type="range" min="1" max="6" value={selPlan.coverageMonths||2}
-                        onChange={e=>updateCoverage(selectedProduct.id,+e.target.value)}
-                        style={{width:100}}/>
-                      <span style={{fontFamily:T.serif,fontSize:24,fontWeight:500,color:T.green,minWidth:60}}>{selPlan.coverageMonths||2} mes{(selPlan.coverageMonths||2)>1?"es":""}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Monthly projections table */}
-              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
-                <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <Cap>Demanda proyectada mes a mes</Cap>
-                  <Cap style={{color:T.textXs}}>Base histórica: {Math.round(avgDaily(selectedProduct.history)*30)} {selectedProduct.unit}/mes · Editá cualquier celda para sobreescribir</Cap>
-                </div>
-                <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse"}}>
-                    <thead>
-                      <tr style={{borderBottom:`1px solid ${T.border}`}}>
-                        <th style={{padding:"10px 14px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,minWidth:100}}>Mes</th>
-                        <th style={{padding:"10px 14px",textAlign:"center",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm}}>Temporada</th>
-                        <th style={{padding:"10px 14px",textAlign:"center",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm}}>Multiplicador</th>
-                        <th style={{padding:"10px 14px",textAlign:"center",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm}}>Qty manual</th>
-                        <th style={{padding:"10px 14px",textAlign:"right",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm}}>Proyectado</th>
-                        <th style={{padding:"10px 14px",textAlign:"right",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm}}>Costo est.</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {months.map((m,i) => {
-                        const mdata = selPlan.months[m.key] || {};
-                        const isManual = mdata.manualQty !== null && mdata.manualQty !== undefined && mdata.manualQty !== "";
-                        const projected = projectedDemand(selectedProduct, m.key);
-                        const cost = projected * (selectedProduct.unitCost||0);
-                        const mult = mdata.mult || 1.0;
-                        return (
-                          <tr key={m.key} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.card:T.cardWarm}}>
-                            <td style={{padding:"11px 14px"}}>
-                              <div style={{fontFamily:T.sans,fontSize:13,fontWeight:600,color:T.text}}>{m.label}</div>
-                              {i < (selPlan.coverageMonths||2) && (
-                                <div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:2}}>● en cobertura objetivo</div>
-                              )}
-                            </td>
-                            <td style={{padding:"11px 14px",textAlign:"center"}}>
-                              <select value={isManual?"manual":SEASON_PRESETS.find(p=>p.mult===mult)?.id||"normal"}
-                                onChange={e=>{
-                                  if(e.target.value==="manual") return;
-                                  const preset = SEASON_PRESETS.find(p=>p.id===e.target.value);
-                                  updateMonth(selectedProduct.id, m.key, "mult", preset?.mult||1.0);
-                                  updateMonth(selectedProduct.id, m.key, "manualQty", null);
-                                }}
-                                style={{fontFamily:T.sans,fontSize:11,border:`1px solid ${T.border}`,borderRadius:3,padding:"4px 6px",background:T.card,color:T.text,cursor:"pointer"}}>
-                                {SEASON_PRESETS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
-                                {isManual && <option value="manual">Manual</option>}
-                              </select>
-                            </td>
-                            <td style={{padding:"11px 14px",textAlign:"center"}}>
-                              {!isManual ? <SeasonBadge mult={mult}/> : <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs,fontStyle:"italic"}}>manual</span>}
-                            </td>
-                            <td style={{padding:"11px 14px",textAlign:"center"}}>
-                              <input type="number" min="0"
-                                value={isManual ? mdata.manualQty : ""}
-                                placeholder={String(Math.ceil(avgDaily(selectedProduct.history)*30*(mult||1)))}
-                                onChange={e=>updateMonth(selectedProduct.id, m.key, "manualQty", e.target.value===""?null:+e.target.value)}
-                                style={{width:80,fontFamily:T.sans,fontSize:12,border:`1px solid ${isManual?T.green:T.border}`,borderRadius:3,padding:"5px 8px",textAlign:"center",background:isManual?T.greenBg:T.card,color:isManual?T.green:T.text}}/>
-                            </td>
-                            <td style={{padding:"11px 14px",textAlign:"right"}}>
-                              <span style={{fontFamily:T.serif,fontSize:16,fontWeight:500,color:T.text}}>{projected}</span>
-                              <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginLeft:4}}>{selectedProduct.unit}</span>
-                            </td>
-                            <td style={{padding:"11px 14px",textAlign:"right"}}>
-                              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>USD {cost.toFixed(0)}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{borderTop:`2px solid ${T.border}`,background:T.muted}}>
-                        <td colSpan={4} style={{padding:"12px 14px",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.text}}>Total proyectado 6 meses</td>
-                        <td style={{padding:"12px 14px",textAlign:"right",fontFamily:T.serif,fontSize:18,fontWeight:600,color:T.text}}>
-                          {selectedProduct.projections.reduce((a,b)=>a+b,0)} {selectedProduct.unit}
-                        </td>
-                        <td style={{padding:"12px 14px",textAlign:"right",fontFamily:T.sans,fontSize:13,fontWeight:600,color:T.text}}>
-                          USD {(selectedProduct.projections.reduce((a,b)=>a+b,0)*(selectedProduct.unitCost||0)).toFixed(0)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-
-              {/* Visual bar chart */}
-              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"16px 20px"}}>
-                <Cap>Proyección visual</Cap>
-                <div style={{display:"flex",gap:6,alignItems:"flex-end",height:90,marginTop:14,paddingBottom:4}}>
-                  {months.map((m,i)=>{
-                    const projected = projectedDemand(selectedProduct, m.key);
-                    const maxP = Math.max(...months.map(mx=>projectedDemand(selectedProduct,mx.key)),1);
-                    const pct = projected/maxP;
-                    const mdata = selPlan.months[m.key]||{};
-                    const isManual = mdata.manualQty !== null && mdata.manualQty !== undefined && mdata.manualQty !== "";
-                    const inCoverage = i < (selPlan.coverageMonths||2);
-                    return (
-                      <div key={m.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                        <div style={{fontFamily:T.sans,fontSize:10,color:T.textSm}}>{projected}</div>
-                        <div style={{width:"100%",height:Math.max(8,pct*70),
-                          background:isManual?T.green:inCoverage?T.greenLt:T.muted,
-                          borderRadius:"3px 3px 0 0",border:`1px solid ${inCoverage?T.greenBd:T.border}`,
-                          transition:"height .3s"}}/>
-                        <div style={{fontFamily:T.sans,fontSize:10,color:T.textXs,textAlign:"center",lineHeight:1.2}}>{m.label}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{display:"flex",gap:14,marginTop:8}}>
-                  {[{c:T.green,l:"Ingreso manual"},{c:T.greenLt,l:"En cobertura (automático)"},{c:T.muted,l:"Fuera de cobertura"}].map(({c,l})=>(
-                    <span key={l} style={{display:"flex",alignItems:"center",gap:5,fontFamily:T.sans,fontSize:10,color:T.textSm}}>
-                      <span style={{width:10,height:10,background:c,borderRadius:2,display:"inline-block"}}/>{l}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Order recommendation */}
-              <div style={{background:selectedProduct.qtyNeeded>0?T.dangerBg:T.okBg,border:`1px solid ${selectedProduct.qtyNeeded>0?T.dangerBd:T.okBd}`,borderRadius:8,padding:"16px 20px"}}>
-                <Cap style={{color:selectedProduct.qtyNeeded>0?T.danger:T.ok}}>
-                  {selectedProduct.qtyNeeded>0?"Recomendación de pedido":"Stock suficiente"}
-                </Cap>
-                {selectedProduct.qtyNeeded>0 ? (
-                  <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,marginTop:10,alignItems:"center"}}>
-                    <div>
-                      <div style={{fontFamily:T.serif,fontSize:26,fontWeight:500,color:T.danger}}>
-                        Pedir {selectedProduct.qtyNeeded} {selectedProduct.unit}
-                      </div>
-                      <p style={{fontFamily:T.sans,fontSize:12,color:T.textMd,marginTop:6,lineHeight:1.6}}>
-                        Para cubrir la demanda proyectada de <strong>{selPlan.coverageMonths||2} meses</strong> + stock de seguridad ({safetyStock(selectedProduct.history,totalLead(selectedProduct.sup))} {selectedProduct.unit}),
-                        considerando el lead time de <strong>{totalLead(selectedProduct.sup)} días</strong> de {selectedProduct.sup?.name}.
-                        Costo estimado: <strong>USD {(selectedProduct.qtyNeeded*(selectedProduct.unitCost||0)).toFixed(2)}</strong>
-                      </p>
-                    </div>
-                    <Btn onClick={()=>{}} variant="warning" small>Generar pedido</Btn>
-                  </div>
-                ) : (
-                  <p style={{fontFamily:T.sans,fontSize:13,color:T.ok,marginTop:6}}>
-                    El stock actual ({selectedProduct.stock} {selectedProduct.unit}) es suficiente para cubrir los próximos {selPlan.coverageMonths||2} meses de demanda proyectada.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── SUMMARY VIEW ── */}
-      {viewMode==="summary" && (
-        <div style={{display:"grid",gap:20}}>
-          {/* Summary stats */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
-            {[
-              {l:"Productos planificados", v:Object.keys(plans).length},
-              {l:"Necesitan pedido",        v:needsOrder.length, c:needsOrder.length>0?T.danger:T.text},
-              {l:"Total proyectado",        v:`USD ${allProductsWithOrders.reduce((s,p)=>s+(p.totalProjected*(p.unitCost||0)),0).toFixed(0)}`},
-              {l:"Costo pedidos necesarios",v:`USD ${totalOrderCost.toFixed(0)}`, c:totalOrderCost>0?T.warning:T.text},
-            ].map((s,i)=>(
-              <div key={i} style={{background:T.card,padding:"18px 20px"}}>
-                <Cap>{s.l}</Cap>
-                <div style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:s.c||T.text,marginTop:6}}>{s.v}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Monthly demand heatmap — all products */}
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto"}}>
-            <div style={{padding:"12px 18px",background:T.muted,borderBottom:`1px solid ${T.border}`}}>
-              <Cap>Demanda proyectada total por mes (todos los productos)</Cap>
-            </div>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead>
-                <tr style={{borderBottom:`1px solid ${T.border}`}}>
-                  <th style={{padding:"10px 14px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:T.textSm,minWidth:140}}>Producto</th>
-                  {months.map(m=><th key={m.key} style={{padding:"10px 10px",textAlign:"center",fontFamily:T.sans,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:T.textSm,minWidth:70}}>{m.label}</th>)}
-                  <th style={{padding:"10px 14px",textAlign:"right",fontFamily:T.sans,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:T.textSm}}>Total</th>
-                  <th style={{padding:"10px 14px",textAlign:"right",fontFamily:T.sans,fontSize:10,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.1em",color:T.textSm}}>Pedir</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allProductsWithOrders.map((p,ri)=>{
-                  const maxForRow = Math.max(...p.projections, 1);
-                  return (
-                    <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:ri%2===0?T.card:T.cardWarm}}>
-                      <td style={{padding:"11px 14px"}}>
-                        <div style={{fontFamily:T.sans,fontSize:13,fontWeight:600,color:T.text}}>{p.name}</div>
-                        <div style={{fontFamily:T.sans,fontSize:10,color:T.textXs}}>[{p.sup?.flag}] {p.sup?.name}</div>
-                      </td>
-                      {months.map((m,ci)=>{
-                        const val = p.projections[ci];
-                        const intensity = val/maxForRow;
-                        return (
-                          <td key={m.key} style={{padding:"8px 10px",textAlign:"center"}}>
-                            <div style={{background:`rgba(45,90,27,${intensity*0.25+0.04})`,borderRadius:3,padding:"4px 6px",cursor:"pointer"}}
-                              onClick={()=>{setSelProduct(p.id);setViewMode("product");}}>
-                              <span style={{fontFamily:T.sans,fontSize:12,fontWeight:intensity>0.7?600:400,color:intensity>0.6?T.green:T.textMd}}>{val}</span>
-                            </div>
-                          </td>
-                        );
-                      })}
-                      <td style={{padding:"11px 14px",textAlign:"right",fontFamily:T.serif,fontSize:15,fontWeight:500,color:T.text}}>{p.totalProjected} {p.unit}</td>
-                      <td style={{padding:"11px 14px",textAlign:"right"}}>
-                        {p.qtyNeeded>0
-                          ? <span style={{fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.danger}}>+{p.qtyNeeded} {p.unit}</span>
-                          : <span style={{fontFamily:T.sans,fontSize:12,color:T.ok}}>✓</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr style={{borderTop:`2px solid ${T.border}`,background:T.muted}}>
-                  <td style={{padding:"12px 14px",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.text}}>Costo total estimado</td>
-                  {months.map((m,i)=>(
-                    <td key={m.key} style={{padding:"12px 10px",textAlign:"center",fontFamily:T.sans,fontSize:11,fontWeight:600,color:T.textMd}}>
-                      USD {allProductsWithOrders.reduce((s,p)=>s+(p.projections[i]*(p.unitCost||0)),0).toFixed(0)}
-                    </td>
-                  ))}
-                  <td style={{padding:"12px 14px",textAlign:"right",fontFamily:T.sans,fontSize:13,fontWeight:700,color:T.text}}>
-                    USD {allProductsWithOrders.reduce((s,p)=>s+(p.totalProjected*(p.unitCost||0)),0).toFixed(0)}
-                  </td>
-                  <td style={{padding:"12px 14px",textAlign:"right",fontFamily:T.sans,fontSize:12,fontWeight:700,color:T.danger}}>
-                    USD {totalOrderCost.toFixed(0)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {/* Per-supplier order consolidation */}
-          {needsOrder.length>0 && (
-            <div>
-              <div style={{marginBottom:10}}>
-                <Cap>Pedidos consolidados por proveedor</Cap>
-                <p style={{fontFamily:T.sans,fontSize:12,color:T.textSm,marginTop:4}}>Agrupá tus pedidos para aprovechar mínimos y descuentos.</p>
-              </div>
-              <div style={{display:"grid",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
-                {suppliers.map(sup=>{
-                  const supNeeds = needsOrder.filter(p=>p.supplierId===sup.id);
-                  if(!supNeeds.length) return(<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f9f9f7"}}><div style={{textAlign:"center",fontFamily:"sans-serif"}}><div style={{fontSize:40,marginBottom:12}}>🌿</div><p style={{color:"#666",fontSize:14}}>Cargando...</p></div></div>);
-                  const totalCost = supNeeds.reduce((s,p)=>s+(p.qtyNeeded*(p.unitCost||0)),0);
-                  const minOrder = +(sup.minOrder||0);
-                  const meetsMin = totalCost >= minOrder || minOrder===0;
-                  return (
-                    <div key={sup.id} style={{background:T.card,padding:"16px 20px"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{background:sup.color+"22",color:sup.color,fontFamily:T.sans,fontSize:11,fontWeight:700,padding:"2px 7px",borderRadius:3}}>{sup.flag}</span>
-                          <div>
-                            <div style={{fontFamily:T.serif,fontSize:18,fontWeight:500,color:T.text}}>{sup.name}</div>
-                            {sup.company&&<div style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>{sup.company}</div>}
-                          </div>
-                        </div>
-                        <div style={{textAlign:"right"}}>
-                          <div style={{fontFamily:T.serif,fontSize:22,fontWeight:500,color:meetsMin?T.ok:T.warning}}>
-                            {sup.currency||"USD"} {totalCost.toFixed(0)}
-                          </div>
-                          {!meetsMin && <div style={{fontFamily:T.sans,fontSize:11,color:T.warning,marginTop:2}}>⚠ Mínimo: {sup.currency||"USD"} {minOrder} — faltan {sup.currency||"USD"} {(minOrder-totalCost).toFixed(0)}</div>}
-                          {meetsMin && minOrder>0 && <div style={{fontFamily:T.sans,fontSize:11,color:T.ok,marginTop:2}}>✓ Supera pedido mínimo</div>}
-                          {sup.discount>0 && totalCost >= minOrder && <div style={{fontFamily:T.sans,fontSize:11,color:T.green,marginTop:2}}>🏷 Descuento {sup.discount}% aplicable</div>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",gap:1,background:T.border,borderRadius:4,overflow:"hidden"}}>
-                        {supNeeds.map(p=>(
-                          <div key={p.id} style={{background:T.cardWarm,padding:"8px 12px",flex:1}}>
-                            <div style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{p.name}</div>
-                            <div style={{fontFamily:T.serif,fontSize:16,fontWeight:500,color:T.danger,marginTop:2}}>{p.qtyNeeded} {p.unit}</div>
-                            <div style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>USD {(p.qtyNeeded*(p.unitCost||0)).toFixed(0)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }).filter(Boolean)}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOVEMENTS VIEW — Historial completo de movimientos
-// ─────────────────────────────────────────────────────────────────────────────
-const MOV_CFG = {
-  order_placed: { icon:"📋", label:"Pedido generado",   color:"#1d4ed8", bg:"#eff6ff", bd:"#bfdbfe" },
-  delivery:     { icon:"📦", label:"Mercadería recibida",color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  scanner_in:   { icon:"⌨", label:"Ingreso scanner",    color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  excel_in:     { icon:"📊", label:"Ajuste Excel +",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  excel_out:    { icon:"📊", label:"Ajuste Excel −",     color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
-  manual_in:    { icon:"➕", label:"Entrada manual",     color:"#166534", bg:"#f0fdf4", bd:"#bbf7d0" },
-  manual_out:   { icon:"➖", label:"Salida manual",      color:"#b91c1c", bg:"#fef2f2", bd:"#fecaca" },
-  adjustment:   { icon:"⚖", label:"Ajuste de inventario",color:"#92400e",bg:"#fffbeb",bd:"#fde68a" },
-};
-
-const MovTypeTag = ({type}) => {
-  const c = MOV_CFG[type] || {icon:"•",label:type,color:T.textSm,bg:T.muted,bd:T.border};
-  return (
-    <span style={{display:"inline-flex",alignItems:"center",gap:5,background:c.bg,border:`1px solid ${c.bd}`,color:c.color,
-      fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",padding:"3px 8px",borderRadius:3}}>
-      {c.icon} {c.label}
-    </span>
-  );
-};
-
-const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
-  const [filterProd, setFilterProd] = useState("all");
-  const [filterType, setFilterType] = useState("all");
-  const [filterDateFrom, setFilterDateFrom] = useState("");
-  const [filterDateTo, setFilterDateTo]   = useState("");
-  const [search, setSearch] = useState("");
-  const [showManualModal, setShowManualModal] = useState(false);
-
-  const filtered = useMemo(() => {
-    return movements.filter(m => {
-      if(filterProd !== "all" && m.productId !== filterProd) return false;
-      if(filterType !== "all" && m.type !== filterType) return false;
-      if(filterDateFrom && m.ts < filterDateFrom) return false;
-      if(filterDateTo   && m.ts > filterDateTo+"T23:59:59") return false;
-      if(search && !m.productName?.toLowerCase().includes(search.toLowerCase()) && !m.note?.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [movements, filterProd, filterType, filterDateFrom, filterDateTo, search]);
-
-  // Stats
-  const totalIn  = filtered.filter(m=>["delivery","scanner_in","excel_in","manual_in"].includes(m.type)).reduce((s,m)=>s+m.qty,0);
-  const totalOut = filtered.filter(m=>["excel_out","manual_out"].includes(m.type)).reduce((s,m)=>s+m.qty,0);
-  const orderCount = filtered.filter(m=>m.type==="order_placed").length;
-
-  // Product options for filter
-  const prodOptions = [...new Set(movements.map(m=>m.productId))].map(id=>{
-    const p = products.find(x=>x.id===id||x.id===+id);
-    return { id, name: p?.name || id };
-  });
-
-  return (
-    <div style={{display:"grid",gap:24}}>
-      {showManualModal && <ManualMovModal products={products} onSave={(m)=>{onAddManual(m);setShowManualModal(false);}} onClose={()=>setShowManualModal(false)}/>}
-
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
-        <div>
-          <Cap style={{color:T.green}}>Auditoría</Cap>
-          <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Historial de movimientos</h1>
-          <p style={{fontFamily:T.sans,fontSize:13,color:T.textSm,marginTop:5,lineHeight:1.5}}>
-            Registro completo de todas las entradas, salidas y ajustes de stock.
-          </p>
-        </div>
-        <Btn onClick={()=>setShowManualModal(true)}>+ Movimiento manual</Btn>
-      </div>
-
-      {/* Stats */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,background:T.border,borderRadius:8,overflow:"hidden"}}>
-        {[
-          {l:"Total movimientos",v:filtered.length},
-          {l:"Entradas",         v:totalIn,  c:T.ok},
-          {l:"Salidas",          v:totalOut, c:T.danger},
-          {l:"Pedidos generados",v:orderCount,c:T.watch},
-        ].map((s,i)=>(
-          <div key={i} style={{background:T.card,padding:"18px 20px"}}>
-            <Cap>{s.l}</Cap>
-            <div style={{fontFamily:T.serif,fontSize:40,fontWeight:400,color:s.c||T.text,lineHeight:1,marginTop:8}}>{s.v}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"14px 18px"}}>
-        <Cap>Filtros</Cap>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:12,marginTop:10}}>
-          <Field label="Buscar">
-            <Inp value={search} onChange={e=>setSearch(e.target.value)} placeholder="Producto o nota..."/>
-          </Field>
-          <Field label="Producto">
-            <Sel value={filterProd} onChange={e=>setFilterProd(e.target.value)}>
-              <option value="all">Todos los productos</option>
-              {prodOptions.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-            </Sel>
-          </Field>
-          <Field label="Tipo de movimiento">
-            <Sel value={filterType} onChange={e=>setFilterType(e.target.value)}>
-              <option value="all">Todos los tipos</option>
-              {Object.entries(MOV_CFG).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-            </Sel>
-          </Field>
-          <Field label="Desde">
-            <Inp type="date" value={filterDateFrom} onChange={e=>setFilterDateFrom(e.target.value)}/>
-          </Field>
-          <Field label="Hasta">
-            <Inp type="date" value={filterDateTo} onChange={e=>setFilterDateTo(e.target.value)}/>
-          </Field>
-        </div>
-        {(search||filterProd!=="all"||filterType!=="all"||filterDateFrom||filterDateTo) && (
-          <button onClick={()=>{setSearch("");setFilterProd("all");setFilterType("all");setFilterDateFrom("");setFilterDateTo("");}}
-            style={{fontFamily:T.sans,fontSize:11,color:T.green,background:"none",border:"none",cursor:"pointer",marginTop:8,fontWeight:600}}>
-            × Limpiar filtros
-          </button>
-        )}
-      </div>
-
-      {/* Movements table */}
-      {filtered.length === 0 ? (
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"48px 32px",textAlign:"center"}}>
-          <div style={{fontSize:36,marginBottom:12}}>📋</div>
-          <p style={{fontFamily:T.sans,fontSize:14,color:T.textSm,fontWeight:500}}>
-            {movements.length===0 ? "Sin movimientos registrados aún." : "Sin movimientos que coincidan con los filtros."}
-          </p>
-          {movements.length===0 && (
-            <p style={{fontFamily:T.sans,fontSize:12,color:T.textXs,marginTop:6,lineHeight:1.6}}>
-              Los movimientos se registran automáticamente al generar pedidos, marcar entregas, usar el scanner o importar Excel.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden",background:T.card}}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead>
-              <tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
-                {["Fecha y hora","Tipo","Producto","Proveedor","Cantidad","Nota / Referencia"].map(h=>(
-                  <th key={h} style={{padding:"10px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m,i)=>{
-                const cfg = MOV_CFG[m.type]||{color:T.textSm};
-                const isIn  = ["delivery","scanner_in","excel_in","manual_in"].includes(m.type);
-                const isOut = ["excel_out","manual_out"].includes(m.type);
-                const d = new Date(m.ts);
-                return (
-                  <tr key={m.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.card:T.cardWarm}}
-                    onMouseEnter={e=>e.currentTarget.style.background=T.hover}
-                    onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.card:T.cardWarm}>
-                    <td style={{padding:"10px 13px",whiteSpace:"nowrap"}}>
-                      <div style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>
-                        {d.toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"})}
-                      </div>
-                      <div style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>
-                        {d.toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"})}
-                      </div>
-                    </td>
-                    <td style={{padding:"10px 13px"}}><MovTypeTag type={m.type}/></td>
-                    <td style={{padding:"10px 13px",fontFamily:T.sans,fontSize:13,fontWeight:600,color:T.text}}>
-                      {m.productName}
-                    </td>
-                    <td style={{padding:"10px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>
-                      {m.supplierName||"—"}
-                    </td>
-                    <td style={{padding:"10px 13px",whiteSpace:"nowrap"}}>
-                      <span style={{fontFamily:T.serif,fontSize:16,fontWeight:600,
-                        color:isIn?T.ok:isOut?T.danger:T.watch}}>
-                        {isIn?"+":isOut?"−":""}{m.qty} {m.unit}
-                      </span>
-                    </td>
-                    <td style={{padding:"10px 13px",fontFamily:T.sans,fontSize:12,color:T.textSm,maxWidth:280}}>
-                      {m.note||"—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Export hint */}
-      {filtered.length>0 && (
-        <div style={{display:"flex",justifyContent:"flex-end"}}>
-          <button onClick={()=>{
-            const rows=[["Fecha","Hora","Tipo","Producto","Proveedor","Cantidad","Unidad","Nota"],...filtered.map(m=>{const d=new Date(m.ts);return[d.toLocaleDateString("es-UY"),d.toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"}),(MOV_CFG[m.type]||{label:m.type}).label,m.productName,m.supplierName||"",m.qty,m.unit,m.note||""];})];
-            const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
-            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);a.download=`movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
-          }} style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.green,background:T.greenBg,border:`1px solid ${T.greenBd}`,padding:"8px 16px",borderRadius:4,cursor:"pointer"}}>
-            ↓ Exportar CSV ({filtered.length} registros)
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MANUAL MOVEMENT MODAL
-// ─────────────────────────────────────────────────────────────────────────────
-const LOVABLE_CATALOG = [{"id":"p-0001","name":"Chocolate Cobertura Confeiteiro con Leche, Semiamargo y Blanco 1 kg.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":336.07,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0002","name":"Chocolate Cobertura Supreme Amargo 1 kg.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":377.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0003","name":"Chocolate Gotas Supreme con Leche, Semiamargo y Blanco 1 kg.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":377.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0004","name":"Chocolate Ganache c/Leche, Semiamargo y Blanco 4 kg.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":311.48,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0005","name":"Chocolate Chips Negro o Blanco 1 kg.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":377.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0006","name":"Cacao polvo Namur 500 grs.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":659.84,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0007","name":"Cacao polvo Namur 10 kgs.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":459.02,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0008","name":"Chocolate Granizado (mini gotas) semiamargo 8 kgs.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":282.79,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0009","name":"Microgalletitas b/chocolate 7 kgs.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":680.33,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0010","name":"Relleno y Cobertura Sabor Chantilly, Vainilla o Frutilla por 4,7 kg.","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":217.21,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0011","name":"Relleno y Cobertura Sabor Chantilly Vainilla o Frutilla por 1 kg.","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":250.0,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0012","name":"Relleno y Cobertura Sabor Chantilly Vainilla o Frutilla por 500 g.","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":303.28,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0013","name":"Relleno y Cobertura Sabor Chocolate por 4,5 kg.","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":270.49,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0014","name":"Relleno y Cobertura Sabor Chocolate  por 1 kg.","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":327.87,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0015","name":"Relleno y Cobertura Sabor Chocolate  por 500 g.","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":360.66,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0016","name":"Merengue en polvo por 250 grs. (1 kg. polvo + 400 cc.agua+12 min batido)","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":385.25,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0017","name":"Merengue en polvo por 4 kgs. ( 1 kg. polvo + 400 cc.agua+12 min batido)","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":270.49,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0018","name":"Crema pastelera por 250 grs. (750 cc. agua + 250 gr.polvo + 5 min batido)","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":418.03,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0019","name":"Crema pastelera por 4 Kg. (750 cc. agua + 250 gr.polvo + 5 min batido)","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":319.67,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0020","name":"Mousse Chantilly / Frutilla / Chocolate por 250 grs.","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":627.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0021","name":"Mousse Chantilly / Frutilla / Chocolate por 1 kg.","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":602.46,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0022","name":"Gel de Brillo Neutro / Frutilla por 310 grs.","brand":"Ledevit","category":"Brillos","supplierId":"arg","unitCost":237.7,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0023","name":"Destello Neutro / Frutilla por 4,4 kg.","brand":"Ledevit","category":"Brillos","supplierId":"arg","unitCost":159.84,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0024","name":"Gel de Brillo Neutro en Caliente por 10 kg.","brand":"Ledevit","category":"Brillos","supplierId":"arg","unitCost":131.15,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0025","name":"Crema Paris (cubretortas chocolate intenso) por 280 grs.","brand":"Ledevit","category":"Brillos","supplierId":"arg","unitCost":401.64,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0026","name":"Crema Paris (baño tipo ganache) por 4 kg.","brand":"Ledevit","category":"Brillos","supplierId":"arg","unitCost":327.89,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0027","name":"Mix Cupcake vainilla 500 grs.","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":233.61,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0028","name":"Mix Brownie 470 grs","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":258.2,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0029","name":"Mix Brownie 4 kgs","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":217.21,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0030","name":"Mix Budín vainilla 500 grs.","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":213.11,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0031","name":"Mix Macarrones 250 grs","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":532.79,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0032","name":"Mix Macarron 3,5 kgs","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":422.13,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0033","name":"Azúcar impalpable 1 kg.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":176.23,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0034","name":"Glacé Real 1 kg.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":213.11,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0035","name":"Fondant 1 kg.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":196.72,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0036","name":"Pastamix 800 grs.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":307.38,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0037","name":"Pastamix 3 kgs.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":1020.49,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0038","name":"Pasta Americana Colorful 800 g.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":315.57,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0039","name":"Rendamix 100 g.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":155.74,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0040","name":"Pasta Americana Mix 4,5 kgs.","brand":"Duas Rodas","category":"Decoración","supplierId":"arg","unitCost":1536.89,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0041","name":"Azúcar Colores 80 grs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":45.08,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0042","name":"Azúcar Colores 500 grs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":131.15,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0043","name":"Granas Colores 120 grs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":45.08,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0044","name":"Granas Colores 500 grs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":131.15,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0045","name":"Grageas Colores 100 grs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":53.27,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0046","name":"Grageas Colores 500 grs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":159.84,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0047","name":"Granas Colores 5 kgrs.","brand":"Duas Rodas","category":"Confites","supplierId":"arg","unitCost":163.93,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0048","name":"AROMATIZANTES 30 ml: limón, nuez, chocolate, naranja,","brand":"Duas Rodas","category":"Aromatizantes","supplierId":"arg","unitCost":61.48,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0049","name":"AROMATIZANTES  1 lt. Vainilla, Vainilla blanca","brand":"Duas Rodas","category":"Aromatizantes","supplierId":"arg","unitCost":217.21,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0050","name":"AROMATIZANTES  1 lt. Chocolate, Coco, Manteca, Frutilla, Queso, Panettone","brand":"Duas Rodas","category":"Aromatizantes","supplierId":"arg","unitCost":245.9,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0051","name":"AROMATIZANTES  1 lt. Naranja, Limón, Menta","brand":"Duas Rodas","category":"Aromatizantes","supplierId":"arg","unitCost":360.65,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0052","name":"Color gel 15 g.","brand":"Duas Rodas","category":"Colorantes","supplierId":"arg","unitCost":65.57,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0053","name":"Color softgel 25 g.","brand":"Duas Rodas","category":"Colorantes","supplierId":"arg","unitCost":110.66,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0054","name":"Color softgel Big 150 g.","brand":"Duas Rodas","category":"Colorantes","supplierId":"arg","unitCost":352.46,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0055","name":"Color polvo esfumado 3 g.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":139.34,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0056","name":"Color pen 60 g.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":135.25,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0057","name":"Color líquido 10 ml.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":45.08,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0058","name":"Colorante liquido 1 lt.","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":155.74,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0059","name":"Acido Cítrico 50 g.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":81.97,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0060","name":"Agar Agar 30 g","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":299.18,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0061","name":"CMC (Carbometil Celulosa) 50 g.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":110.65,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0062","name":"Cremor Tártaro por 50 g.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":81.97,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0063","name":"Gel Confitero 50 grs","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":81.97,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0064","name":"Glucosa jarabe 150 g.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":98.36,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0065","name":"Glucosa jarabe 500 g.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":163.93,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0066","name":"Glucosa jarabe 1 kg.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":245.9,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0067","name":"Glucosa polvo (dextrosa) 50 g.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":81.97,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0068","name":"Emustab (Emulsificante) 200 grs.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":121.32,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0069","name":"Emustab por 1 kg.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":418.03,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0070","name":"Gelatina neutra por 1 kg.","brand":"Duas Rodas","category":"Aditivos","supplierId":"arg","unitCost":1065.57,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0071","name":"CHOCOLATE AMARGO DARK 70% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1385.25,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0072","name":"CHOCOLATE AMARGO DARK 70% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1295.08,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0073","name":"CHOCOLATE AMARGO BLACK 65% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1229.51,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0074","name":"CHOCOLATE AMARGO BLACK 65% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1200.82,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0075","name":"CHOCOLATE FLUIDO 56% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1217.21,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0076","name":"CHOCOLATE FLUIDO 56% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1192.62,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0077","name":"CHOCOLATE S/AMARGO 56% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1118.85,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0078","name":"CHOCOLATE S/AMARGO 56% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1045.08,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0079","name":"CHOCOLATE C/LECHE CARAMELIZADO 40% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1122.95,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0080","name":"CHOCOLATE C/LECHE BLEND 35% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1122.95,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0081","name":"CHOCOLATE C/LECHE BLEND 35% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1045.08,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0082","name":"CHOCOLATE BLANCO C/MAIZ 33% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1270.49,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0083","name":"CHOCOLATE BLANCO 31% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1122.95,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0084","name":"CHOCOLATE BLANCO 31% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1045.08,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0085","name":"CACAO POLVO 22-24% 2,25 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1311.48,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0086","name":"NIBS CACAO 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":2049.18,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0087","name":"LICOR CACAO 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":2000.0,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0088","name":"CHOCOLATE S/AMARGO TRONADOR 55%","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":918.03,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0089","name":"CHOCOLATE C/LECHE TRONADOR","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":918.03,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0090","name":"CHOCOLATE BLANCO","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":918.03,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0091","name":"CHOCOLATE AMARGO 71%","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1135.25,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0092","name":"Preparado selecta top 1 kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":286.88,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0093","name":"Crema Chocolat 1 kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":442.62,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0094","name":"Variegato Frutales 2 Kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":565.57,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0095","name":"Variegato Frutales 12 Kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":528.69,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0096","name":"Variegato Frutales Zero 1 kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":655.74,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0097","name":"Veteado Chocolat 2 kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":545.08,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0098","name":"Veteado Chocolat 12 kg.","brand":"Duas Rodas","category":"Variagatos","supplierId":"arg","unitCost":631.15,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0099","name":"Super liga Neutra por 20 kgs. estabilizante en frío ó caliente","brand":"Selecta","category":"Estabilizantes","supplierId":"arg","unitCost":245.9,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0100","name":"Emustab por 10 kg.","brand":"Selecta","category":"Estabilizantes","supplierId":"arg","unitCost":282.79,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0101","name":"Emustab por 3 kg.","brand":"Selecta","category":"Estabilizantes","supplierId":"arg","unitCost":327.86,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0102","name":"Estabilizante Aqua 5 por 1 kg. en frio","brand":"Selecta","category":"Estabilizantes","supplierId":"arg","unitCost":549.18,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0103","name":"Emulsificante y Estabilizante Laqua 10 por 500 grs. en frio","brand":"Selecta","category":"Estabilizantes","supplierId":"arg","unitCost":491.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0104","name":"Base Zero Aqua 1 kg.","brand":"Selecta","category":"Estabilizantes","supplierId":"arg","unitCost":549.18,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0105","name":"Cobertura Clásicas  1,3 kgs.","brand":"Duas Rodas","category":"Salsas y Coberturas","supplierId":"arg","unitCost":172.13,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0106","name":"Cobertura premium 1,3 kgs.","brand":"Duas Rodas","category":"Salsas y Coberturas","supplierId":"arg","unitCost":225.41,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0107","name":"Cobertura Clásicas  300 grs.","brand":"Duas Rodas","category":"Salsas y Coberturas","supplierId":"arg","unitCost":377.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0108","name":"Soft vainilla o chocolate por 1 kg.","brand":"Duas Rodas","category":"Food Service","supplierId":"arg","unitCost":270.49,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0109","name":"Chocolate caliente por 1 kg.","brand":"Duas Rodas","category":"Food Service","supplierId":"arg","unitCost":327.87,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0110","name":"Desmoldante Aerosol Lisse 600 ml","brand":"Adimix","category":"Complementos Panadería","supplierId":"arg","unitCost":368.85,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0111","name":"Mejorador Enzipan 250","brand":"Adimix","category":"Complementos Panadería","supplierId":"arg","unitCost":73.77,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0112","name":"Mix Pao de queijo por 1 kg.","brand":"Adimix","category":"Complementos Panadería","supplierId":"arg","unitCost":172.13,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0113","name":"Caramelo Liquido 7 kg","brand":"Adimix","category":"Complementos Panadería","supplierId":"arg","unitCost":139.34,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0114","name":"Lactofil Premium 1 L","brand":"Adimix","category":"Complementos Panadería","supplierId":"arg","unitCost":250.0,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0115","name":"Aceite Doratta 15,8 L (14, kgs)","brand":"Agropalma","category":"Aceites y Grasas","supplierId":"arg","unitCost":2250.0,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0116","name":"Grasa Palma 20 kgs","brand":"Agropalma","category":"Aceites y Grasas","supplierId":"arg","unitCost":122.73,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0117","name":"Anana 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0118","name":"Banana  3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0119","name":"Frambuesa 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0120","name":"Frutilla  3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":918.03,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0121","name":"Mango  3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0122","name":"Maracuyá 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0123","name":"Limón 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0124","name":"Azurro Cielo 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":799.18,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0125","name":"Bubbly 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1213.11,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0126","name":"Biscottino 4,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":995.9,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0127","name":"Biancocioc 6 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1090.16,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0128","name":"Cherry 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1122.95,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0129","name":"Cocco 4 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1032.79,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0130","name":"Caffe por 1 kg.","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":2991.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0131","name":"Chantilly (pasta per cookies black) 4,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1086.07,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0132","name":"Cheese Cake en polvo 1 kg","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1295.083,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0133","name":"Limoncello en polvo con estabilizante 2,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":991.8,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0134","name":"Mascarpone en polvo 2 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1500.0,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0135","name":"Yoghin yogurth en polvo 1 kg","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1196.72,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0136","name":"Limone 50 en polvo con estabilizante 2,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1155.74,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0137","name":"Menta 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":952.82,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0138","name":"Mister Nico Pasta mani 4 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1180.33,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0139","name":"Pistacho California 4 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":4147.54,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0140","name":"Pistacho Pesto c/trozos 2,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":3581.97,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0141","name":"Nocciola Prima Fine (avellana) 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":2151.64,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0142","name":"Nocciola Selection (avellana) 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1491.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0143","name":"Nocciola Oscura (avellana) 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1627.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0144","name":"Nocciola Máxima (kinder) 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":2340.16,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0145","name":"Sinfonía Italiana KIT 12,7 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1065.57,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0146","name":"Tiramisu 4,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1040.98,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0147","name":"Vainilla French 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1159.84,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0148","name":"Zabaione 5,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":991.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0149","name":"Cookie Black Oreo 6 kg","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1065.57,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0150","name":"Cookie Lemon 6 kg.","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1065.57,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0151","name":"Fiordibosco 3 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":991.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0152","name":"Mamá que buena kinder 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":967.21,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0153","name":"Mecralph 5,5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1254.1,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0154","name":"Mecrock 6 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1282.79,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0155","name":"Mecrock Plus 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1176.0,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0156","name":"Mister Nico Snickers 4 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":877.05,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0157","name":"Quello Caramelo 6 kg.","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":827.87,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0158","name":"Wafer 5 kgs","brand":"MEC3","category":"Pastas","supplierId":"eur","unitCost":1073.77,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0159","name":"Base Soave 2 kgs","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":831.97,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0160","name":"Base Elena 1,8 kgs","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":840.16,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0161","name":"Supergelmix 3 kgs","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":938.52,"unit":"lt","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0162","name":"Cioki 1 kg","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":655.74,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0163","name":"Cremfix 1 kg","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":643.44,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0164","name":"Cacao polvo 20-22","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":926.23,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0165","name":"Stracciatella","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":606.56,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0166","name":"Gianduia 6 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":1311.48,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0167","name":"Torrone Rustico 4,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":1491.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0168","name":"Frollino 5,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":926.23,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0169","name":"Amore Nocciola 5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":950.82,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0170","name":"Arancio Variegato 3,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":778.68,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0171","name":"Pistacho al Gusto 4 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":1729.51,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0172","name":"Pistacho Natura 2,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":3950.82,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0173","name":"Pistacho Maestro 2,5","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":2983.61,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0174","name":"Morettina Clásica 6 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":696.72,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0175","name":"Morettina Blanca 6 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":696.72,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0176","name":"Morettina Pepita Clásica 5,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":1172.13,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0177","name":"Morettina Pepita Blanca ,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":1172.13,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0178","name":"Morettina Pistacho 6 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":1721.31,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0179","name":"Morettina Pastelera Clásica 12 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":614.75,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0180","name":"Morettina Pastelera Pistacho 5,5 kgs","brand":"Pernigotti","category":"Chocolates Gelatieri","supplierId":"eur","unitCost":942.62,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"General"},{"id":"p-0181","name":"Cacao polvo Namur 10 Kgs.","brand":"Duas Rodas","category":"Chocolates","supplierId":"arg","unitCost":491.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0182","name":"Pasta Saborizante 2 kg.","brand":"Duas Rodas","category":"Pastas Saborizantes","supplierId":"arg","unitCost":491.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0183","name":"Dia & Light Vaniglia 1,25 kgs","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":1159.84,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0184","name":"Dia & Light Fiordilatte 1,25 kgs","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":1180.33,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0185","name":"Dia & Light Fuit 1 kg","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":1098.36,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0186","name":"Dia & Light Cioccolatto 1,25 kgs","brand":"MEC3","category":"Bases","supplierId":"eur","unitCost":1295.08,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0187","name":"Chocolate Amargo Dark 70% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":844.26,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0188","name":"Chocolate Amargo Dark 70%  70% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":827.87,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0189","name":"Chocolate Amargo Black 65% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":844.26,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0190","name":"Chocolate s/Amargo 56% 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":762.29,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0191","name":"Chocolate s/Amargo 56% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":688.52,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0192","name":"Chocolate s/Amargo 56% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":663.3,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0193","name":"Chocolate Fluido 56% 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":991.8,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0194","name":"Chocolate Fluido 56% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":717.21,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0195","name":"Chocolate Fluido 56% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":696.72,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0196","name":"Chocolate c/Leche Caramelizado 40% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":827.87,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0197","name":"Chocolate c/Leche 35% 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":872.95,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0198","name":"Chocolate c/Leche 35% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":827.87,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0199","name":"Chocolate c/Leche 35% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":786.89,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0200","name":"Chocolate Blanco c/Maiz 33% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":844.26,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0201","name":"Chocolate Blanco 31% 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":946.72,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0202","name":"Chocolate Blanco 31% 2,5 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":827.87,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0203","name":"Chocolate Blanco 31% 15 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":786.9,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0204","name":"Cacao Polvo 22-24% 2,25 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":926.23,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0205","name":"Nibs Cacao 1 kgs","brand":"Selecta","category":"Chocolates","supplierId":"arg","unitCost":1065.57,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0206","name":"Palitos Clásico enfajados 114x10x2mm por 10.000 (200x50 pcs)","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":2700.82,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0207","name":"Palitos Hélice enfajados 200x50 pcs 94x17-11x2 por 5.000 (100x50 pcs)","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":2573.77,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0208","name":"Palitos Redondo 160 x 6 mm  por 5.000","brand":"Ledevit","category":"Rellenos y Coberturas","supplierId":"arg","unitCost":3565.57,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Heladerias"},{"id":"p-0209","name":"Mix Cupcake vainilla 500 grs. (6 kgs)","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":233.61,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"},{"id":"p-0210","name":"Mix Budín vainilla 500 grs. (6 kgs)","brand":"Ledevit","category":"Premezclas Horneables","supplierId":"arg","unitCost":213.11,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"},{"id":"p-0211","name":"Cobertura Premium 1,3 kgs.","brand":"Duas Rodas","category":"Salsas y Coberturas","supplierId":"arg","unitCost":225.41,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"},{"id":"p-0212","name":"Mousse Chantilly / Frutilla por 1 kg.","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":573.77,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"},{"id":"p-0213","name":"Mousse Chocolate por 1 kg.","brand":"Ledevit","category":"Premezclas Pasteleras","supplierId":"arg","unitCost":598.36,"unit":"kg","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"},{"id":"p-0214","name":"AROMATIZANTES  1 lt. Chocolate, Coco, Manteca, Frutilla, Queso,Banana,Panettone","brand":"Duas Rodas","category":"Aromatizantes","supplierId":"arg","unitCost":245.9,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"},{"id":"p-0215","name":"AROMATIZANTES  1 lt. Naranja, Limón, Menta , Banana","brand":"Duas Rodas","category":"Aromatizantes","supplierId":"arg","unitCost":360.65,"unit":"un","stock":0,"minStock":5,"dailyUsage":0.5,"source":"Horeca"}];
-
-const IMP_BRAND_COLORS = {"Adimix":"#e8735a","Agropalma":"#7ab648","Duas Rodas / Mix":"#f4a700","Ledevit":"#5b9bd5","MEC3":"#c0392b","Norohy":"#8e44ad","Pernigotti":"#2c3e50","República del Cacao":"#6d4c41","SOSA":"#16a085","Selecta":"#e67e22","Tronador":"#2980b9"};
-const IMP_SUP_LABEL = {"arg":"🇦🇷 Argentina / Brasil","ecu":"🇪🇨 Ecuador","eur":"🇪🇺 Europa"};
-const IMP_SUP_COLOR = {"arg":"#2980b9","ecu":"#27ae60","eur":"#8e44ad"};
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ERROR BOUNDARY
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 class ErrorBoundary extends React.Component {
   constructor(props){super(props);this.state={hasError:false,error:null};}
   static getDerivedStateFromError(error){return {hasError:true,error};}
@@ -1405,14 +717,14 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     movements, setMovements: _setMovements,
     orders, setOrders,
     plans, setPlans,
-    notified: _notified, setNotified,
+    notified: _notified, setNotified: _setNotified,
     emailCfg, setEmailCfg,
     brandCfg, setBrandCfg,
     dbReady, syncStatus, hasPendingSync, syncToast, setSyncToast, setHasPendingSync,
     enriched, alerts, critN, getSup,
     addMov, savePlan, markDelivered, confirmOrder,
     deleteSupplier, deleteProduct, applyExcel,
-    sendAlertEmail, dbWriteWithRetry,
+    sendAlertEmail, dbWriteWithRetry: _dbWriteWithRetry,
   } = useApp();
 
   // ── Layout-only UI state (stays in App) ─────────────────────────────────
@@ -1512,7 +824,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
       setHasPendingSync(true);
     }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit,id,nombre:productData.name,stock:productData.stock})}); }catch(e){}
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch{return 'unknown';}})(),action:'producto_guardado',detail:JSON.stringify({isEdit,id,nombre:productData.name,stock:productData.stock})}); }catch{ /* safe to ignore — audit log is non-critical */ }
   };
 
   const saveSupplier=async f=>{
@@ -1543,7 +855,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
       setHasPendingSync(true);
     }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch(e){}
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch{return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch{ /* safe to ignore — audit log is non-critical */ }
   };
 
 
@@ -1613,8 +925,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         {/* Nav — grouped */}
         <nav style={{padding:"10px 0",flex:1,overflowY:"auto"}}>
           {(()=>{
-            const role=session?.role||"admin";
-            const visibleIds=NAV_ROLES[role]||NAV_ROLES.admin;
+            const _role=session?.role||"admin";
             const groups=[
               {label:"Principal",ids:["dashboard","inventory","orders","suppliers"]},
               {label:"Operaciones",ids:["movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"]},
@@ -1629,7 +940,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
                 <React.Fragment key={g.label}>
                   <div style={{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}}>{g.label}</div>
                   {(()=>{
-                    const cfesLS=(()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch(e){return [];}})();
+                    const cfesLS=(()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch{return [];}})();
                     const vencidasN=cfesLS.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
                     const pendOrders=orders.filter(o=>o.status==='pending').length;
                     return items.map(n=>{
@@ -1834,6 +1145,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
     if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy tu asistente de inventario. Preguntame sobre stock, precios, pedidos o pedí un informe.'}]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: init greeting once per open, msgs.length read on purpose
   },[open]);
 
   const send=async(txt)=>{
@@ -1846,7 +1158,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
     try{
       const ctx=_buildCtx(role,products,suppliers,orders,movements);
       const sys='Sos el asistente de stock, WMS para gestión de inventario. Adaptá las respuestas al negocio. Respondé en español, conciso y directo. Usá solo los datos del contexto. Podés sugerir acciones concretas. Máx 200 palabras salvo informes.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
-      const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch(e){return '';}})();
+      const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
       const r=await fetch('/api/chat',{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
@@ -1856,7 +1168,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
       const reply=d.content?.[0]?.text||'No pude procesar la respuesta.';
       setMsgs(p=>[...p,{r:'a',t:reply}]);
       if(!open) setUnread(n=>n+1);
-    }catch(e){
+    }catch{
       setMsgs(p=>[...p,{r:'a',t:'Error de conexión. Verificá tu internet e intentá de nuevo.'}]);
     }finally{setBusy(false);}
   };

@@ -4,7 +4,6 @@ import { LS } from '../lib/constants.js';
 function PackingTab(){
   const G="#3a7d1e";
   const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
-  const [prods]=useState(()=>LS.get("aryes6-products",[]));
   const [packings,setPackings]=useState(()=>LS.get("aryes-packings",[]));
   const [sel,setSel]=useState(null);
   const [validados,setValidados]=useState({});

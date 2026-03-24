@@ -21,7 +21,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
   const prodsState = prodsProp || [];
   const setProds = setProdsProp || (()=>{});
 
-  const [ventas,setVentasState]=[ventasLocal,(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);}];
+  const [ventas,_setVentasState]=[ventasLocal,(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);}];
   const setVentas=(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);};
 
   const [vista,setVista]=useState('lista');
@@ -145,13 +145,13 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           estado:venta.estado,notas:venta.notas||null,
           fecha_entrega:venta.fechaEntrega||null,creado_en:venta.creadoEn,
         });
-      }catch(e){console.warn('[Stock] venta SB insert failed',e);}
+      }catch { /* non-blocking */ }
 
       // Audit log
       try{await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,
-        user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch(e){return 'unknown';}})(),
+        user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch { /* non-blocking */ }})(),
         action:'venta_creada',detail:JSON.stringify({id:venta.id,nroVenta:venta.nroVenta,clienteNombre:venta.clienteNombre,total:venta.total})
-      });}catch(e){}
+      });}catch { /* non-blocking */ }
 
       const upd=[venta,...ventas];
       setVentas(upd);

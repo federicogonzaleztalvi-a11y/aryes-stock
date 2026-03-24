@@ -12,8 +12,8 @@ function ClientesTab(){
   const [items,setItems]=useState(()=>LS.get(KCLI,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
-  const [fotoModal,setFotoModal]=useState(null);
-  const [notaInput,setNotaInput]=useState('');
+  
+  
   const [q,setQ]=useState('');
   const [filtro,setFiltro]=useState('Todos');
   const [vista,setVista]=useState('lista');

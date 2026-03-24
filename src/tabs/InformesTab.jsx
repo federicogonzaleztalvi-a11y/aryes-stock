@@ -2,15 +2,13 @@ import { useState } from 'react';
 import { LS } from '../lib/constants.js';
 
 function InformesTab(){
-  const G="#3a7d1e";
   const [prods]=useState(()=>LS.get("sistema6-products",[]));
   const [movs]=useState(()=>LS.get("sistema-movements",[]));
   const [ventas]=useState(()=>LS.get("sistema-ventas",[]));
   const [rutas]=useState(()=>LS.get("sistema-rutas",[]));
   const [lotes]=useState(()=>LS.get("sistema-lots",[]));
   const [clientes]=useState(()=>LS.get("sistema-clients",[]));
-  const [recepciones]=useState(()=>LS.get("sistema-recepciones",[]));
-  const [periodo,setPeriodo]=useState("mes");
+    const [periodo,setPeriodo]=useState("mes");
   const [msg,setMsg]=useState("");
   const hoy=new Date();
   const diasAtras=(n)=>{const d=new Date();d.setDate(d.getDate()-n);return d;};

@@ -4,15 +4,14 @@ import { LS, db } from '../lib/constants.js';
 function ConfigTab(){
   const G="#3a7d1e";
   const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
-  const [cfgLoading,setCfgLoading]=useState(true);
-  useEffect(()=>{
+    useEffect(()=>{
     (async()=>{
       try{
         const rows=await db.get('app_config?key=eq.emailcfg');
         if(rows?.[0]?.value) setEmailCfg(rows[0].value);
         LS.remove('aryes9-emailcfg');
-      }catch(e){}
-      setCfgLoading(false);
+      }catch { /* non-blocking */ }
+      
     })();
   },[]);
   const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!');

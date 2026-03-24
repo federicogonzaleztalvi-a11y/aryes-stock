@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { LS, tfCols } from '../lib/constants.js';
 import { downloadCSV } from '../lib/ui.jsx';
 import { T, Cap, AlertPill, Btn, fmtDate, fmtShort } from '../lib/ui.jsx';
 
-function PedidosInline({products,setProducts,suppliers,orders,setOrders,addMov,movements,session,modal,setModal,plans,setPlans,savePlan,tab,getSup,markDelivered,setTab,tfCols}) {
+function PedidosInline({products:_products,setProducts:_setProducts,suppliers:_suppliers,orders,setOrders:_setOrders,addMov:_addMov,movements:_movements,session:_session,modal:_modal,setModal:_setModal,plans:_plans,setPlans:_setPlans,savePlan:_savePlan,tab:_tab,getSup,markDelivered,setTab,tfCols:_tfCols}) {
   return (
           <div className="au" style={{display:"grid",gap:22}}>
             <div><Cap style={{color:T.green}}>Historial</Cap><h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Pedidos</h1>

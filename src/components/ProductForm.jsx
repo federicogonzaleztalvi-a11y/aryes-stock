@@ -6,9 +6,8 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
-  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!');
-  const saveWaTpl=()=>{localStorage.setItem('aryes-wa-template',waTpl);setCsvMsg('✓ Plantilla guardada');setTimeout(()=>setCsvMsg(''),2500);};
-  const [csvMsg, setCsvMsg] = useState('');
+  // wa template — read from localStorage, not used in current form UI
+  const [_csvMsg, setCsvMsg] = useState('');
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const [csv,setCsv]=useState(product?.history?.map(h=>`${h.month},${h.consumed}`).join("\n")||"");
   const bRef=useRef();
@@ -73,8 +72,5 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
     </div>
   );
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ORDER MODAL
 
 export default ProductForm;

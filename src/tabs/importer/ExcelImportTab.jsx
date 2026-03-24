@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { LS, db } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
 
-const ExcelImportTab=({products,setProducts,session})=>{
+const ExcelImportTab=({products,setProducts,session:_session})=>{
   const [step,setStep]=useState('upload'); // upload | preview | done
   const [rows,setRows]=useState([]);
   const [msg,setMsg]=useState('');

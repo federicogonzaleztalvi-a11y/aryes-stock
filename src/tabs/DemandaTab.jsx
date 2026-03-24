@@ -7,8 +7,7 @@ function DemandaTab(){
   const [movs]=useState(()=>LS.get("stock-movements",[]));
   const [ventas]=useState(()=>LS.get("stock-ventas",[]));
   const [periodo,setPeriodo]=useState(30);
-  const hoy=new Date();
-  const pStart=new Date();pStart.setDate(pStart.getDate()-periodo);
+    const pStart=new Date();pStart.setDate(pStart.getDate()-periodo);
   // Calcular rotacion y proyeccion por producto
   const analisis=prods.map(p=>{
     // Salidas del periodo (ventas + movimientos de salida)

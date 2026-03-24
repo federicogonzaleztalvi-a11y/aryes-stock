@@ -19,7 +19,6 @@ const COND_PAGO = [
   { value: 'credito_90', label: 'Crédito 90 días', dias: 90  },
 ];
 
-const METODOS_COBRO = ['Transferencia', 'Cheque', 'Efectivo', 'Tarjeta', 'Otro'];
 
 const CFE_TIPOS = {
   'e-Factura': { icon: '🧾', code: 'eFact' },
@@ -45,14 +44,12 @@ const MONEDAS   = ['UYU', 'USD', 'EUR'];
 const newId  = () => crypto.randomUUID();
 const today  = () => new Date().toISOString().split('T')[0];
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
-const daysSince = d => d ? Math.floor((Date.now() - new Date(d).getTime()) / 86400000) : 0;
 const daysUntil = d => d ? Math.floor((new Date(d).getTime() - Date.now()) / 86400000) : null;
 
 const fmtMoney = (n, cur='UYU') => {
   const sym = cur==='UYU'?'$':cur==='USD'?'US$':'€';
   return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 };
-const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short',year:'numeric'}) : '—';
 const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}) : '—';
 
 const agingBucket = dias => {
@@ -620,7 +617,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   const { confirm, ConfirmDialog: _ConfirmDialog } = useConfirm();
   const [cfes,    setCfes]    = useState(()=>LS.get(KCFE,[]));
   const [cobros,  setCobros]  = useState(()=>LS.get(KCOB,[]));
-  const [clientes,setClientes]= useState(()=>{
+  const [clientes]=useState(()=>{
     const c = LS.get(KCLI,[]);
     return clientesProp.length>0 ? clientesProp : c;
   });

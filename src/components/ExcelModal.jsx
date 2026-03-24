@@ -30,7 +30,7 @@ const ExcelModal=({products,onApply,onClose})=>{
       if(p)m.push({product:p,newStock:Math.round(sv)});
     });
     setPreview(m);
-  },[rows,cols]);
+  },[rows,cols,products]);
 
   return(
     <Modal title="Actualizar stock desde Excel" sub="Importar desde Mercado" onClose={onClose} wide>

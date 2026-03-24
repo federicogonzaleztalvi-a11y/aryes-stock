@@ -2,9 +2,8 @@ import { sendLowStockAlert } from './EmailConfigTab.jsx';
 import { dbWriteWithRetry } from './catalog-data.js';
 import { useState } from 'react';
 import { LS, db } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
 
-// eslint-disable-next-line no-unused-vars
+ 
 const MovementsTab=({products,setProducts,session})=>{
   const [movements,setMovements]=useState(()=>LS.get('aryes-movements',[]));
   const [form,setForm]=useState({productId:'',type:'entrada',qty:'',reason:'compra',reference:'',notes:''});

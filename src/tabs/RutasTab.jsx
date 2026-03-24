@@ -96,8 +96,8 @@ function RutasTab(){
         </div>
         {hist.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>Sin entregas registradas</div>):(
           <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-            {hist.map((h,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
+            {hist.map((h, _i) =>(
+              <div key={_i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f3f4f6",background:_i%2===0?"#fff":"#fafafa"}}>
                 <span style={{fontSize:16}}>🚚</span>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:600}}>{h.clienteNombre}</div>
@@ -146,7 +146,7 @@ function RutasTab(){
           ))}
         </div>
         <div style={{display:"grid",gap:8}}>
-          {ruta.entregas.map((e,i)=>{
+          {ruta.entregas.map((e, _i) =>{
             const isEntregado=e.estado==="entregado";
             const isNoEnt=e.estado==="no_entregado";
             return(

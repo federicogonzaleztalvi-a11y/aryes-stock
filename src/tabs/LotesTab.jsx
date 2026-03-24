@@ -9,7 +9,7 @@ function LotesTab(){
   const KPROD="aryes6-products";
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
   const [lotes,setLotes]=useState(()=>LS.get(KLOTES,[]));
-  const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
+  const [prods,_setProds]=useState(()=>LS.get(KPROD,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   const [vista,setVista]=useState('lista');
@@ -18,7 +18,6 @@ function LotesTab(){
   const [msg,setMsg]=useState('');
 
   const hoy=new Date();
-  const enXDias=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return d;};
   const diasParaVencer=(fechaStr)=>{
     if(!fechaStr)return 9999;
     const diff=new Date(fechaStr)-hoy;
@@ -183,15 +182,5 @@ function LotesTab(){
   );
 }
 
-// WhatsApp notification helper
-const waLink=(telefono,mensaje)=>{
-  const num=telefono?telefono.replace(/[^0-9]/g,''):'';
-  const txt=encodeURIComponent(mensaje);
-  return num?'https://wa.me/598'+num+'?text='+txt:'https://wa.me/?text='+txt;
-};
-const waMensaje=(cliente,tipo,detalle)=>{
-  const tpl=localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos! - Stock';
-  return tpl.replace('{cliente}',cliente||'cliente').replace('{detalle}',detalle||'');
-};
 
 export default LotesTab;

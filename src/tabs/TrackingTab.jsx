@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
-import { LS, SKEY, SB_URL } from '../lib/constants.js';
+import { SKEY, SB_URL } from '../lib/constants.js';
 
 function TrackingTab({session}){
   const G="#3a7d1e";
   const user=session;
-  const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
-  const [ubicaciones,setUbicaciones]=useState({});
-  const [tracking,setTracking]=useState(false);
+    const [tracking,setTracking]=useState(false);
   const [watchId,setWatchId]=useState(null);
   const [miPosicion,setMiPosicion]=useState(null);
   const [msg,setMsg]=useState("");

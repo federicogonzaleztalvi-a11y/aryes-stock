@@ -1,5 +1,4 @@
 import React from 'react';
-import { tfCols } from '../lib/constants.js';
 import { T, Cap, Btn, totalLead } from '../lib/ui.jsx';
 
 const Stars = ({value=3}) => (
@@ -8,7 +7,7 @@ const Stars = ({value=3}) => (
   </span>
 );
 
-function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,addMov,session,alerts,enriched,tab,setModal,setEditSup,setViewSup,deleteSupplier}) {
+function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_products,orders,setOrders:_setOrders,addMov:_addMov,session:_session,alerts:_alerts_prop,enriched,_tab,setModal,setEditSup,setViewSup,deleteSupplier}) {
   return (
           <div className="au" style={{display:"grid",gap:24}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
@@ -23,7 +22,7 @@ function ProveedoresInline({suppliers,setSuppliers,products,orders,setOrders,add
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:16}}>
               {suppliers.map(sup=>{
                 const supProds=enriched.filter(p=>p.supplierId===sup.id);
-                const alerts=supProds.filter(p=>p.alert.level!=="ok");
+                const _alerts=supProds.filter(p=>p.alert.level!=="ok");
                 const criticals=supProds.filter(p=>p.alert.level==="order_now");
                 const pending=orders.filter(o=>o.supplierId===sup.id&&o.status==="pending");
                 const totalSpent=orders.filter(o=>o.supplierId===sup.id&&o.status==="delivered").reduce((s,o)=>s+(+o.totalCost||0),0);

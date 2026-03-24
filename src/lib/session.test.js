@@ -11,7 +11,7 @@
  * We test the pure logic extracted here so it can be verified without
  * mounting a React component or mocking the entire DOM.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // ─── Pure logic extracted from main.jsx ──────────────────────────────────────
 // This mirrors readSession() exactly. When we add TypeScript, this moves to

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState, lazy, Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx';
@@ -132,7 +133,7 @@ function Root() {
           headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + s.access_token }
         }).catch(() => {});
       }
-    } catch {}
+    } catch { /* non-blocking */ }
     localStorage.removeItem('aryes-session');
     setSession(null);
   };

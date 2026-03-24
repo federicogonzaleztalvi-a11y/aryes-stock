@@ -10,7 +10,7 @@ function DevolucionesTab(){
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});
   const [msg,setMsg]=useState("");
   const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
-  const ventaSeleccionada=ventas.find(v=>v.id===form.ventaId)||null;
+  const _ventaSeleccionada=ventas.find(v=>v.id===form.ventaId)||null;
   const iniciarDevolucion=(venta)=>{
     setForm({ventaId:venta.id,clienteNombre:venta.clienteNombre,motivo:"",notas:"",
       items:(venta.items||[]).map(it=>({...it,cantDevolver:0,estado:"pendiente",inspeccion:""}))});

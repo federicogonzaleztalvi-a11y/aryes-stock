@@ -20,7 +20,7 @@ async function rpc(fnName, params = {}) {
   });
   const text = await res.text();
   let data;
-  try { data = JSON.parse(text); } catch(e) { data = text; }
+  try { data = JSON.parse(text); } catch { data = text; }
   return { ok: res.ok, status: res.status, data };
 }
 

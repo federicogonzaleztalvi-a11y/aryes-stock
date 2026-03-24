@@ -13,7 +13,7 @@ const TOAST_STYLES = {
   info:    { bg: '#eff6ff', border: '#bfdbfe', color: '#2563eb', icon: 'ℹ' },
 };
 
-function SmartToasts({ critN = 0, orders = [] }) {
+function SmartToasts({ critN = 0, orders: _orders = [] }) {
   const [toasts, setToasts] = useState([]);
   const shown = useRef(new Set());
 

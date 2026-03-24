@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { LS, db } from '../../lib/constants.js';
-import { T, Cap, Btn } from '../../lib/ui.jsx';
+import { LS } from '../../lib/constants.js';
 
 // eslint-disable-next-line no-unused-vars
 const PriceHistoryTab=({products,session})=>{
-  const [priceHistory,setPriceHistory]=useState(()=>LS.get('aryes-price-history',[]));
+  const [priceHistory,_setPriceHistory]=useState(()=>LS.get('aryes-price-history',[]));
   const [selProduct,setSelProduct]=useState('');
   const [search,setSearch]=useState('');
 

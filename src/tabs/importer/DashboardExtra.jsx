@@ -1,6 +1,6 @@
-import { T } from '../../lib/ui.jsx';
+/* eslint-disable react-refresh/only-export-components */
 
-// eslint-disable-next-line no-unused-vars
+ 
 const generateOrderPDF = (order, suppliers, products) => {
   const sup = suppliers.find(s => s.id === order.supplierId) || {};
   const today = new Date().toLocaleDateString('es-UY');
@@ -164,7 +164,7 @@ const DashboardExtra=({products,suppliers,orders})=>{
   const maxBrandVal = brands[0]?.value||1;
 
   // Proyección quiebres próximos 30 días
-  const today = new Date();
+  const _today = new Date();  
   const breakRisk = products.filter(p=>{
     const daily = p.dailyUsage||0.5;
     const daysLeft = daily>0?(p.stock||0)/daily:999;
