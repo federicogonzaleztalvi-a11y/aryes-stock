@@ -3,8 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function InformesTab(){
-  const { products: prods, movements: movs } = useApp();
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
+  const { products: prods, movements: movs , ventas} = useApp();
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
   const [lotes]=useState(()=>LS.get("aryes-lots",[]));
   const [clientes]=useState(()=>LS.get("aryes-clients",[]));

@@ -3,13 +3,11 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS, db } from '../lib/constants.js';
 
 function VentasTab(){
-  const { products, setProducts, addMov, setHasPendingSync } = useApp();
+  const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas } = useApp();
   const G="#3a7d1e";
-  const KVEN="aryes-ventas";
   const KCLI="aryes-clients";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
-  const [ventasLocal,setVentasLocal]=useState(()=>LS.get(KVEN,[]));
   const [clientes,setClientes]=useState(()=>LS.get(KCLI,[]));
   // Refresh client list when tab regains focus (handles cross-tab creation)
   React.useEffect(()=>{
@@ -19,8 +17,6 @@ function VentasTab(){
     return()=>window.removeEventListener('focus',refresh);
   },[]);
 
-  const [ventas,_setVentasState]=[ventasLocal,(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);}];
-  const setVentas=(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);};
 
   const [vista,setVista]=useState('lista');
   const [ventaSel,setVentaSel]=useState(null);
@@ -111,6 +107,10 @@ function VentasTab(){
 
       // DESCUENTA STOCK INMEDIATAMENTE al crear la venta
       const now=new Date().toISOString();
+      // Capture stock BEFORE deduction — needed as lock value for patchWithLock
+      const stockBefore=Object.fromEntries(
+        form.items.map(it=>[it.productoId, Number(updProds.find(p=>p.id===it.productoId)?.stock||0)])
+      );
       form.items.forEach(it=>{
         const idx=updProds.findIndex(p=>p.id===it.productoId);
         if(idx>-1){
@@ -120,14 +120,17 @@ function VentasTab(){
       });
       setProducts(updProds);
 
-      // Persist stock to Supabase for each product
-      const stockWrites=form.items.map(it=>
-        db.patch('products',{stock:updProds.find(p=>p.id===it.productoId)?.stock,updated_at:now},'uuid=eq.'+it.productoId)
-      );
+      // Persist stock to Supabase — patchWithLock prevents concurrent overwrites
+      // lockField='stock', lockValue=stockBefore ensures we only patch if DB still matches
+      const stockWrites=form.items.map(it=>{
+        const newStock=updProds.find(p=>p.id===it.productoId)?.stock;
+        if(newStock===undefined) return Promise.resolve();
+        return db.patchWithLock('products',{stock:newStock,updated_at:now},'uuid=eq.'+it.productoId,'stock',stockBefore[it.productoId]);
+      });
       const stockResults=await Promise.allSettled(stockWrites);
       const stockFailed=stockResults.filter(r=>r.status==='rejected').length;
       if(stockFailed>0){
-        console.warn('[Stock] venta stock patch: '+stockFailed+' writes failed — data safe in localStorage');
+        console.warn('[Stock] venta stock patchWithLock: '+stockFailed+' writes failed — data safe in localStorage');
         setMsg({text:'⚠ Venta guardada localmente. '+stockFailed+' producto(s) no sincronizaron con el servidor — se sincronizarán al reconectar.',type:'warn'});
       }
 
@@ -173,21 +176,24 @@ function VentasTab(){
       showMsg('⚠ Estado actualizado localmente — no se pudo sincronizar con el servidor','warn');
     });
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
-      // Restore stock on cancel
+      // Restore stock on cancel — patchWithLock prevents concurrent overwrites
       const updProds=[...products];
       const now=new Date().toISOString();
+      const restoreWrites=[];
       venta.items?.forEach(it=>{
         const idx=updProds.findIndex(p=>p.id===it.productoId);
         if(idx>-1){
-          const restoredStock=Number(updProds[idx].stock||0)+Number(it.cantidad);
+          const stockAntes=Number(updProds[idx].stock||0);
+          const restoredStock=stockAntes+Number(it.cantidad);
           updProds[idx]={...updProds[idx],stock:restoredStock,updatedAt:now};
-          db.patch('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId).catch(e=>{
-            console.warn('[VentasTab] stock restore patch failed:',e?.message||e);
-            setHasPendingSync(true);
-          });
+          restoreWrites.push(
+            db.patchWithLock('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId,'stock',stockAntes)
+              .catch(e=>{console.warn('[VentasTab] stock restore patchWithLock failed:',e?.message||e);setHasPendingSync(true);})
+          );
         }
       });
       setProducts(updProds);
+      Promise.allSettled(restoreWrites);
       showMsg('Venta cancelada — stock restaurado','ok');
     } else if(estado==='entregada'){
       const cl=clientes.find(c=>c.id===venta?.clienteId);

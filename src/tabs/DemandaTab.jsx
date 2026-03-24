@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS } from '../lib/constants.js';
 
 function DemandaTab(){
-  const { products: prods, movements: movs } = useApp();
+  const { products: prods, movements: movs , ventas} = useApp();
   const G="#3a7d1e";
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
   const [periodo,setPeriodo]=useState(30);
     const pStart=new Date();pStart.setDate(pStart.getDate()-periodo);
   // Calcular rotacion y proyeccion por producto

@@ -203,10 +203,36 @@ export interface SyncToast {
 // Every value returned by useApp() is typed here.
 // This is the interface a top engineer reads to understand what the app can do.
 
+// ── Venta ────────────────────────────────────────────────────────────────────
+export interface VentaItem {
+  productoId: string;
+  nombre:     string;
+  cantidad:   number;
+  unidad:     string;
+  precioUnit: number;
+}
+
+export interface Venta {
+  id:             string;
+  nroVenta:       string;
+  clienteId:      string;
+  clienteNombre:  string;
+  items:          VentaItem[];
+  total:          number;
+  descuento:      number;
+  estado:         'pendiente' | 'confirmada' | 'preparada' | 'entregada' | 'cancelada';
+  notas:          string;
+  fechaEntrega:   string | null;
+  creadoEn:       string;
+  updatedAt?:     string;
+}
+
 export interface AppContextValue {
   // ── Core data ──────────────────────────────────────────────────────────────
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  ventas:    Venta[];
+  setVentas: React.Dispatch<React.SetStateAction<Venta[]>>;
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
   movements: Movement[];
