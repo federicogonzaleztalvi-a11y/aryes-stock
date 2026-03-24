@@ -8,6 +8,57 @@ const SB_URL       = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.s
 // Fail loudly: a missing anon key means auth is broken, not silently degraded.
 const SB_ANON_KEY  = process.env.SUPABASE_ANON_KEY;
 
+// ── In-memory rate limiter (sliding window, per authenticated user) ───────────
+//
+// Why in-memory and not Redis/KV:
+//   - Vercel Hobby plan has no built-in KV; adding one is overkill for this use case.
+//   - Vercel serverless functions are single-instance per invocation — the store
+//     lives in the module scope and persists across warm invocations of the SAME
+//     instance. Cold starts reset it, which is fine: the limit is per warm window.
+//   - This prevents a single session from hammering the Anthropic API in a burst.
+//     Coordinated cross-instance abuse is unlikely given this is an internal tool.
+//
+// Limits (conservative for an internal kitchen operations tool):
+//   WINDOW_MS  = 60 000 ms  (1 minute)
+//   MAX_CALLS  = 10         (10 requests per user per minute)
+//
+// The store is a Map<userId, number[]> of timestamps.
+// Old timestamps outside the window are pruned on each check.
+// Max map size is bounded by MAX_STORE_SIZE to prevent memory leaks on long-lived instances.
+
+const WINDOW_MS     = 60_000;  // 1 minute sliding window
+const MAX_CALLS     = 10;      // max requests per user per window
+const MAX_STORE_SIZE = 500;    // max unique users tracked (evict oldest on overflow)
+
+const rateLimitStore = new Map(); // userId → [timestamp, ...]
+
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const windowStart = now - WINDOW_MS;
+
+  // Evict oldest entry if store is full (prevents unbounded memory growth)
+  if (!rateLimitStore.has(userId) && rateLimitStore.size >= MAX_STORE_SIZE) {
+    const oldestKey = rateLimitStore.keys().next().value;
+    rateLimitStore.delete(oldestKey);
+  }
+
+  // Get timestamps for this user, prune those outside the sliding window
+  const timestamps = (rateLimitStore.get(userId) || []).filter(t => t > windowStart);
+
+  if (timestamps.length >= MAX_CALLS) {
+    // Calculate when the oldest request in the window expires
+    const retryAfterMs = timestamps[0] + WINDOW_MS - now;
+    return { limited: true, retryAfterSec: Math.ceil(retryAfterMs / 1000) };
+  }
+
+  // Record this request and update the store
+  timestamps.push(now);
+  rateLimitStore.set(userId, timestamps);
+  return { limited: false };
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
 // Verify JWT signature via Supabase Auth — rejects forged/expired tokens
 async function verifySession(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -19,6 +70,8 @@ async function verifySession(authHeader) {
   const user = await res.json();
   return user?.id ? user : null;
 }
+
+// ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
@@ -40,6 +93,19 @@ export default async function handler(req, res) {
 
   if (!ANTHROPIC_KEY) {
     return res.status(503).json({ error: 'AI assistant not configured' });
+  }
+
+  // ── Rate limit check (per authenticated user, sliding window) ──────────────
+  const { limited, retryAfterSec } = checkRateLimit(user.id);
+  if (limited) {
+    console.warn(`[chat] rate limit exceeded for user ${user.id}, retry in ${retryAfterSec}s`);
+    res.setHeader('Retry-After', String(retryAfterSec));
+    res.setHeader('X-RateLimit-Limit', String(MAX_CALLS));
+    res.setHeader('X-RateLimit-Window', `${WINDOW_MS / 1000}s`);
+    return res.status(429).json({
+      error: `Límite de solicitudes excedido. Intentá de nuevo en ${retryAfterSec} segundo${retryAfterSec !== 1 ? 's' : ''}.`,
+      retryAfterSec,
+    });
   }
 
   const { messages, system, model, max_tokens } = req.body || {};
