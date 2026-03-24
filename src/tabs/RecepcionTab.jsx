@@ -1,14 +1,12 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS, db } from '../lib/constants.js';
 
 function RecepcionTab(){
+  const { products: prods, setProducts: setProds, orders: pedidos } = useApp();
   const G="#3a7d1e";
-  const KORD="aryes6-orders";
-  const KPROD="aryes6-products";
   const KLOTES="aryes-lots";
   const KREC="aryes-recepciones";
-  const [pedidos]=useState(()=>LS.get(KORD,[]));
-  const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
   const [lotes,setLotes]=useState(()=>LS.get(KLOTES,[]));
   const [recepciones,setRecepciones]=useState(()=>LS.get(KREC,[]));
   const [vista,setVista]=useState('lista');
@@ -94,7 +92,6 @@ function RecepcionTab(){
       }
     });
     setProds(updProds);
-    LS.set(KPROD,updProds);
 
     // 2. Create lots for items with vencimiento
     const updLotes=[...lotes];

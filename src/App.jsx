@@ -1033,7 +1033,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
       
         {activeTab==="recepcion"&&<Suspense fallback={<TabLoader />}><RecepcionTab /></Suspense>}
         
-        {activeTab==="ventas"&&<Suspense fallback={<TabLoader />}><VentasTab products={products} setProducts={setProducts} addMov={addMov}/></Suspense>}
+        {activeTab==="ventas"&&<Suspense fallback={<TabLoader />}><VentasTab /></Suspense>}
         {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products} clientes={LS.get("aryes-clients",[])}/></Suspense></ErrorBoundary>}
         
         {activeTab==="importar"&&<Suspense fallback={<TabLoader />}><ImportTab /></Suspense>}

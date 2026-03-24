@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { LS, db } from '../lib/constants.js';
+import { useApp } from '../context/AppContext.tsx';
+import { db } from '../lib/constants.js';
 import { downloadCSV } from '../lib/ui.jsx';
 
 function MovimientosTab(){
+  const { products: prods, setProducts: setProds, movements: movs, setMovements: setMovs } = useApp();
   const G="#3a7d1e";
-  const KMOV="aryes-movements";
-  const KPROD="aryes6-products";
   const TIPOS=["Entrada","Salida","Ajuste","Devolucion","Transferencia"];
   const TCOLOR={"Entrada":"#10b981","Salida":"#ef4444","Ajuste":"#f59e0b","Devolucion":"#3b82f6","Transferencia":"#8b5cf6"};
   const emptyForm={tipo:"Entrada",productoId:'',cantidad:1,referencia:'',notas:'',fecha:new Date().toISOString().split('T')[0]};
-  const [movs,setMovs]=useState(()=>LS.get(KMOV,[]));
-  const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
   const [form,setForm]=useState(emptyForm);
   const [vista,setVista]=useState('lista');
   const [filtroTipo,setFiltroTipo]=useState('Todos');
@@ -37,7 +35,7 @@ function MovimientosTab(){
       return p;
     });
     const updMovs=[nuevo,...movs];
-    setMovs(updMovs);LS.set(KMOV,updMovs);
+    setMovs(updMovs);
     // Supabase: persist movement server-side
     try{
       await db.insert('stock_movements',{
@@ -55,7 +53,7 @@ function MovimientosTab(){
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch { /* non-blocking */ }})(),action:'movimiento',detail:JSON.stringify({tipo:nuevo.tipo,productoId:nuevo.productoId,productoNombre:nuevo.productoNombre,cantidad:nuevo.cantidad})}); }catch { /* non-blocking */ }
 
-    setProds(updProds);LS.set(KPROD,updProds);
+    setProds(updProds);
     setMsg('Movimiento registrado');
     setForm(emptyForm);setVista('lista');
     setTimeout(()=>setMsg(''),3000);

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS, db } from '../lib/constants.js';
 
-function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
+function VentasTab(){
+  const { products, setProducts, addMov } = useApp();
   const G="#3a7d1e";
   const KVEN="aryes-ventas";
   const KCLI="aryes-clients";
-  const KPROD="aryes6-products";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
-  // Use products from App if passed, else fallback to LS
   const [ventasLocal,setVentasLocal]=useState(()=>LS.get(KVEN,[]));
   const [clientes,setClientes]=useState(()=>LS.get(KCLI,[]));
   // Refresh client list when tab regains focus (handles cross-tab creation)
@@ -18,8 +18,6 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
     return()=>window.removeEventListener('focus',refresh);
   },[]);
-  const prodsState = prodsProp || [];
-  const setProds = setProdsProp || (()=>{});
 
   const [ventas,_setVentasState]=[ventasLocal,(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);}];
   const setVentas=(upd)=>{setVentasLocal(upd);LS.set(KVEN,upd);};
@@ -52,7 +50,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
 
   const agregarItem=()=>{
     if(!itemProd||Number(itemCant)<=0)return;
-    const prod=prodsState.find(p=>p.id===itemProd);
+    const prod=products.find(p=>p.id===itemProd);
     if(!prod)return;
     const alreadyInCart=form.items.filter(i=>i.productoId===prod.id).reduce((s,i)=>s+(i.cantidad||0),0);
     const disponible=(prod.stock||0)-alreadyInCart;
@@ -87,7 +85,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
 
     // STOCK VALIDATION at save time
     const stockErrors=[];
-    const updProds=[...prodsState];
+    const updProds=[...products];
     form.items.forEach(it=>{
       const idx=updProds.findIndex(p=>p.id===it.productoId);
       if(idx>-1){
@@ -120,7 +118,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           updProds[idx]={...updProds[idx],stock:newStock,updatedAt:now};
         }
       });
-      setProds(updProds);LS.set(KPROD,updProds);
+      setProducts(updProds);
 
       // Persist stock to Supabase for each product
       const stockWrites=form.items.map(it=>
@@ -169,7 +167,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
     db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>console.warn('[Stock] venta estado patch failed',e));
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Restore stock on cancel
-      const updProds=[...prodsState];
+      const updProds=[...products];
       const now=new Date().toISOString();
       venta.items?.forEach(it=>{
         const idx=updProds.findIndex(p=>p.id===it.productoId);
@@ -179,7 +177,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           db.patch('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId).catch(e=>console.warn('[DB write failed]', e?.message||e));
         }
       });
-      setProds(updProds);LS.set(KPROD,updProds);
+      setProducts(updProds);
       showMsg('Venta cancelada — stock restaurado','ok');
     } else if(estado==='entregada'){
       const cl=clientes.find(c=>c.id===venta?.clienteId);
@@ -266,9 +264,9 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
           <div style={{fontSize:12,fontWeight:600,color:'#666',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Agregar producto</div>
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
-              <select value={itemProd} onChange={e=>{setItemProd(e.target.value);const p=prodsState.find(x=>x.id===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
+              <select value={itemProd} onChange={e=>{setItemProd(e.target.value);const p=products.find(x=>x.id===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
                 <option value=''>— Producto —</option>
-                {prodsState.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} — stock: {p.stock} {p.unit||''}</option>)}
+                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} — stock: {p.stock} {p.unit||''}</option>)}
               </select>
             </div>
             <div style={{width:90}}><input type='number' placeholder='Cant.' value={itemCant} onChange={e=>setItemCant(e.target.value)} style={inp} min='1'/></div>
