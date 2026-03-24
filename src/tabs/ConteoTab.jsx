@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, db } from '../lib/constants.js';
+import { db } from '../lib/constants.js';
 
 function ConteoTab(){
-  const { products: prods, setProducts: setProds } = useApp();
+  const { products: prods, setProducts: setProds, conteos, setConteos } = useApp();
   const G="#3a7d1e";
-  const [conteos,setConteos]=useState(()=>LS.get("aryes-conteos",[]));
   const [conteoActivo,setConteoActivo]=useState(null);
   const [itemIdx,setItemIdx]=useState(0);
   const [cantFisica,setCantFisica]=useState("");
@@ -41,18 +40,32 @@ function ConteoTab(){
       if(idx>-1)updProds[idx]={...updProds[idx],stock:it.cantFisica};
     });
     setProds(updProds);
-    // Persist physical count to Supabase (non-blocking)
+    // Persist physical count to Supabase — patchWithLock uses stockSistema as lock
+    // stockSistema was captured at count start — prevents overwriting concurrent changes
     const now = new Date().toISOString();
     const patches = conteoActivo.items
       .filter(it => it.cantFisica !== null && it.cantFisica !== undefined)
-      .map(it => db.patch('products', { stock: it.cantFisica, updated_at: now }, 'uuid=eq.' + it.id));
+      .map(it => db.patchWithLock('products', { stock: it.cantFisica, updated_at: now }, 'uuid=eq.' + it.id, 'stock', it.stockSistema));
     Promise.allSettled(patches).then(results => {
       const failed = results.filter(r => r.status === 'rejected').length;
-      if (failed > 0) console.warn('[Conteo] ' + failed + ' stock patch(es) failed — data safe in context');
+      if (failed > 0) console.warn('[Conteo] ' + failed + ' patchWithLock(s) failed — data safe in context');
     });
     const finalConteo={...conteoActivo,completado:true,finalizadoEn:new Date().toISOString()};
     const upd=[finalConteo,...conteos];
-    setConteos(upd);LS.set("aryes-conteos",upd);
+    setConteos(upd);
+    // Persist conteo record to Supabase (non-blocking, stock already saved above)
+    db.insert('conteos',{
+      id:            finalConteo.id,
+      fecha:         finalConteo.fecha,
+      items:         finalConteo.items,
+      completado:    true,
+      creado_en:     finalConteo.creadoEn,
+      finalizado_en: finalConteo.finalizadoEn||new Date().toISOString(),
+    }).catch(e=>{
+      console.warn('[ConteoTab] insert failed:',e?.message||e);
+      setMsg('⚠ Conteo guardado localmente — no se sincronizó con el servidor. Stock actualizado correctamente.');
+      setTimeout(()=>setMsg(''),7000);
+    });
     setConteoActivo(null);setVista("inicio");
     setMsg("Conteo aplicado. Stock actualizado en "+conteoActivo.items.filter(it=>it.cantFisica!==null).length+" productos.");
     setTimeout(()=>setMsg(""),5000);

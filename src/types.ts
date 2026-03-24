@@ -203,6 +203,25 @@ export interface SyncToast {
 // Every value returned by useApp() is typed here.
 // This is the interface a top engineer reads to understand what the app can do.
 
+// ── Conteo / Inventario físico ───────────────────────────────────────────────
+export interface ConteoItem {
+  id:           string;   // productoId
+  nombre:       string;
+  stockSistema: number;
+  unidad:       string;
+  cantFisica:   number | null;
+  diferencia:   number | null;
+}
+
+export interface Conteo {
+  id:           string;
+  fecha:        string;
+  items:        ConteoItem[];
+  completado:   boolean;
+  creadoEn:     string;
+  finalizadoEn?: string;
+}
+
 // ── Devolucion ───────────────────────────────────────────────────────────────
 export interface DevolucionItem {
   productoId:   string;
@@ -333,6 +352,8 @@ export interface AppContextValue {
   setLotes:    React.Dispatch<React.SetStateAction<Lote[]>>;
   devoluciones:    Devolucion[];
   setDevoluciones: React.Dispatch<React.SetStateAction<Devolucion[]>>;
+  conteos:         Conteo[];
+  setConteos:      React.Dispatch<React.SetStateAction<Conteo[]>>;
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
   movements: Movement[];
