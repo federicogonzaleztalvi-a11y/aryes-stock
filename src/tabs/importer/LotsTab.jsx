@@ -92,7 +92,7 @@ const LotsTab=({products,session})=>{
       )}
       {filtered.length===0?<div style={{textAlign:'center',padding:'48px 0',color:'#9a9a98'}}><div style={{fontSize:40,marginBottom:12}}>📦</div><div>{lots.length===0?'No hay lotes registrados':'Sin resultados en este filtro'}</div></div>:(
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {filtered.sort((a,b)=>(!a.expiryDate?1:!b.expiryDate?-1:new Date(a.expiryDate)-new Date(b.expiryDate))).map(l=>{
+          {filtered.sort((a,b)=>(!a.fechaVenc?1:!b.fechaVenc?-1:new Date(a.fechaVenc)-new Date(b.fechaVenc))).map(l=>{
             const s=st(l),d=l.fechaVenc?daysTo(l.fechaVenc):null;
             return <div key={l.id} style={{background:'#fff',border:'1px solid '+stColor(s)+'40',borderLeft:'4px solid '+stColor(s),borderRadius:10,padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
               <div style={{flex:1}}>
@@ -108,7 +108,7 @@ const LotsTab=({products,session})=>{
                 </div>
               </div>
               {canEdit&&<div style={{display:'flex',gap:8}}>
-                <button onClick={()=>{setSelProd(l.productId);setForm({lotNumber:l.lote,quantity:String(l.cantidad),expiryDate:l.fechaVenc||'',notes:l.notas||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
+                <button onClick={()=>{setSelProd(l.productoId);setForm({lotNumber:l.lote,quantity:String(l.cantidad),expiryDate:l.fechaVenc||'',notes:l.notas||''});setEditing(l.id);}} style={{padding:'5px 12px',background:'#f0f0ec',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>Editar</button>
                 <button onClick={async()=>{ const ok=await confirm({title:'¿Eliminar este lote?',variant:'danger'}); if(!ok)return; const u=lots.filter(x=>x.id!==l.id);setLots(u);db.del('lotes',{id:l.id}).catch(e=>console.warn('[importer/LotsTab] delete failed:',e?.message||e));}} style={{padding:'5px 12px',background:'#fef2f2',color:'#dc2626',border:'none',borderRadius:6,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>✕</button>
               </div>}
             </div>;
