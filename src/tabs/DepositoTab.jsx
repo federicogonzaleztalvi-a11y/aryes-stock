@@ -1,16 +1,15 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function DepositoTab(){
+  const { products: prods } = useApp();
   const G="#3a7d1e";
   const KDEP="aryes-deposito";
-  const KPROD="aryes6-products";
-  const KLOTES="aryes-lots";
   const ZONAS=[{id:'A',label:'Zona A - Ambiente',color:'#3b82f6'},{id:'F',label:'Zona F - Frio/Freezer',color:'#06b6d4'}];
   const [config,setConfig]=useState(()=>LS.get(KDEP,{pasillos:8,estantes:4,niveles:3,posiciones:6,zonas:['A','F']}));
   const [ubicaciones,setUbicaciones]=useState(()=>LS.get('aryes-ubicaciones',[]));
-  const [prods,_setProds]=useState(()=>LS.get(KPROD,[]));
-  const [lotes,_setLotes]=useState(()=>LS.get(KLOTES,[]));
+  const [lotes]=useState(()=>LS.get('aryes-lots',[]));
   const [_vista,_setVista]=useState('mapa');
   const [zonaActiva,setZonaActiva]=useState('A');
   const [prodSelec,setProdSelec]=useState('');

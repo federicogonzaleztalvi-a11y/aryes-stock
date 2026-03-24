@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS } from '../lib/constants.js';
+import { LS, db } from '../lib/constants.js';
 
 function ConteoTab(){
   const { products: prods, setProducts: setProds } = useApp();
@@ -41,6 +41,15 @@ function ConteoTab(){
       if(idx>-1)updProds[idx]={...updProds[idx],stock:it.cantFisica};
     });
     setProds(updProds);
+    // Persist physical count to Supabase (non-blocking)
+    const now = new Date().toISOString();
+    const patches = conteoActivo.items
+      .filter(it => it.cantFisica !== null && it.cantFisica !== undefined)
+      .map(it => db.patch('products', { stock: it.cantFisica, updated_at: now }, 'uuid=eq.' + it.id));
+    Promise.allSettled(patches).then(results => {
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) console.warn('[Conteo] ' + failed + ' stock patch(es) failed — data safe in context');
+    });
     const finalConteo={...conteoActivo,completado:true,finalizadoEn:new Date().toISOString()};
     const upd=[finalConteo,...conteos];
     setConteos(upd);LS.set("aryes-conteos",upd);
