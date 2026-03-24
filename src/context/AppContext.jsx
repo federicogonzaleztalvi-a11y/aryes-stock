@@ -126,7 +126,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
       try {
         const prods = await db.get('products', 'order=id.asc&limit=1000');
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid||String(p.id), name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[] }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[] }));
           LS.set('aryes6-products', mapped); setProducts(mapped);
         }
         const sups = await db.get('suppliers', 'order=name.asc');
@@ -163,7 +163,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
         const serverProds = await db.get('products', 'order=id.asc&limit=1000');
         if (!serverProds?.length) return;
         const serverMap = {};
-        serverProds.forEach(p => { serverMap[p.uuid || String(p.id)] = p; });
+        serverProds.forEach(p => { serverMap[p.uuid] = p; });
         let hasChanges = false;
         const merged = products.map(local => {
           const server = serverMap[local.id];
