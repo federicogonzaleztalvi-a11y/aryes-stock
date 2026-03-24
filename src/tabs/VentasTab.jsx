@@ -123,9 +123,13 @@ function VentasTab(){
       // Persist stock to Supabase for each product
       const stockWrites=form.items.map(it=>
         db.patch('products',{stock:updProds.find(p=>p.id===it.productoId)?.stock,updated_at:now},'uuid=eq.'+it.productoId)
-          .catch(e=>console.warn('[Stock] venta stock patch failed',it.productoId,e))
       );
-      await Promise.allSettled(stockWrites);
+      const stockResults=await Promise.allSettled(stockWrites);
+      const stockFailed=stockResults.filter(r=>r.status==='rejected').length;
+      if(stockFailed>0){
+        console.warn('[Stock] venta stock patch: '+stockFailed+' writes failed — data safe in localStorage');
+        setMsg({text:'⚠ Venta guardada localmente. '+stockFailed+' producto(s) no sincronizaron con el servidor — se sincronizarán al reconectar.',type:'warn'});
+      }
 
       // Register movements for each item
       if(addMov){

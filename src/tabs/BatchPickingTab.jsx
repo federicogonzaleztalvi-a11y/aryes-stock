@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function BatchPickingTab(){
+  const { products: prods, setProducts: setProds } = useApp();
   const G="#3a7d1e";
   const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
-  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
   const [selIds,setSelIds]=useState([]);
   const [picking,setPicking]=useState(null);
   const [recolectados,setRecolectados]=useState({});
@@ -47,7 +48,7 @@ function BatchPickingTab(){
         updProds[idx]={...updProds[idx],stock:nuevo};
       }
     });
-    setProds(updProds);LS.set("aryes6-products",updProds);
+    setProds(updProds);
     const n=picking.ventas.length;
     setPicking(null);setSelIds([]);
     setMsg("Batch completado. Stock descontado para "+n+" ordenes.");

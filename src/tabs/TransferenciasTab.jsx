@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function TransferenciasTab(){
+  const { products: prods } = useApp();
   const G="#3a7d1e";
-  const [prods]=useState(()=>LS.get("aryes6-products",[]));
   const [deposito]=useState(()=>LS.get("aryes-deposito",{}));
   const [transfers,setTransfers]=useState(()=>LS.get("aryes-transfers",[]));
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});

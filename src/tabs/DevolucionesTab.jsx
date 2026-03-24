@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { useApp } from '../context/AppContext.tsx';
+import { LS, db } from '../lib/constants.js';
 
 function DevolucionesTab(){
+  const { products: prods, setProducts: setProds } = useApp();
   const G="#3a7d1e";
   const [devoluciones,setDevoluciones]=useState(()=>LS.get("aryes-devoluciones",[]));
   const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
-  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
   const [vista,setVista]=useState("lista");
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});
   const [msg,setMsg]=useState("");
@@ -28,7 +29,20 @@ function DevolucionesTab(){
         if(idx>-1)updProds[idx]={...updProds[idx],stock:Number(updProds[idx].stock||0)+Number(it.cantDevolver)};
       }
     });
-    setProds(updProds);LS.set("aryes6-products",updProds);
+    setProds(updProds);
+    // Persist approved stock increments to Supabase (non-blocking)
+    const now = new Date().toISOString();
+    const stockWrites = itemsDevueltos
+      .filter(it => it.inspeccion === 'aprobado')
+      .map(it => {
+        const p = updProds.find(x => x.id === it.productoId);
+        if (!p) return Promise.resolve();
+        return db.patch('products', { stock: p.stock, updated_at: now }, 'uuid=eq.' + it.productoId);
+      });
+    Promise.allSettled(stockWrites).then(results => {
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) console.warn('[Devoluciones] ' + failed + ' stock patch(es) failed — data safe in localStorage');
+    });
     const dev={id:crypto.randomUUID(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
       ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
       items:itemsDevueltos,estado:"procesada",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};

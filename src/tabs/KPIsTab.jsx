@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function KPIsTab(){
+  const { products: prods, movements: movs } = useApp();
   const G="#3a7d1e";
-  const [prods]=useState(()=>LS.get("aryes6-products",[]));
-  const [movs]=useState(()=>LS.get("aryes-movements",[]));
   const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
   const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
   const [lotes]=useState(()=>LS.get("aryes-lots",[]));

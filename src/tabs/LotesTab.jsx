@@ -1,15 +1,15 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS } from '../lib/constants.js';
 
 function LotesTab(){
+  const { products: prods } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const KLOTES="aryes-lots";
-  const KPROD="aryes6-products";
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
   const [lotes,setLotes]=useState(()=>LS.get(KLOTES,[]));
-  const [prods,_setProds]=useState(()=>LS.get(KPROD,[]));
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   const [vista,setVista]=useState('lista');

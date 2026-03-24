@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function PreciosTab(){
+  const { products: prods, setProducts: setProds } = useApp();
   const G="#3a7d1e";
-  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
   const [listas,setListas]=useState(()=>LS.get("aryes-listas-precio",{
     A:{nombre:"Lista A - Mayorista",descuento:20,color:"#3b82f6"},
     B:{nombre:"Lista B - HORECA",descuento:10,color:"#8b5cf6"},
@@ -31,7 +32,7 @@ function PreciosTab(){
       const precios={...(p.precios||{}),[listaId]:Number(precio)};
       return{...p,precios};
     });
-    setProds(upd);LS.set("aryes6-products",upd);
+    setProds(upd);
   };
   const exportarLista=()=>{
     const rows=[["Producto","Precio Base","Descuento "+lista.descuento+"%","Precio Final"],...filtered.map(p=>{

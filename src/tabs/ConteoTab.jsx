@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useApp } from '../context/AppContext.tsx';
 import { LS } from '../lib/constants.js';
 
 function ConteoTab(){
+  const { products: prods, setProducts: setProds } = useApp();
   const G="#3a7d1e";
-  const [prods,setProds]=useState(()=>LS.get("aryes6-products",[]));
   const [conteos,setConteos]=useState(()=>LS.get("aryes-conteos",[]));
   const [conteoActivo,setConteoActivo]=useState(null);
   const [itemIdx,setItemIdx]=useState(0);
@@ -39,7 +40,7 @@ function ConteoTab(){
       const idx=updProds.findIndex(p=>p.id===it.id);
       if(idx>-1)updProds[idx]={...updProds[idx],stock:it.cantFisica};
     });
-    setProds(updProds);LS.set("aryes6-products",updProds);
+    setProds(updProds);
     const finalConteo={...conteoActivo,completado:true,finalizadoEn:new Date().toISOString()};
     const upd=[finalConteo,...conteos];
     setConteos(upd);LS.set("aryes-conteos",upd);

@@ -93,6 +93,22 @@ function RecepcionTab(){
     });
     setProds(updProds);
 
+    // Persist stock changes to Supabase (non-blocking, failures shown to user)
+    const stockPatches = items
+      .filter(it=>it.nombre&&Number(it.cantidadRecibida)>0)
+      .map(it=>{
+        const p=updProds.find(x=>x.id===it.productoId||x.nombre?.toLowerCase()===it.nombre.toLowerCase()||x.name?.toLowerCase()===it.nombre.toLowerCase());
+        if(!p) return Promise.resolve();
+        return db.patch('products',{stock:p.stock,updated_at:ahora},'uuid=eq.'+p.id);
+      });
+    Promise.allSettled(stockPatches).then(results=>{
+      const failed=results.filter(r=>r.status==='rejected').length;
+      if(failed>0){
+        console.warn('[Recepcion] '+failed+' stock patch(es) failed — data safe in localStorage');
+        setMsg('⚠ Recepcion guardada. '+failed+' producto(s) no sincronizaron con el servidor.');
+      }
+    });
+
     // 2. Create lots for items with vencimiento
     const updLotes=[...lotes];
     items.forEach(it=>{

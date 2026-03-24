@@ -7,6 +7,14 @@ import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO,
 import ModalFactura from './facturacion/ModalFactura.jsx';
 
 function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
+  // Sync error banner: shown when a DB write fails but local state is safe
+  const [syncErr, setSyncErr] = useState('');
+  const clearSyncErr = () => setSyncErr('');
+  const notifyDbErr = (op, e) => {
+    console.warn('[FacturacionTab]', op, 'failed:', e?.message||e);
+    setSyncErr('⚠ ' + op + ' no se sincronizó con el servidor. Los datos están guardados localmente y se sincronizarán al reconectar.');
+    setTimeout(clearSyncErr, 8000);
+  };
   const KCFE  = 'aryes-cfe';
   const KCOB  = 'aryes-cobros';
   const KCLI  = 'aryes-clients';
@@ -63,7 +71,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       items:           nuevo.items,
       notas:           nuevo.notas        || '',
       created_at:      nuevo.createdAt,
-    }, 'id').catch(e=>console.warn('[DB write failed]', e?.message||e));
+    }, 'id').catch(e=>notifyDbErr('Factura', e));
     // → ventas table (legacy, kept for backwards compat)
     db.upsert('ventas',{ id:nuevo.id, numero, tipo:nuevo.tipo,
       cliente_id:nuevo.clienteId||null, cliente_nombre:nuevo.clienteNombre,
@@ -71,7 +79,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       fecha:nuevo.fecha, fecha_venc:nuevo.fechaVenc||null,
       status:nuevo.status, items:nuevo.items, notas:nuevo.notas,
       created_at:nuevo.createdAt
-    }).catch(e=>console.warn('[DB write failed]', e?.message||e));
+    }).catch(e=>notifyDbErr('Factura (ventas)', e));
   };
 
   // ── Registrar cobro ────────────────────────────────────────────────────
@@ -91,7 +99,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       facturas_aplicar: facturasAplicar,
       notas:            notas       || '',
       created_at:       cobro.createdAt,
-    }, 'id').catch(e=>console.warn('[DB write failed]', e?.message||e));
+    }, 'id').catch(e=>notifyDbErr('Factura', e));
 
     // Update saldo pendiente en cada CFE aplicado
     let remaining = monto;
@@ -106,7 +114,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       db.patch('invoices',
         { saldo_pendiente: newSaldo, status: newStatus },
         { id: c.id }
-      ).catch(e=>console.warn('[DB write failed]', e?.message||e));
+      ).catch(e=>notifyDbErr('CFE actualización', e));
       return { ...c, saldoPendiente: newSaldo, status: newStatus };
     });
     saveCfes(updCfes);
@@ -117,7 +125,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     const ok = await confirm({ title:'¿Anular este CFE?', description:'El comprobante quedará marcado como anulado.', variant:'warning', confirmLabel:'Anular' });
     if (!ok) return;
     saveCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
-    db.patch('invoices', { status:'anulada' }, { id }).catch(e=>console.warn('[DB write failed]', e?.message||e));
+    db.patch('invoices', { status:'anulada' }, { id }).catch(e=>notifyDbErr('Factura (ventas)', e));
   };
 
   // ── Computed ──────────────────────────────────────────────────────────
@@ -157,6 +165,10 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
   // ─────────────────────────────────────────────────────────────────────
   return (
     <div className="au" style={{ maxWidth:1200 }}>
+      {syncErr&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'10px 16px',margin:'0 0 16px',color:'#92400e',fontSize:13,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <span>{syncErr}</span>
+        <button onClick={clearSyncErr} style={{background:'none',border:'none',cursor:'pointer',color:'#92400e',fontSize:16,padding:'0 4px'}}>×</button>
+      </div>}
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;500&display=swap" />
 
       {/* ── Header ─────────────────────────────────────────────────── */}
