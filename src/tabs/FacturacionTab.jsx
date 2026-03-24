@@ -668,7 +668,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       items:           nuevo.items,
       notas:           nuevo.notas        || '',
       created_at:      nuevo.createdAt,
-    }, 'id').catch(()=>{});
+    }, 'id').catch(e=>console.warn('[DB write failed]', e?.message||e));
     // → ventas table (legacy, kept for backwards compat)
     db.upsert('ventas',{ id:nuevo.id, numero, tipo:nuevo.tipo,
       cliente_id:nuevo.clienteId||null, cliente_nombre:nuevo.clienteNombre,
@@ -676,7 +676,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       fecha:nuevo.fecha, fecha_venc:nuevo.fechaVenc||null,
       status:nuevo.status, items:nuevo.items, notas:nuevo.notas,
       created_at:nuevo.createdAt
-    }).catch(()=>{});
+    }).catch(e=>console.warn('[DB write failed]', e?.message||e));
   };
 
   // ── Registrar cobro ────────────────────────────────────────────────────
@@ -696,7 +696,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       facturas_aplicar: facturasAplicar,
       notas:            notas       || '',
       created_at:       cobro.createdAt,
-    }, 'id').catch(()=>{});
+    }, 'id').catch(e=>console.warn('[DB write failed]', e?.message||e));
 
     // Update saldo pendiente en cada CFE aplicado
     let remaining = monto;
@@ -711,7 +711,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
       db.patch('invoices',
         { saldo_pendiente: newSaldo, status: newStatus },
         { id: c.id }
-      ).catch(()=>{});
+      ).catch(e=>console.warn('[DB write failed]', e?.message||e));
       return { ...c, saldoPendiente: newSaldo, status: newStatus };
     });
     saveCfes(updCfes);
@@ -722,7 +722,7 @@ function FacturacionTab({ products=[], clientes: clientesProp=[] }) {
     const ok = await confirm({ title:'¿Anular este CFE?', description:'El comprobante quedará marcado como anulado.', variant:'warning', confirmLabel:'Anular' });
     if (!ok) return;
     saveCfes(cfes.map(c=>c.id===id ? {...c,status:'anulada'} : c));
-    db.patch('invoices', { status:'anulada' }, { id }).catch(()=>{});
+    db.patch('invoices', { status:'anulada' }, { id }).catch(e=>console.warn('[DB write failed]', e?.message||e));
   };
 
   // ── Computed ──────────────────────────────────────────────────────────

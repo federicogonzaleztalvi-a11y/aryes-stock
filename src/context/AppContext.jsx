@@ -107,7 +107,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
           const lsMovs = LS.get('aryes8-movements', []);
           if (lsMovs.length > 0 && session.role !== 'vendedor') {
             const rows = lsMovs.map(m => ({ id:m.id, tipo:m.tipo, producto_id:m.productoId, producto_nombre:m.productoNombre, cantidad:m.cantidad, referencia:m.referencia, notas:m.notas, fecha:m.fecha, timestamp:m.timestamp || new Date().toISOString() }));
-            db.insertMany('stock_movements', rows).catch(() => {});
+            db.insertMany('stock_movements', rows).catch(e => console.warn('[AppContext] movement backfill failed:', e?.message || e));
           }
         }
         const sbVentas = await db.get('ventas?order=creado_en.desc&limit=500');
@@ -225,7 +225,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
       producto_nombre:mov.productName||null, cantidad:Number(mov.qty)||0,
       referencia:mov.productName||null, notas:mov.note||'',
       fecha:mov.ts?.split('T')[0] || new Date().toISOString().split('T')[0],
-    }).catch(() => {});
+    }).catch(e => console.warn('[addMov] insert failed (non-critical):', e?.message || e));
   };
 
   const savePlan = async (productId, planData) => {
@@ -245,8 +245,19 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
     setOrders(os => os.map(x => x.id === id ? { ...x, status: 'delivered' } : x));
     setProducts(ps => ps.map(p => p.id === o.productId ? { ...p, stock: newStock, updatedAt: now } : p));
     addMov({ type:'delivery', productId:o.productId, productName:o.productName, qty:o.qty, unit:o.unit, note:'Entrega pedido' });
-    db.patch('orders', { status:'delivered', updated_at:now }, { id }).catch(() => {});
-    db.patchWithLock('products', { stock:newStock, updated_at:now }, `uuid=eq.${o.productId}`, 'stock', prod.stock).catch(() => {});
+    // Both writes are critical — stock and order status must persist to DB.
+    // On failure: optimistic UI stays (data is in localStorage) but we surface
+    // a visible error so the operator knows to check connectivity.
+    const notifyWriteError = (op, err) => {
+      console.warn(`[markDelivered] ${op} failed:`, err?.message || err);
+      setHasPendingSync(true);
+      setSyncToast({ msg: `Error al guardar entrega en servidor. El cambio está guardado localmente — se sincronizará al reconectar.`, type: 'error' });
+      setTimeout(() => setSyncToast(null), 7000);
+    };
+    db.patch('orders', { status:'delivered', updated_at:now }, { id })
+      .catch(e => notifyWriteError('orders.patch', e));
+    db.patchWithLock('products', { stock:newStock, updated_at:now }, `uuid=eq.${o.productId}`, 'stock', prod.stock)
+      .catch(e => notifyWriteError('products.patchWithLock', e));
   };
 
   const confirmOrder = async (product, qty) => {
@@ -256,7 +267,13 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
     const o = { id:crypto.randomUUID(), productId:product.id, productName:product.name, supplierId:product.supplierId, supplierName:sup?.name, qty, unit:product.unit, orderedAt:new Date().toISOString(), expectedArrival:arrival.toISOString(), status:'pending', totalCost:(qty*(product.unitCost||0)).toFixed(2), leadBreakdown:{...sup?.times} };
     setOrders(os => [o, ...os]);
     addMov({ type:'order_placed', productId:product.id, productName:product.name, qty, unit:product.unit, note:`Pedido a ${sup?.name}` });
-    db.upsert('orders', { id:o.id, product_id:o.productId, product_name:o.productName, supplier_id:o.supplierId, supplier_name:o.supplierName, qty:o.qty, unit:o.unit, status:o.status, ordered_at:o.orderedAt, expected_arrival:o.expectedArrival, total_cost:o.totalCost, lead_breakdown:o.leadBreakdown }, 'id').catch(() => {});
+    db.upsert('orders', { id:o.id, product_id:o.productId, product_name:o.productName, supplier_id:o.supplierId, supplier_name:o.supplierName, qty:o.qty, unit:o.unit, status:o.status, ordered_at:o.orderedAt, expected_arrival:o.expectedArrival, total_cost:o.totalCost, lead_breakdown:o.leadBreakdown }, 'id')
+      .catch(e => {
+        console.warn('[confirmOrder] upsert failed:', e?.message || e);
+        setHasPendingSync(true);
+        setSyncToast({ msg: 'Error al guardar pedido en servidor. Guardado localmente — se sincronizará al reconectar.', type: 'error' });
+        setTimeout(() => setSyncToast(null), 7000);
+      });
   };
 
   // Note: callers must confirm before calling these — no window.confirm here.
@@ -281,7 +298,26 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
   const applyExcel = async (matches) => {
     const excelProds = products.map(p => { const m = matches.find(x => x.product.id === p.id); return m ? { ...p, stock: m.newStock } : p; });
     setProducts(excelProds);
-    await Promise.all(matches.map(m => db.patchWithLock('products', { stock:m.newStock, updated_at:new Date().toISOString() }, `uuid=eq.${m.product.id}`, 'stock', m.product.stock).catch(() => {})));
+    const results = await Promise.allSettled(
+      matches.map(m => db.patchWithLock(
+        'products',
+        { stock:m.newStock, updated_at:new Date().toISOString() },
+        `uuid=eq.${m.product.id}`,
+        'stock',
+        m.product.stock
+      ))
+    );
+    const failed = results.filter(r => r.status === 'rejected');
+    if (failed.length > 0) {
+      console.warn(`[applyExcel] ${failed.length}/${matches.length} writes failed:`,
+        failed.map(r => r.reason?.message).join(', '));
+      setHasPendingSync(true);
+      setSyncToast({
+        msg: `${failed.length} producto(s) no se pudieron sincronizar. Guardados localmente — se sincronizarán al reconectar.`,
+        type: 'error',
+      });
+      setTimeout(() => setSyncToast(null), 8000);
+    }
   };
 
   const sendAlertEmail = async (alertProducts, cfg) => {
@@ -305,7 +341,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }) {
     emailCfg, setEmailCfg,
     brandCfg, setBrandCfg,
     // Sync
-    dbReady, syncStatus, hasPendingSync, syncToast,
+    dbReady, syncStatus, hasPendingSync, setSyncToast, syncToast,
     // Derived
     enriched, alerts, critN, getSup,
     // Mutations

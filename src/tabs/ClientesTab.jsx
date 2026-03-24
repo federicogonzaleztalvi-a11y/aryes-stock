@@ -38,7 +38,7 @@ function ClientesTab(){
       limite_credito:    client.limiteCredito ? Number(client.limiteCredito) : null,
       notas:             client.notas             || '',
       created_at:        client.creado            || new Date().toISOString(),
-    }, 'id').catch(() => {});
+    }, 'id').catch(e=>console.warn('[DB write failed]', e?.message||e));
   };
 
   const save=()=>{
@@ -63,7 +63,7 @@ function ClientesTab(){
     if(!ok) return;
     const upd=items.filter(x=>x.id!==id);
     setItems(upd); LS.set(KCLI,upd);
-    db.del('clients',{id}).catch(()=>{});        // → Supabase clients table
+    db.del('clients',{id}).catch(e=>console.warn('[DB write failed]', e?.message||e));        // → Supabase clients table
     setVista('lista');
   };
 

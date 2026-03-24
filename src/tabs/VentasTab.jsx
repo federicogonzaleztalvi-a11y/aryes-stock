@@ -176,7 +176,7 @@ function VentasTab({ products: prodsProp, setProducts: setProdsProp, addMov }){
         if(idx>-1){
           const restoredStock=Number(updProds[idx].stock||0)+Number(it.cantidad);
           updProds[idx]={...updProds[idx],stock:restoredStock,updatedAt:now};
-          db.patch('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId).catch(()=>{});
+          db.patch('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId).catch(e=>console.warn('[DB write failed]', e?.message||e));
         }
       });
       setProds(updProds);LS.set(KPROD,updProds);
