@@ -4,7 +4,7 @@ import { db } from '../lib/constants.js';
 
 function DevolucionesTab(){
   const { products: prods, setProducts: setProds,
-          devoluciones, setDevoluciones, ventas } = useApp();
+          devoluciones, setDevoluciones, ventas, setHasPendingSync } = useApp();
   const G="#3a7d1e";
   const [vista,setVista]=useState("lista");
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});
@@ -45,7 +45,10 @@ function DevolucionesTab(){
       });
     Promise.allSettled(stockWrites).then(results => {
       const failed = results.filter(r => r.status === 'rejected').length;
-      if (failed > 0) console.warn('[Devoluciones] ' + failed + ' patchWithLock(s) failed — data safe in localStorage');
+      if (failed > 0) {
+        console.warn('[Devoluciones] ' + failed + ' patchWithLock(s) failed — stock safe in AppContext');
+        setHasPendingSync(true);
+      }
     });
     const dev={id:crypto.randomUUID(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
       ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
