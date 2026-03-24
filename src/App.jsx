@@ -1442,9 +1442,22 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   const [editSup,        setEditSup]        = useState(null);
   const [viewSup,        setViewSup]        = useState(null);
 
+  // ── Reactive localStorage state for CommandPalette ────────────────────────
+  // Read once on mount; refreshed when ⌘K opens so data is fresh without polling.
+  const [cmdClientes, setCmdClientes] = useState(() => LS.get('aryes-clients', []));
+  const [cmdCfes,     setCmdCfes]     = useState(() => LS.get('aryes-cfe',     []));
+
   // ── Global ⌘K shortcut ──────────────────────────────────────────────────
   React.useEffect(() => {
-    const h = e => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setCmdOpen(o => !o); } };
+    const h = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        // Refresh LS-backed data when palette opens so clientes/cfes are current
+        setCmdClientes(LS.get('aryes-clients', []));
+        setCmdCfes(LS.get('aryes-cfe', []));
+        setCmdOpen(o => !o);
+      }
+    };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, []);
@@ -1656,10 +1669,11 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
               return (
                 <React.Fragment key={g.label}>
                   <div style={{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}}>{g.label}</div>
-                  {items.map(n=>{
+                  {(()=>{
                     const cfesLS=(()=>{try{return JSON.parse(localStorage.getItem('aryes-cfe')||'[]');}catch(e){return [];}})();
                     const vencidasN=cfesLS.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
                     const pendOrders=orders.filter(o=>o.status==='pending').length;
+                    return items.map(n=>{
                     return (
                       <button key={n.id} onClick={()=>setTab(n.id)}
                         style={{width:"100%",textAlign:"left",padding:"8px 18px",background:tab===n.id?T.greenBg:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:`3px solid transparent`,fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,borderRadius:"0 6px 6px 0",marginRight:8,transition:"background .15s"}}>
@@ -1673,7 +1687,8 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
                         {n.id==='facturacion'&&vencidasN>0&&<span style={{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{vencidasN}</span>}
                       </button>
                     );
-                  })}
+                    });
+                  })()}
                 </React.Fragment>
               );
             });
@@ -1775,8 +1790,8 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
           open={cmdOpen}
           onClose={()=>setCmdOpen(false)}
           products={enriched||[]}
-          clientes={LS.get('aryes-clients',[])}
-          cfes={LS.get('aryes-cfe',[])}
+          clientes={cmdClientes}
+          cfes={cmdCfes}
           setTab={setTab}
           onNewCFE={()=>{setTab('facturacion');setCmdOpen(false);}}
         />
