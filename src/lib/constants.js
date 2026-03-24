@@ -43,47 +43,25 @@ export const getAuthHeaders = (extra = {}) => {
   }
 };
 
-// ─── aryes_data blob sync (legacy layer) ─────────────────────────────────────
-// Writes a key/value pair to the aryes_data table asynchronously.
-// Used by LS.set — never blocks the UI.
-function sbWrite(key, value) {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token || SKEY;
-    fetch(`${SB_URL}/rest/v1/aryes_data`, {
-      method: 'POST',
-      headers: {
-        'apikey': SKEY,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({ key, value, updated_at: new Date().toISOString() }),
-    }).catch(() => {});
-  } catch { /* never block */ }
-}
+// ─── aryes_data blob sync (DEPRECATED — Priority 7) ─────────────────────────
+// sbWrite: no-op since Priority 7. Was called by LS.set.
+// sbSyncAll: called once on app startup — BEING REMOVED in this commit.
+// Next step (Priority 7 final): drop aryes_data table from Supabase.
+// sbWrite — DEPRECATED (Priority 7 — aryes_data blob sync removal)
+// Was called by LS.set() to duplicate every localStorage write to aryes_data.
+// Now a no-op. The function is kept to avoid import errors in case any
+// remaining code imports it. Will be deleted once aryes_data table is dropped.
+// eslint-disable-next-line no-unused-vars
+function sbWrite(_key, _value) { /* no-op — deprecated */ }
 
 // Reads all rows from aryes_data and hydrates localStorage cache.
 // Called once on app load to pull any server-side changes.
-export async function sbSyncAll() {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token = session?.access_token || SKEY;
-    const r = await fetch(`${SB_URL}/rest/v1/aryes_data?select=key,value`, {
-      headers: { 'apikey': SKEY, 'Authorization': `Bearer ${token}` },
-    });
-    if (!r.ok) return;
-    const rows = await r.json();
-    if (!Array.isArray(rows)) return;
-    rows.forEach(row => {
-      try {
-        const val = typeof row.value === 'string' ? row.value : JSON.stringify(row.value);
-        localStorage.setItem(row.key, val);
-      } catch { /* ignore quota errors */ }
-    });
-    localStorage.setItem('aryes-last-sync', new Date().toISOString());
-  } catch { /* never throw */ }
-}
+// sbSyncAll — DEPRECATED no-op (Priority 7)
+// Was: reads all aryes_data rows and hydrates localStorage.
+// Now: no-op. Not called anywhere since sbSyncAll startup call was removed
+// from App.jsx. Kept exported to avoid breaking any external callers.
+// Will be deleted when aryes_data table is dropped from Supabase.
+export async function sbSyncAll() { /* no-op — deprecated */ }
 
 // ─── LS — localStorage with async Supabase backup ────────────────────────────
 // Primary store: localStorage (instant reads/writes).
@@ -102,17 +80,16 @@ export const LS = {
     try {
       const str = typeof value === 'string' ? value : JSON.stringify(value);
       localStorage.setItem(key, str);
-      sbWrite(key, value); // async fire-and-forget
+      // sbWrite removed — aryes_data blob sync deprecated (Priority 7).
+      // Data is persisted via AppContext's direct table writes (products,
+      // suppliers, orders, etc.) which are the source of truth.
     } catch { /* never block */ }
   },
 
   remove(key) {
     try {
       localStorage.removeItem(key);
-      fetch(`${SB_URL}/rest/v1/aryes_data?key=eq.${encodeURIComponent(key)}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }).catch(() => {});
+      // aryes_data DELETE removed — blob sync deprecated (Priority 7).
     } catch { /* never block */ }
   },
 };

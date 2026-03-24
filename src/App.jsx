@@ -75,9 +75,15 @@ input[type=range]{accent-color:#3a7d1e;}
 // - Writes: localStorage immediately + Supabase async (never blocks UI)
 // - On first load: pulls all data from Supabase into localStorage
 // ============================================================
-// ─── App load: sync from Supabase in background ────────────────────────────
-// eslint-disable-next-line no-undef
-setTimeout(() => sbSyncAll(), 1000);
+// ─── aryes_data blob sync REMOVED (Priority 7) ──────────────────────────────
+// sbSyncAll() was called here to hydrate localStorage from aryes_data table.
+// Removed because:
+//   1. AppContext.tsx now loads all data directly from proper relational tables
+//      (products, suppliers, orders, etc.) — the real source of truth.
+//   2. sbSyncAll() could overwrite fresh AppContext data with stale aryes_data
+//      values, causing silent data divergence.
+//   3. aryes_data is write-only going forward (sbWrite is also now a no-op).
+// Next step: drop aryes_data table from Supabase.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
