@@ -44,6 +44,7 @@ import EmailSettings from './components/EmailSettings.jsx';
 import UserMenuDropdown from './components/UserMenuDropdown.jsx';
 import { useApp } from './context/AppContext.jsx';
 import { useConfirm } from './components/ConfirmDialog.jsx';
+import TabLoader from './components/TabLoader.jsx';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -1727,45 +1728,45 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización — reconectando...</span>
       </div>}
       {/* ══ DASHBOARD ══ */}
-        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
-        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={confirmedDeleteProduct}/></Suspense></ErrorBoundary>}
-        {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
+        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline products={products} enriched={enriched} setModal={setModal} setEditProd={setEditProd} setProducts={setProducts} deleteProduct={confirmedDeleteProduct}/></Suspense></ErrorBoundary>}
+        {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* ══ SUPPLIERS ══ */}
-        {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={confirmedDeleteSupplier}/></Suspense></ErrorBoundary>}
+        {activeTab==="suppliers"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ProveedoresInline suppliers={suppliers} setSuppliers={setSuppliers} products={products} orders={orders} setOrders={setOrders} addMov={addMov} session={session} alerts={alerts} enriched={enriched} tab={tab} setModal={setModal} setEditSup={setEditSup} setViewSup={setViewSup} deleteSupplier={confirmedDeleteSupplier}/></Suspense></ErrorBoundary>}
         {activeTab==="scanner"&&<div className="au"><Scanner products={products} suppliers={suppliers} onUpdate={(id,qty,name,unit)=>{const p2=products.find(p=>p.id===id);const sup2=p2?suppliers.find(s=>s.id===p2.supplierId):null;setProducts(ps=>ps.map(p=>p.id===id?{...p,stock:p.stock+qty}:p));addMov({type:"scanner_in",productId:id,productName:name||p2?.name||id,supplierId:p2?.supplierId||"",supplierName:sup2?.name||"",qty,unit:unit||p2?.unit||"",note:"Ingreso por scanner"});}}/></div>}
 
-        {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:40,color:'#888',fontSize:14}}>Cargando...</div>}><ConfigInline session={session} suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols} brandCfg={brandCfg} setBrandCfg={setBrandCfg}/></Suspense></ErrorBoundary>}
-        {activeTab==="lotes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><LotesTab /></Suspense>}
-      {activeTab==="clientes"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ClientesTab /></Suspense></ErrorBoundary>}
-      {activeTab==="movimientos"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><MovimientosTab /></Suspense>}
+        {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ConfigInline session={session} suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols} brandCfg={brandCfg} setBrandCfg={setBrandCfg}/></Suspense></ErrorBoundary>}
+        {activeTab==="lotes"&&<Suspense fallback={<TabLoader />}><LotesTab /></Suspense>}
+      {activeTab==="clientes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ClientesTab /></Suspense></ErrorBoundary>}
+      {activeTab==="movimientos"&&<Suspense fallback={<TabLoader />}><MovimientosTab /></Suspense>}
       
-      {activeTab==="deposito"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DepositoTab /></Suspense>}
+      {activeTab==="deposito"&&<Suspense fallback={<TabLoader />}><DepositoTab /></Suspense>}
       
-      {activeTab==="rutas"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RutasTab /></Suspense></ErrorBoundary>}
+      {activeTab==="rutas"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><RutasTab /></Suspense></ErrorBoundary>}
       
-        {activeTab==="recepcion"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><RecepcionTab /></Suspense>}
+        {activeTab==="recepcion"&&<Suspense fallback={<TabLoader />}><RecepcionTab /></Suspense>}
         
-        {activeTab==="ventas"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><VentasTab products={products} setProducts={setProducts} addMov={addMov}/></Suspense>}
-        {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><FacturacionTab products={products} clientes={LS.get("aryes-clients",[])}/></Suspense></ErrorBoundary>}
+        {activeTab==="ventas"&&<Suspense fallback={<TabLoader />}><VentasTab products={products} setProducts={setProducts} addMov={addMov}/></Suspense>}
+        {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products} clientes={LS.get("aryes-clients",[])}/></Suspense></ErrorBoundary>}
         
-        {activeTab==="importar"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ImportTab /></Suspense>}
+        {activeTab==="importar"&&<Suspense fallback={<TabLoader />}><ImportTab /></Suspense>}
         
-        {activeTab==="informes"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><InformesTab /></Suspense>}
+        {activeTab==="informes"&&<Suspense fallback={<TabLoader />}><InformesTab /></Suspense>}
         
-        {activeTab==="conteo"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><ConteoTab /></Suspense>}
-        {activeTab==="packing"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><PackingTab /></Suspense></ErrorBoundary>}
-        {activeTab==="batch-picking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><BatchPickingTab /></Suspense>}
-        {activeTab==="transferencias"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TransferenciasTab /></Suspense>}
+        {activeTab==="conteo"&&<Suspense fallback={<TabLoader />}><ConteoTab /></Suspense>}
+        {activeTab==="packing"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PackingTab /></Suspense></ErrorBoundary>}
+        {activeTab==="batch-picking"&&<Suspense fallback={<TabLoader />}><BatchPickingTab /></Suspense>}
+        {activeTab==="transferencias"&&<Suspense fallback={<TabLoader />}><TransferenciasTab /></Suspense>}
         
-        {activeTab==="kpis"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><KPIsTab /></Suspense></ErrorBoundary>}
-        {activeTab==="tracking"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><TrackingTab session={session} /></Suspense>}
+        {activeTab==="kpis"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><KPIsTab /></Suspense></ErrorBoundary>}
+        {activeTab==="tracking"&&<Suspense fallback={<TabLoader />}><TrackingTab session={session} /></Suspense>}
         
-        {activeTab==="devoluciones"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DevolucionesTab /></Suspense>}
-        {activeTab==="precios"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><PreciosTab /></Suspense></ErrorBoundary>}
-        {activeTab==="demanda"&&<Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><DemandaTab /></Suspense>}
-        {activeTab==="audit"&&<ErrorBoundary><Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:32,color:'#aaa',fontSize:13}}>Cargando...</div>}><AuditTab /></Suspense></ErrorBoundary>}
+        {activeTab==="devoluciones"&&<Suspense fallback={<TabLoader />}><DevolucionesTab /></Suspense>}
+        {activeTab==="precios"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PreciosTab /></Suspense></ErrorBoundary>}
+        {activeTab==="demanda"&&<Suspense fallback={<TabLoader />}><DemandaTab /></Suspense>}
+        {activeTab==="audit"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><AuditTab /></Suspense></ErrorBoundary>}
         </div>
         </main>
 
