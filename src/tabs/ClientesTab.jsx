@@ -38,7 +38,11 @@ function ClientesTab(){
       limite_credito:    client.limiteCredito ? Number(client.limiteCredito) : null,
       notas:             client.notas             || '',
       created_at:        client.creado            || new Date().toISOString(),
-    }, 'id').catch(e=>console.warn('[DB write failed]', e?.message||e));
+    }, 'id').catch(e=>{
+      console.warn('[ClientesTab] syncClient failed:', e?.message||e);
+      setMsg('⚠ Cliente guardado localmente — no se pudo sincronizar con el servidor');
+      setTimeout(()=>setMsg(''),5000);
+    });
   };
 
   const save=()=>{
@@ -63,7 +67,11 @@ function ClientesTab(){
     if(!ok) return;
     const upd=items.filter(x=>x.id!==id);
     setItems(upd); LS.set(KCLI,upd);
-    db.del('clients',{id}).catch(e=>console.warn('[DB write failed]', e?.message||e));        // → Supabase clients table
+    db.del('clients',{id}).catch(e=>{
+      console.warn('[ClientesTab] delete client failed:', e?.message||e);
+      setMsg('⚠ Eliminado localmente — no se pudo sincronizar con el servidor');
+      setTimeout(()=>setMsg(''),5000);
+    });
     setVista('lista');
   };
 

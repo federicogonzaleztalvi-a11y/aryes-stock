@@ -17,7 +17,11 @@ const ClientsTab=({products,session})=>{
     const client={...form,id:editing&&editing!=='new'?editing:'cli-'+Date.now()};
     const updated=editing&&editing!=='new'?clients.map(c=>c.id===editing?client:c):[...clients,client];
     LS.set('aryes-clients',updated);setClients(updated);
-    db.upsert('clients',[{id:client.id,name:client.name,type:client.type,contact:client.contact,phone:client.phone,email:client.email,address:client.address,notes:client.notes,products:client.products}]).catch(e=>console.warn(e));
+    db.upsert('clients',[{id:client.id,name:client.name,type:client.type,contact:client.contact,phone:client.phone,email:client.email,address:client.address,notes:client.notes,products:client.products}]).catch(e=>{
+      console.warn('[ClientsTab] upsert failed:', e?.message||e);
+      setMsg('⚠ Cliente guardado localmente — no se pudo sincronizar con el servidor');
+      setTimeout(()=>setMsg(''),5000);
+    });
     setEditing(null);setMsg('Guardado ✓');setTimeout(()=>setMsg(''),2000);
   };
 

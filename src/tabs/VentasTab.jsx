@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS, db } from '../lib/constants.js';
 
 function VentasTab(){
-  const { products, setProducts, addMov } = useApp();
+  const { products, setProducts, addMov, setHasPendingSync } = useApp();
   const G="#3a7d1e";
   const KVEN="aryes-ventas";
   const KCLI="aryes-clients";
@@ -168,7 +168,10 @@ function VentasTab(){
     setVentas(upd);
     if(ventaSel?.id===id)setVentaSel({...ventaSel,estado});
     // Persist estado to Supabase
-    db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>console.warn('[Stock] venta estado patch failed',e));
+    db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>{
+      console.warn('[VentasTab] estado patch failed:',e?.message||e);
+      showMsg('⚠ Estado actualizado localmente — no se pudo sincronizar con el servidor','warn');
+    });
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Restore stock on cancel
       const updProds=[...products];
@@ -178,7 +181,10 @@ function VentasTab(){
         if(idx>-1){
           const restoredStock=Number(updProds[idx].stock||0)+Number(it.cantidad);
           updProds[idx]={...updProds[idx],stock:restoredStock,updatedAt:now};
-          db.patch('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId).catch(e=>console.warn('[DB write failed]', e?.message||e));
+          db.patch('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId).catch(e=>{
+            console.warn('[VentasTab] stock restore patch failed:',e?.message||e);
+            setHasPendingSync(true);
+          });
         }
       });
       setProducts(updProds);

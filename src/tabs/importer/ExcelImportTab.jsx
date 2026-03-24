@@ -52,7 +52,10 @@ const ExcelImportTab=({products,setProducts,session:_session})=>{
     setProducts(updated);
     // Sync to Supabase
     const dbRows=newProds.map(p=>({id:p.id,name:p.name,barcode:p.barcode||'',supplier_id:p.supplierId,unit:p.unit,stock:p.stock,unit_cost:p.unitCost,min_stock:p.minStock,daily_usage:p.dailyUsage,category:p.category,brand:p.brand,history:[]}));
-    db.upsert('products',dbRows).catch(e=>console.warn('sync:',e));
+    db.upsert('products',dbRows).catch(e=>{
+      console.warn('[ExcelImportTab] bulk upsert failed:', e?.message||e);
+      setMsg(newProds.length+' productos importados localmente ⚠ — no se pudieron sincronizar con el servidor. Verificá la conexión.');
+    });
     setStep('done');
     setMsg(newProds.length+' productos importados correctamente ✓');
   };
