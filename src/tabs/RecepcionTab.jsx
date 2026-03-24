@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS, db } from '../lib/constants.js';
 
 function RecepcionTab(){
-  const { products: prods, setProducts: setProds, orders: pedidos } = useApp();
+  const { products: prods, setProducts: setProds, orders: pedidos, addMov } = useApp();
   const G="#3a7d1e";
   const KLOTES="aryes-lots";
   const KREC="aryes-recepciones";
@@ -79,32 +79,60 @@ function RecepcionTab(){
 
     // 1. Update stock
     const updProds=[...prods];
+    // Capture stock BEFORE receiving — needed as lock value for patchWithLock
+    const stockBefore={};
     items.forEach(it=>{
       if(!it.nombre||Number(it.cantidadRecibida)===0)return;
-      // Find product by name or id
       const idx=updProds.findIndex(p=>
         p.id===it.productoId||
         p.nombre?.toLowerCase()===it.nombre.toLowerCase()||
         p.name?.toLowerCase()===it.nombre.toLowerCase()
       );
       if(idx>-1){
+        stockBefore[updProds[idx].id]=Number(updProds[idx].stock||0);
         updProds[idx]={...updProds[idx],stock:(Number(updProds[idx].stock||0)+Number(it.cantidadRecibida))};
       }
     });
     setProds(updProds);
 
-    // Persist stock changes to Supabase (non-blocking, failures shown to user)
+    // Register a stock movement for each received item
+    // type:'delivery' matches the existing MovementType and AppContext conventions
+    items.forEach(it=>{
+      if(!it.nombre||Number(it.cantidadRecibida)===0) return;
+      const prod=updProds.find(p=>
+        p.id===it.productoId||
+        p.nombre?.toLowerCase()===it.nombre.toLowerCase()||
+        p.name?.toLowerCase()===it.nombre.toLowerCase()
+      );
+      if(!prod) return;
+      const ref=nroRemito
+        ? `Recepcion${pedidoSel?' (pedido)':' (manual)'} — remito ${nroRemito}`
+        : `Recepcion${pedidoSel?' (pedido)':' (manual)'}`;
+      addMov({
+        type:       'delivery',
+        productId:  prod.id,
+        productName:prod.nombre||prod.name||it.nombre,
+        qty:        Number(it.cantidadRecibida),
+        unit:       prod.unit||prod.unidad||it.unidad||'u',
+        stockAfter: prod.stock,
+        supplierId: pedidoSel?.supplierId||'',
+        supplierName:proveedor||'',
+        note:       ref,
+      });
+    });
+
+    // Persist stock to Supabase — patchWithLock prevents concurrent overwrites
     const stockPatches = items
       .filter(it=>it.nombre&&Number(it.cantidadRecibida)>0)
       .map(it=>{
         const p=updProds.find(x=>x.id===it.productoId||x.nombre?.toLowerCase()===it.nombre.toLowerCase()||x.name?.toLowerCase()===it.nombre.toLowerCase());
-        if(!p) return Promise.resolve();
-        return db.patch('products',{stock:p.stock,updated_at:ahora},'uuid=eq.'+p.id);
+        if(!p||stockBefore[p.id]===undefined) return Promise.resolve();
+        return db.patchWithLock('products',{stock:p.stock,updated_at:ahora},'uuid=eq.'+p.id,'stock',stockBefore[p.id]);
       });
     Promise.allSettled(stockPatches).then(results=>{
       const failed=results.filter(r=>r.status==='rejected').length;
       if(failed>0){
-        console.warn('[Recepcion] '+failed+' stock patch(es) failed — data safe in localStorage');
+        console.warn('[Recepcion] '+failed+' patchWithLock(s) failed — data safe in localStorage');
         setMsg('⚠ Recepcion guardada. '+failed+' producto(s) no sincronizaron con el servidor.');
       }
     });
