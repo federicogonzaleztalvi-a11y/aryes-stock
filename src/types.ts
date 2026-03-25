@@ -391,6 +391,26 @@ export interface PriceListItem {
   precio:      number;        // 0 = use global discount
   updatedAt:   string;
 }
+export type PurchaseInvoiceStatus = 'pendiente' | 'pagada' | 'pagada_parcial' | 'vencida';
+
+export interface PurchaseInvoice {
+  id:               string;
+  proveedorId:      string;
+  proveedorNombre:  string;
+  numero:           string;      // invoice number from supplier
+  fecha:            string;      // ISO date
+  fechaVenc:        string|null; // payment due date
+  moneda:           string;      // 'USD' | 'UYU' | 'EUR'
+  subtotal:         number;
+  ivaTotal:         number;
+  total:            number;
+  saldoPendiente:   number;
+  status:           PurchaseInvoiceStatus;
+  recepcionId:      string|null; // FK → recepciones (optional link)
+  notas:            string;
+  creadoEn:         string;
+}
+
 export interface AppContextValue {
   // ── Core data ──────────────────────────────────────────────────────────────
   products: Product[];
@@ -411,6 +431,8 @@ export interface AppContextValue {
   setConteos:      React.Dispatch<React.SetStateAction<Conteo[]>>;
   rutas:           Ruta[];
   setRutas:        React.Dispatch<React.SetStateAction<Ruta[]>>;
+  purchaseInvoices:    PurchaseInvoice[];
+  setPurchaseInvoices: React.Dispatch<React.SetStateAction<PurchaseInvoice[]>>;
   transfers:        Transfer[];
   setTransfers:     React.Dispatch<React.SetStateAction<Transfer[]>>;
   priceListas:      PriceLista[];

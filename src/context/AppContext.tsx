@@ -8,7 +8,7 @@ import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
               Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta,
-              PriceLista, PriceListItem, Transfer } from '../types.js';
+              PriceLista, PriceListItem, Transfer, PurchaseInvoice } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -42,6 +42,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
   const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
   const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
+  const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>(() => LS.get('aryes-purchase-invoices', []));
   const [transfers,     setTransfers]     = useState<Transfer[]>(() => LS.get('aryes-transfers-v2', []));
   const [priceListas,   setPriceListas]   = useState<PriceLista[]>(() => LS.get('aryes-listas-precio-v2', []));
   const [priceListItems, setPriceListItems] = useState<PriceListItem[]>(() => LS.get('aryes-listas-precio-items', []));
@@ -73,6 +74,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes8-movements', movements), [movements]);
   useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
   useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
+  useEffect(() => LS.set('aryes-purchase-invoices', purchaseInvoices), [purchaseInvoices]);
   useEffect(() => LS.set('aryes-transfers-v2', transfers), [transfers]);
   useEffect(() => LS.set('aryes-listas-precio-v2',    priceListas),    [priceListas]);
   useEffect(() => LS.set('aryes-listas-precio-items', priceListItems), [priceListItems]);
@@ -233,6 +235,20 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             creadoEn: r.creado_en||'',
           }));
           setRutas(mappedRutas); // reactive — LS.set handled by useEffect
+        }
+        // Load purchase invoices from Supabase
+        const sbPI = await db.get<Record<string, any>[]>('purchase_invoices?order=creado_en.desc&limit=300');
+        if (sbPI && sbPI.length > 0) {
+          const mappedPI: PurchaseInvoice[] = sbPI.map(r => ({
+            id: r.id, proveedorId: r.proveedor_id||'', proveedorNombre: r.proveedor_nombre||'',
+            numero: r.numero||'', fecha: r.fecha||'', fechaVenc: r.fecha_venc||null,
+            moneda: r.moneda||'USD', subtotal: Number(r.subtotal)||0,
+            ivaTotal: Number(r.iva_total)||0, total: Number(r.total)||0,
+            saldoPendiente: Number(r.saldo_pendiente)||0,
+            status: r.status||'pendiente', recepcionId: r.recepcion_id||null,
+            notas: r.notas||'', creadoEn: r.creado_en||'',
+          }));
+          setPurchaseInvoices(mappedPI);
         }
         // Load transfers from Supabase
         const sbTransfers = await db.get<Record<string, any>[]>('transfers?order=creado_en.desc&limit=200');
@@ -536,6 +552,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     devoluciones, setDevoluciones,
     conteos, setConteos,
     rutas, setRutas,
+    purchaseInvoices, setPurchaseInvoices,
     transfers, setTransfers,
     priceListas, setPriceListas,
     priceListItems, setPriceListItems,

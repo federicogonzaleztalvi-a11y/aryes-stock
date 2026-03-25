@@ -19,6 +19,7 @@ const ClientesTab = React.lazy(() => import('./tabs/ClientesTab.jsx'));
 const PackingTab = React.lazy(() => import('./tabs/PackingTab.jsx'));
 const ImportTab = React.lazy(() => import('./tabs/ImportTab.jsx'));
 const TransferenciasTab = React.lazy(() => import('./tabs/TransferenciasTab.jsx'));
+const ComprasTab        = React.lazy(() => import('./tabs/ComprasTab.jsx'));
 const BatchPickingTab = React.lazy(() => import('./tabs/BatchPickingTab.jsx'));
 const PreciosTab = React.lazy(() => import('./tabs/PreciosTab.jsx'));
 const KPIsTab = React.lazy(() => import('./tabs/KPIsTab.jsx'));
@@ -851,14 +852,14 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     {id:"rutas",label:"Rutas",icon:"🚛"},
     {id:"tracking",label:"Tracking",icon:"📍"},
     {id:"kpis",label:"KPIs",icon:"📈"},
-    {id:"recepcion",label:"Recepcion",icon:"📥"},{id:"packing",label:"Packing",icon:"📦"},{id:"batch-picking",label:"Batch Pick",icon:"📋"},
+    {id:"recepcion",label:"Recepcion",icon:"📥"},{id:"compras",label:"Compras",icon:"🧾"},{id:"packing",label:"Packing",icon:"📦"},{id:"batch-picking",label:"Batch Pick",icon:"📋"},
     {id:"informes",label:"Informes",icon:"📋"},{id:"devoluciones",label:"Devoluciones",icon:"↩"},{id:"precios",label:"Precios",icon:"💲"},{id:"demanda",label:"Demanda",icon:"📈"},{id:"audit",label:"Auditoría",icon:"📋"},
     {id:"importar",label:"Importar datos",icon:"📂"},
     {id:"scanner",label:"Scanner",icon:"📷"},
     {id:"config",label:"Config",icon:"⚙"},
   ];
   const NAV_ROLES={
-    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","rutas","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config","conteo","devoluciones","packing","precios","transferencias","batch-picking"],
+    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","rutas","tracking","kpis","recepcion","compras","informes","demanda","audit","importar","scanner","config","conteo","devoluciones","packing","precios","transferencias","batch-picking"],
     operador:["dashboard","inventory","movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","scanner"],
     vendedor:["dashboard","clientes","ventas","facturacion","kpis","informes"]
   };
@@ -914,7 +915,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
             const _role=session?.role||"admin";
             const groups=[
               {label:"Principal",ids:["dashboard","inventory","orders","suppliers"]},
-              {label:"Operaciones",ids:["movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","scanner"]},
+              {label:"Operaciones",ids:["movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","compras","scanner"]},
               {label:"Comercial",ids:["clientes","ventas","facturacion"]},
               {label:"Análisis",ids:["kpis","informes","demanda","audit"]},
               {label:"Sistema",ids:["importar","config"]},
@@ -1029,6 +1030,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         {activeTab==="packing"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PackingTab /></Suspense></ErrorBoundary>}
         {activeTab==="batch-picking"&&<Suspense fallback={<TabLoader />}><BatchPickingTab /></Suspense>}
         {activeTab==="transferencias"&&<Suspense fallback={<TabLoader />}><TransferenciasTab /></Suspense>}
+        {activeTab==="compras"&&<Suspense fallback={<TabLoader />}><ComprasTab /></Suspense>}
         
         {activeTab==="kpis"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><KPIsTab /></Suspense></ErrorBoundary>}
         {activeTab==="tracking"&&<Suspense fallback={<TabLoader />}><TrackingTab session={session} /></Suspense>}
