@@ -4,7 +4,7 @@ import { db } from '../lib/constants.js';
 
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
-          clientes, setClientes } = useApp();
+          clientes, setClientes, priceListas, priceListItems } = useApp();
   const G="#3a7d1e";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
@@ -52,7 +52,26 @@ function VentasTab(){
     if(disponible < Number(itemCant)){
       showMsg(`Stock insuficiente. Disponible: ${disponible} ${prod.unit||'u'}`,'err');return;
     }
-    const precio=itemPrecio>0?itemPrecio:(prod.precioVenta||prod.precio||prod.price||0);
+    // ── Price list resolution ────────────────────────────────────────────────
+    // Priority: 1) manual override 2) custom item price in list 3) list discount 4) precioVenta
+    let precio = prod.precioVenta || prod.precio || prod.price || 0;
+    if (itemPrecio > 0) {
+      precio = itemPrecio; // manual override always wins
+    } else {
+      const cli = clientes.find(c => c.id === form.clienteId);
+      const listaId = cli?.listaId;
+      if (listaId) {
+        const customItem = priceListItems.find(it => it.listaId === listaId && it.productUuid === prod.id);
+        if (customItem && customItem.precio > 0) {
+          precio = customItem.precio; // exact custom price for this product in this list
+        } else {
+          const lista = priceListas.find(l => l.id === listaId);
+          if (lista && lista.descuento > 0) {
+            precio = Math.round(precio * (1 - lista.descuento / 100)); // global % discount
+          }
+        }
+      }
+    }
     setForm(f=>({...f,items:[...f.items,{
       productoId:prod.id,
       nombre:prod.nombre||prod.name,
@@ -255,6 +274,17 @@ function VentasTab(){
               <option value=''>— Seleccionar cliente —</option>
               {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
+            {/* Active price list badge */}
+            {form.clienteId && (() => {
+              const cli = clientes.find(c => c.id === form.clienteId);
+              const lista = cli?.listaId ? priceListas.find(l => l.id === cli.listaId) : null;
+              return lista ? (
+                <div style={{marginTop:5,fontSize:11,fontWeight:700,color:lista.color||G,
+                  background:(lista.color||G)+'18',padding:'3px 10px',borderRadius:20,display:'inline-block'}}>
+                  {lista.nombre} · −{lista.descuento}%
+                </div>
+              ) : null;
+            })()}
             {!showNewClient
               ?<button onClick={()=>setShowNewClient(true)} style={{marginTop:6,background:'none',border:'none',color:G,fontSize:11,cursor:'pointer',padding:0,fontWeight:600}}>+ Agregar cliente nuevo</button>
               :<div style={{display:'flex',gap:6,marginTop:6}}>

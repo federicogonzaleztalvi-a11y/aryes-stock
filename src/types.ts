@@ -300,6 +300,7 @@ export interface Cliente {
   ciudad:           string;
   condPago:         string;
   limiteCredito:    string;
+  listaId:          string | null;  // FK → PriceLista.id
   notas:            string;
   creado:           string;
 }

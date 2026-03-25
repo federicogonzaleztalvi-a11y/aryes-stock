@@ -212,6 +212,7 @@ const describeAction = (action: string, detail: string): string => {
             contacto: r.contacto||r.contact||'', direccion: r.direccion||r.address||'',
             ciudad: r.ciudad||'', condPago: r.cond_pago||'credito_30',
             limiteCredito: r.limite_credito ? String(r.limite_credito) : '',
+            listaId: r.lista_id || null,
             notas: r.notas||'', creado: r.created_at||'',
           }));
           setClientes(mappedClientes); // reactive — LS.set handled by useEffect
