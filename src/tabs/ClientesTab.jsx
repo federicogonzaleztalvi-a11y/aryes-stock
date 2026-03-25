@@ -1,11 +1,35 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 function ClientesTab(){
-  const { clientes: items, setClientes: setItems } = useApp();
+  const { clientes: items, setClientes: setItems, ventas } = useApp();
   const G="#3a7d1e";
+
+  // ── CRM metrics for the selected client ──────────────────────────────────
+  const crmMetrics = useMemo(() => {
+    if (!selId) return null;
+    const clienteVentas = ventas
+      .filter(v => v.clienteId === selId && v.estado !== 'cancelada')
+      .sort((a, b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+    if (clienteVentas.length === 0) return { ventasCount: 0, totalComprado: 0, ticketPromedio: 0, diasDesdeUltima: null, topProductos: [], ultimasVentas: [] };
+    const totalComprado   = clienteVentas.reduce((s, v) => s + Number(v.total || 0), 0);
+    const ticketPromedio  = totalComprado / clienteVentas.length;
+    const ultimaFecha     = new Date(clienteVentas[0].creadoEn);
+    const diasDesdeUltima = Math.floor((Date.now() - ultimaFecha) / 86400000);
+    // Top products by total quantity across all sales
+    const prodMap = {};
+    clienteVentas.forEach(v => (v.items || []).forEach(it => {
+      const k = it.nombre || it.productoId;
+      prodMap[k] = (prodMap[k] || 0) + Number(it.cantidad || 0);
+    }));
+    const topProductos = Object.entries(prodMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }));
+    return { ventasCount: clienteVentas.length, totalComprado, ticketPromedio, diasDesdeUltima, topProductos, ultimasVentas: clienteVentas.slice(0, 5) };
+  }, [selId, ventas]);
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
@@ -115,6 +139,71 @@ function ClientesTab(){
           <button onClick={()=>edit(sel)} style={{padding:'8px 20px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Editar</button>
         </div>
       </div>
+
+      {/* ── Actividad comercial ───────────────────────────────── */}
+      {crmMetrics && (
+        <div style={{marginTop:20,background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <div style={{fontFamily:'Playfair Display,serif',fontSize:18,color:'#1a1a1a',marginBottom:16}}>
+            Actividad comercial
+          </div>
+
+          {crmMetrics.ventasCount === 0 ? (
+            <div style={{textAlign:'center',padding:'24px 0',color:'#888',fontSize:13}}>
+              Sin ventas registradas para este cliente
+            </div>
+          ) : (
+            <>
+              {/* KPI strip */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,background:'#e2e2de',borderRadius:10,overflow:'hidden',marginBottom:20}}>
+                {[
+                  {l:'Compras totales', v: crmMetrics.ventasCount},
+                  {l:'Total comprado',  v: '$'+Number(crmMetrics.totalComprado).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})},
+                  {l:'Ticket promedio', v: '$'+Number(crmMetrics.ticketPromedio).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})},
+                  {l:'Última compra',   v: crmMetrics.diasDesdeUltima === 0 ? 'Hoy' : crmMetrics.diasDesdeUltima === 1 ? 'Ayer' : `Hace ${crmMetrics.diasDesdeUltima}d`,
+                   accent: crmMetrics.diasDesdeUltima > 30 ? '#dc2626' : crmMetrics.diasDesdeUltima > 14 ? '#d97706' : G},
+                ].map(k => (
+                  <div key={k.l} style={{background:'#fff',padding:'14px 16px'}}>
+                    <div style={{fontSize:10,fontWeight:600,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{k.l}</div>
+                    <div style={{fontSize:18,fontWeight:700,color:k.accent||'#1a1a1a'}}>{k.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+                {/* Top productos */}
+                {crmMetrics.topProductos.length > 0 && (
+                  <div>
+                    <div style={{fontSize:11,fontWeight:700,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Productos más comprados</div>
+                    {crmMetrics.topProductos.map((p,i) => (
+                      <div key={p.nombre} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:i<crmMetrics.topProductos.length-1?'1px solid #f3f4f6':'none'}}>
+                        <span style={{width:20,height:20,borderRadius:'50%',background:G+'22',color:G,fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{i+1}</span>
+                        <span style={{flex:1,fontSize:13,color:'#1a1a1a'}}>{p.nombre}</span>
+                        <span style={{fontSize:12,color:'#888'}}>{Number(p.cantidad).toLocaleString('es-UY')} u.</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Últimas ventas */}
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Últimas compras</div>
+                  {crmMetrics.ultimasVentas.map((v,i) => {
+                    const ECOL={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:G,cancelada:'#9ca3af'};
+                    return(
+                      <div key={v.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:i<crmMetrics.ultimasVentas.length-1?'1px solid #f3f4f6':'none'}}>
+                        <span style={{fontSize:12,color:'#888',minWidth:56}}>{v.creadoEn?new Date(v.creadoEn).toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):'—'}</span>
+                        <span style={{fontSize:11,fontWeight:700,color:'#888',minWidth:60}}>{v.nroVenta}</span>
+                        <span style={{flex:1,fontSize:13,fontWeight:700,color:G}}>${Number(v.total||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:ECOL[v.estado]||'#888',background:(ECOL[v.estado]||'#888')+'18',padding:'2px 8px',borderRadius:20}}>{v.estado}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
   return(
