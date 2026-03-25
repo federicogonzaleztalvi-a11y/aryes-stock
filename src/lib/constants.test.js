@@ -11,6 +11,62 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { sanitizeText } from './constants.js';
 
+// ─── getAuthHeaders ───────────────────────────────────────────────────────────
+
+import { getAuthHeaders } from './constants.js';
+
+describe('getAuthHeaders', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('throws when localStorage has no session', () => {
+    expect(() => getAuthHeaders()).toThrow('[auth] No active session — request aborted');
+  });
+
+  it('throws when session has no access_token', () => {
+    localStorage.setItem('aryes-session', JSON.stringify({ email: 'x@x.com', role: 'admin' }));
+    expect(() => getAuthHeaders()).toThrow('[auth] No active session — request aborted');
+  });
+
+  it('throws when access_token is empty string', () => {
+    localStorage.setItem('aryes-session', JSON.stringify({ access_token: '' }));
+    expect(() => getAuthHeaders()).toThrow('[auth] No active session — request aborted');
+  });
+
+  it('returns correct headers when valid session exists', () => {
+    const token = 'eyJvalid.jwt.token';
+    localStorage.setItem('aryes-session', JSON.stringify({ access_token: token }));
+    const headers = getAuthHeaders();
+    expect(headers['Authorization']).toBe(`Bearer ${token}`);
+    expect(headers['Content-Type']).toBe('application/json');
+    // apikey must be present (anon key) — never the user token
+    expect(headers['apikey']).toBeDefined();
+    // CRITICAL: Authorization must never equal apikey
+    expect(headers['Authorization']).not.toBe(`Bearer ${headers['apikey']}`);
+  });
+
+  it('never uses the anon key as a Bearer token', () => {
+    // Even if localStorage throws, the function must not fall back to anon key as Bearer
+    const origGetItem = localStorage.getItem.bind(localStorage);
+    localStorage.getItem = (key) => {
+      if (key === 'aryes-session') throw new Error('storage error');
+      return origGetItem(key);
+    };
+    expect(() => getAuthHeaders()).toThrow();
+    localStorage.getItem = origGetItem;
+  });
+
+  it('merges extra headers correctly when authenticated', () => {
+    localStorage.setItem('aryes-session', JSON.stringify({ access_token: 'tok123' }));
+    const headers = getAuthHeaders({ 'Prefer': 'return=representation' });
+    expect(headers['Prefer']).toBe('return=representation');
+    expect(headers['Authorization']).toBe('Bearer tok123');
+  });
+});
+
+
+
 // ─── sanitizeText ─────────────────────────────────────────────────────────────
 
 describe('sanitizeText', () => {
