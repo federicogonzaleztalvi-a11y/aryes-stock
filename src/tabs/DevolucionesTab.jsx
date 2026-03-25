@@ -4,7 +4,7 @@ import { db } from '../lib/constants.js';
 
 function DevolucionesTab(){
   const { products: prods, setProducts: setProds,
-          devoluciones, setDevoluciones, ventas, setHasPendingSync } = useApp();
+          devoluciones, setDevoluciones, ventas, setHasPendingSync, addMov } = useApp();
   const G="#3a7d1e";
   const [vista,setVista]=useState("lista");
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});
@@ -53,6 +53,25 @@ function DevolucionesTab(){
     const dev={id:crypto.randomUUID(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
       ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
       items:itemsDevueltos,estado:"procesada",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
+    // Register a stock movement for each approved item
+    // type:'manual_in' = stock entered manually (return restock)
+    itemsDevueltos
+      .filter(it => it.inspeccion === 'aprobado')
+      .forEach(it => {
+        const prod = updProds.find(p => p.id === it.productoId);
+        if (!prod) return;
+        addMov({
+          type:        'manual_in',
+          productId:   prod.id,
+          productName: prod.nombre || prod.name || it.nombre,
+          qty:         Number(it.cantDevolver),
+          unit:        prod.unit || prod.unidad || it.unidad || 'u',
+          stockAfter:  prod.stock,
+          supplierId:  '',
+          supplierName:'',
+          note:        `Devolucion ${dev.nroDevolucion} — ${form.motivo}`,
+        });
+      });
     const upd=[dev,...devoluciones];
     setDevoluciones(upd);
     // Persist to Supabase devoluciones table (non-blocking)
