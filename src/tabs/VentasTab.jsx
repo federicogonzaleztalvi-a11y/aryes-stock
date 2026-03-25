@@ -4,7 +4,7 @@ import { db } from '../lib/constants.js';
 
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
-          clientes, setClientes, priceListas, priceListItems } = useApp();
+          clientes, setClientes, priceListas, priceListItems, lotes } = useApp();
   const G="#3a7d1e";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
@@ -25,6 +25,7 @@ function VentasTab(){
   const [itemProd,setItemProd]=useState('');
   const [itemCant,setItemCant]=useState(1);
   const [itemPrecio,setItemPrecio]=useState(0);
+  const [itemLote,setItemLote]=useState('');  // selected lote id for current item
   const [saving,setSaving]=useState(false);
   const [showNewClient,setShowNewClient]=useState(false);
   const [newClientNombre,setNewClientNombre]=useState('');
@@ -79,9 +80,11 @@ function VentasTab(){
       precioUnit:Number(precio),
       costoUnit:Number(prod.unitCost||0),
       unidad:prod.unit||prod.unidad||'u',
-      subtotal:Number(itemCant)*Number(precio)
+      subtotal:Number(itemCant)*Number(precio),
+      loteId:   itemLote || undefined,
+      loteNro:  itemLote ? (lotes.find(l=>l.id===itemLote)?.lote||undefined) : undefined,
     }]}));
-    setItemProd('');setItemCant(1);setItemPrecio(0);
+    setItemProd('');setItemCant(1);setItemPrecio(0);setItemLote('');
   };
 
   const addNewClientInline=()=>{
@@ -315,6 +318,22 @@ function VentasTab(){
                 {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} — stock: {p.stock} {p.unit||''}</option>)}
               </select>
             </div>
+            {/* Lot selector — only shown when selected product has available lots */}
+            {itemProd && lotes.filter(l => l.productoId === itemProd && Number(l.cantidad) > 0).length > 0 && (
+              <div style={{flex:2,minWidth:140}}>
+                <select value={itemLote} onChange={e=>setItemLote(e.target.value)}
+                  style={{width:'100%',padding:'8px 10px',border:`1px solid ${itemLote?G:'#e5e7eb'}`,borderRadius:6,fontSize:12,fontFamily:'inherit',background:itemLote?G+'0d':'#fff',color:itemLote?G:'inherit'}}>
+                  <option value=''>Lote (opcional)</option>
+                  {lotes.filter(l=>l.productoId===itemProd && Number(l.cantidad)>0)
+                    .sort((a,b)=>new Date(a.fechaVenc||'9999')-new Date(b.fechaVenc||'9999'))
+                    .map(l=>(
+                      <option key={l.id} value={l.id}>
+                        {l.lote||'Sin nro'} · {Number(l.cantidad)} {l.unidad||'u'}{l.fechaVenc?' · '+new Date(l.fechaVenc+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
             <div style={{width:90}}><input type='number' placeholder='Cant.' value={itemCant} onChange={e=>setItemCant(e.target.value)} style={inp} min='1'/></div>
             <div style={{width:110}}><input type='number' placeholder='Precio u.' value={itemPrecio} onChange={e=>setItemPrecio(e.target.value)} style={inp} min='0'/></div>
             <button onClick={agregarItem} style={{padding:'8px 18px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Agregar</button>
@@ -328,7 +347,7 @@ function VentasTab(){
               <tbody>
                 {form.items.map((it,i)=>(
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
-                    <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}</td>
+                    <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
                     <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmtUSD(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmtUSD(it.costoUnit):'—'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#3a7d1e':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'—'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${(it.cantidad*it.precioUnit).toLocaleString('es-UY')}</td>

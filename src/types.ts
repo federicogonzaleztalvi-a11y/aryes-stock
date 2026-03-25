@@ -347,6 +347,8 @@ export interface VentaItem {
   unidad:     string;
   precioUnit: number;
   costoUnit?: number;        // cost snapshot at time of sale (for margin)
+  loteId?:    string;        // FK → Lote.id — traceability
+  loteNro?:   string;        // snapshot of lote number at time of sale
 }
 
 export interface Venta {

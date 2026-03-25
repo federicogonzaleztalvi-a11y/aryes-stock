@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 function LotesTab(){
-  const { products: prods, lotes, setLotes } = useApp();
+  const { products: prods, lotes, setLotes, ventas } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
@@ -77,6 +77,37 @@ function LotesTab(){
   const proximos=lotes.filter(l=>{const d=diasParaVencer(l.fechaVenc);return d>=0&&d<=30;}).length;
   const atencion=lotes.filter(l=>{const d=diasParaVencer(l.fechaVenc);return d>30&&d<=90;}).length;
   const inp={width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',boxSizing:'border-box'};
+
+  // ── Traceability hooks — must be before any early returns ─────────────────
+  const [trazaQuery, setTrazaQuery] = useState('');
+  const [trazaOpen,  setTrazaOpen]  = useState(false);
+
+  const trazaResults = useMemo(() => {
+    if (!trazaQuery.trim()) return [];
+    const q = trazaQuery.trim().toLowerCase();
+    const matchingLoteIds = new Set(
+      lotes.filter(l =>
+        (l.lote||'').toLowerCase().includes(q) ||
+        (l.productoNombre||'').toLowerCase().includes(q)
+      ).map(l => l.id)
+    );
+    if (matchingLoteIds.size === 0) return [];
+    const results = [];
+    ventas.filter(v => v.estado !== 'cancelada').forEach(v => {
+      (v.items||[]).forEach(it => {
+        if (it.loteId && matchingLoteIds.has(it.loteId)) {
+          results.push({
+            nroVenta: v.nroVenta, clienteNombre: v.clienteNombre,
+            fecha: v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-UY') : '—',
+            cantidad: it.cantidad, unidad: it.unidad,
+            loteNro: it.loteNro || '—', productoNombre: it.nombre,
+          });
+        }
+      });
+    });
+    return results.sort((a,b) => (b.nroVenta||'').localeCompare(a.nroVenta||''));
+  }, [trazaQuery, lotes, ventas]);
+
   if(vista==='form')return(
     <section style={{padding:'32px 40px',maxWidth:600,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:28}}>
@@ -114,6 +145,7 @@ function LotesTab(){
       </div>
     </section>
   );
+
   return(
     <>{ConfirmDialog}<section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
@@ -188,6 +220,87 @@ function LotesTab(){
           <div style={{padding:'10px 14px',fontSize:12,color:'#aaa',textAlign:'right'}}>{filtered.length} lotes (ordenados por FEFO)</div>
         </div>
       )}
+      {/* ── Trazabilidad de lote ──────────────────────────────────────────── */}
+      <div style={{marginTop:28,background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <button onClick={()=>setTrazaOpen(o=>!o)}
+          style={{width:'100%',display:'flex',alignItems:'center',gap:10,background:'none',border:'none',
+                  cursor:'pointer',padding:0,textAlign:'left'}}>
+          <span style={{fontSize:16}}>🔍</span>
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:500,color:'#1a1a1a',flex:1}}>
+            Trazabilidad de lote — ¿Qué clientes recibieron un lote?
+          </span>
+          <span style={{fontSize:11,color:'#9ca3af'}}>{trazaOpen?'▲':'▼'}</span>
+        </button>
+        {trazaOpen&&(
+          <div style={{marginTop:16}}>
+            <div style={{display:'flex',gap:10,marginBottom:16}}>
+              <input value={trazaQuery} onChange={e=>setTrazaQuery(e.target.value)}
+                placeholder="Buscar por nro de lote o nombre de producto... (ej: L-024)"
+                style={{flex:1,padding:'9px 14px',border:'1px solid #e5e7eb',borderRadius:8,
+                        fontSize:13,fontFamily:'inherit'}}/>
+              {trazaQuery&&<button onClick={()=>setTrazaQuery('')}
+                style={{padding:'9px 14px',border:'1px solid #e5e7eb',borderRadius:8,
+                        background:'#fff',cursor:'pointer',fontSize:13,color:'#666'}}>
+                Limpiar
+              </button>}
+            </div>
+            {trazaQuery.trim()&&(
+              trazaResults.length===0?(
+                <div style={{textAlign:'center',padding:'24px',color:'#888',fontSize:13,
+                             background:'#f9fafb',borderRadius:8}}>
+                  No se encontraron ventas con ese lote.
+                  {' '}{lotes.some(l=>(l.lote||'').toLowerCase().includes(trazaQuery.toLowerCase()))
+                    ? 'El lote existe pero no fue vinculado a ninguna venta aún.'
+                    : 'Lote no encontrado en el sistema.'}
+                </div>
+              ):(
+                <>
+                  <div style={{marginBottom:10,fontSize:12,fontWeight:700,color:G}}>
+                    {trazaResults.length} entrega{trazaResults.length!==1?'s':''} encontrada{trazaResults.length!==1?'s':''}
+                  </div>
+                  <div style={{background:'#fff',borderRadius:10,overflow:'hidden',border:'1px solid #e5e7eb'}}>
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                      <thead>
+                        <tr style={{background:'#f9fafb',borderBottom:'2px solid #e5e7eb'}}>
+                          {['Venta','Cliente','Fecha','Producto','Lote','Cantidad'].map(h=>(
+                            <th key={h} style={{padding:'9px 14px',textAlign:'left',fontWeight:600,
+                                              color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5}}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trazaResults.map((r,i)=>(
+                          <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa'}}>
+                            <td style={{padding:'9px 14px',fontFamily:'monospace',fontSize:12,color:G,fontWeight:700}}>{r.nroVenta}</td>
+                            <td style={{padding:'9px 14px',fontWeight:600}}>{r.clienteNombre}</td>
+                            <td style={{padding:'9px 14px',color:'#6b7280',whiteSpace:'nowrap'}}>{r.fecha}</td>
+                            <td style={{padding:'9px 14px'}}>{r.productoNombre}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'monospace',fontSize:12}}>
+                              <span style={{background:G+'18',color:G,padding:'2px 8px',borderRadius:20,fontWeight:700,fontSize:11}}>
+                                {r.loteNro}
+                              </span>
+                            </td>
+                            <td style={{padding:'9px 14px',fontWeight:700}}>{r.cantidad} {r.unidad}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{marginTop:10,fontSize:11,color:'#9ca3af',fontStyle:'italic'}}>
+                    Solo ventas donde el lote fue seleccionado explícitamente al crear la venta.
+                  </div>
+                </>
+              )
+            )}
+            {!trazaQuery.trim()&&(
+              <div style={{fontSize:13,color:'#9ca3af',textAlign:'center',padding:'16px 0'}}>
+                Ingresá un número de lote o producto para ver qué clientes lo recibieron.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
     </section></>
   );
 }
