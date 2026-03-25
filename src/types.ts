@@ -423,6 +423,20 @@ export interface PurchaseInvoice {
   creadoEn:         string;
 }
 
+export interface AuditLog {
+  id:          string;
+  timestamp:   string;   // ISO 8601 — from DB
+  user:        string;   // email or username
+  action:      string;   // 'venta', 'recepcion', 'movimiento', 'producto_guardado', etc.
+  detail:      string;   // JSON string with action-specific data
+  // Derived fields for display (computed from DB fields)
+  fecha?:      string;
+  usuario?:    string;
+  tipo?:       string;
+  descripcion?:string;
+  detalle?:    string;
+}
+
 export interface AppContextValue {
   // ── Core data ──────────────────────────────────────────────────────────────
   products: Product[];
@@ -443,6 +457,8 @@ export interface AppContextValue {
   setConteos:      React.Dispatch<React.SetStateAction<Conteo[]>>;
   rutas:           Ruta[];
   setRutas:        React.Dispatch<React.SetStateAction<Ruta[]>>;
+  auditLogs:           AuditLog[];
+  setAuditLogs:        React.Dispatch<React.SetStateAction<AuditLog[]>>;
   purchaseInvoices:    PurchaseInvoice[];
   setPurchaseInvoices: React.Dispatch<React.SetStateAction<PurchaseInvoice[]>>;
   transfers:        Transfer[];

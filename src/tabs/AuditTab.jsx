@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { useApp } from '../context/AppContext.tsx';
 
 function AuditTab(){
+  const { auditLogs: logs } = useApp();
   const G="#3a7d1e";
-  const [logs]=useState(()=>LS.get("aryes-audit-log",[]));
   const [filtroUser,setFiltroUser]=useState("todos");
   const [filtroTipo,setFiltroTipo]=useState("todos");
   const [busq,setBusq]=useState("");

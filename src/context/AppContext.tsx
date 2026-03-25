@@ -8,7 +8,7 @@ import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
               Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta,
-              PriceLista, PriceListItem, Transfer, PurchaseInvoice, PurchaseInvoiceItem } from '../types.js';
+              PriceLista, PriceListItem, Transfer, PurchaseInvoice, PurchaseInvoiceItem, AuditLog } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -42,6 +42,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
   const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
   const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
+  const [auditLogs,         setAuditLogs]         = useState<AuditLog[]>(() => LS.get('aryes-audit-log-v2', []));
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>(() => LS.get('aryes-purchase-invoices', []));
   const [transfers,     setTransfers]     = useState<Transfer[]>(() => LS.get('aryes-transfers-v2', []));
   const [priceListas,   setPriceListas]   = useState<PriceLista[]>(() => LS.get('aryes-listas-precio-v2', []));
@@ -74,6 +75,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes8-movements', movements), [movements]);
   useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
   useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
+  useEffect(() => LS.set('aryes-audit-log-v2', auditLogs.slice(0, 500)), [auditLogs]);
   useEffect(() => LS.set('aryes-purchase-invoices', purchaseInvoices), [purchaseInvoices]);
   useEffect(() => LS.set('aryes-transfers-v2', transfers), [transfers]);
   useEffect(() => LS.set('aryes-listas-precio-v2',    priceListas),    [priceListas]);
@@ -87,6 +89,26 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes9-notified',  notified),  [notified]);
 
   // ── JWT auto-refresh 5 min before expiry ───────────────────────────────────
+
+// Maps DB audit_log.action → human-readable descripcion
+const describeAction = (action: string, detail: string): string => {
+  try {
+    const d = JSON.parse(detail || '{}');
+    const map: Record<string, (d: Record<string,unknown>) => string> = {
+      venta:             d => `Venta ${d.nroVenta||''} · ${d.clienteNombre||''}`,
+      recepcion:         d => `Recepción de ${d.proveedor||''} · ${d.items||0} items`,
+      movimiento:        d => `${d.tipo||''} · ${d.productoNombre||''}`,
+      devolucion:        d => `Devolución · ${d.productoNombre||''}`,
+      conteo:            d => `Conteo de inventario`,
+      producto_guardado: d => `Producto: ${d.nombre||d.name||''}`,
+      proveedor_guardado:d => `Proveedor: ${d.nombre||''}`,
+      config:            d => `Configuración actualizada`,
+      login:             d => `Login de usuario`,
+    };
+    return (map[action]?.(d as Record<string,unknown>)) || action;
+  } catch { return action; }
+};
+
   useEffect(() => {
     if (!session?.refresh_token || !session?.expiresAt) return;
     const refreshIn = Math.max(0, session.expiresAt - Date.now() - 5 * 60 * 1000);
@@ -235,6 +257,20 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             creadoEn: r.creado_en||'',
           }));
           setRutas(mappedRutas); // reactive — LS.set handled by useEffect
+        }
+        // Load audit log from Supabase
+        const sbAudit = await db.get<Record<string, any>[]>('audit_log?order=timestamp.desc&limit=500');
+        if (sbAudit && sbAudit.length > 0) {
+          const mappedAudit: AuditLog[] = sbAudit.map(r => ({
+            id: r.id, timestamp: r.timestamp||'', user: r.user||'sistema',
+            action: r.action||'', detail: r.detail||'{}',
+            fecha: r.timestamp ? new Date(r.timestamp).toLocaleString('es-UY') : '',
+            usuario: r.user||'sistema',
+            tipo: r.action||'',
+            descripcion: describeAction(r.action||'', r.detail||'{}'),
+            detalle: r.detail||'',
+          }));
+          setAuditLogs(mappedAudit);
         }
         // Load purchase invoices from Supabase
         const sbPI = await db.get<Record<string, any>[]>('purchase_invoices?order=creado_en.desc&limit=300');
@@ -553,6 +589,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     devoluciones, setDevoluciones,
     conteos, setConteos,
     rutas, setRutas,
+    auditLogs, setAuditLogs,
     purchaseInvoices, setPurchaseInvoices,
     transfers, setTransfers,
     priceListas, setPriceListas,
