@@ -41,7 +41,10 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
           </Sel>
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
-        <Field label="Costo unitario (USD)"><Inp type="number" step="0.01" value={f.unitCost} onChange={e=>set("unitCost",+e.target.value)}/></Field>
+        <Field label="Costo unitario (USD)">
+          <Inp type="number" step="0.01" value={f.unitCost} onChange={e=>set("unitCost",+e.target.value)}/>
+          {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):''}</div>}
+        </Field>
       </div>
       <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>
       {r!==null&&(

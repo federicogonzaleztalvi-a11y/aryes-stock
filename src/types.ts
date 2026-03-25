@@ -42,7 +42,9 @@ export interface Product {
   category?: string;
   brand?: string;
   history: HistoryEntry[];  // monthly consumption history
-  updatedAt?: string;       // ISO 8601
+  updatedAt?:      string;   // ISO 8601
+  costSource?:     string;   // 'factura F-001 · proveedor' — where unitCost came from
+  costUpdatedAt?:  string;   // ISO 8601 — when unitCost was last auto-updated
 }
 
 // Raw row as returned by Supabase REST before mapping in AppContext
@@ -391,6 +393,15 @@ export interface PriceListItem {
   precio:      number;        // 0 = use global discount
   updatedAt:   string;
 }
+export interface PurchaseInvoiceItem {
+  productoId:   string;    // FK → Product.id (optional — can be free-text)
+  nombre:       string;    // product name at time of purchase
+  cantidad:     number;
+  unidad:       string;
+  precioUnit:   number;    // unit cost in invoice currency
+  subtotal:     number;    // cantidad * precioUnit
+}
+
 export type PurchaseInvoiceStatus = 'pendiente' | 'pagada' | 'pagada_parcial' | 'vencida';
 
 export interface PurchaseInvoice {
@@ -407,6 +418,7 @@ export interface PurchaseInvoice {
   saldoPendiente:   number;
   status:           PurchaseInvoiceStatus;
   recepcionId:      string|null; // FK → recepciones (optional link)
+  items:            PurchaseInvoiceItem[];
   notas:            string;
   creadoEn:         string;
 }

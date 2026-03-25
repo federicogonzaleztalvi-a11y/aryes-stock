@@ -8,7 +8,7 @@ import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
               Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta,
-              PriceLista, PriceListItem, Transfer, PurchaseInvoice } from '../types.js';
+              PriceLista, PriceListItem, Transfer, PurchaseInvoice, PurchaseInvoiceItem } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -246,6 +246,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             ivaTotal: Number(r.iva_total)||0, total: Number(r.total)||0,
             saldoPendiente: Number(r.saldo_pendiente)||0,
             status: r.status||'pendiente', recepcionId: r.recepcion_id||null,
+            items: (r.items||[]) as PurchaseInvoiceItem[],
             notas: r.notas||'', creadoEn: r.creado_en||'',
           }));
           setPurchaseInvoices(mappedPI);
@@ -293,7 +294,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
       try {
         const prods = await db.get<Record<string, any>[]>('products', 'order=id.asc&limit=1000');
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[] }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
           LS.set('aryes6-products', mapped); setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', 'order=name.asc');

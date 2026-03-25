@@ -38,11 +38,14 @@ const emptyForm = {
 };
 
 function ComprasTab() {
-  const { purchaseInvoices, setPurchaseInvoices, suppliers } = useApp();
+  const { purchaseInvoices, setPurchaseInvoices, suppliers, products, setProducts } = useApp();
   const { confirm, ConfirmDialog } = useConfirm();
 
   const [vista,       setVista]       = useState('lista');
   const [form,        setForm]        = useState(emptyForm);
+  // Line items in the form
+  const [lineItems,   setLineItems]   = useState([]);
+  const [lineForm,    setLineForm]    = useState({ productoId:'', nombre:'', cantidad:'', unidad:'', precioUnit:'' });
   const [filtro,      setFiltro]      = useState('todos');
   const [busq,        setBusq]        = useState('');
   const [selId,       setSelId]       = useState(null);
@@ -94,6 +97,31 @@ function ComprasTab() {
     return items;
   }, [purchaseInvoices, filtro, busq]);
 
+  // ── Line item helpers ──────────────────────────────────────────────────────
+  const agregarLinea = () => {
+    if (!lineForm.nombre || !lineForm.cantidad || !lineForm.precioUnit) return;
+    const it = {
+      productoId: lineForm.productoId || '',
+      nombre:     lineForm.nombre,
+      cantidad:   Number(lineForm.cantidad),
+      unidad:     lineForm.unidad || 'u.',
+      precioUnit: Number(lineForm.precioUnit),
+      subtotal:   Number(lineForm.cantidad) * Number(lineForm.precioUnit),
+    };
+    setLineItems(prev => [...prev, it]);
+    setLineForm({ productoId:'', nombre:'', cantidad:'', unidad:'', precioUnit:'' });
+    // Auto-fill subtotal from line items total
+    const newSub = [...lineItems, it].reduce((s,i) => s + i.subtotal, 0);
+    setForm(f => ({ ...f, subtotal: newSub.toFixed(2) }));
+  };
+
+  const quitarLinea = (idx) => {
+    const updated = lineItems.filter((_, i) => i !== idx);
+    setLineItems(updated);
+    const newSub = updated.reduce((s,i) => s + i.subtotal, 0);
+    setForm(f => ({ ...f, subtotal: newSub.toFixed(2) }));
+  };
+
   // ── Save new invoice ───────────────────────────────────────────────────────
   const guardar = async () => {
     if (!form.proveedorNombre || !form.numero || !form.fecha || !form.subtotal) {
@@ -115,6 +143,7 @@ function ComprasTab() {
       saldoPendiente:  total,
       status:          'pendiente',
       recepcionId:     null,
+      items:           lineItems,
       notas:           form.notas,
       creadoEn:        new Date().toISOString(),
     };
@@ -122,14 +151,53 @@ function ComprasTab() {
     setPurchaseInvoices(prev => [inv, ...prev]);
     setVista('lista');
     setForm(emptyForm);
+    setLineItems([]);
     showMsg(`✓ Factura ${inv.numero} registrada`);
-    // Persist
+
+    // ── Auto-update unitCost for each line item that maps to a product ──────
+    const now = new Date().toISOString();
+    const costSource = `Factura ${inv.numero} · ${inv.proveedorNombre}`;
+    const updatedProducts = [...products];
+    const costUpdates = [];
+    lineItems.forEach(it => {
+      if (!it.productoId) return;
+      const idx = updatedProducts.findIndex(p => p.id === it.productoId);
+      if (idx < 0) return;
+      updatedProducts[idx] = {
+        ...updatedProducts[idx],
+        unitCost:        it.precioUnit,
+        costSource,
+        costUpdatedAt:   now,
+        updatedAt:       now,
+      };
+      costUpdates.push({
+        uuid: it.productoId,
+        unit_cost: it.precioUnit,
+        cost_source: costSource,
+        cost_updated_at: now,
+        updated_at: now,
+      });
+    });
+    if (costUpdates.length > 0) {
+      setProducts(updatedProducts);
+      // Persist cost updates to Supabase (non-blocking, per product)
+      costUpdates.forEach(upd => {
+        db.patch('products',
+          { unit_cost: upd.unit_cost, cost_source: upd.cost_source,
+            cost_updated_at: upd.cost_updated_at, updated_at: upd.updated_at },
+          'uuid=eq.' + upd.uuid
+        ).catch(e => console.warn('[ComprasTab] cost patch failed:', e?.message||e));
+      });
+    }
+
+    // Persist invoice to Supabase
     db.insert('purchase_invoices', {
       id: inv.id, proveedor_id: inv.proveedorId, proveedor_nombre: inv.proveedorNombre,
       numero: inv.numero, fecha: inv.fecha, fecha_venc: inv.fechaVenc,
       moneda: inv.moneda, subtotal: inv.subtotal, iva_total: inv.ivaTotal,
       total: inv.total, saldo_pendiente: inv.saldoPendiente,
-      status: inv.status, recepcion_id: null, notas: inv.notas, creado_en: inv.creadoEn,
+      status: inv.status, recepcion_id: null, items: inv.items,
+      notas: inv.notas, creado_en: inv.creadoEn,
     }).catch(e => console.warn('[ComprasTab] insert failed:', e?.message||e))
       .finally(() => setSaving(false));
   };
@@ -217,6 +285,62 @@ function ComprasTab() {
               <textarea value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} rows={2} style={{...inp,resize:'vertical'}}/>
             </F>
           </div>
+          {/* Line items */}
+          <div style={{gridColumn:'1/-1'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:.5,marginBottom:8}}>
+              Detalle de productos <span style={{fontWeight:400,color:'#9ca3af'}}>(opcional — actualiza costos)</span>
+            </div>
+            {/* Add line form */}
+            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto',gap:6,marginBottom:8,alignItems:'center'}}>
+              <select value={lineForm.productoId} onChange={e=>{
+                const p = products.find(x=>x.id===e.target.value);
+                setLineForm(f=>({...f, productoId:e.target.value, nombre:p?.name||p?.nombre||f.nombre, unidad:p?.unit||f.unidad, precioUnit:p?.unitCost||f.precioUnit}));
+              }} style={{...inp,background:'#fff',fontSize:12}}>
+                <option value="">— Producto del sistema —</option>
+                {products.sort((a,b)=>(a.name||a.nombre||'').localeCompare(b.name||b.nombre||'')).map(p=>(
+                  <option key={p.id} value={p.id}>{p.name||p.nombre}</option>
+                ))}
+              </select>
+              <input placeholder="Nombre libre" value={lineForm.nombre} onChange={e=>setLineForm(f=>({...f,nombre:e.target.value}))} style={{...inp,fontSize:12}}/>
+              <input type="number" placeholder="Cant." step="0.01" value={lineForm.cantidad} onChange={e=>setLineForm(f=>({...f,cantidad:e.target.value}))} style={{...inp,fontSize:12}}/>
+              <input type="number" placeholder="Precio u." step="0.01" value={lineForm.precioUnit} onChange={e=>setLineForm(f=>({...f,precioUnit:e.target.value}))} style={{...inp,fontSize:12}}/>
+              <button onClick={agregarLinea} style={{padding:'8px 12px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,fontWeight:700,whiteSpace:'nowrap'}}>+ Agregar</button>
+            </div>
+            {/* Line items list */}
+            {lineItems.length > 0 && (
+              <div style={{border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:8}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                  <thead><tr style={{background:'#f9fafb'}}>
+                    {['Producto','Cant.','Precio u.','Subtotal',''].map(h=>(
+                      <th key={h} style={{padding:'7px 10px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:10,textTransform:'uppercase'}}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {lineItems.map((it,i)=>(
+                      <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
+                        <td style={{padding:'7px 10px',fontWeight:500}}>
+                          {it.nombre}
+                          {it.productoId && <span style={{fontSize:10,color:G,marginLeft:4}}>✓ vinculado</span>}
+                        </td>
+                        <td style={{padding:'7px 10px',color:'#6b7280'}}>{it.cantidad}</td>
+                        <td style={{padding:'7px 10px',color:'#6b7280'}}>{fmt(it.precioUnit,form.moneda)}</td>
+                        <td style={{padding:'7px 10px',fontWeight:700,color:G}}>{fmt(it.subtotal,form.moneda)}</td>
+                        <td style={{padding:'7px 6px'}}>
+                          <button onClick={()=>quitarLinea(i)} style={{padding:'2px 8px',background:'#fff',border:'1px solid #fecaca',borderRadius:4,cursor:'pointer',fontSize:10,color:'#dc2626'}}>✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {lineItems.some(it=>it.productoId) && (
+              <div style={{fontSize:11,color:'#6366f1',fontWeight:600,marginBottom:4}}>
+                ⚡ Al guardar, se actualizará el costo unitario de {lineItems.filter(it=>it.productoId).length} producto(s)
+              </div>
+            )}
+          </div>
+
           {/* Total preview */}
           {form.subtotal && (
             <div style={{gridColumn:'1/-1',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -272,6 +396,33 @@ function ComprasTab() {
           </div>}
         </div>
       </div>
+
+      {/* Line items detail */}
+      {sel.items && sel.items.length > 0 && (
+        <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#1a1a1a',marginBottom:12}}>Detalle de productos</div>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+            <thead><tr style={{background:'#f9fafb',borderBottom:'1px solid #e5e7eb'}}>
+              {['Producto','Cant.','Precio u.','Subtotal'].map(h=>(
+                <th key={h} style={{padding:'7px 12px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase'}}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {sel.items.map((it,i)=>(
+                <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
+                  <td style={{padding:'8px 12px',fontWeight:500}}>
+                    {it.nombre}
+                    {it.productoId && <span style={{fontSize:10,color:G,marginLeft:4}}>✓</span>}
+                  </td>
+                  <td style={{padding:'8px 12px',color:'#6b7280'}}>{it.cantidad}</td>
+                  <td style={{padding:'8px 12px',color:'#6b7280'}}>{fmt(it.precioUnit,sel.moneda)}</td>
+                  <td style={{padding:'8px 12px',fontWeight:700,color:G}}>{fmt(it.subtotal,sel.moneda)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Pago modal inline */}
       {sel.status !== 'pagada' && (
