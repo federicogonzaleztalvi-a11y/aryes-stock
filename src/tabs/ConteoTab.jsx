@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 
 function ConteoTab(){
-  const { products: prods, setProducts: setProds, conteos, setConteos, setHasPendingSync } = useApp();
+  const { products: prods, setProducts: setProds, conteos, setConteos, setHasPendingSync, addMov } = useApp();
   const G="#3a7d1e";
   const [conteoActivo,setConteoActivo]=useState(null);
   const [itemIdx,setItemIdx]=useState(0);
@@ -54,6 +54,28 @@ function ConteoTab(){
       }
     });
     const finalConteo={...conteoActivo,completado:true,finalizadoEn:new Date().toISOString()};
+    // Register a stock movement for each product where the count changed the stock
+    // diferencia > 0 → manual_in (more than system expected)
+    // diferencia < 0 → manual_out (less than system expected)
+    // diferencia === 0 → no movement (count confirmed, stock unchanged)
+    conteoActivo.items
+      .filter(it => it.cantFisica !== null && it.diferencia !== null && it.diferencia !== 0)
+      .forEach(it => {
+        const prod = updProds.find(p => p.id === it.id);
+        if (!prod) return;
+        const delta = Math.abs(Number(it.diferencia));
+        addMov({
+          type:        it.diferencia > 0 ? 'manual_in' : 'manual_out',
+          productId:   prod.id,
+          productName: prod.nombre || prod.name || it.nombre,
+          qty:         delta,
+          unit:        prod.unit || prod.unidad || it.unidad || 'u',
+          stockAfter:  Number(it.cantFisica),
+          supplierId:  '',
+          supplierName:'',
+          note:        `Conteo fisico ${finalConteo.fecha} — ajuste ${it.diferencia > 0 ? '+' : ''}${it.diferencia}`,
+        });
+      });
     const upd=[finalConteo,...conteos];
     setConteos(upd);
     // Persist conteo record to Supabase (non-blocking, stock already saved above)
