@@ -89,7 +89,7 @@ function VentasTab(){
 
   const addNewClientInline=()=>{
     if(!newClientNombre.trim())return;
-    const cli={id:crypto.randomUUID(),nombre:newClientNombre.trim(),tipo:'Otro',creado:new Date().toISOString()};
+    const cli={id:crypto.randomUUID(),nombre:newClientNombre.trim(),tipo:'Otro',creado:new Date().toISOString(),lat:null,lng:null,geocodedAt:null};
     const updCli=[...clientes,cli];
     setClientes(updCli);
     setForm(f=>({...f,clienteId:cli.id,clienteNombre:cli.nombre}));

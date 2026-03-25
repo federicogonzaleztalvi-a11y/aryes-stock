@@ -3,8 +3,70 @@ import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { db } from '../lib/constants.js';
 
+// ── Haversine distance (km) between two lat/lng points ────────────────────
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+            Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── Nearest-Neighbor greedy TSP ───────────────────────────────────────────
+// Returns a reordered copy of `entregas` minimizing total distance.
+// Entregas without coordinates go to the end (ungeocoded).
+function nearestNeighborTSP(entregas, clientes) {
+  // Attach coords from clients
+  const withCoords = entregas.map(e => {
+    const cli = clientes.find(c => c.id === e.clienteId);
+    return { ...e, lat: cli?.lat ?? null, lng: cli?.lng ?? null };
+  });
+
+  const geocoded   = withCoords.filter(e => e.lat !== null && e.lng !== null);
+  const ungeocoded = withCoords.filter(e => e.lat === null || e.lng === null);
+
+  if (geocoded.length <= 1) return withCoords; // nothing to optimize
+
+  const visited = new Array(geocoded.length).fill(false);
+  const ordered = [];
+  let current = 0;
+  visited[0] = true;
+  ordered.push(geocoded[0]);
+
+  for (let step = 1; step < geocoded.length; step++) {
+    let nearest = -1, minDist = Infinity;
+    for (let j = 0; j < geocoded.length; j++) {
+      if (visited[j]) continue;
+      const d = haversine(
+        geocoded[current].lat, geocoded[current].lng,
+        geocoded[j].lat,       geocoded[j].lng
+      );
+      if (d < minDist) { minDist = d; nearest = j; }
+    }
+    visited[nearest] = true;
+    ordered.push(geocoded[nearest]);
+    current = nearest;
+  }
+
+  // Strip the synthetic lat/lng we attached (not part of entrega shape)
+  const clean = e => { const {lat: _lat, lng: _lng, ...rest} = e; return rest; };
+  return [...ordered.map(clean), ...ungeocoded.map(clean)];
+}
+
+// ── Nominatim geocoder (OpenStreetMap, free, no API key) ─────────────────
+async function geocodeAddress(direccion, ciudad) {
+  const q = [direccion, ciudad, 'Uruguay'].filter(Boolean).join(', ');
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+  const res = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'AryesStock/1.0' } });
+  const data = await res.json();
+  if (data?.length > 0) return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
+  return null;
+}
+
 function RutasTab(){
-  const { clientes, rutas, setRutas, setHasPendingSync } = useApp();
+  const { clientes, setClientes, rutas, setRutas, setHasPendingSync } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const [vista,setVista]=useState("lista");
@@ -12,6 +74,7 @@ function RutasTab(){
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
   const [msg,setMsg]=useState("");
   const [busqCli,setBusqCli]=useState("");
+  const [optimizando, setOptimizando] = useState(false);
   const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
 
   const ruta=rutas.find(r=>r.id===rutaActiva)||null;
@@ -51,6 +114,63 @@ function RutasTab(){
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
     },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
     setBusqCli("");
+  };
+
+  // ── Optimizar ruta: geocode + nearest-neighbor TSP ───────────────────────
+  const optimizarRuta = async () => {
+    if (!ruta || ruta.entregas.length < 2) {
+      setMsg("Se necesitan al menos 2 entregas para optimizar"); return;
+    }
+    setOptimizando(true);
+    setMsg("Geocodificando direcciones...");
+
+    // Geocode any client without coords
+    const clientesActualizados = [...clientes];
+    for (const e of ruta.entregas) {
+      const idx = clientesActualizados.findIndex(c => c.id === e.clienteId);
+      if (idx < 0) continue;
+      const cli = clientesActualizados[idx];
+      if (cli.lat && cli.lng) continue; // already geocoded
+      if (!cli.direccion && !cli.ciudad) continue; // no address to geocode
+      try {
+        const coords = await geocodeAddress(cli.direccion, cli.ciudad);
+        if (coords) {
+          const updCli = { ...cli, ...coords, geocodedAt: new Date().toISOString() };
+          clientesActualizados[idx] = updCli;
+          // Persist coords to Supabase (non-blocking)
+          db.patch('clients',
+            { lat: coords.lat, lng: coords.lng, geocoded_at: updCli.geocodedAt },
+            'id=eq.' + cli.id
+          ).catch(err => console.warn('[RutasTab] geocode patch failed:', err?.message||err));
+        }
+      } catch { /* non-blocking — geocoding failure is OK */ }
+      await new Promise(r => setTimeout(r, 500)); // Nominatim rate limit: 1 req/s
+    }
+    setClientes(clientesActualizados);
+
+    // Run TSP
+    setMsg("Calculando ruta óptima...");
+    const optimized = nearestNeighborTSP(ruta.entregas, clientesActualizados);
+    const updRutas = rutas.map(r => r.id === rutaActiva ? { ...r, entregas: optimized } : r);
+    setRutas(updRutas);
+    const updRuta = updRutas.find(r => r.id === rutaActiva);
+    if (updRuta) {
+      db.upsert('rutas', {
+        id: updRuta.id, vehiculo: updRuta.vehiculo, zona: updRuta.zona,
+        dia: updRuta.dia, notas: updRuta.notas, entregas: updRuta.entregas,
+        creado_en: updRuta.creadoEn, updated_at: new Date().toISOString(),
+      }, 'id').catch(e => { console.warn('[RutasTab] upsert failed:', e?.message||e); setHasPendingSync(true); });
+    }
+
+    // Count how many have coords
+    const conCoords = optimized.filter(e => clientesActualizados.find(c => c.id === e.clienteId)?.lat).length;
+    const total = optimized.length;
+    setOptimizando(false);
+    setMsg(conCoords === total
+      ? `✓ Ruta optimizada — ${total} paradas ordenadas por distancia mínima`
+      : `✓ Optimizada parcialmente — ${conCoords}/${total} clientes geocodificados. Los restantes van al final.`
+    );
+    setTimeout(() => setMsg(""), 5000);
   };
 
   const marcarEntregado=(rutaId,clienteId)=>{
@@ -154,6 +274,12 @@ function RutasTab(){
             <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>{ruta.dia||"Sin dia asignado"} · {ruta.entregas.length} paradas</p>
           </div>
           <div style={{display:"flex",gap:8}}>
+            <button onClick={optimizarRuta} disabled={optimizando||ruta.entregas.length<2}
+              style={{padding:"7px 14px",background:optimizando?"#9ca3af":G,color:"#fff",
+                      border:"none",borderRadius:8,cursor:optimizando?"not-allowed":"pointer",
+                      fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>
+              {optimizando?"⏳ Optimizando...":"🗺 Optimizar ruta"}
+            </button>
             <button onClick={exportarCSV} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>CSV</button>
             <button onClick={()=>setVista("historial")} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>Historial</button>
           </div>

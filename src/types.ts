@@ -301,6 +301,9 @@ export interface Cliente {
   condPago:         string;
   limiteCredito:    string;
   listaId:          string | null;  // FK → PriceLista.id
+  lat:              number | null;   // geocoded latitude
+  lng:              number | null;   // geocoded longitude
+  geocodedAt:       string | null;   // ISO — when geocoding ran
   notas:            string;
   creado:           string;
 }

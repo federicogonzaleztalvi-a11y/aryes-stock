@@ -68,6 +68,9 @@ function ClientesTab(){
       cond_pago:         client.condPago          || 'credito_30',
       limite_credito:    client.limiteCredito ? Number(client.limiteCredito) : null,
       lista_id:         client.listaId || null,
+      lat:              client.lat ?? null,
+      lng:              client.lng ?? null,
+      geocoded_at:      client.geocodedAt || null,
       notas:             client.notas             || '',
       created_at:        client.creado            || new Date().toISOString(),
     }, 'id').catch(e=>{
@@ -82,7 +85,7 @@ function ClientesTab(){
     const isNew = !editId;
     const newId = isNew ? crypto.randomUUID() : editId;
     const record = isNew
-      ? {...form, id: newId, creado: new Date().toISOString()}
+      ? {...form, id: newId, creado: new Date().toISOString(), lat: null, lng: null, geocodedAt: null}
       : {...items.find(x=>x.id===editId), ...form};
     const upd = isNew
       ? [...items, record]
