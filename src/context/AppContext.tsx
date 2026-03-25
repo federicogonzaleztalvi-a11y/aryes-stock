@@ -8,7 +8,7 @@ import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
               Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta,
-              PriceLista, PriceListItem } from '../types.js';
+              PriceLista, PriceListItem, Transfer } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -42,6 +42,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
   const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
   const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
+  const [transfers,     setTransfers]     = useState<Transfer[]>(() => LS.get('aryes-transfers-v2', []));
   const [priceListas,   setPriceListas]   = useState<PriceLista[]>(() => LS.get('aryes-listas-precio-v2', []));
   const [priceListItems, setPriceListItems] = useState<PriceListItem[]>(() => LS.get('aryes-listas-precio-items', []));
   const [cobros,    setCobros]    = useState<Cobro[]>(() => LS.get('aryes-cobros',       []));
@@ -72,6 +73,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes8-movements', movements), [movements]);
   useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
   useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
+  useEffect(() => LS.set('aryes-transfers-v2', transfers), [transfers]);
   useEffect(() => LS.set('aryes-listas-precio-v2',    priceListas),    [priceListas]);
   useEffect(() => LS.set('aryes-listas-precio-items', priceListItems), [priceListItems]);
   useEffect(() => LS.set('aryes-cobros',      cobros),    [cobros]);
@@ -231,6 +233,16 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             creadoEn: r.creado_en||'',
           }));
           setRutas(mappedRutas); // reactive — LS.set handled by useEffect
+        }
+        // Load transfers from Supabase
+        const sbTransfers = await db.get<Record<string, any>[]>('transfers?order=creado_en.desc&limit=200');
+        if (sbTransfers && sbTransfers.length > 0) {
+          const mappedTransfers: Transfer[] = sbTransfers.map(r => ({
+            id: r.id, productoId: r.producto_id, productoNombre: r.producto_nombre||'',
+            cantidad: Number(r.cantidad)||0, origen: r.origen||'', destino: r.destino||'',
+            notas: r.notas||'', fecha: r.fecha||'', creadoEn: r.creado_en||'',
+          }));
+          setTransfers(mappedTransfers);
         }
         // Load price lists from Supabase
         const sbPriceListas = await db.get<Record<string, any>[]>('price_lists?order=id.asc');
@@ -524,6 +536,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     devoluciones, setDevoluciones,
     conteos, setConteos,
     rutas, setRutas,
+    transfers, setTransfers,
     priceListas, setPriceListas,
     priceListItems, setPriceListItems,
     suppliers, setSuppliers,

@@ -362,6 +362,18 @@ export interface Venta {
 }
 
 
+export interface Transfer {
+  id:             string;
+  productoId:     string;
+  productoNombre: string;
+  cantidad:       number;
+  origen:         string;
+  destino:        string;
+  notas:          string;
+  fecha:          string;   // localeDateString es-UY
+  creadoEn:       string;   // ISO 8601
+}
+
 export interface PriceLista {
   id:        string;          // 'A' | 'B' | 'C' | UUID
   nombre:    string;
@@ -399,6 +411,8 @@ export interface AppContextValue {
   setConteos:      React.Dispatch<React.SetStateAction<Conteo[]>>;
   rutas:           Ruta[];
   setRutas:        React.Dispatch<React.SetStateAction<Ruta[]>>;
+  transfers:        Transfer[];
+  setTransfers:     React.Dispatch<React.SetStateAction<Transfer[]>>;
   priceListas:      PriceLista[];
   setPriceListas:   React.Dispatch<React.SetStateAction<PriceLista[]>>;
   priceListItems:   PriceListItem[];

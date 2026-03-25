@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS } from '../lib/constants.js';
+import { LS, db } from '../lib/constants.js';
 
 function TransferenciasTab(){
-  const { products: prods } = useApp();
+  const { products: prods, transfers, setTransfers } = useApp();
   const G="#3a7d1e";
   const [deposito]=useState(()=>LS.get("aryes-deposito",{}));
-  const [transfers,setTransfers]=useState(()=>LS.get("aryes-transfers",[]));
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
   const [msg,setMsg]=useState("");
   const [showForm,setShowForm]=useState(false);
 
-  // Build list of locations from deposito
+  // Build list of locations from deposito config (LS — device-specific warehouse layout)
   const locs=Object.values(deposito||{}).filter(l=>l&&l.codigo);
 
   const selProd=prods.find(p=>p.id===form.productoId);
@@ -22,17 +21,31 @@ function TransferenciasTab(){
     }
     if(form.origen===form.destino){setMsg("Origen y destino no pueden ser iguales");return;}
     if(Number(form.cantidad)<=0){setMsg("La cantidad debe ser mayor a 0");return;}
-    const t={id:crypto.randomUUID(),
-      productoId:form.productoId,
-      productoNombre:selProd?selProd.nombre||selProd.name:"",
-      cantidad:Number(form.cantidad),
-      origen:form.origen,
-      destino:form.destino,
-      notas:form.notas,
-      fecha:new Date().toLocaleDateString("es-UY"),
-      creadoEn:new Date().toISOString()};
-    const upd=[t,...transfers];
-    setTransfers(upd);LS.set("aryes-transfers",upd);
+    const t={
+      id:             crypto.randomUUID(),
+      productoId:     form.productoId,
+      productoNombre: selProd ? selProd.nombre||selProd.name : "",
+      cantidad:       Number(form.cantidad),
+      origen:         form.origen,
+      destino:        form.destino,
+      notas:          form.notas,
+      fecha:          new Date().toLocaleDateString("es-UY"),
+      creadoEn:       new Date().toISOString(),
+    };
+    // Optimistic update — reactive LS.set handled by AppContext useEffect
+    setTransfers(prev => [t, ...prev]);
+    // Persist to Supabase (non-blocking)
+    db.insert('transfers', {
+      id:              t.id,
+      producto_id:     t.productoId,
+      producto_nombre: t.productoNombre,
+      cantidad:        t.cantidad,
+      origen:          t.origen,
+      destino:         t.destino,
+      notas:           t.notas,
+      fecha:           t.fecha,
+      creado_en:       t.creadoEn,
+    }).catch(e => console.warn('[TransferenciasTab] insert failed:', e?.message || e));
     setForm({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
     setShowForm(false);
     setMsg("Transferencia registrada: "+t.productoNombre+" de "+t.origen+" a "+t.destino);
