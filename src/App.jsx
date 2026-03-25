@@ -858,13 +858,21 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
     {id:"config",label:"Config",icon:"⚙"},
   ];
   const NAV_ROLES={
-    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config"],
+    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","rutas","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config","conteo","devoluciones","packing","precios","transferencias","batch-picking"],
     operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
     vendedor:["dashboard","clientes","ventas","facturacion","kpis","informes"]
   };
   const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
   const canTab=(id)=>(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin).includes(id);
   const activeTab=canTab(tab)?tab:(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin)[0];
+
+  // If URL contains a tab id that this role cannot access, correct the URL silently.
+  // Prevents /app/config displaying dashboard content while URL shows 'config'.
+  React.useEffect(() => {
+    if (tab && !canTab(tab)) {
+      navigate('/app/' + activeTab, { replace: true });
+    }
+  }, [tab, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tfCols=["#3b82f6","#ef4444","#f59e0b","#10b981"];
 
