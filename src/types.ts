@@ -361,6 +361,24 @@ export interface Venta {
   updatedAt?:     string;
 }
 
+
+export interface PriceLista {
+  id:        string;          // 'A' | 'B' | 'C' | UUID
+  nombre:    string;
+  descuento: number;          // global % off precioVenta
+  color:     string;          // hex
+  activa:    boolean;
+  creadoEn:  string;
+  updatedAt: string;
+}
+
+export interface PriceListItem {
+  id:          string;        // UUID
+  listaId:     string;        // FK → PriceLista.id
+  productUuid: string;        // FK → Product.id
+  precio:      number;        // 0 = use global discount
+  updatedAt:   string;
+}
 export interface AppContextValue {
   // ── Core data ──────────────────────────────────────────────────────────────
   products: Product[];
@@ -381,6 +399,10 @@ export interface AppContextValue {
   setConteos:      React.Dispatch<React.SetStateAction<Conteo[]>>;
   rutas:           Ruta[];
   setRutas:        React.Dispatch<React.SetStateAction<Ruta[]>>;
+  priceListas:      PriceLista[];
+  setPriceListas:   React.Dispatch<React.SetStateAction<PriceLista[]>>;
+  priceListItems:   PriceListItem[];
+  setPriceListItems:React.Dispatch<React.SetStateAction<PriceListItem[]>>;
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
   movements: Movement[];

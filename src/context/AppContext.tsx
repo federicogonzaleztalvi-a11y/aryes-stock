@@ -7,7 +7,8 @@ import { LS, db, SB_URL, SKEY } from '../lib/constants.js';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
-              Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta } from '../types.js';
+              Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta,
+              PriceLista, PriceListItem } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -41,6 +42,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
   const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
   const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
+  const [priceListas,   setPriceListas]   = useState<PriceLista[]>(() => LS.get('aryes-listas-precio-v2', []));
+  const [priceListItems, setPriceListItems] = useState<PriceListItem[]>(() => LS.get('aryes-listas-precio-items', []));
   const [cobros,    setCobros]    = useState<Cobro[]>(() => LS.get('aryes-cobros',       []));
   const [clientes,  setClientes]  = useState<Cliente[]>(() => LS.get('aryes-clients',     []));
   const [lotes,     setLotes]     = useState<Lote[]>(() => LS.get('aryes-lots',          []));
@@ -69,6 +72,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes8-movements', movements), [movements]);
   useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
   useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
+  useEffect(() => LS.set('aryes-listas-precio-v2',    priceListas),    [priceListas]);
+  useEffect(() => LS.set('aryes-listas-precio-items', priceListItems), [priceListItems]);
   useEffect(() => LS.set('aryes-cobros',      cobros),    [cobros]);
   useEffect(() => LS.set('aryes-clients',     clientes),  [clientes]);
   useEffect(() => LS.set('aryes-lots',         lotes),     [lotes]);
@@ -226,6 +231,24 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             creadoEn: r.creado_en||'',
           }));
           setRutas(mappedRutas); // reactive — LS.set handled by useEffect
+        }
+        // Load price lists from Supabase
+        const sbPriceListas = await db.get<Record<string, any>[]>('price_lists?order=id.asc');
+        if (sbPriceListas && sbPriceListas.length > 0) {
+          const mappedListas: PriceLista[] = sbPriceListas.map(r => ({
+            id: r.id, nombre: r.nombre||'', descuento: Number(r.descuento)||0,
+            color: r.color||'#3b82f6', activa: r.activa!==false,
+            creadoEn: r.creado_en||'', updatedAt: r.updated_at||'',
+          }));
+          setPriceListas(mappedListas);
+        }
+        const sbPriceItems = await db.get<Record<string, any>[]>('price_list_items?order=lista_id.asc');
+        if (sbPriceItems && sbPriceItems.length > 0) {
+          const mappedItems: PriceListItem[] = sbPriceItems.map(r => ({
+            id: r.id, listaId: r.lista_id, productUuid: r.product_uuid,
+            precio: Number(r.precio)||0, updatedAt: r.updated_at||'',
+          }));
+          setPriceListItems(mappedItems);
         }
         const sbRecs = await db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500');
         if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
@@ -501,6 +524,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     devoluciones, setDevoluciones,
     conteos, setConteos,
     rutas, setRutas,
+    priceListas, setPriceListas,
+    priceListItems, setPriceListItems,
     suppliers, setSuppliers,
     movements, setMovements,
     orders, setOrders,
