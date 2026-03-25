@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
+import { useNavigate } from 'react-router-dom';
 
 function ClientesTab(){
-  const { clientes: items, setClientes: setItems, ventas } = useApp();
+  const { clientes: items, setClientes: setItems, ventas, cfes } = useApp();
+  const navigate = useNavigate();
   const G="#3a7d1e";
 
   // ── CRM metrics for the selected client ──────────────────────────────────
@@ -28,8 +30,12 @@ function ClientesTab(){
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([nombre, cantidad]) => ({ nombre, cantidad }));
-    return { ventasCount: clienteVentas.length, totalComprado, ticketPromedio, diasDesdeUltima, topProductos, ultimasVentas: clienteVentas.slice(0, 5) };
-  }, [selId, ventas]);
+    // Saldo pendiente de CFEs abiertos para este cliente
+    const saldoPendiente = cfes
+      .filter(c => c.clienteId === selId && ['emitida','cobrado_parcial'].includes(c.status))
+      .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
+    return { ventasCount: clienteVentas.length, totalComprado, ticketPromedio, diasDesdeUltima, topProductos, ultimasVentas: clienteVentas.slice(0, 5), allVentas: clienteVentas, saldoPendiente };
+  }, [selId, ventas, cfes]);
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
@@ -43,6 +49,7 @@ function ClientesTab(){
   const [vista,setVista]=useState('lista');
   const [selId,setSelId]=useState(null);
   const [msg,setMsg]=useState('');
+  const [verTodasVentas, setVerTodasVentas]=useState(false);
   const sel=items.find(x=>x.id===selId);
 
   // ── persist to Supabase clients table (non-blocking) ────────
@@ -126,7 +133,49 @@ function ClientesTab(){
   );
   if(vista==='detalle'&&sel)return(
     <section style={{padding:'32px 40px',maxWidth:700,margin:'0 auto'}}>
-      <div style={{display:'flex',alignItems:'center',marginBottom:24}}>{backBtn}<h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0,flex:1}}>{sel.nombre}</h2><span style={{background:TCOLOR[sel.tipo]||'#6b7280',color:'#fff',fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:20}}>{sel.tipo}</span></div>
+      {/* Header con acciones directas */}
+      <div style={{display:'flex',alignItems:'center',marginBottom:24}}>
+        {backBtn}
+        <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:'0',flex:1}}>{sel.nombre}</h2>
+        <span style={{background:TCOLOR[sel.tipo]||'#6b7280',color:'#fff',fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:20,marginRight:10}}>{sel.tipo}</span>
+      </div>
+
+      {/* Acciones directas */}
+      <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+        {sel.telefono&&(
+          <a href={`https://wa.me/${sel.telefono.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+            style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,color:G,fontSize:12,fontWeight:700,textDecoration:'none'}}>
+            💬 WhatsApp
+          </a>
+        )}
+        {sel.telefono&&(
+          <a href={`tel:${sel.telefono}`}
+            style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,color:'#374151',fontSize:12,fontWeight:600,textDecoration:'none'}}>
+            📞 Llamar
+          </a>
+        )}
+        {sel.email&&(
+          <a href={`mailto:${sel.email}`}
+            style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,color:'#374151',fontSize:12,fontWeight:600,textDecoration:'none'}}>
+            ✉ Email
+          </a>
+        )}
+        <button onClick={()=>navigate('/app/ventas')}
+          style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:G,border:'none',borderRadius:8,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          + Nueva venta
+        </button>
+      </div>
+
+      {/* Saldo pendiente — solo si tiene deuda */}
+      {crmMetrics&&crmMetrics.saldoPendiente>0&&(
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>⚠ Saldo pendiente de cobro</span>
+          <span style={{fontSize:18,fontWeight:800,color:'#dc2626'}}>
+            ${Number(crmMetrics.saldoPendiente).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}
+          </span>
+        </div>
+      )}
+
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Límite crédito',v:sel.limiteCredito?'USD '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es-UY'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(f=>(
           <div key={f.l} style={{gridColumn:f.full?'1/-1':'auto'}}>
@@ -184,13 +233,24 @@ function ClientesTab(){
                   </div>
                 )}
 
-                {/* Últimas ventas */}
+                {/* Historial de ventas — expandible */}
                 <div>
-                  <div style={{fontSize:11,fontWeight:700,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:10}}>Últimas compras</div>
-                  {crmMetrics.ultimasVentas.map((v,i) => {
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#999',textTransform:'uppercase',letterSpacing:.5}}>
+                      Historial de compras ({crmMetrics.ventasCount})
+                    </div>
+                    {crmMetrics.allVentas.length > 5 && (
+                      <button onClick={()=>setVerTodasVentas(v=>!v)}
+                        style={{background:'none',border:'none',cursor:'pointer',fontSize:11,fontWeight:700,color:G,padding:0}}>
+                        {verTodasVentas ? 'Ver menos ▲' : `Ver todas (${crmMetrics.allVentas.length}) ▼`}
+                      </button>
+                    )}
+                  </div>
+                  {(verTodasVentas ? crmMetrics.allVentas : crmMetrics.ultimasVentas).map((v,i) => {
                     const ECOL={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:G,cancelada:'#9ca3af'};
+                    const lista = verTodasVentas ? crmMetrics.allVentas : crmMetrics.ultimasVentas;
                     return(
-                      <div key={v.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:i<crmMetrics.ultimasVentas.length-1?'1px solid #f3f4f6':'none'}}>
+                      <div key={v.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:i<lista.length-1?'1px solid #f3f4f6':'none'}}>
                         <span style={{fontSize:12,color:'#888',minWidth:56}}>{v.creadoEn?new Date(v.creadoEn).toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):'—'}</span>
                         <span style={{fontSize:11,fontWeight:700,color:'#888',minWidth:60}}>{v.nroVenta}</span>
                         <span style={{flex:1,fontSize:13,fontWeight:700,color:G}}>${Number(v.total||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
