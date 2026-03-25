@@ -859,7 +859,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   ];
   const NAV_ROLES={
     admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","rutas","tracking","kpis","recepcion","informes","demanda","audit","importar","scanner","config","conteo","devoluciones","packing","precios","transferencias","batch-picking"],
-    operador:["dashboard","inventory","movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"],
+    operador:["dashboard","inventory","movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","scanner"],
     vendedor:["dashboard","clientes","ventas","facturacion","kpis","informes"]
   };
   const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
@@ -914,7 +914,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
             const _role=session?.role||"admin";
             const groups=[
               {label:"Principal",ids:["dashboard","inventory","orders","suppliers"]},
-              {label:"Operaciones",ids:["movimientos","lotes","deposito","rutas","tracking","recepcion","scanner"]},
+              {label:"Operaciones",ids:["movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","scanner"]},
               {label:"Comercial",ids:["clientes","ventas","facturacion"]},
               {label:"Análisis",ids:["kpis","informes","demanda","audit"]},
               {label:"Sistema",ids:["importar","config"]},
