@@ -4,7 +4,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, db } from '../lib/constants.js';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
-import { Pill, TabBtn, KpiCard } from './facturacion/components.jsx';
+import { Pill, TabBtn, KpiCard, Lbl } from './facturacion/components.jsx';
 
 function FacturacionTab({ products=[] }) {
   const { cfes, setCfes, cobros, setCobros, clientes } = useApp();

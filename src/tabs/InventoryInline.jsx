@@ -12,7 +12,7 @@ export default function InventoryInline({setModal, setEditProd}) {
   };
   return (
     <>
-    <ConfirmDialog />
+    {ConfirmDialog}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <div>
