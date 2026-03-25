@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { LS } from '../lib/constants.js';
+import { db } from '../lib/constants.js';
 
 function RutasTab(){
-  const { clientes } = useApp();
+  const { clientes, rutas, setRutas } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
-  const [rutas,setRutas]=useState(()=>LS.get("aryes-rutas",[]));
   const [vista,setVista]=useState("lista");
   const [rutaActiva,setRutaActiva]=useState(null);
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
@@ -21,7 +20,12 @@ function RutasTab(){
     if(!form.vehiculo||!form.zona){setMsg("Completa vehiculo y zona");return;}
     const nueva={id:crypto.randomUUID(),vehiculo:form.vehiculo,zona:form.zona,dia:form.dia,notas:form.notas,entregas:[],creadoEn:new Date().toISOString()};
     const upd=[nueva,...rutas];
-    setRutas(upd);LS.set("aryes-rutas",upd);
+    setRutas(upd);
+    db.upsert('rutas',{
+      id:nueva.id, vehiculo:nueva.vehiculo, zona:nueva.zona, dia:nueva.dia,
+      notas:nueva.notas, entregas:nueva.entregas,
+      creado_en:nueva.creadoEn, updated_at:nueva.creadoEn,
+    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
     setForm({vehiculo:"",zona:"",dia:"",notas:""});
     setMsg("Ruta creada");setTimeout(()=>setMsg(""),3000);
   };
@@ -30,7 +34,8 @@ function RutasTab(){
     const ok = await confirm({ title:'¿Eliminar esta ruta?', variant:'danger' });
     if(!ok) return;
     const upd=rutas.filter(r=>r.id!==id);
-    setRutas(upd);LS.set("aryes-rutas",upd);
+    setRutas(upd);
+    db.del('rutas',{id}).catch(e=>console.warn('[RutasTab] delete failed:',e?.message||e));
   };
 
   const agregarEntrega=(cli)=>{
@@ -38,24 +43,48 @@ function RutasTab(){
     if(ruta.entregas.find(e=>e.clienteId===cli.id)){setMsg("Ya esta en la ruta");return;}
     const e={clienteId:cli.id,clienteNombre:cli.nombre,ciudad:cli.ciudad||"",telefono:cli.telefono||"",estado:"pendiente",hora:"",nota:"",foto:""};
     const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:[...r.entregas,e]}:r);
-    setRutas(upd);LS.set("aryes-rutas",upd);
+    setRutas(upd);
+    const updRuta=upd.find(r=>r.id===rutaActiva);
+    if(updRuta) db.upsert('rutas',{
+      id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
+      notas:updRuta.notas, entregas:updRuta.entregas,
+      creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
+    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
     setBusqCli("");
   };
 
   const marcarEntregado=(rutaId,clienteId)=>{
     const hora=new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"});
     const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora}:ev)}:r);
-    setRutas(upd);LS.set("aryes-rutas",upd);
+    setRutas(upd);
+    const updRuta=upd.find(r=>r.id===rutaId);
+    if(updRuta) db.upsert('rutas',{
+      id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
+      notas:updRuta.notas, entregas:updRuta.entregas,
+      creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
+    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
   };
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
     const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"no_entregado",hora:new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"})}:ev)}:r);
-    setRutas(upd);LS.set("aryes-rutas",upd);
+    setRutas(upd);
+    const updRuta=upd.find(r=>r.id===rutaId);
+    if(updRuta) db.upsert('rutas',{
+      id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
+      notas:updRuta.notas, entregas:updRuta.entregas,
+      creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
+    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
   };
 
   const revertirEntrega=(rutaId,clienteId)=>{
     const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"pendiente",hora:""}:ev)}:r);
-    setRutas(upd);LS.set("aryes-rutas",upd);
+    setRutas(upd);
+    const updRuta=upd.find(r=>r.id===rutaId);
+    if(updRuta) db.upsert('rutas',{
+      id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
+      notas:updRuta.notas, entregas:updRuta.entregas,
+      creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
+    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
   };
 
   const abrirMaps=(e)=>{

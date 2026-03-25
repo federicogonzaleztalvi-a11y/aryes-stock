@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS } from '../lib/constants.js';
 
 function InformesTab(){
-  const { products: prods, movements: movs , ventas, clientes, lotes} = useApp();
-  const [rutas]=useState(()=>LS.get("aryes-rutas",[]));
+  const { products: prods, movements: movs , ventas, clientes, lotes, rutas} = useApp();
     const [periodo,setPeriodo]=useState("mes");
   const [msg,setMsg]=useState("");
   const hoy=new Date();

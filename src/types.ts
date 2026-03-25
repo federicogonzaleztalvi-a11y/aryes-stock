@@ -203,6 +203,29 @@ export interface SyncToast {
 // Every value returned by useApp() is typed here.
 // This is the interface a top engineer reads to understand what the app can do.
 
+// ── Ruta de reparto ──────────────────────────────────────────────────────────
+export interface RutaEntrega {
+  clienteId:     string;
+  clienteNombre: string;
+  ciudad:        string;
+  telefono:      string;
+  estado:        'pendiente' | 'entregado' | 'no_entregado';
+  hora:          string;
+  nota:          string;
+  foto:          string;
+}
+
+export interface Ruta {
+  id:       string;
+  vehiculo: string;
+  zona:     string;
+  dia:      string;
+  notas:    string;
+  entregas: RutaEntrega[];
+  creadoEn: string;
+  updatedAt?: string;
+}
+
 // ── Conteo / Inventario físico ───────────────────────────────────────────────
 export interface ConteoItem {
   id:           string;   // productoId
@@ -354,6 +377,8 @@ export interface AppContextValue {
   setDevoluciones: React.Dispatch<React.SetStateAction<Devolucion[]>>;
   conteos:         Conteo[];
   setConteos:      React.Dispatch<React.SetStateAction<Conteo[]>>;
+  rutas:           Ruta[];
+  setRutas:        React.Dispatch<React.SetStateAction<Ruta[]>>;
   suppliers: Supplier[];
   setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
   movements: Movement[];

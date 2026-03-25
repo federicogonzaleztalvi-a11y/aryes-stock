@@ -7,7 +7,7 @@ import { LS, db, SB_URL, SKEY } from '../lib/constants.js';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
-              Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo } from '../types.js';
+              Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta } from '../types.js';
 
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
@@ -46,6 +46,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [lotes,     setLotes]     = useState<Lote[]>(() => LS.get('aryes-lots',          []));
   const [devoluciones, setDevoluciones] = useState<Devolucion[]>(() => LS.get('aryes-devoluciones', []));
   const [conteos,      setConteos]      = useState<Conteo[]>(() => LS.get('aryes-conteos',        []));
+  const [rutas,        setRutas]        = useState<Ruta[]>(() => LS.get('aryes-rutas',           []));
   const [plans,     setPlans]     = useState<Plans>(() => LS.get('aryes7-plans',     {}));
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
@@ -73,6 +74,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   useEffect(() => LS.set('aryes-lots',         lotes),     [lotes]);
   useEffect(() => LS.set('aryes-devoluciones', devoluciones), [devoluciones]);
   useEffect(() => LS.set('aryes-conteos',       conteos),      [conteos]);
+  useEffect(() => LS.set('aryes-rutas',          rutas),        [rutas]);
   useEffect(() => LS.set('aryes9-notified',  notified),  [notified]);
 
   // ── JWT auto-refresh 5 min before expiry ───────────────────────────────────
@@ -214,6 +216,16 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             finalizadoEn: r.finalizado_en||undefined,
           }));
           setConteos(mappedConteos); // reactive — LS.set handled by useEffect
+        }
+        // Load rutas from Supabase
+        const sbRutas = await db.get<Record<string, any>[]>('rutas?order=creado_en.desc&limit=200');
+        if (sbRutas?.length > 0) {
+          const mappedRutas: Ruta[] = sbRutas.map(r => ({
+            id: r.id, vehiculo: r.vehiculo||'', zona: r.zona||'',
+            dia: r.dia||'', notas: r.notas||'', entregas: r.entregas||[],
+            creadoEn: r.creado_en||'',
+          }));
+          setRutas(mappedRutas); // reactive — LS.set handled by useEffect
         }
         const sbRecs = await db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500');
         if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
@@ -487,6 +499,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
     lotes, setLotes,
     devoluciones, setDevoluciones,
     conteos, setConteos,
+    rutas, setRutas,
     suppliers, setSuppliers,
     movements, setMovements,
     orders, setOrders,
