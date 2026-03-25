@@ -2,6 +2,7 @@ import React from 'react';
 import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import SetupChecklist from '../components/SetupChecklist.jsx';
+import AlertasPanel from '../components/AlertasPanel.jsx';
 
 const F = {
   sans:  "'DM Sans','Inter',system-ui,sans-serif",
@@ -418,6 +419,9 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           )}
         </div>
       </div>
+
+      {/* ── Alertas del negocio ───────────────────────────────── */}
+      <AlertasPanel setTab={setTab} />
 
       {/* ── Ventas: gráfico de barras 6 meses + margen por categoría + top clientes ── */}
       {ventasActivas.length > 0 && (
