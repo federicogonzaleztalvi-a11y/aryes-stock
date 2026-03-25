@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useState, lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
@@ -142,7 +143,23 @@ function Root() {
   return (
     <>
       <AppProvider session={session} onLogout={handleLogout} onSessionUpdate={setSession}>
-        <AryesApp session={session} onLogout={handleLogout} onSessionUpdate={setSession} />
+        <Routes>
+          {/* Redirect bare /app to /app/dashboard */}
+          <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
+          {/* Main app — tab is the URL segment */}
+          <Route
+            path="/app/:tab"
+            element={
+              <AryesApp
+                session={session}
+                onLogout={handleLogout}
+                onSessionUpdate={setSession}
+              />
+            }
+          />
+          {/* Catch-all: redirect anything else to /app/dashboard */}
+          <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
+        </Routes>
       </AppProvider>
       {showOnboarding && (
         <Suspense fallback={null}>
@@ -159,6 +176,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <RootErrorBoundary>
-    <Root />
+    <BrowserRouter>
+      <Root />
+    </BrowserRouter>
   </RootErrorBoundary>
 );

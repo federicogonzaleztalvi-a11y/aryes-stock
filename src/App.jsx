@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { db } from "./lib/constants.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -736,7 +737,13 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   const [settingsTab,    setSettingsTab]    = useState('usuarios');
   const [userMenuOpen,   setUserMenuOpen]   = useState(false);
   const [cmdOpen,        setCmdOpen]        = useState(false);
-  const [tab,            setTab]            = useState('dashboard');
+  // ── URL-based tab routing (react-router-dom) ─────────────────────────────
+  // URL pattern: /app/:tab  →  /app/dashboard, /app/inventory, etc.
+  // setTab() is still passed as a prop everywhere — callers don't change.
+  const navigate = useNavigate();
+  const { tab: urlTab } = useParams();
+  const tab = urlTab || 'dashboard';
+  const setTab = (id) => navigate('/app/' + id, { replace: false });
   const [modal,          setModal]          = useState(null);
   const [editProd,       setEditProd]       = useState(null);
   const [editSup,        setEditSup]        = useState(null);
