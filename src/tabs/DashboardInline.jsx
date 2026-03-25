@@ -1,5 +1,6 @@
 import React from 'react';
 import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
+import { useApp } from '../context/AppContext.tsx';
 import SetupChecklist from '../components/SetupChecklist.jsx';
 
 const F = {
@@ -63,7 +64,10 @@ function SectionHeader({ title, action, actionLabel }) {
 
 function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[]}) {
 
-  const today = new Date();
+  // Pull ventas reactively — avoids adding a prop to the parent call site
+  const { ventas = [] } = useApp();
+
+  const today = React.useMemo(() => new Date(), []);
 
   // ── Stock metrics ──────────────────────────────────────────────────────────
   const orderNow   = alerts.filter(p=>p.alert.level==='order_now').length;
@@ -146,6 +150,63 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     if(hrs<24)return`hace ${hrs}h`;
     return`hace ${Math.round(hrs/24)}d`;
   };
+
+  // ── Ventas metrics ─────────────────────────────────────────────────────────
+  const ventasActivas = React.useMemo(() =>
+    ventas.filter(v => v.estado !== 'cancelada'), [ventas]);
+
+  // Sales by month (last 6) for bar chart — revenue bars
+  const ventasPorMes = React.useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+      const label = d.toLocaleDateString('es-UY', { month: 'short' });
+      const total = ventasActivas
+        .filter(v => { const vd = new Date(v.creadoEn); return vd.getMonth() === d.getMonth() && vd.getFullYear() === d.getFullYear(); })
+        .reduce((s, v) => s + Number(v.total || 0), 0);
+      const costo = ventasActivas
+        .filter(v => { const vd = new Date(v.creadoEn); return vd.getMonth() === d.getMonth() && vd.getFullYear() === d.getFullYear(); })
+        .reduce((s, v) => s + (v.items || []).reduce((ss, it) => ss + Number(it.cantidad || 0) * Number(it.costoUnit || 0), 0), 0);
+      months.push({ label, total, costo, margen: total > 0 ? ((total - costo) / total * 100) : 0 });
+    }
+    return months;
+  }, [ventasActivas]);
+
+  // Margin by product category
+  const margenPorCategoria = React.useMemo(() => {
+    const map = {};
+    ventasActivas.forEach(v => {
+      (v.items || []).forEach(it => {
+        const prod = products.find(p => p.id === it.productoId);
+        const cat = prod?.category || 'Sin categoría';
+        if (!map[cat]) map[cat] = { venta: 0, costo: 0 };
+        map[cat].venta += Number(it.cantidad || 0) * Number(it.precioUnit || 0);
+        map[cat].costo += Number(it.cantidad || 0) * Number(it.costoUnit || 0);
+      });
+    });
+    return Object.entries(map)
+      .map(([cat, { venta, costo }]) => ({
+        cat, venta, costo,
+        margen: venta > 0 ? ((venta - costo) / venta * 100) : 0,
+      }))
+      .filter(r => r.venta > 0)
+      .sort((a, b) => b.venta - a.venta)
+      .slice(0, 5);
+  }, [ventasActivas, products]);
+
+  // Top 5 clients this month by sales volume
+  const topClientesMes = React.useMemo(() => {
+    const map = {};
+    ventasActivas
+      .filter(v => { const d = new Date(v.creadoEn); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear(); })
+      .forEach(v => {
+        const k = v.clienteId || v.clienteNombre;
+        if (!map[k]) map[k] = { nombre: v.clienteNombre, total: 0, ventas: 0 };
+        map[k].total += Number(v.total || 0);
+        map[k].ventas++;
+      });
+    return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 5);
+  }, [ventasActivas, today]);
 
   // ── Billing bar chart (last 6 months) ──────────────────────────────────────
 
@@ -357,6 +418,103 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           )}
         </div>
       </div>
+
+      {/* ── Ventas: gráfico de barras 6 meses + margen por categoría + top clientes ── */}
+      {ventasActivas.length > 0 && (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16}}>
+
+          {/* Ventas últimos 6 meses — bar chart */}
+          <div>
+            <SectionHeader title="Ventas últimos 6 meses" action={()=>setTab('ventas')} actionLabel="Ver ventas"/>
+            <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e2de',padding:'16px 16px 8px'}}>
+              {(() => {
+                const maxVal = Math.max(...ventasPorMes.map(m => m.total), 1);
+                return (
+                  <div style={{display:'flex',alignItems:'flex-end',gap:4,height:80}}>
+                    {ventasPorMes.map((m, i) => {
+                      const h = Math.max((m.total / maxVal) * 72, m.total > 0 ? 4 : 0);
+                      const isThisMes = i === 5;
+                      return (
+                        <div key={m.label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                          <div style={{width:'100%',height:h,background: isThisMes ? T.green : T.greenBd,
+                            borderRadius:'3px 3px 0 0',transition:'height .3s',minHeight: m.total > 0 ? 4 : 0}}/>
+                          <div style={{fontFamily:F.sans,fontSize:9,color:'#9a9a98',textAlign:'center',
+                            fontWeight: isThisMes ? 700 : 400}}>{m.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              <div style={{borderTop:'1px solid #f0f0ec',marginTop:8,paddingTop:8,display:'flex',justifyContent:'space-between'}}>
+                <span style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98'}}>Este mes</span>
+                <span style={{fontFamily:F.sans,fontSize:12,fontWeight:700,color:T.green}}>
+                  {fmtMoney(ventasPorMes[5]?.total || 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Margen por categoría */}
+          <div>
+            <SectionHeader title="Margen por categoría" action={()=>setTab('kpis')} actionLabel="Ver KPIs"/>
+            <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e2de',overflow:'hidden'}}>
+              {margenPorCategoria.length === 0 ? (
+                <div style={{padding:'24px 16px',textAlign:'center',color:'#9a9a98',fontFamily:F.sans,fontSize:12}}>
+                  Configurá costos en productos para ver márgenes
+                </div>
+              ) : margenPorCategoria.map((r, i) => {
+                const color = r.margen >= 15 ? T.green : r.margen >= 0 ? '#d97706' : '#dc2626';
+                return (
+                  <div key={r.cat} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',
+                    borderBottom: i < margenPorCategoria.length - 1 ? '1px solid #f0f0ec' : 'none'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:F.sans,fontSize:12,fontWeight:500,color:'#1a1a18',
+                        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.cat}</div>
+                      <div style={{marginTop:3,height:3,borderRadius:2,background:'#f0f0ec',overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${Math.min(Math.abs(r.margen),100)}%`,background:color,borderRadius:2}}/>
+                      </div>
+                    </div>
+                    <span style={{fontFamily:F.sans,fontSize:12,fontWeight:700,color,flexShrink:0}}>
+                      {r.margen.toFixed(1)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Top clientes del mes */}
+          <div>
+            <SectionHeader title="Top clientes (mes)" action={()=>setTab('clientes')} actionLabel="Ver clientes"/>
+            <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e2de',overflow:'hidden'}}>
+              {topClientesMes.length === 0 ? (
+                <div style={{padding:'24px 16px',textAlign:'center',color:'#9a9a98',fontFamily:F.sans,fontSize:12}}>
+                  Sin ventas este mes
+                </div>
+              ) : topClientesMes.map((c, i) => (
+                <div key={c.nombre} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',
+                  borderBottom: i < topClientesMes.length - 1 ? '1px solid #f0f0ec' : 'none'}}>
+                  <span style={{width:18,height:18,borderRadius:'50%',background:T.green+'22',color:T.green,
+                    fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    {i+1}
+                  </span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:F.sans,fontSize:12,fontWeight:600,color:'#1a1a18',
+                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.nombre}</div>
+                    <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>
+                      {c.ventas} orden{c.ventas > 1 ? 'es' : ''}
+                    </div>
+                  </div>
+                  <span style={{fontFamily:F.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}}>
+                    {fmtMoney(c.total)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Bottom row: proveedores + actividad ──────────────────── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
