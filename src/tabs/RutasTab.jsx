@@ -4,7 +4,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { db } from '../lib/constants.js';
 
 function RutasTab(){
-  const { clientes, rutas, setRutas } = useApp();
+  const { clientes, rutas, setRutas, setHasPendingSync } = useApp();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const [vista,setVista]=useState("lista");
@@ -25,7 +25,7 @@ function RutasTab(){
       id:nueva.id, vehiculo:nueva.vehiculo, zona:nueva.zona, dia:nueva.dia,
       notas:nueva.notas, entregas:nueva.entregas,
       creado_en:nueva.creadoEn, updated_at:nueva.creadoEn,
-    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
+    },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
     setForm({vehiculo:"",zona:"",dia:"",notas:""});
     setMsg("Ruta creada");setTimeout(()=>setMsg(""),3000);
   };
@@ -35,7 +35,7 @@ function RutasTab(){
     if(!ok) return;
     const upd=rutas.filter(r=>r.id!==id);
     setRutas(upd);
-    db.del('rutas',{id}).catch(e=>console.warn('[RutasTab] delete failed:',e?.message||e));
+    db.del('rutas',{id}).catch(e=>{ console.warn('[RutasTab] delete failed:',e?.message||e); setHasPendingSync(true); });
   };
 
   const agregarEntrega=(cli)=>{
@@ -49,7 +49,7 @@ function RutasTab(){
       id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
       notas:updRuta.notas, entregas:updRuta.entregas,
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
-    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
+    },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
     setBusqCli("");
   };
 
@@ -62,7 +62,7 @@ function RutasTab(){
       id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
       notas:updRuta.notas, entregas:updRuta.entregas,
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
-    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
+    },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
   };
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
@@ -73,7 +73,7 @@ function RutasTab(){
       id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
       notas:updRuta.notas, entregas:updRuta.entregas,
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
-    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
+    },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
   };
 
   const revertirEntrega=(rutaId,clienteId)=>{
@@ -84,7 +84,7 @@ function RutasTab(){
       id:updRuta.id, vehiculo:updRuta.vehiculo, zona:updRuta.zona, dia:updRuta.dia,
       notas:updRuta.notas, entregas:updRuta.entregas,
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
-    },'id').catch(e=>console.warn('[RutasTab] upsert failed:',e?.message||e));
+    },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
   };
 
   const abrirMaps=(e)=>{
