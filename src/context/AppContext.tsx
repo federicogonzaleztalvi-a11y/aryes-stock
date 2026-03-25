@@ -242,7 +242,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
       try {
         const prods = await db.get<Record<string, any>[]>('products', 'order=id.asc&limit=1000');
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[] }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[] }));
           LS.set('aryes6-products', mapped); setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', 'order=name.asc');
@@ -423,6 +423,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
       category: (f.category || '') as string,
       brand: (f.brand || '') as string,
       history: (f.history || []) as unknown[],
+      precio_venta: Number(f.precioVenta) || 0,
       updated_at: now,
     };
     // Optimistic update

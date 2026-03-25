@@ -36,6 +36,7 @@ export interface Product {
   unit: string;             // "kg", "lt", "un"…
   stock: number;
   unitCost: number;         // USD
+  precioVenta: number;       // precio de venta (USD)
   minStock: number;
   dailyUsage: number;       // estimated avg units/day
   category?: string;
@@ -342,6 +343,7 @@ export interface VentaItem {
   cantidad:   number;
   unidad:     string;
   precioUnit: number;
+  costoUnit?: number;        // cost snapshot at time of sale (for margin)
 }
 
 export interface Venta {

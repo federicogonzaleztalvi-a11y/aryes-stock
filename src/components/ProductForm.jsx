@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
 const ProductForm=({product,suppliers,onSave,onClose})=>{
-  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,history:[]};
+  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -55,6 +55,20 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
           ))}
         </div>
       )}
+      {f.unitCost>0&&f.precioVenta>0&&(()=>{
+        const margen=((f.precioVenta-f.unitCost)/f.precioVenta*100);
+        const color=margen<0?T.red:margen<15?T.amber:T.green;
+        const bgColor=margen<0?T.redBg:margen<15?T.amberBg:T.greenBg;
+        return(
+          <div style={{background:bgColor,border:`1px solid ${margen<0?T.redBd:margen<15?'#fde68a':T.greenBd}`,borderRadius:8,padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{fontFamily:T.sans,fontSize:12,color,fontWeight:600}}>Margen estimado</div>
+            <div style={{display:'flex',gap:20,alignItems:'center'}}>
+              <span style={{fontFamily:T.sans,fontSize:13,color,fontWeight:700}}>{margen.toFixed(1)}%</span>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Ganancia: ${(f.precioVenta-f.unitCost).toFixed(2)} / {f.unit||'u'}</span>
+            </div>
+          </div>
+        );
+      })()}
       <div style={{borderTop:`1px solid ${T.border}`,paddingTop:14}}>
         <Field label="Historial de consumo mensual" hint="Pegá desde Excel: YYYY-MM,cantidad — una línea por mes. Más historial = cálculos más precisos.">
           <textarea value={csv} onChange={e=>setCsv(e.target.value)} placeholder={"2024-09,410\n2024-10,420\n2024-11,380\n2024-12,460\n2025-01,410\n2025-02,430"}

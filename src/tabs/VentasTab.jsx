@@ -33,6 +33,12 @@ function VentasTab(){
     const sub=items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.precioUnit),0);
     return sub*(1-Number(desc)/100);
   };
+  // eslint-disable-next-line no-unused-vars
+  const costoTotal=(items)=>items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.costoUnit||0),0);
+  // eslint-disable-next-line no-unused-vars
+  const margenPct=(venta,costo)=>venta>0?((venta-costo)/venta*100):0;
+  const fmtPct=(n)=>n.toFixed(1)+'%';
+  const fmtUSD=(n)=>'$'+Number(n).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   const waLink=(tel,msg)=>`https://wa.me/${(tel||'').replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
   const waMensaje=(nombre,tipo,det)=>`Hola ${nombre||''}! ${tipo==='entrega'?`Confirmamos que ${det}.`:`Su pedido ha sido actualizado: ${det}.`} Gracias por su confianza.`;
@@ -52,6 +58,7 @@ function VentasTab(){
       nombre:prod.nombre||prod.name,
       cantidad:Number(itemCant),
       precioUnit:Number(precio),
+      costoUnit:Number(prod.unitCost||0),
       unidad:prod.unit||prod.unidad||'u',
       subtotal:Number(itemCant)*Number(precio)
     }]}));
@@ -273,7 +280,7 @@ function VentasTab(){
           <div style={{fontSize:12,fontWeight:600,color:'#666',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Agregar producto</div>
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
-              <select value={itemProd} onChange={e=>{setItemProd(e.target.value);const p=products.find(x=>x.id===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
+              <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const pAuto=products.find(x=>x.id===pid);if(pAuto?.precioVenta>0)setItemPrecio(pAuto.precioVenta);const p=products.find(x=>x.id===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
                 <option value=''>— Producto —</option>
                 {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} — stock: {p.stock} {p.unit||''}</option>)}
               </select>
@@ -287,13 +294,13 @@ function VentasTab(){
         {form.items.length>0&&(
           <div style={{borderRadius:8,overflow:'hidden',border:'1px solid #e5e7eb',marginBottom:14}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
-              <thead><tr style={{background:'#f9fafb'}}>{['Producto','Cant.','Precio u.','Subtotal',''].map(h=><th key={h} style={{padding:'8px 12px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5}}>{h}</th>)}</tr></thead>
+              <thead><tr style={{background:'#f9fafb'}}>{['Producto','Cant.','Precio u.','Costo u.','Margen','Subtotal',''].map(h=><th key={h} style={{padding:'8px 12px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5}}>{h}</th>)}</tr></thead>
               <tbody>
                 {form.items.map((it,i)=>(
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
-                    <td style={{padding:'9px 12px',color:'#6b7280'}}>${Number(it.precioUnit).toLocaleString('es-UY')}</td>
+                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmtUSD(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmtUSD(it.costoUnit):'—'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#3a7d1e':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'—'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${(it.cantidad*it.precioUnit).toLocaleString('es-UY')}</td>
                     <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>✕</button></td>
                   </tr>
@@ -306,7 +313,7 @@ function VentasTab(){
                   </tr>
                 )}
                 <tr style={{borderTop:'2px solid #e5e7eb',background:'#f0fdf4'}}>
-                  <td colSpan='3' style={{padding:'10px 12px',textAlign:'right',fontWeight:700}}>TOTAL</td>
+                  <td colSpan='5' style={{padding:'10px 12px',textAlign:'right',fontWeight:700}}>TOTAL</td>
                   <td style={{padding:'10px 12px',fontWeight:800,color:G,fontSize:16}}>${totalVenta(form.items,form.descuento).toLocaleString('es-UY')}</td>
                   <td></td>
                 </tr>

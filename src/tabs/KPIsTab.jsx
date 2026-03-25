@@ -13,6 +13,9 @@ function KPIsTab(){
   const entradas=movsP.filter(m=>m.tipo==="entrada").reduce((a,m)=>a+Number(m.cantidad||0),0);
   const salidas=movsP.filter(m=>m.tipo==="salida"||m.tipo==="ajuste").reduce((a,m)=>a+Number(m.cantidad||0),0);
   const totalVentas=ventasP.reduce((a,v)=>a+Number(v.total||0),0);
+  const costoVentas=ventasP.reduce((a,v)=>a+(v.items||[]).reduce((s,it)=>s+Number(it.cantidad||0)*Number(it.costoUnit||0),0),0);
+  const margenBruto=totalVentas>0?((totalVentas-costoVentas)/totalVentas*100):0;
+  const gananciaTotal=totalVentas-costoVentas;
   const stockCrit=prods.filter(p=>Number(p.stock||0)>0&&Number(p.stock||0)<=(p.rop||5)).length;
   const sinStock=prods.filter(p=>Number(p.stock||0)===0).length;
   const diasVenc=(f)=>Math.ceil((new Date(f)-hoy)/(1000*60*60*24));
@@ -47,6 +50,7 @@ function KPIsTab(){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
         <CARD icon="💰" label={"Ventas ("+periodo+")"} value={ventasP.length} sub={"$"+totalVentas.toLocaleString("es-UY")} color={G} />
+        {costoVentas>0&&<CARD icon="📈" label="Margen bruto" value={margenBruto.toFixed(1)+"%"} sub={"Ganancia: $"+gananciaTotal.toLocaleString("es-UY",{minimumFractionDigits:2,maximumFractionDigits:2})} color={margenBruto>=15?"#3a7d1e":"#d97706"} />}
         <CARD icon="📦" label="Stock critico" value={stockCrit+sinStock} sub={stockCrit+" criticos · "+sinStock+" sin stock"} alert={sinStock>0||stockCrit>5} color={sinStock>0?"#dc2626":stockCrit>0?"#f59e0b":G} />
         <CARD icon="📅" label="Venc. proximos" value={vencProx} sub={vencidos+" ya vencidos"} alert={vencidos>0} color={vencidos>0?"#dc2626":"#f59e0b"} />
         <CARD icon="🚛" label="Efectividad entregas" value={efectividad+"%"} sub={entregasOk+"/"+entregasAll.length+" entregas"} color={efectividad>=90?G:efectividad>=70?"#f59e0b":"#dc2626"} />
