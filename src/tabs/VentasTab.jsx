@@ -280,7 +280,7 @@ function VentasTab(){
           <div style={{fontSize:12,fontWeight:600,color:'#666',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Agregar producto</div>
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
-              <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const pAuto=products.find(x=>x.id===pid);if(pAuto?.precioVenta>0)setItemPrecio(pAuto.precioVenta);const p=products.find(x=>x.id===e.target.value);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
+              <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
                 <option value=''>— Producto —</option>
                 {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} — stock: {p.stock} {p.unit||''}</option>)}
               </select>
