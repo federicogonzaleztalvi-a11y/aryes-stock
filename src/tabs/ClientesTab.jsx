@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useRole } from '../hooks/useRole.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
@@ -6,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 function ClientesTab(){
   const { clientes: items, setClientes: setItems, ventas, cfes, priceListas } = useApp();
+  const { isAdmin } = useRole();
   const navigate = useNavigate();
   const G="#3a7d1e";
 
@@ -188,8 +190,8 @@ function ClientesTab(){
           </div>
         ))}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8,borderTop:'1px solid #f3f4f6',paddingTop:16}}>
-          <button onClick={()=>del(sel.id)} style={{padding:'8px 18px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:13}}>Eliminar</button>
-          <button onClick={()=>edit(sel)} style={{padding:'8px 20px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Editar</button>
+          {isAdmin&&<button onClick={()=>del(sel.id)} style={{padding:'8px 18px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:13}}>Eliminar</button>}
+          {isAdmin&&<button onClick={()=>edit(sel)} style={{padding:'8px 20px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Editar</button>}
         </div>
       </div>
 
@@ -274,7 +276,7 @@ function ClientesTab(){
     <>{ConfirmDialog}<section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Clientes <span style={{fontSize:16,color:'#888',fontWeight:400}}>({filtered.length})</span></h2>
-        <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>
+        {isAdmin&&<button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>}
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
       <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap'}}>

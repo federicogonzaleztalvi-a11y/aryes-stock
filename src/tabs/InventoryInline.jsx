@@ -2,8 +2,10 @@ import React from 'react';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import { T, Btn, AlertPill, StockBar, Spark, totalLead , downloadCSV } from '../lib/ui.jsx';
+import { useRole } from '../hooks/useRole.ts';
 
 export default function InventoryInline({setModal, setEditProd}) {
+  const { isAdmin } = useRole();
   const { products, enriched, deleteProduct } = useApp();
   const { confirm, ConfirmDialog } = useConfirm();
   const handleDelete = async (id) => {
@@ -73,7 +75,7 @@ export default function InventoryInline({setModal, setEditProd}) {
                         <div style={{display:"flex",gap:6}}>
                           <Btn small variant="ghost" onClick={()=>{setEditProd(products.find(x=>x.id===p.id));setModal({type:"product"});}}>Editar</Btn>
                           <Btn small onClick={()=>setModal({type:"order",product:products.find(x=>x.id===p.id)})}>Pedir</Btn>
-                          <Btn small variant="danger" onClick={()=>handleDelete(p.id)}>×</Btn>
+                          {isAdmin&&<Btn small variant="danger" onClick={()=>handleDelete(p.id)}>×</Btn>}
                         </div>
                       </td>
                     </tr>

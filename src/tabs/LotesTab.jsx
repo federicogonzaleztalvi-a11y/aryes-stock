@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
+import { useRole } from '../hooks/useRole.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 function LotesTab(){
   const { products: prods, lotes, setLotes, ventas } = useApp();
+  const { isAdmin } = useRole();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
@@ -208,8 +210,8 @@ function LotesTab(){
                     <td style={{padding:'10px 14px',color:'#6b7280',fontSize:12}}>{l.proveedor||'-'}</td>
                     <td style={{padding:'10px 14px'}}>
                       <div style={{display:'flex',gap:6}}>
-                        <button onClick={()=>editar(l)} style={{padding:'4px 10px',border:'1px solid #e5e7eb',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:11,color:G,fontWeight:600}}>Editar</button>
-                        <button onClick={()=>eliminar(l.id)} style={{padding:'4px 10px',border:'1px solid #fecaca',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:11,color:'#dc2626'}}>x</button>
+                        {isAdmin&&<button onClick={()=>editar(l)} style={{padding:'4px 10px',border:'1px solid #e5e7eb',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:11,color:G,fontWeight:600}}>Editar</button>}
+                        {isAdmin&&<button onClick={()=>eliminar(l.id)} style={{padding:'4px 10px',border:'1px solid #fecaca',borderRadius:6,background:'#fff',cursor:'pointer',fontSize:11,color:'#dc2626'}}>x</button>}
                       </div>
                     </td>
                   </tr>

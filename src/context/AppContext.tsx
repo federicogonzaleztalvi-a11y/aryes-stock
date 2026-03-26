@@ -617,6 +617,7 @@ const describeAction = (action: string, detail: string): string => {
     sendAlertEmail, dbWriteWithRetry,
     // Auth
     handleLogout: () => onLogout?.(),
+    session,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

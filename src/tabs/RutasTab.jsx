@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { db } from '../lib/constants.js';
+import { useRole } from '../hooks/useRole.ts';
 
 // ── Haversine distance (km) between two lat/lng points ────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
@@ -67,6 +68,7 @@ async function geocodeAddress(direccion, ciudad) {
 
 function RutasTab(){
   const { clientes, setClientes, rutas, setRutas, setHasPendingSync } = useApp();
+  const { isAdmin } = useRole();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
   const [vista,setVista]=useState("lista");
@@ -347,7 +349,7 @@ function RutasTab(){
         <button onClick={()=>setVista("historial")} style={{padding:"8px 16px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:13}}>Ver historial</button>
       </div>
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
-      <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:20}}>
+      {isAdmin&&<div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:20}}>
         <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:14}}>Nueva ruta</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
           <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Vehiculo</label>
@@ -358,7 +360,7 @@ function RutasTab(){
           <input value={form.dia} onChange={e=>setForm(f=>({...f,dia:e.target.value}))} placeholder="Ej: Lunes" style={inp} /></div>
         </div>
         <button onClick={crearRuta} style={{padding:"9px 22px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Crear ruta</button>
-      </div>
+      </div>}
       <div style={{display:"grid",gap:10}}>
         {rutas.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>Sin rutas creadas</div>):(
           rutas.map(r=>{
@@ -373,7 +375,7 @@ function RutasTab(){
                 </div>
                 {pend>0&&<span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{pend} pendientes</span>}
                 <button onClick={()=>{setRutaActiva(r.id);setVista("detalle");}} style={{padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>Ver ruta</button>
-                <button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8,cursor:"pointer",fontSize:12}}>✗</button>
+                {isAdmin&&<button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8,cursor:"pointer",fontSize:12}}>✗</button>}
               </div>
             );
           })

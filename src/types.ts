@@ -518,4 +518,5 @@ export interface AppContextValue {
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   handleLogout: () => void;
+  session:      Session | null;
 }
