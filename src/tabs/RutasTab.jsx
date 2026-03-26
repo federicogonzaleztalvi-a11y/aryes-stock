@@ -141,15 +141,16 @@ function RutasTab(){
 
   const crearRuta=()=>{
     if(!form.vehiculo||!form.zona){setMsg("Completa vehiculo y zona");return;}
-    const nueva={id:crypto.randomUUID(),vehiculo:form.vehiculo,zona:form.zona,dia:form.dia,notas:form.notas,entregas:[],creadoEn:new Date().toISOString()};
+    const nueva={id:crypto.randomUUID(),vehiculo:form.vehiculo,zona:form.zona,dia:form.dia,notas:form.notas,entregas:[],creadoEn:new Date().toISOString(),capacidadKg:Number(form.capacidadKg)||0,capacidadBultos:Number(form.capacidadBultos)||0};
     const upd=[nueva,...rutas];
     setRutas(upd);
     db.upsert('rutas',{
       id:nueva.id, vehiculo:nueva.vehiculo, zona:nueva.zona, dia:nueva.dia,
       notas:nueva.notas, entregas:nueva.entregas,
+      capacidad_kg:nueva.capacidadKg||0, capacidad_bultos:nueva.capacidadBultos||0,
       creado_en:nueva.creadoEn, updated_at:nueva.creadoEn,
     },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
-    setForm({vehiculo:"",zona:"",dia:"",notas:""});
+    setForm({vehiculo:"",zona:"",dia:"",notas:"",capacidadKg:"",capacidadBultos:""});
     setMsg("Ruta creada");setTimeout(()=>setMsg(""),3000);
   };
 
@@ -164,7 +165,7 @@ function RutasTab(){
   const agregarEntrega=(cli)=>{
     if(!ruta)return;
     if(ruta.entregas.find(e=>e.clienteId===cli.id)){setMsg("Ya esta en la ruta");return;}
-    const e={clienteId:cli.id,clienteNombre:cli.nombre,ciudad:cli.ciudad||"",telefono:cli.telefono||"",estado:"pendiente",hora:"",nota:"",foto:"",horarioDesde:cli.horarioDesde||"",horarioHasta:cli.horarioHasta||""};
+    const e={clienteId:cli.id,clienteNombre:cli.nombre,ciudad:cli.ciudad||"",telefono:cli.telefono||"",estado:"pendiente",hora:"",nota:"",foto:"",horarioDesde:cli.horarioDesde||"",horarioHasta:cli.horarioHasta||"",pesoKg:0,bultos:0};
     const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:[...r.entregas,e]}:r);
     setRutas(upd);
     const updRuta=upd.find(r=>r.id===rutaActiva);
@@ -329,40 +330,53 @@ function RutasTab(){
     }
 
     const M = selectedRutas.length;
-    // Each vehicle starts with an empty list and "position" = null (no last stop)
-    const buckets = selectedRutas.map(r => ({ rutaId: r.id, vehiculo: r.vehiculo, zona: r.zona, entregas: [], lastLat: null, lastLng: null }));
+    const buckets = selectedRutas.map(r => ({
+      rutaId: r.id, vehiculo: r.vehiculo, zona: r.zona, entregas: [],
+      lastLat: null, lastLng: null,
+      cargaKg: 0, cargaBultos: 0,
+      capKg: r.capacidadKg || 0, capBultos: r.capacidadBultos || 0,
+    }));
 
-    // Sort pool by geo cluster — starts from first geocoded stop
     const geocoded   = pool.filter(e => e.lat !== null && e.lng !== null);
     const ungeocoded = pool.filter(e => e.lat === null || e.lng === null);
 
-    // Greedy nearest-vehicle assignment
     const remaining = [...geocoded];
     while (remaining.length > 0) {
-      // Find the vehicle with fewest stops (load balance) among those tied on distance
-      // For each remaining stop, assign to the vehicle whose last stop is nearest
       let bestStop = -1, bestBucket = -1, bestDist = Infinity;
       for (let si = 0; si < remaining.length; si++) {
+        const stop = remaining[si];
         for (let bi = 0; bi < M; bi++) {
           const b = buckets[bi];
+          // Check capacity constraints — skip if would overflow
+          const newKg     = b.cargaKg     + (stop.pesoKg  || 0);
+          const newBultos = b.cargaBultos + (stop.bultos   || 0);
+          if (b.capKg     > 0 && newKg     > b.capKg)     continue;
+          if (b.capBultos > 0 && newBultos > b.capBultos) continue;
+
           let dist;
           if (b.lastLat === null) {
-            // Vehicle hasn't started yet — prefer least-loaded vehicle, break ties by index
-            dist = b.entregas.length * 1000; // penalize loaded vehicles
+            dist = b.entregas.length * 1000;
           } else {
-            dist = haversine(b.lastLat, b.lastLng, remaining[si].lat, remaining[si].lng)
-                   + b.entregas.length * 0.1; // small load-balance penalty
+            dist = haversine(b.lastLat, b.lastLng, stop.lat, stop.lng)
+                   + b.entregas.length * 0.1;
           }
           if (dist < bestDist) { bestDist = dist; bestStop = si; bestBucket = bi; }
         }
+        // If no bucket can fit this stop (all over capacity), assign to least loaded
+        if (bestStop === -1) {
+          bestStop = si;
+          bestBucket = buckets.reduce((bi, b, i) => b.entregas.length < buckets[bi].entregas.length ? i : bi, 0);
+        }
       }
+      if (bestStop === -1) break; // safety
       const stop = remaining.splice(bestStop, 1)[0];
       buckets[bestBucket].entregas.push(stop);
-      buckets[bestBucket].lastLat = stop.lat;
-      buckets[bestBucket].lastLng = stop.lng;
+      buckets[bestBucket].lastLat    = stop.lat;
+      buckets[bestBucket].lastLng    = stop.lng;
+      buckets[bestBucket].cargaKg    += stop.pesoKg  || 0;
+      buckets[bestBucket].cargaBultos += stop.bultos || 0;
     }
 
-    // Distribute ungeocoded stops round-robin
     ungeocoded.forEach((stop, i) => {
       buckets[i % M].entregas.push(stop);
     });
@@ -392,6 +406,7 @@ function RutasTab(){
         return db.upsert('rutas', {
           id: ruta.id, vehiculo: ruta.vehiculo, zona: ruta.zona,
           dia: ruta.dia, notas: ruta.notas, entregas: ruta.entregas,
+          capacidad_kg: ruta.capacidadKg||0, capacidad_bultos: ruta.capacidadBultos||0,
           creado_en: ruta.creadoEn, updated_at: now,
         }, 'id').catch(e => { console.warn('[RutasTab] multi-vehicle upsert failed:', e?.message||e); setHasPendingSync(true); });
       })
@@ -571,7 +586,39 @@ function RutasTab(){
                           🕐 {e.horarioDesde||"?"} – {e.horarioHasta||"?"}
                         </span>
                       )}
+                      {(e.pesoKg>0||e.bultos>0)&&(
+                        <span style={{marginLeft:6,fontSize:11,color:"#6b7280"}}>
+                          {e.pesoKg>0&&`${e.pesoKg}kg`}{e.pesoKg>0&&e.bultos>0&&" · "}{e.bultos>0&&`${e.bultos} bultos`}
+                        </span>
+                      )}
                     </div>
+                    {/* Peso / bultos inline edit — only for pending stops */}
+                    {e.estado==="pendiente"&&!isEntregado&&(
+                      <div style={{display:"flex",gap:8,marginTop:6,alignItems:"center"}}>
+                        <label style={{fontSize:10,color:"#9ca3af"}}>kg:</label>
+                        <input type="number" min="0" step="0.1"
+                          defaultValue={e.pesoKg||""}
+                          onBlur={ev=>{
+                            const val=Number(ev.target.value)||0;
+                            if(val===(e.pesoKg||0))return;
+                            const upd=rutas.map(r=>r.id===ruta.id?{...r,entregas:r.entregas.map(x=>x.clienteId===e.clienteId?{...x,pesoKg:val}:x)}:r);
+                            setRutas(upd);
+                            db.upsert('rutas',{id:ruta.id,vehiculo:ruta.vehiculo,zona:ruta.zona,dia:ruta.dia,notas:ruta.notas,entregas:upd.find(r=>r.id===ruta.id).entregas,capacidad_kg:ruta.capacidadKg||0,capacidad_bultos:ruta.capacidadBultos||0,creado_en:ruta.creadoEn,updated_at:new Date().toISOString()},'id').catch(()=>setHasPendingSync(true));
+                          }}
+                          style={{width:60,padding:"2px 6px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:12,fontFamily:"inherit"}}/>
+                        <label style={{fontSize:10,color:"#9ca3af"}}>bultos:</label>
+                        <input type="number" min="0" step="1"
+                          defaultValue={e.bultos||""}
+                          onBlur={ev=>{
+                            const val=Number(ev.target.value)||0;
+                            if(val===(e.bultos||0))return;
+                            const upd=rutas.map(r=>r.id===ruta.id?{...r,entregas:r.entregas.map(x=>x.clienteId===e.clienteId?{...x,bultos:val}:x)}:r);
+                            setRutas(upd);
+                            db.upsert('rutas',{id:ruta.id,vehiculo:ruta.vehiculo,zona:ruta.zona,dia:ruta.dia,notas:ruta.notas,entregas:upd.find(r=>r.id===ruta.id).entregas,capacidad_kg:ruta.capacidadKg||0,capacidad_bultos:ruta.capacidadBultos||0,creado_en:ruta.creadoEn,updated_at:new Date().toISOString()},'id').catch(()=>setHasPendingSync(true));
+                          }}
+                          style={{width:60,padding:"2px 6px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:12,fontFamily:"inherit"}}/>
+                      </div>
+                    )}
                         {isEntregado&&(e.notaEntrega||e.fotoEntrega||e.firmaEntrega)&&(
                           <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                             {e.fotoEntrega&&(
@@ -715,13 +762,17 @@ function RutasTab(){
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       {isAdmin&&<div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:20}}>
         <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:14}}>Nueva ruta</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:10,marginBottom:12}}>
           <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Vehiculo</label>
           <input value={form.vehiculo} onChange={e=>setForm(f=>({...f,vehiculo:e.target.value}))} placeholder="Ej: Camion A" style={inp} /></div>
           <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Zona</label>
           <input value={form.zona} onChange={e=>setForm(f=>({...f,zona:e.target.value}))} placeholder="Ej: Montevideo Norte" style={inp} /></div>
           <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Dia</label>
           <input value={form.dia} onChange={e=>setForm(f=>({...f,dia:e.target.value}))} placeholder="Ej: Lunes" style={inp} /></div>
+          <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Cap. kg (0=∞)</label>
+          <input type="number" min="0" value={form.capacidadKg} onChange={e=>setForm(f=>({...f,capacidadKg:e.target.value}))} placeholder="Ej: 500" style={inp}/></div>
+          <div><label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Cap. bultos (0=∞)</label>
+          <input type="number" min="0" value={form.capacidadBultos} onChange={e=>setForm(f=>({...f,capacidadBultos:e.target.value}))} placeholder="Ej: 50" style={inp}/></div>
         </div>
         <button onClick={crearRuta} style={{padding:"9px 22px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Crear ruta</button>
       </div>}
@@ -730,16 +781,51 @@ function RutasTab(){
           rutas.map(r=>{
             const pend=r.entregas.filter(e=>e.estado==="pendiente").length;
             const ent=r.entregas.filter(e=>e.estado==="entregado").length;
+            const cargaKg=r.entregas.reduce((s,e)=>s+(e.pesoKg||0),0);
+            const cargaBultos=r.entregas.reduce((s,e)=>s+(e.bultos||0),0);
+            const pctKg=r.capacidadKg>0?Math.min(100,Math.round(cargaKg/r.capacidadKg*100)):null;
+            const pctBultos=r.capacidadBultos>0?Math.min(100,Math.round(cargaBultos/r.capacidadBultos*100)):null;
+            const sobrecargado=(r.capacidadKg>0&&cargaKg>r.capacidadKg)||(r.capacidadBultos>0&&cargaBultos>r.capacidadBultos);
             return(
-              <div key={r.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <div key={r.id} style={{background:"#fff",borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",border:`1px solid ${sobrecargado?"#fecaca":"#f3f4f6"}`,overflow:"hidden"}}>
+                <div style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:10}}>
                 <span style={{fontSize:22}}>🚚</span>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{r.vehiculo} — {r.zona}</div>
                   <div style={{fontSize:12,color:"#888"}}>{r.dia||"Sin dia"} · {ent}/{r.entregas.length} entregas</div>
                 </div>
-                {pend>0&&<span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{pend} pendientes</span>}
-                <button onClick={()=>{setRutaActiva(r.id);setVista("detalle");}} style={{padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>Ver ruta</button>
-                {isAdmin&&<button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:8,cursor:"pointer",fontSize:12}}>✗</button>}
+                {pend>0&&<span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>{pend} pend.</span>}
+                <button onClick={()=>{setRutaActiva(r.id);setVista("detalle");}} style={{padding:"7px 16px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700}}>Ver ruta</button>
+                {isAdmin&&<button onClick={()=>eliminarRuta(r.id)} style={{padding:"7px 10px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",color:"#6b7280",fontSize:12}}>✕</button>}
+                </div>
+                {/* Load bar — only shown when capacity is configured */}
+                {(pctKg!==null||pctBultos!==null)&&(
+                  <div style={{padding:"8px 18px 12px",borderTop:"1px solid #f3f4f6",background:sobrecargado?"#fef2f2":"#fafafa"}}>
+                    {sobrecargado&&<div style={{fontSize:11,fontWeight:700,color:"#dc2626",marginBottom:6}}>⚠ Vehículo sobrecargado</div>}
+                    {pctKg!==null&&(
+                      <div style={{marginBottom:pctBultos!==null?6:0}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#6b7280",marginBottom:3}}>
+                          <span>Peso</span>
+                          <span style={{fontWeight:600,color:pctKg>=100?"#dc2626":pctKg>=80?"#d97706":G}}>{cargaKg} / {r.capacidadKg} kg ({pctKg}%)</span>
+                        </div>
+                        <div style={{background:"#e5e7eb",borderRadius:20,height:6}}>
+                          <div style={{width:`${pctKg}%`,background:pctKg>=100?"#dc2626":pctKg>=80?"#d97706":G,borderRadius:20,height:"100%",transition:"width .3s"}}/>
+                        </div>
+                      </div>
+                    )}
+                    {pctBultos!==null&&(
+                      <div>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"#6b7280",marginBottom:3}}>
+                          <span>Bultos</span>
+                          <span style={{fontWeight:600,color:pctBultos>=100?"#dc2626":pctBultos>=80?"#d97706":G}}>{cargaBultos} / {r.capacidadBultos} ({pctBultos}%)</span>
+                        </div>
+                        <div style={{background:"#e5e7eb",borderRadius:20,height:6}}>
+                          <div style={{width:`${pctBultos}%`,background:pctBultos>=100?"#dc2626":pctBultos>=80?"#d97706":G,borderRadius:20,height:"100%",transition:"width .3s"}}/>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })

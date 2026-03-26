@@ -217,17 +217,23 @@ export interface RutaEntrega {
   hora:          string;
   nota:          string;
   foto:          string;
+  horarioDesde?: string;
+  horarioHasta?: string;
+  pesoKg?:       number;   // weight of this stop's order in kg
+  bultos?:       number;   // number of packages for this stop
 }
 
 export interface Ruta {
-  id:       string;
-  vehiculo: string;
-  zona:     string;
-  dia:      string;
-  notas:    string;
-  entregas: RutaEntrega[];
-  creadoEn: string;
-  updatedAt?: string;
+  id:              string;
+  vehiculo:        string;
+  zona:            string;
+  dia:             string;
+  notas:           string;
+  entregas:        RutaEntrega[];
+  creadoEn:        string;
+  updatedAt?:      string;
+  capacidadKg?:    number;    // max load kg (0 = unlimited)
+  capacidadBultos?: number;   // max packages (0 = unlimited)
 }
 
 // ── Conteo / Inventario físico ───────────────────────────────────────────────

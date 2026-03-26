@@ -262,6 +262,8 @@ const describeAction = (action: string, detail: string): string => {
             id: r.id, vehiculo: r.vehiculo||'', zona: r.zona||'',
             dia: r.dia||'', notas: r.notas||'', entregas: r.entregas||[],
             creadoEn: r.creado_en||'',
+            capacidadKg:     r.capacidad_kg     ? Number(r.capacidad_kg)     : undefined,
+            capacidadBultos: r.capacidad_bultos ? Number(r.capacidad_bultos) : undefined,
           }));
           setRutas(mappedRutas); // reactive — LS.set handled by useEffect
         }
