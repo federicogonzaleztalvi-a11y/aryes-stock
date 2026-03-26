@@ -11,6 +11,8 @@ function ClientesTab(){
   const navigate = useNavigate();
   const G="#3a7d1e";
   const [agingOpen, setAgingOpen] = useState(false);
+  // selId MUST be declared before crmMetrics useMemo (which references it)
+  const [selId,setSelId]=useState(null);
 
   // Aging report — deuda por antigüedad desde CFEs con saldo pendiente
   const agingData = useMemo(() => {
@@ -75,7 +77,6 @@ function ClientesTab(){
   const [q,setQ]=useState('');
   const [filtro,setFiltro]=useState('Todos');
   const [vista,setVista]=useState('lista');
-  const [selId,setSelId]=useState(null);
   const [msg,setMsg]=useState('');
   const [verTodasVentas, setVerTodasVentas]=useState(false);
   const sel=items.find(x=>x.id===selId);
