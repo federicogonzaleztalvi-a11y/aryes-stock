@@ -15,21 +15,43 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-// ── Nearest-Neighbor greedy TSP ───────────────────────────────────────────
-// Returns a reordered copy of `entregas` minimizing total distance.
-// Entregas without coordinates go to the end (ungeocoded).
+// ── Nearest-Neighbor greedy TSP with time-window respect ─────────────────
+// Returns a reordered copy of `entregas` minimizing total distance,
+// while respecting horarioDesde/horarioHasta windows per stop.
+//
+// Algorithm:
+//   1. Nearest-neighbor greedy ordering (distance-optimal)
+//   2. Post-process: for each stop with a time window, check if the
+//      estimated arrival (assuming 10 min/stop average) falls within it.
+//      If not, find the earliest slot in the sequence that would work
+//      and move the stop there. A stop with no window is never moved.
 function nearestNeighborTSP(entregas, clientes) {
-  // Attach coords from clients
+  const toMins = (t) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
   const withCoords = entregas.map(e => {
     const cli = clientes.find(c => c.id === e.clienteId);
-    return { ...e, lat: cli?.lat ?? null, lng: cli?.lng ?? null };
+    return {
+      ...e,
+      lat: cli?.lat ?? null,
+      lng: cli?.lng ?? null,
+      winFrom: toMins(e.horarioDesde || cli?.horarioDesde),
+      winTo:   toMins(e.horarioHasta || cli?.horarioHasta),
+    };
   });
 
   const geocoded   = withCoords.filter(e => e.lat !== null && e.lng !== null);
   const ungeocoded = withCoords.filter(e => e.lat === null || e.lng === null);
 
-  if (geocoded.length <= 1) return withCoords; // nothing to optimize
+  if (geocoded.length <= 1) {
+    const clean = e => { const {lat:_l,lng:_g,winFrom:_f,winTo:_t,...rest}=e; return rest; };
+    return [...withCoords.map(clean)];
+  }
 
+  // Phase 1: nearest-neighbor greedy
   const visited = new Array(geocoded.length).fill(false);
   const ordered = [];
   let current = 0;
@@ -40,10 +62,7 @@ function nearestNeighborTSP(entregas, clientes) {
     let nearest = -1, minDist = Infinity;
     for (let j = 0; j < geocoded.length; j++) {
       if (visited[j]) continue;
-      const d = haversine(
-        geocoded[current].lat, geocoded[current].lng,
-        geocoded[j].lat,       geocoded[j].lng
-      );
+      const d = haversine(geocoded[current].lat, geocoded[current].lng, geocoded[j].lat, geocoded[j].lng);
       if (d < minDist) { minDist = d; nearest = j; }
     }
     visited[nearest] = true;
@@ -51,8 +70,38 @@ function nearestNeighborTSP(entregas, clientes) {
     current = nearest;
   }
 
-  // Strip the synthetic lat/lng we attached (not part of entrega shape)
-  const clean = e => { const {lat: _lat, lng: _lng, ...rest} = e; return rest; };
+  // Phase 2: respect time windows
+  // Assume route starts now, ~10 min between stops (rough estimate for UY urban)
+  const MINS_PER_STOP = 10;
+  const startMins = new Date().getHours() * 60 + new Date().getMinutes();
+
+  for (let i = 0; i < ordered.length; i++) {
+    const stop = ordered[i];
+    if (stop.winFrom === null && stop.winTo === null) continue; // no window, skip
+
+    const arrivalMins = startMins + i * MINS_PER_STOP;
+    const tooEarly = stop.winFrom !== null && arrivalMins < stop.winFrom;
+    const tooLate  = stop.winTo   !== null && arrivalMins > stop.winTo;
+
+    if (!tooEarly && !tooLate) continue; // window OK
+
+    // Find the earliest position j >= i where arrival is within window
+    let bestPos = i; // keep in place if no better slot found
+    for (let j = i; j < ordered.length; j++) {
+      const arr = startMins + j * MINS_PER_STOP;
+      const ok = (stop.winFrom === null || arr >= stop.winFrom) &&
+                 (stop.winTo   === null || arr <= stop.winTo);
+      if (ok) { bestPos = j; break; }
+    }
+
+    if (bestPos !== i) {
+      // Move stop from i to bestPos
+      ordered.splice(i, 1);
+      ordered.splice(bestPos, 0, stop);
+    }
+  }
+
+  const clean = e => { const {lat:_l,lng:_g,winFrom:_f,winTo:_t,...rest}=e; return rest; };
   return [...ordered.map(clean), ...ungeocoded.map(clean)];
 }
 
@@ -110,7 +159,7 @@ function RutasTab(){
   const agregarEntrega=(cli)=>{
     if(!ruta)return;
     if(ruta.entregas.find(e=>e.clienteId===cli.id)){setMsg("Ya esta en la ruta");return;}
-    const e={clienteId:cli.id,clienteNombre:cli.nombre,ciudad:cli.ciudad||"",telefono:cli.telefono||"",estado:"pendiente",hora:"",nota:"",foto:""};
+    const e={clienteId:cli.id,clienteNombre:cli.nombre,ciudad:cli.ciudad||"",telefono:cli.telefono||"",estado:"pendiente",hora:"",nota:"",foto:"",horarioDesde:cli.horarioDesde||"",horarioHasta:cli.horarioHasta||""};
     const upd=rutas.map(r=>r.id===rutaActiva?{...r,entregas:[...r.entregas,e]}:r);
     setRutas(upd);
     const updRuta=upd.find(r=>r.id===rutaActiva);
@@ -409,7 +458,16 @@ function RutasTab(){
                   <span style={{fontSize:18,opacity:.7}}>📍</span>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{e.clienteNombre}</div>
-                    <div style={{fontSize:12,color:"#888"}}>{e.ciudad||""}{e.hora?" · "+e.hora:""}</div>
+                    <div style={{fontSize:12,color:"#888"}}>
+                      {e.ciudad||""}{e.hora?" · "+e.hora:""}
+                      {(e.horarioDesde||e.horarioHasta)&&(
+                        <span style={{marginLeft:6,fontSize:11,fontWeight:700,color:"#2563eb",
+                          background:"#eff6ff",border:"1px solid #bfdbfe",
+                          padding:"1px 6px",borderRadius:20}}>
+                          🕐 {e.horarioDesde||"?"} – {e.horarioHasta||"?"}
+                        </span>
+                      )}
+                    </div>
                         {isEntregado&&(e.notaEntrega||e.fotoEntrega||e.firmaEntrega)&&(
                           <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                             {e.fotoEntrega&&(

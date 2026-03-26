@@ -305,6 +305,8 @@ export interface Cliente {
   lat:              number | null;   // geocoded latitude
   lng:              number | null;   // geocoded longitude
   geocodedAt:       string | null;   // ISO — when geocoding ran
+  horarioDesde:     string | null;   // reception window start HH:MM
+  horarioHasta:     string | null;   // reception window end   HH:MM
   notas:            string;
   creado:           string;
 }

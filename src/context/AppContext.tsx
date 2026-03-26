@@ -214,6 +214,8 @@ const describeAction = (action: string, detail: string): string => {
             ciudad: r.ciudad||'', condPago: r.cond_pago||'credito_30',
             limiteCredito: r.limite_credito ? String(r.limite_credito) : '',
             listaId: r.lista_id || null,
+            horarioDesde: r.horario_desde || null,
+            horarioHasta: r.horario_hasta || null,
             lat: r.lat ? Number(r.lat) : null,
             lng: r.lng ? Number(r.lng) : null,
             geocodedAt: r.geocoded_at || null,
