@@ -126,6 +126,11 @@ function RutasTab(){
   const [msg,setMsg]=useState("");
   const [busqCli,setBusqCli]=useState("");
   const [optimizando, setOptimizando] = useState(false);
+  // M-3: multi-vehicle distribution
+  const [distOpen,   setDistOpen]   = useState(false);
+  const [distRutas,  setDistRutas]  = useState([]);  // selected ruta IDs to include
+  const [distResult, setDistResult] = useState(null); // { assignments: [{rutaId, entregas[]}] }
+  const [distApplying, setDistApplying] = useState(false);
   // Evidence capture: { clienteId, nota, fotoBase64, firmaBase64 }
   const [evidencia, setEvidencia] = useState(null);
   const [firmaActiva, setFirmaActiva] = useState(false);
@@ -298,6 +303,105 @@ function RutasTab(){
     const b64 = canvas.toDataURL('image/png');
     setEvidencia(ev => ({ ...ev, firmaBase64: b64 }));
     setFirmaActiva(false);
+  };
+
+  // ── M-3: Multi-vehicle distribution — Round-Robin by proximity ──────────────
+  // Distributes deliveries from selected routes across their vehicles,
+  // minimizing total fleet distance using a greedy nearest-assignment approach.
+  const calcularDistribucion = () => {
+    const selectedRutas = rutas.filter(r => distRutas.includes(r.id));
+    if (selectedRutas.length < 2) {
+      setMsg("Selecciona al menos 2 rutas para distribuir"); return;
+    }
+
+    // Pool all pending deliveries from selected routes
+    const pool = selectedRutas.flatMap(r =>
+      r.entregas
+        .filter(e => e.estado !== 'entregado')
+        .map(e => {
+          const cli = clientes.find(c => c.id === e.clienteId);
+          return { ...e, lat: cli?.lat ?? null, lng: cli?.lng ?? null };
+        })
+    );
+
+    if (pool.length === 0) {
+      setMsg("No hay entregas pendientes en las rutas seleccionadas"); return;
+    }
+
+    const M = selectedRutas.length;
+    // Each vehicle starts with an empty list and "position" = null (no last stop)
+    const buckets = selectedRutas.map(r => ({ rutaId: r.id, vehiculo: r.vehiculo, zona: r.zona, entregas: [], lastLat: null, lastLng: null }));
+
+    // Sort pool by geo cluster — starts from first geocoded stop
+    const geocoded   = pool.filter(e => e.lat !== null && e.lng !== null);
+    const ungeocoded = pool.filter(e => e.lat === null || e.lng === null);
+
+    // Greedy nearest-vehicle assignment
+    const remaining = [...geocoded];
+    while (remaining.length > 0) {
+      // Find the vehicle with fewest stops (load balance) among those tied on distance
+      // For each remaining stop, assign to the vehicle whose last stop is nearest
+      let bestStop = -1, bestBucket = -1, bestDist = Infinity;
+      for (let si = 0; si < remaining.length; si++) {
+        for (let bi = 0; bi < M; bi++) {
+          const b = buckets[bi];
+          let dist;
+          if (b.lastLat === null) {
+            // Vehicle hasn't started yet — prefer least-loaded vehicle, break ties by index
+            dist = b.entregas.length * 1000; // penalize loaded vehicles
+          } else {
+            dist = haversine(b.lastLat, b.lastLng, remaining[si].lat, remaining[si].lng)
+                   + b.entregas.length * 0.1; // small load-balance penalty
+          }
+          if (dist < bestDist) { bestDist = dist; bestStop = si; bestBucket = bi; }
+        }
+      }
+      const stop = remaining.splice(bestStop, 1)[0];
+      buckets[bestBucket].entregas.push(stop);
+      buckets[bestBucket].lastLat = stop.lat;
+      buckets[bestBucket].lastLng = stop.lng;
+    }
+
+    // Distribute ungeocoded stops round-robin
+    ungeocoded.forEach((stop, i) => {
+      buckets[i % M].entregas.push(stop);
+    });
+
+    // Clean synthetic fields from result
+    const clean = e => { const {lat:_l,lng:_g,...rest}=e; return rest; };
+    const assignments = buckets.map(b => ({ ...b, entregas: b.entregas.map(clean) }));
+
+    setDistResult({ assignments });
+  };
+
+  const aplicarDistribucion = async () => {
+    if (!distResult) return;
+    setDistApplying(true);
+    const now = new Date().toISOString();
+    const updRutas = rutas.map(r => {
+      const assignment = distResult.assignments.find(a => a.rutaId === r.id);
+      if (!assignment) return r;
+      return { ...r, entregas: assignment.entregas, updatedAt: now };
+    });
+    setRutas(updRutas);
+    // Persist each updated route
+    await Promise.allSettled(
+      distResult.assignments.map(a => {
+        const ruta = updRutas.find(r => r.id === a.rutaId);
+        if (!ruta) return Promise.resolve();
+        return db.upsert('rutas', {
+          id: ruta.id, vehiculo: ruta.vehiculo, zona: ruta.zona,
+          dia: ruta.dia, notas: ruta.notas, entregas: ruta.entregas,
+          creado_en: ruta.creadoEn, updated_at: now,
+        }, 'id').catch(e => { console.warn('[RutasTab] multi-vehicle upsert failed:', e?.message||e); setHasPendingSync(true); });
+      })
+    );
+    setDistResult(null);
+    setDistRutas([]);
+    setDistOpen(false);
+    setDistApplying(false);
+    setMsg(`✓ Distribución aplicada — ${distResult.assignments.length} rutas actualizadas`);
+    setTimeout(() => setMsg(""), 5000);
   };
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
@@ -641,6 +745,93 @@ function RutasTab(){
           })
         )}
       </div>
+      {/* ── M-3: Multi-vehicle distribution panel ──────────────────────────── */}
+      {rutas.length >= 2 && (
+        <div style={{marginTop:20,background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <button onClick={()=>{setDistOpen(o=>!o);setDistResult(null);}}
+            style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:"none",border:"none",cursor:"pointer",padding:0,textAlign:"left"}}>
+            <span style={{fontSize:16}}>🚛</span>
+            <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:500,color:"#1a1a1a",flex:1}}>
+              Distribuir carga entre vehículos
+            </span>
+            <span style={{fontSize:11,color:"#9ca3af"}}>{distOpen?"▲":"▼"}</span>
+          </button>
+          {distOpen&&(
+            <div style={{marginTop:16}}>
+              <p style={{fontSize:12,color:"#6b7280",marginTop:0,marginBottom:12}}>
+                Seleccioná las rutas a redistribuir. El sistema asigna las paradas pendientes entre los vehículos minimizando la distancia total de la flota.
+              </p>
+              <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+                {rutas.map(r=>{
+                  const checked = distRutas.includes(r.id);
+                  const pend = r.entregas.filter(e=>e.estado!=="entregado").length;
+                  return(
+                    <label key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
+                      background:checked?"#f0fdf4":"#f9fafb",border:`1px solid ${checked?G:"#e5e7eb"}`,
+                      borderRadius:8,cursor:"pointer",fontSize:13}}>
+                      <input type="checkbox" checked={checked}
+                        onChange={()=>setDistRutas(prev=>checked?prev.filter(id=>id!==r.id):[...prev,r.id])}
+                        style={{accentColor:G,width:15,height:15}}/>
+                      <span style={{fontWeight:700,color:"#1a1a1a"}}>🚚 {r.vehiculo}</span>
+                      <span style={{color:"#6b7280"}}>— {r.zona}</span>
+                      <span style={{marginLeft:"auto",fontSize:11,color:pend>0?"#f59e0b":"#9ca3af",fontWeight:700}}>
+                        {pend} parada{pend!==1?"s":""} pendiente{pend!==1?"s":""}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {!distResult&&(
+                <button onClick={calcularDistribucion} disabled={distRutas.length<2}
+                  style={{padding:"9px 22px",background:distRutas.length<2?"#9ca3af":G,color:"#fff",
+                          border:"none",borderRadius:8,cursor:distRutas.length<2?"not-allowed":"pointer",fontWeight:700,fontSize:13}}>
+                  Calcular distribución óptima
+                </button>
+              )}
+              {distRutas.length<2&&<p style={{fontSize:11,color:"#9ca3af",margin:"6px 0 0"}}>Seleccioná al menos 2 rutas</p>}
+              {distResult&&(
+                <div style={{marginTop:14}}>
+                  <div style={{fontSize:13,fontWeight:700,color:G,marginBottom:10}}>Propuesta de distribución:</div>
+                  {distResult.assignments.map(a=>(
+                    <div key={a.rutaId} style={{background:"#f9fafb",borderRadius:8,padding:"12px 14px",marginBottom:8,border:"1px solid #e5e7eb"}}>
+                      <div style={{fontSize:13,fontWeight:700,marginBottom:6}}>🚚 {a.vehiculo} — {a.zona}</div>
+                      {a.entregas.length===0?(
+                        <div style={{fontSize:11,color:"#9ca3af",fontStyle:"italic"}}>Sin paradas asignadas</div>
+                      ):(
+                        <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                          {a.entregas.map((e,i)=>(
+                            <span key={i} style={{fontSize:11,background:"#fff",border:"1px solid #e5e7eb",
+                              borderRadius:20,padding:"2px 10px",color:"#374151"}}>
+                              {i+1}. {e.clienteNombre}
+                              {(e.horarioDesde||e.horarioHasta)&&<span style={{color:"#2563eb",marginLeft:3}}>🕐</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{display:"flex",gap:8,marginTop:12}}>
+                    <button onClick={aplicarDistribucion} disabled={distApplying}
+                      style={{padding:"9px 22px",background:distApplying?"#9ca3af":G,color:"#fff",
+                              border:"none",borderRadius:8,cursor:distApplying?"not-allowed":"pointer",fontWeight:700,fontSize:13}}>
+                      {distApplying?"Aplicando…":"✓ Aplicar distribución"}
+                    </button>
+                    <button onClick={()=>setDistResult(null)}
+                      style={{padding:"9px 18px",background:"#fff",border:"1px solid #e5e7eb",
+                              borderRadius:8,cursor:"pointer",fontSize:13,color:"#374151"}}>
+                      Recalcular
+                    </button>
+                  </div>
+                  <p style={{fontSize:11,color:"#9ca3af",margin:"8px 0 0",fontStyle:"italic"}}>
+                    Solo se redistribuyen las paradas pendientes. Las entregas ya realizadas no se mueven.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
     </section></>
   );
 }
