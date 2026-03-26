@@ -12,7 +12,10 @@ const CORS = {
 };
 
 export default async function handler(req, res) {
-  if (req.method === 'OPTIONS') return res.status(200).set(CORS).end();
+  if (req.method === 'OPTIONS') {
+    Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(200).end();
+  }
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -65,9 +68,8 @@ export default async function handler(req, res) {
     // Derive categories list
     const categorias = [...new Set(items.map(i => i.categoria))].sort();
 
-    return res.status(200)
-      .set({ ...CORS, 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' })
-      .json({ items, categorias, org });
+    Object.entries({ ...CORS, 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' }).forEach(([k, v]) => res.setHeader(k, v));
+    return res.status(200).json({ items, categorias, org });
 
   } catch (err) {
     console.error('[catalogo] Error:', err);
