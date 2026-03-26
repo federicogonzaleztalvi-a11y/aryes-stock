@@ -77,6 +77,8 @@ function RutasTab(){
   const [msg,setMsg]=useState("");
   const [busqCli,setBusqCli]=useState("");
   const [optimizando, setOptimizando] = useState(false);
+  // Evidence capture: { clienteId, nota, fotoBase64 }
+  const [evidencia, setEvidencia] = useState(null);
   const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
 
   const ruta=rutas.find(r=>r.id===rutaActiva)||null;
@@ -175,9 +177,9 @@ function RutasTab(){
     setTimeout(() => setMsg(""), 5000);
   };
 
-  const marcarEntregado=(rutaId,clienteId)=>{
+  const marcarEntregado=(rutaId,clienteId,nota='',fotoBase64='')=>{
     const hora=new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"});
-    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora}:ev)}:r);
+    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora,notaEntrega:nota||'',fotoEntrega:fotoBase64||''}:ev)}:r);
     setRutas(upd);
     const updRuta=upd.find(r=>r.id===rutaId);
     if(updRuta) db.upsert('rutas',{
@@ -186,6 +188,21 @@ function RutasTab(){
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
     },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
   };
+
+  // Called when user confirms delivery with optional evidence
+  const confirmarEntrega = (rutaId, clienteId) => {
+    const ev = evidencia;
+    setEvidencia(null);
+    marcarEntregado(rutaId, clienteId, ev?.nota || '', ev?.fotoBase64 || '');
+  };
+
+  // Convert a File object to base64 string
+  const fotoABase64 = (file) => new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload  = () => res(reader.result);
+    reader.onerror = () => rej(new Error('read error'));
+    reader.readAsDataURL(file);
+  });
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
     const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"no_entregado",hora:new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"})}:ev)}:r);
@@ -314,14 +331,74 @@ function RutasTab(){
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{e.clienteNombre}</div>
                     <div style={{fontSize:12,color:"#888"}}>{e.ciudad||""}{e.hora?" · "+e.hora:""}</div>
+                    {isEntregado&&(e.notaEntrega||e.fotoEntrega)&&(
+                      <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                        {e.fotoEntrega&&(
+                          <img src={e.fotoEntrega} alt="evidencia"
+                            style={{width:56,height:42,objectFit:"cover",borderRadius:4,border:"1px solid #bbf7d0",cursor:"pointer"}}
+                            onClick={()=>window.open(e.fotoEntrega,'_blank')}
+                          />
+                        )}
+                        {e.notaEntrega&&(
+                          <span style={{fontSize:11,color:"#4b5563",fontStyle:"italic"}}>"{e.notaEntrega}"</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <span style={{fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:700,background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fffbeb",color:isEntregado?G:isNoEnt?"#dc2626":"#92400e"}}>{e.estado==="pendiente"?"Pendiente":e.estado==="entregado"?"Entregado":"No entregado"}</span>
                 </div>
                 <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
                   {!isEntregado&&!isNoEnt&&(
                     <>
-                      <button onClick={()=>marcarEntregado(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:12,fontWeight:700}}>Entregado</button>
-                      <button onClick={()=>marcarNoEntregado(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #fecaca",color:"#dc2626",borderRadius:6,cursor:"pointer",fontSize:12}}>No entregado</button>
+                      {evidencia?.clienteId===e.clienteId ? (
+                        // Evidence capture panel — inline
+                        <div style={{width:"100%",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:12}}>
+                          <div style={{fontSize:12,fontWeight:700,color:G,marginBottom:8}}>Confirmar entrega</div>
+                          <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                            <input
+                              placeholder="Nota de entrega (opcional)"
+                              value={evidencia.nota||""}
+                              onChange={ev=>setEvidencia(e=>({...e,nota:ev.target.value}))}
+                              style={{flex:1,minWidth:160,padding:"6px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:12,fontFamily:"inherit"}}
+                            />
+                            <label style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",gap:4}}>
+                              📷 {evidencia.fotoBase64?"Foto ✓":"Agregar foto"}
+                              <input type="file" accept="image/*" capture="environment" style={{display:"none"}}
+                                onChange={async ev=>{
+                                  const file=ev.target.files?.[0];
+                                  if(!file)return;
+                                  const b64=await fotoABase64(file);
+                                  setEvidencia(ev=>({...ev,fotoBase64:b64}));
+                                }}
+                              />
+                            </label>
+                          </div>
+                          {evidencia.fotoBase64&&(
+                            <img src={evidencia.fotoBase64} alt="evidencia"
+                              style={{width:80,height:60,objectFit:"cover",borderRadius:6,border:"1px solid #bbf7d0",marginBottom:8,display:"block"}}/>
+                          )}
+                          <div style={{display:"flex",gap:6}}>
+                            <button onClick={()=>confirmarEntrega(ruta.id,e.clienteId)}
+                              style={{padding:"6px 16px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
+                              ✓ Confirmar
+                            </button>
+                            <button onClick={()=>setEvidencia(null)}
+                              style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",fontSize:12}}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button onClick={()=>setEvidencia({clienteId:e.clienteId,nota:"",fotoBase64:""})}
+                            style={{padding:"6px 12px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontWeight:600,fontSize:12}}>
+                            ✓ Entregado
+                          </button>
+                          <button onClick={()=>marcarNoEntregado(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #fecaca",borderRadius:6,cursor:"pointer",fontSize:12,color:"#dc2626",fontWeight:600}}>
+                            ✗ No entregado
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                   {(isEntregado||isNoEnt)&&(
