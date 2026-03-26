@@ -40,6 +40,14 @@ export const getAuthHeaders = (extra = {}) => {
   };
 };
 
+// ─── getOrgId — reads org from session (defaults to 'aryes') ─────────────────
+export const getOrgId = () => {
+  try {
+    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+    return session?.orgId || 'aryes';
+  } catch { return 'aryes'; }
+};
+
 // ─── LS — localStorage cache ──────────────────────────────────────────────────
 // Supabase is the source of truth. localStorage is a read cache populated by
 // AppContext on login and updated optimistically on every mutation.
@@ -76,11 +84,12 @@ export const db = {
   },
 
   async upsert(table, data, conflictCol = '') {
+    const payload = data.org_id !== undefined ? data : { ...data, org_id: getOrgId() };
     const url = `${SB_URL}/rest/v1/${table}${conflictCol ? `?on_conflict=${conflictCol}` : ''}`;
     const r = await fetch(url, {
       method: 'POST',
       headers: getAuthHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }),
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
@@ -114,10 +123,12 @@ export const db = {
   },
 
   async insert(table, row) {
+    // Auto-inject org_id if not already present — enables multi-tenancy transparently
+    const payload = row.org_id !== undefined ? row : { ...row, org_id: getOrgId() };
     const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Prefer': 'return=representation,resolution=ignore-duplicates' }),
-      body: JSON.stringify(row),
+      body: JSON.stringify(payload),
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
@@ -128,10 +139,12 @@ export const db = {
 
   async insertMany(table, rows) {
     if (!rows.length) return;
+    const orgId = getOrgId();
+    const payload = rows.map(r => r.org_id !== undefined ? r : { ...r, org_id: orgId });
     const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Prefer': 'return=minimal' },
-      body: JSON.stringify(rows),
+      body: JSON.stringify(payload),
     });
     if (!r.ok) {
       const e = await r.text();

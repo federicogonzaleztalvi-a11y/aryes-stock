@@ -74,8 +74,9 @@ function LoginScreen({ onLogin }) {
       const users = await userR.json();
       const role = users?.[0]?.role || 'operador';
       const name = users?.[0]?.name || email.split('@')[0];
+      const orgId = users?.[0]?.org_id || 'aryes';
       const expiresIn = (data.expires_in || 3600) * 1000;
-      const session = { ...data, email, role, name, expiresAt: Date.now() + expiresIn };
+      const session = { ...data, email, role, name, orgId, expiresAt: Date.now() + expiresIn };
       localStorage.setItem('aryes-session', JSON.stringify(session));
       onLogin(session);
     } catch {

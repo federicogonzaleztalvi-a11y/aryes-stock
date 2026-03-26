@@ -19,6 +19,7 @@ export interface Session {
   role: Role;
   username?: string;
   userId?: string;
+  orgId?: string;           // tenant identifier — defaults to 'aryes'
 }
 
 // ── Products ──────────────────────────────────────────────────────────────────
