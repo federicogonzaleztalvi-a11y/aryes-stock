@@ -399,7 +399,10 @@ function VentasTab(){
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
           <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>←</button>
           <div style={{flex:1}}>
-            <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>{v.nroVenta} — {v.clienteNombre}</h2>
+            <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>
+              {v.nroVenta} — {v.clienteNombre}
+              {v.tieneDevolucion&&<span style={{marginLeft:10,fontSize:11,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:20,verticalAlign:'middle'}}>↩ Con devolución</span>}
+            </h2>
             <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{v.fecha}</p>
           </div>
           <span style={{background:ESTADOS[v.estado]||'#6b7280',color:'#fff',padding:'4px 14px',borderRadius:20,fontSize:12,fontWeight:700,textTransform:'capitalize'}}>{v.estado}</span>
@@ -494,7 +497,10 @@ function VentasTab(){
             <tbody>
               {ventasFiltradas.map((v,i)=>(
                 <tr key={v.id} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa',cursor:'pointer'}} onClick={()=>{setVentaSel(v);setVista('detalle');}}>
-                  <td style={{padding:'11px 14px',fontFamily:'monospace',fontWeight:700,color:G,fontSize:12}}>{v.nroVenta}</td>
+                  <td style={{padding:'11px 14px',fontFamily:'monospace',fontWeight:700,color:G,fontSize:12}}>
+                    {v.nroVenta}
+                    {v.tieneDevolucion&&<span style={{marginLeft:5,fontSize:9,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'1px 5px',borderRadius:20,verticalAlign:'middle'}}>↩ DEV</span>}
+                  </td>
                   <td style={{padding:'11px 14px',fontWeight:600}}>{v.clienteNombre}</td>
                   <td style={{padding:'11px 14px',color:'#6b7280'}}>{v.fecha}</td>
                   <td style={{padding:'11px 14px',color:'#6b7280'}}>{v.items?.length||0} prod.</td>

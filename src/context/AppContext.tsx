@@ -172,6 +172,7 @@ const describeAction = (action: string, detail: string): string => {
             clienteNombre: r.cliente_nombre || '', items: r.items || [],
             total: r.total || 0, descuento: r.descuento || 0, estado: r.estado || 'pendiente',
             notas: r.notas || '', fechaEntrega: r.fecha_entrega || null, creadoEn: r.creado_en,
+            tieneDevolucion: r.tiene_devolucion || false,
           }));
           setVentas(mappedVentas); // ← updates AppContext state — reactive
           // LS.set is handled by the useEffect above

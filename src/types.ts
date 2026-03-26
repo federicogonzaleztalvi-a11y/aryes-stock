@@ -356,18 +356,19 @@ export interface VentaItem {
 }
 
 export interface Venta {
-  id:             string;
-  nroVenta:       string;
-  clienteId:      string;
-  clienteNombre:  string;
-  items:          VentaItem[];
-  total:          number;
-  descuento:      number;
-  estado:         'pendiente' | 'confirmada' | 'preparada' | 'entregada' | 'cancelada';
-  notas:          string;
-  fechaEntrega:   string | null;
-  creadoEn:       string;
-  updatedAt?:     string;
+  id:                string;
+  nroVenta:          string;
+  clienteId:         string;
+  clienteNombre:     string;
+  items:             VentaItem[];
+  total:             number;
+  descuento:         number;
+  estado:            'pendiente' | 'confirmada' | 'preparada' | 'entregada' | 'cancelada';
+  notas:             string;
+  fechaEntrega:      string | null;
+  creadoEn:          string;
+  updatedAt?:        string;
+  tieneDevolucion?:  boolean;   // set to true when a return is processed against this sale
 }
 
 

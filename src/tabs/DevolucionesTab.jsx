@@ -4,7 +4,8 @@ import { db } from '../lib/constants.js';
 
 function DevolucionesTab(){
   const { products: prods, setProducts: setProds,
-          devoluciones, setDevoluciones, ventas, setHasPendingSync, addMov } = useApp();
+          devoluciones, setDevoluciones, ventas, setVentas, lotes, setLotes,
+          setHasPendingSync, addMov } = useApp();
   const G="#3a7d1e";
   const [vista,setVista]=useState("lista");
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});
@@ -50,7 +51,50 @@ function DevolucionesTab(){
         setHasPendingSync(true);
       }
     });
-    const dev={id:crypto.randomUUID(),nroDevolucion:"DEV-"+String(devoluciones.length+1).padStart(4,"0"),
+
+    // M-1a: Reintegrar stock al lote de origen si el item tiene loteId
+    const updLotes = [...lotes];
+    itemsDevueltos
+      .filter(it => it.inspeccion === 'aprobado' && it.loteId)
+      .forEach(it => {
+        const idx = updLotes.findIndex(l => l.id === it.loteId);
+        if (idx > -1) {
+          updLotes[idx] = { ...updLotes[idx], cantidad: Number(updLotes[idx].cantidad||0) + Number(it.cantDevolver) };
+          db.upsert('lotes', {
+            id: updLotes[idx].id,
+            producto_id: updLotes[idx].productoId,
+            producto_nombre: updLotes[idx].productoNombre,
+            lote: updLotes[idx].lote||'',
+            fecha_venc: updLotes[idx].fechaVenc||null,
+            cantidad: updLotes[idx].cantidad,
+            proveedor: updLotes[idx].proveedor||'',
+            notas: updLotes[idx].notas||'',
+            creado_en: updLotes[idx].creado,
+            updated_at: new Date().toISOString(),
+          }, 'id').catch(e => {
+            console.warn('[Devoluciones] lote reintegro upsert failed:', e?.message||e);
+            setHasPendingSync(true);
+          });
+        }
+      });
+    if (updLotes !== lotes) setLotes(updLotes);
+
+    // M-1b: Marcar la venta original como tieneDevolucion = true
+    if (form.ventaId) {
+      const updVentas = ventas.map(v =>
+        v.id === form.ventaId ? { ...v, tieneDevolucion: true } : v
+      );
+      setVentas(updVentas);
+      db.patch('ventas', { tiene_devolucion: true, updated_at: new Date().toISOString() }, 'id=eq.' + form.ventaId)
+        .catch(e => {
+          console.warn('[Devoluciones] venta patch failed:', e?.message||e);
+          setHasPendingSync(true);
+        });
+    }
+    const dev={id:crypto.randomUUID(),nroDevolucion:(()=>{
+      const nums=devoluciones.map(d=>parseInt((d.nroDevolucion||'DEV-0000').replace('DEV-',''))||0);
+      return 'DEV-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
+    })(),
       ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
       items:itemsDevueltos,estado:"procesada",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
     // Register a stock movement for each approved item
