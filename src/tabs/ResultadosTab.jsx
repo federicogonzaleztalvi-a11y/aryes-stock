@@ -244,7 +244,7 @@ export default function ResultadosTab() {
               Inventario valorizado (hoy)
             </div>
             <div style={{ fontFamily:F.serif, fontSize:22, fontWeight:400, color:'#6366f1' }}>
-              {fmtM(stockValorizado)}
+              {fmtM(stockValorizado,'USD')}
             </div>
             <div style={{ fontFamily:F.sans, fontSize:11, color:'#9a9a98', marginTop:2 }}>
               {products.filter(p=>p.stock>0).length} productos con stock · costo promedio ponderado

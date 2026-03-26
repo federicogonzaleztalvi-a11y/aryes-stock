@@ -68,7 +68,9 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   // Pull ventas reactively — avoids adding a prop to the parent call site
   const { ventas = [] } = useApp();
 
-  const today = React.useMemo(() => new Date(), []);
+  // today: stable reference that only changes when the calendar day changes
+  // Using useMemo with a day-key prevents both stale-midnight and every-render issues
+  const today = React.useMemo(() => new Date(), [new Date().toDateString()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Stock metrics ──────────────────────────────────────────────────────────
   const orderNow   = alerts.filter(p=>p.alert.level==='order_now').length;

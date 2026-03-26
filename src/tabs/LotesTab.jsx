@@ -35,7 +35,7 @@ function LotesTab(){
     if(!form.fechaVenc){setMsg('La fecha de vencimiento es obligatoria');return;}
     if(!form.cantidad||form.cantidad<=0){setMsg('La cantidad debe ser mayor a 0');return;}
     const pNombre=prods.find(p=>p.id===form.productoId)?.nombre||form.productoId;
-    const item={...form,productoNombre:pNombre,cantidad:Number(form.cantidad),id:editId||Date.now(),creado:new Date().toISOString()};
+    const item={...form,productoNombre:pNombre,cantidad:Number(form.cantidad),id:editId||crypto.randomUUID(),creado:new Date().toISOString()};
     const upd=editId?lotes.map(l=>l.id===editId?item:l):[...lotes,item];
     setLotes(upd);
     // Persist to Supabase lotes table

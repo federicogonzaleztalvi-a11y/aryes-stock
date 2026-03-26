@@ -107,7 +107,7 @@ function Section({ title, accent, items, renderItem }) {
 
 export default function AlertasPanel({ setTab }) {
   const { ventas, clientes, lotes, products, movements } = useApp();
-  const now = useMemo(() => Date.now(), []);
+  const now = Date.now(); // recalculates on each render — correct for time comparisons
 
   // ── 1. CLIENTES INACTIVOS ─────────────────────────────────────────────────
   const clientesInactivos = useMemo(() => {

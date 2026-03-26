@@ -123,7 +123,11 @@ function VentasTab(){
         clienteNombre:cl?.nombre||form.clienteNombre,
         total:totalVenta(form.items,form.descuento),
         estado:'pendiente',
-        nroVenta:'V-'+String(ventas.length+1).padStart(4,'0'),
+        nroVenta:(()=>{
+          // Use max existing nroVenta to avoid collisions with cancelled sales
+          const nums=ventas.map(v=>parseInt((v.nroVenta||'V-0000').replace('V-',''))||0);
+          return 'V-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
+        })(),
         creadoEn:new Date().toISOString()
       };
 
@@ -245,6 +249,13 @@ function VentasTab(){
 
   const inp={padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box',background:'#fff'};
 
+  // Pre-compute active price list for the selected client (avoids IIFE in JSX)
+  const activaLista = (() => {
+    if (!form.clienteId) return null;
+    const cli = clientes.find(c => c.id === form.clienteId);
+    return cli?.listaId ? priceListas.find(l => l.id === cli.listaId) ?? null : null;
+  })();
+
   const MsgBanner=()=>{
     if(!msg.text)return null;
     if(msg.type==='wa'){
@@ -277,17 +288,13 @@ function VentasTab(){
               <option value=''>— Seleccionar cliente —</option>
               {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
-            {/* Active price list badge */}
-            {form.clienteId && (() => {
-              const cli = clientes.find(c => c.id === form.clienteId);
-              const lista = cli?.listaId ? priceListas.find(l => l.id === cli.listaId) : null;
-              return lista ? (
-                <div style={{marginTop:5,fontSize:11,fontWeight:700,color:lista.color||G,
-                  background:(lista.color||G)+'18',padding:'3px 10px',borderRadius:20,display:'inline-block'}}>
-                  {lista.nombre} · −{lista.descuento}%
-                </div>
-              ) : null;
-            })()}
+            {/* Active price list badge — computed outside JSX */}
+            {activaLista&&(
+              <div style={{marginTop:5,fontSize:11,fontWeight:700,color:activaLista.color||G,
+                background:(activaLista.color||G)+'18',padding:'3px 10px',borderRadius:20,display:'inline-block'}}>
+                {activaLista.nombre} · −{activaLista.descuento}%
+              </div>
+            )}
             {!showNewClient
               ?<button onClick={()=>setShowNewClient(true)} style={{marginTop:6,background:'none',border:'none',color:G,fontSize:11,cursor:'pointer',padding:0,fontWeight:600}}>+ Agregar cliente nuevo</button>
               :<div style={{display:'flex',gap:6,marginTop:6}}>
