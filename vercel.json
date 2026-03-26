@@ -6,6 +6,9 @@
     },
     "api/admin-users.js": {
       "maxDuration": 15
+    },
+    "api/catalogo.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

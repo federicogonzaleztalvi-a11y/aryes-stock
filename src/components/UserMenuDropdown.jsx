@@ -59,6 +59,20 @@ function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setT
               ⚙  Configuración
             </button>
           )}
+          <button
+            onClick={() => {
+              const org = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.orgId||'aryes'; } catch { return 'aryes'; } })();
+              const url = `${window.location.origin}/catalogo?org=${org}`;
+              navigator.clipboard?.writeText(url).catch(()=>{});
+              window.open(url, '_blank', 'noopener,noreferrer');
+              setUserMenuOpen(false);
+            }}
+            style={{ width:'100%', textAlign:'left', padding:'10px 16px', background:'none',
+              border:'none', fontFamily:T.sans, fontSize:13, color:T.textMd, cursor:'pointer',
+              display:'flex', alignItems:'center', gap:8 }}
+          >
+            🛍  Ver catálogo público
+          </button>
           <div style={{ borderTop:`1px solid ${T.border}`, margin:'4px 0' }} />
           <button
             onClick={() => { setUserMenuOpen(false); handleLogout(); }}

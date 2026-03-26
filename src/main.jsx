@@ -6,6 +6,7 @@ import AryesApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
+const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 function readSession() {
@@ -178,7 +179,14 @@ function Root() {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <RootErrorBoundary>
     <BrowserRouter>
-      <Root />
+      <Suspense fallback={null}>
+        <Routes>
+          {/* Public catalog — no auth required */}
+          <Route path="/catalogo" element={<CatalogoPage />} />
+          {/* Everything else → authenticated app */}
+          <Route path="*" element={<Root />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   </RootErrorBoundary>
 );
