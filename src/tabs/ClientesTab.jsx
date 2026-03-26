@@ -18,17 +18,17 @@ function ClientesTab(){
     const buckets = { c0_30: [], c31_60: [], c61_90: [], c91plus: [] };
     const byCli = {};
     cfes
-      .filter(f => f.saldoPendiente > 0 && f.clienteId)
-      .forEach(f => {
-        const daysRef = f.fechaVenc ? f.fechaVenc : f.fecha;
+      .filter(cfe => cfe.saldoPendiente > 0 && cfe.clienteId)
+      .forEach(cfe => {
+        const daysRef = cfe.fechaVenc ? cfe.fechaVenc : cfe.fecha;
         const dias = Math.floor((now - new Date(daysRef)) / 86400000);
-        const cli = f.clienteId;
-        if (!byCli[cli]) byCli[cli] = { nombre: f.clienteNombre, total: 0 };
-        byCli[cli].total += f.saldoPendiente;
+        const cli = cfe.clienteId;
+        if (!byCli[cli]) byCli[cli] = { nombre: cfe.clienteNombre, total: 0 };
+        byCli[cli].total += cfe.saldoPendiente;
         const bucket = dias <= 30 ? 'c0_30' : dias <= 60 ? 'c31_60' : dias <= 90 ? 'c61_90' : 'c91plus';
         if (!buckets[bucket].find(x => x.id === cli))
-          buckets[bucket].push({ id: cli, nombre: f.clienteNombre, monto: 0 });
-        buckets[bucket].find(x => x.id === cli).monto += f.saldoPendiente;
+          buckets[bucket].push({ id: cli, nombre: cfe.clienteNombre, monto: 0 });
+        buckets[bucket].find(x => x.id === cli).monto += cfe.saldoPendiente;
       });
     return {
       buckets,
@@ -149,15 +149,15 @@ function ClientesTab(){
       <div style={{display:'flex',alignItems:'center',marginBottom:28}}>{backBtn}<h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>{editId?'Editar cliente':'Nuevo cliente'}</h2></div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'Nombre *',k:'nombre',full:true},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección',k:'direccion',full:true},{l:'Ciudad',k:'ciudad'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito (USD)',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(f=>(
-          <div key={f.k} style={{gridColumn:f.full?'1/-1':'auto'}}>
-            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{f.l}</label>
-            {f.sel?<select value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={{...inp,background:'#fff'}}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select>
-            :f.sel2?<select value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={{...inp,background:'#fff'}}><option value='contado'>Contado</option><option value='credito_15'>Crédito 15 días</option><option value='credito_30'>Crédito 30 días</option><option value='credito_60'>Crédito 60 días</option><option value='credito_90'>Crédito 90 días</option></select>
-            :f.sel3?<select value={form[f.k]||''} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value||null}))} style={{...inp,background:'#fff'}}><option value=''>Sin lista asignada</option>{priceListas.filter(l=>l.activa!==false).map(l=><option key={l.id} value={l.id}>{l.nombre} (−{l.descuento}%)</option>)}</select>
-            :f.type==='time'?<input type='time' value={form[f.k]||''} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value||null}))} style={{...inp,width:'auto'}} />
-            :f.ta?<textarea value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} rows={3} style={{...inp,resize:'vertical'}} />
-            :<input value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={inp} />}
+        {[{l:'Nombre *',k:'nombre',full:true},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección',k:'direccion',full:true},{l:'Ciudad',k:'ciudad'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito (USD)',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>(
+          <div key={fld.k} style={{gridColumn:fld.full?'1/-1':'auto'}}>
+            <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{fld.l}</label>
+            {fld.sel?<select value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={{...inp,background:'#fff'}}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select>
+            :fld.sel2?<select value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={{...inp,background:'#fff'}}><option value='contado'>Contado</option><option value='credito_15'>Crédito 15 días</option><option value='credito_30'>Crédito 30 días</option><option value='credito_60'>Crédito 60 días</option><option value='credito_90'>Crédito 90 días</option></select>
+            :fld.sel3?<select value={form[fld.k]||''} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value||null}))} style={{...inp,background:'#fff'}}><option value=''>Sin lista asignada</option>{priceListas.filter(l=>l.activa!==false).map(l=><option key={l.id} value={l.id}>{l.nombre} (−{l.descuento}%)</option>)}</select>
+            :fld.type==='time'?<input type='time' value={form[fld.k]||''} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value||null}))} style={{...inp,width:'auto'}} />
+            :fld.ta?<textarea value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} rows={3} style={{...inp,resize:'vertical'}} />
+            :<input value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={inp} />}
           </div>
         ))}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8}}>
@@ -213,10 +213,10 @@ function ClientesTab(){
       )}
 
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?'USD '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es-UY'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(f=>(
-          <div key={f.l} style={{gridColumn:f.full?'1/-1':'auto'}}>
-            <div style={{fontSize:11,fontWeight:600,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>{f.l}</div>
-            <div style={{fontSize:14,color:'#1a1a1a'}}>{f.v}</div>
+        {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?'USD '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es-UY'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(row=>(
+          <div key={row.l} style={{gridColumn:row.full?'1/-1':'auto'}}>
+            <div style={{fontSize:11,fontWeight:600,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>{row.l}</div>
+            <div style={{fontSize:14,color:'#1a1a1a'}}>{row.v}</div>
           </div>
         ))}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8,borderTop:'1px solid #f3f4f6',paddingTop:16}}>
