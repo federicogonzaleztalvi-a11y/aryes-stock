@@ -1,9 +1,9 @@
 // Public catalog API — no auth required from client side.
-// Returns products with stock > 0 and precioVenta > 0 for a given org.
-// This runs server-side so the Supabase anon key stays private.
+// GET /api/catalogo?org=aryes              → all products (public catalog)
+// GET /api/catalogo?org=aryes&cliente=UUID → products with client's prices applied
 
-const SB_URL     = process.env.SUPABASE_URL     || 'https://mrotnqybqvmvlexncvno.supabase.co';
-const SB_ANON    = process.env.SUPABASE_ANON_KEY;
+const SB_URL  = process.env.SUPABASE_URL     || 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -11,65 +11,126 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function setHeaders(res, extra = {}) {
+  Object.entries({ ...CORS, ...extra }).forEach(([k, v]) => res.setHeader(k, v));
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
-    Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+    setHeaders(res);
     return res.status(200).end();
   }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!SB_ANON)              return res.status(500).json({ error: 'Server misconfigured' });
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  const org      = (req.query.org      || 'aryes').replace(/[^a-z0-9_-]/gi, '');
+  const clienteId = (req.query.cliente || '').replace(/[^a-z0-9_-]/gi, '');
 
-  if (!SB_ANON) {
-    return res.status(500).json({ error: 'Server misconfigured' });
-  }
-
-  // org_id filter — defaults to 'aryes' if not provided
-  const org = (req.query.org || 'aryes').replace(/[^a-z0-9_-]/gi, '');
+  const headers = {
+    'apikey':        SB_ANON,
+    'Authorization': `Bearer ${SB_ANON}`,
+    'Accept':        'application/json',
+  };
 
   try {
-    const query = [
+    // ── 1. Load products ────────────────────────────────────────────────────
+    const prodQuery = [
       'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock',
       `org_id=eq.${org}`,
       'stock=gt.0',
-      'precio_venta=gt.0',
       'order=category.asc,name.asc',
       'limit=500',
     ].join('&');
 
-    const r = await fetch(`${SB_URL}/rest/v1/products?${query}`, {
-      headers: {
-        'apikey':        SB_ANON,
-        'Authorization': `Bearer ${SB_ANON}`,
-        'Accept':        'application/json',
-      },
-    });
+    const prodRes = await fetch(`${SB_URL}/rest/v1/products?${prodQuery}`, { headers });
+    if (!prodRes.ok) return res.status(502).json({ error: 'Database error' });
+    const products = await prodRes.json();
 
-    if (!r.ok) {
-      const err = await r.text();
-      console.error('[catalogo] Supabase error:', r.status, err);
-      return res.status(502).json({ error: 'Database error' });
+    // ── 2. Load client's price list if clienteId provided ───────────────────
+    let listaId   = null;
+    let descGlobal = 0;       // % global discount for the list
+    let itemMap   = {};       // productUuid → precio específico
+
+    if (clienteId) {
+      // Get the client's lista_id
+      const cliRes = await fetch(
+        `${SB_URL}/rest/v1/clients?id=eq.${clienteId}&select=id,lista_id&limit=1`,
+        { headers }
+      );
+      if (cliRes.ok) {
+        const cliData = await cliRes.json();
+        if (cliData?.[0]?.lista_id) {
+          listaId = cliData[0].lista_id;
+
+          // Get the list's global discount
+          const listRes = await fetch(
+            `${SB_URL}/rest/v1/price_lists?id=eq.${listaId}&select=id,descuento&limit=1`,
+            { headers }
+          );
+          if (listRes.ok) {
+            const listData = await listRes.json();
+            descGlobal = Number(listData?.[0]?.descuento || 0);
+          }
+
+          // Get per-product prices for this list
+          const itemsRes = await fetch(
+            `${SB_URL}/rest/v1/price_list_items?lista_id=eq.${listaId}&select=product_uuid,precio`,
+            { headers }
+          );
+          if (itemsRes.ok) {
+            const itemsData = await itemsRes.json();
+            itemsData.forEach(it => {
+              if (it.precio > 0) itemMap[it.product_uuid] = Number(it.precio);
+            });
+          }
+        }
+      }
     }
 
-    const products = await r.json();
+    // ── 3. Build response — only expose what clients need ───────────────────
+    const items = products
+      // Public catalog (no cliente) still requires precio_venta > 0
+      .filter(p => clienteId || Number(p.precio_venta) > 0)
+      .map(p => {
+        const base = Number(p.precio_venta) || 0;
+        let precio = base;
 
-    // Shape the response — only expose what clients need
-    const items = products.map(p => ({
-      id:         p.uuid,
-      nombre:     p.name,
-      unidad:     p.unit,
-      categoria:  p.category  || 'General',
-      marca:      p.brand     || '',
-      precio:     Number(p.precio_venta) || 0,
-      stock:      Number(p.stock)        || 0,
-    }));
+        if (clienteId && listaId) {
+          if (itemMap[p.uuid] !== undefined) {
+            // Specific per-product price for this client
+            precio = itemMap[p.uuid];
+          } else if (descGlobal > 0) {
+            // Apply global list discount
+            precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100;
+          }
+        }
 
-    // Derive categories list
+        return {
+          id:        p.uuid,
+          nombre:    p.name,
+          unidad:    p.unit,
+          categoria: p.category || 'General',
+          marca:     p.brand    || '',
+          precio,
+          precioBase: base,
+          stock:     Number(p.stock) || 0,
+        };
+      });
+
     const categorias = [...new Set(items.map(i => i.categoria))].sort();
 
-    Object.entries({ ...CORS, 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' }).forEach(([k, v]) => res.setHeader(k, v));
-    return res.status(200).json({ items, categorias, org });
+    setHeaders(res, { 'Cache-Control': clienteId
+      ? 'private, max-age=60'                          // personalized — don't cache in CDN
+      : 'public, s-maxage=60, stale-while-revalidate=300' });
+
+    return res.status(200).json({
+      items,
+      categorias,
+      org,
+      clienteId: clienteId || null,
+      hasLista: !!listaId,
+      descGlobal,
+    });
 
   } catch (err) {
     console.error('[catalogo] Error:', err);

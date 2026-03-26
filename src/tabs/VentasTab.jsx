@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
+import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
 
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
@@ -484,6 +485,42 @@ function VentasTab(){
         <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
       </div>
       <MsgBanner/>
+      {/* ── Pedidos del portal B2B ─────────────────────────────────────── */}
+      <PedidosPortalPanel onImportar={(order)=>{
+        // Convert portal order to venta
+        const _cli=clientes.find(c=>c.id===order.cliente_id);
+        const newVenta={
+          id:crypto.randomUUID(),
+          nroVenta:'V-'+String(Math.max(0,...ventas.map(v=>parseInt(v.nroVenta?.replace('V-','')||0)))+1).padStart(4,'0'),
+          clienteId:order.cliente_id||'',
+          clienteNombre:order.cliente_nombre,
+          items:order.items.map(it=>({...it,costoUnit:0})),
+          total:Number(order.total),
+          descuento:0,
+          estado:'pendiente',
+          fecha:new Date().toISOString().slice(0,10),
+          notas:order.notas||'',
+          origenPortal:true,
+          orderId:order.id,
+          creadoEn:new Date().toISOString(),
+        };
+        setVentas(v=>[newVenta,...v]);
+        db.upsert('ventas',{
+          id:newVenta.id,nro_venta:newVenta.nroVenta,
+          cliente_id:newVenta.clienteId,cliente_nombre:newVenta.clienteNombre,
+          items:newVenta.items,total:newVenta.total,descuento:0,
+          estado:'pendiente',fecha:newVenta.fecha,notas:newVenta.notas,
+        },'id').catch(()=>{});
+        // Mark order as imported
+        const SB_URL2=import.meta.env.VITE_SUPABASE_URL;
+        const SKEY2=import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if(SB_URL2&&order.id)fetch(`${SB_URL2}/rest/v1/orders?id=eq.${order.id}`,{
+          method:'PATCH',
+          headers:{apikey:SKEY2,Authorization:`Bearer ${SKEY2}`,'Content-Type':'application/json',Prefer:'return=minimal'},
+          body:JSON.stringify({estado:'importada',venta_id:newVenta.id}),
+        }).catch(()=>{});
+        showMsg('✓ Pedido importado como venta '+newVenta.nroVenta);
+      }}/>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
         {[
           {l:'Total ventas',v:ventas.length,c:'#6b7280'},

@@ -7,6 +7,7 @@ import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
+const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 function readSession() {
@@ -183,6 +184,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Routes>
           {/* Public catalog — no auth required */}
           <Route path="/catalogo" element={<CatalogoPage />} />
+          {/* B2B order portal — OTP auth, no WMS session required */}
+          <Route path="/pedidos" element={<PedidosPage />} />
           {/* Everything else → authenticated app */}
           <Route path="*" element={<Root />} />
         </Routes>

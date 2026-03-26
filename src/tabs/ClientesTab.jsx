@@ -201,6 +201,21 @@ function ClientesTab(){
           style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:G,border:'none',borderRadius:8,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>
           + Nueva venta
         </button>
+        {/* Link personalizado de pedidos */}
+        <button onClick={()=>{
+          const url=`${window.location.origin}/pedidos?cliente=${sel.id}`;
+          navigator.clipboard.writeText(url).then(()=>{
+            setMsg('✓ Link copiado — mandáselo al cliente por WhatsApp');
+            setTimeout(()=>setMsg(''),4000);
+          }).catch(()=>{
+            setMsg('Link: '+url);
+            setTimeout(()=>setMsg(''),8000);
+          });
+        }} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',
+          background:'#2563eb',border:'none',borderRadius:8,cursor:'pointer',
+          color:'#fff',fontSize:12,fontWeight:700}}>
+          🔗 Link de pedidos
+        </button>
       </div>
 
       {/* Saldo pendiente — solo si tiene deuda */}
