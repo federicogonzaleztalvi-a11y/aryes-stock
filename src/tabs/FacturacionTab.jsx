@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, db } from '../lib/constants.js';
 import ModalFactura from './facturacion/ModalFactura.jsx';
+import ModalCobro from './facturacion/ModalCobro.jsx';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
 import { Pill, TabBtn, KpiCard, Lbl, Sel } from './facturacion/components.jsx';
 
@@ -714,7 +715,7 @@ function FacturacionTab({ products=[] }) {
       {showCob && (
         <ModalCobro
           clientes={clientes} cfes={cfes}
-          onSave={handleSaveCobro}
+          onSave={(cobro) => { handleSaveCobro(cobro); setShowCob(false); }}
           onClose={()=>setShowCob(false)}
         />
       )}

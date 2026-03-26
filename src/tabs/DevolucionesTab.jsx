@@ -5,6 +5,7 @@ import { db } from '../lib/constants.js';
 function DevolucionesTab(){
   const { products: prods, setProducts: setProds,
           devoluciones, setDevoluciones, ventas, setVentas, lotes, setLotes,
+          setCfes, clientes,
           setHasPendingSync, addMov } = useApp();
   const G="#3a7d1e";
   const [vista,setVista]=useState("lista");
@@ -137,6 +138,62 @@ function DevolucionesTab(){
     });
     setVista("lista");
     setMsg("Devolucion "+dev.nroDevolucion+" procesada. Stock actualizado para items aprobados.");
+
+    // M-1 bonus: auto-generate nota de crédito si hay items aprobados y existe venta
+    const montoDev = itemsDevueltos
+      .filter(it => it.inspeccion === 'aprobado')
+      .reduce((s, it) => s + (Number(it.cantDevolver) * (Number(it.precioUnit || it.precio || 0))), 0);
+
+    if (montoDev > 0 && form.ventaId && setCfes) {
+      const ventaOrig = ventas.find(v => v.id === form.ventaId);
+      const cliObj    = clientes?.find(c => c.id === ventaOrig?.clienteId);
+      const nroCred   = 'NC-' + dev.nroDevolucion.replace('DEV-', '');
+      const nc = {
+        id:             crypto.randomUUID(),
+        numero:         nroCred,
+        tipo:           'e-N.Créd.',
+        moneda:         'USD',
+        fecha:          new Date().toISOString().slice(0, 10),
+        fechaVenc:      null,
+        clienteId:      ventaOrig?.clienteId || null,
+        clienteNombre:  dev.clienteNombre,
+        clienteRut:     cliObj?.rut || '',
+        subtotal:       montoDev,
+        ivaTotal:       0,
+        descuento:      0,
+        total:          montoDev,
+        saldoPendiente: montoDev,
+        status:         'emitida',
+        items:          [],
+        notas:          `Nota de crédito automática por ${dev.nroDevolucion} — ${form.motivo}`,
+        createdAt:      new Date().toISOString(),
+      };
+      setCfes(prev => [nc, ...prev]);
+      db.upsert('invoices', {
+        id:              nc.id,
+        numero:          nc.numero,
+        tipo:            nc.tipo,
+        moneda:          nc.moneda,
+        fecha:           nc.fecha,
+        fecha_venc:      null,
+        cliente_id:      nc.clienteId,
+        cliente_nombre:  nc.clienteNombre,
+        cliente_rut:     nc.clienteRut,
+        subtotal:        nc.subtotal,
+        iva_total:       0,
+        descuento:       0,
+        total:           nc.total,
+        saldo_pendiente: nc.saldoPendiente,
+        status:          nc.status,
+        items:           nc.items,
+        notas:           nc.notas,
+        created_at:      nc.createdAt,
+      }, 'id').catch(e => {
+        console.warn('[DevolucionesTab] nota crédito upsert failed:', e?.message||e);
+        setHasPendingSync(true);
+      });
+    }
+
     setTimeout(()=>setMsg(""),5000);
   };
   const MOTIVOS=["Producto danado","Error en pedido","Producto vencido","Exceso de stock","Otro"];

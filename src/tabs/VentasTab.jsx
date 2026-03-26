@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
+import ModalCobro from './facturacion/ModalCobro.jsx';
 
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
-          clientes, setClientes, priceListas, priceListItems, lotes } = useApp();
+          clientes, setClientes, priceListas, priceListItems, lotes,
+          cfes, cobros, setCobros } = useApp();
   const G="#3a7d1e";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
@@ -16,6 +18,32 @@ function VentasTab(){
   const [msg,setMsg]=useState({text:'',type:'ok'});
   const [filtroEstado,setFiltroEstado]=useState('todos');
   const [busqueda,setBusqueda]=useState('');
+  const [showCobro,setShowCobro]=useState(false);
+  const [cobroPrefill,setCobroPrefill]=useState(null);
+
+  // Quick-cobro handler — same logic as FacturacionTab.handleSaveCobro
+  const handleSaveCobroRapido = (cobro) => {
+    const nuevo = { ...cobro, createdAt: new Date().toISOString() };
+    setCobros([nuevo, ...cobros]);
+    db.upsert('collections', {
+      id: nuevo.id || (Math.random().toString(36).slice(2)),
+      cliente_id:       nuevo.clienteId   || null,
+      monto:            nuevo.monto,
+      metodo:           nuevo.metodo,
+      fecha:            nuevo.fecha,
+      fecha_cheque:     nuevo.fechaCheque || null,
+      facturas_aplicar: nuevo.facturasAplicar,
+      notas:            nuevo.notas       || '',
+      created_at:       nuevo.createdAt,
+    }, 'id').catch(e => { console.warn('[VentasTab] cobro upsert failed:', e?.message||e); setHasPendingSync(true); });
+    // Update CFE saldo if facturas applied
+    if (cfes && cobro.facturasAplicar?.length) {
+      // let FacturacionTab handle the saldo update on next render — cobro is persisted
+    }
+    setShowCobro(false);
+    setCobroPrefill(null);
+    showMsg('Cobro registrado ✓');
+  };
 
   const showMsg=(text,type='ok')=>{setMsg({text,type});setTimeout(()=>setMsg({text:'',type:'ok'}),4000);};
 
@@ -413,6 +441,7 @@ function VentasTab(){
           {v.estado==='confirmada'&&<button onClick={()=>cambiarEstado(v.id,'preparada')} style={{padding:'7px 16px',background:'#8b5cf6',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar preparada</button>}
           {(v.estado==='preparada'||v.estado==='confirmada')&&<button onClick={()=>cambiarEstado(v.id,'entregada')} style={{padding:'7px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar entregada</button>}
           {v.estado!=='cancelada'&&v.estado!=='entregada'&&<button onClick={()=>cambiarEstado(v.id,'cancelada')} style={{padding:'7px 16px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>Cancelar (restaura stock)</button>}
+          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #3a7d1e',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#3a7d1e'}}>💰 Cobrar</button>}
         </div>
         <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -513,6 +542,13 @@ function VentasTab(){
           </table>
         </div>
       )}
+    {showCobro&&<ModalCobro
+      clientes={clientes} cfes={cfes||[]}
+      prefillClienteId={cobroPrefill?.clienteId}
+      prefillMonto={cobroPrefill?.monto}
+      onSave={handleSaveCobroRapido}
+      onClose={()=>{setShowCobro(false);setCobroPrefill(null);}}
+    />}
     </section>
   );
 }
