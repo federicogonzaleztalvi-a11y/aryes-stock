@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { db } from '../lib/constants.js';
+import { db, SB_URL, SKEY } from '../lib/constants.js';
 import { useRole } from '../hooks/useRole.ts';
 
 // ── Haversine distance (km) between two lat/lng points ────────────────────
@@ -120,6 +120,79 @@ function RutasTab(){
   const { isAdmin } = useRole();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
+
+  // ── ETA: posiciones en tiempo real desde aryes_tracking ──────────────────
+  const [posiciones, setPosiciones] = useState([]); // [{id, lat, lng, ruta_id, velocidad, usuario}]
+  const [notifMsg,   setNotifMsg]   = useState(''); // feedback after WA send
+
+  const fetchPosiciones = useCallback(async () => {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/aryes_tracking?select=*`,
+        { headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY } });
+      const d = await r.json();
+      if (Array.isArray(d)) setPosiciones(d);
+    } catch {/* silent */}
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchPosiciones();
+    const iv = setInterval(fetchPosiciones, 15_000);
+    return () => clearInterval(iv);
+  }, [isAdmin, fetchPosiciones]);
+
+  // ── ETA calculation ───────────────────────────────────────────────────────
+  // Returns estimated minutes from driver's current position to a stop,
+  // walking through all pending stops before it in order.
+  // velocidad: km/h from GPS (default 30 km/h for Uruguay urban)
+  const calcETA = (ruta, entrega, driverPos) => {
+    if (!driverPos || !driverPos.lat || !driverPos.lng) return null;
+    const pendientes = ruta.entregas.filter(e => e.estado === 'pendiente');
+    const idx = pendientes.findIndex(e => e.clienteId === entrega.clienteId);
+    if (idx < 0) return null;
+
+    // Build waypoints: driver → stop[0] → stop[1] → ... → target
+    const waypoints = [{ lat: Number(driverPos.lat), lng: Number(driverPos.lng) }];
+    for (let i = 0; i < idx; i++) {
+      const cli = clientes.find(c => c.id === pendientes[i].clienteId);
+      if (cli?.lat && cli?.lng) waypoints.push({ lat: cli.lat, lng: cli.lng });
+    }
+    const target = clientes.find(c => c.id === entrega.clienteId);
+    if (!target?.lat || !target?.lng) return null;
+    waypoints.push({ lat: target.lat, lng: target.lng });
+
+    // Total distance along path
+    let distKm = 0;
+    for (let i = 1; i < waypoints.length; i++) {
+      distKm += haversine(waypoints[i-1].lat, waypoints[i-1].lng, waypoints[i].lat, waypoints[i].lng);
+    }
+
+    // Add ~3 min per intermediate stop (unload/sign time)
+    const stopTime = Math.max(0, idx) * 3;
+    const kmh = (driverPos.velocidad && driverPos.velocidad > 5) ? driverPos.velocidad : 30;
+    const driveMin = Math.round((distKm / kmh) * 60);
+    return driveMin + stopTime; // total minutes
+  };
+
+  // ── WhatsApp notification to client ──────────────────────────────────────
+  const notificarCliente = (entrega, etaMin, driverNombre) => {
+    const cli = clientes.find(c => c.id === entrega.clienteId);
+    const tel = cli?.telefono || entrega.telefono;
+    if (!tel) { setNotifMsg('⚠ Cliente sin teléfono registrado'); setTimeout(() => setNotifMsg(''), 4000); return; }
+
+    // Clean phone: keep only digits, add 598 if no country code
+    const digitsOnly = tel.replace(/\D/g, '');
+    const num = digitsOnly.startsWith('598') ? digitsOnly : digitsOnly.startsWith('0') ? '598' + digitsOnly.slice(1) : '598' + digitsOnly;
+
+    const etaStr = etaMin !== null
+      ? (etaMin <= 5 ? 'en pocos minutos' : `en aproximadamente ${etaMin} minutos`)
+      : 'próximamente';
+    const msg = `Hola ${entrega.clienteNombre.split(' ')[0]}, te avisamos que nuestro repartidor${driverNombre ? ' ' + driverNombre : ''} estará llegando a tu local *${etaStr}*. ¡Gracias por tu preferencia! 🚚`;
+
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+    setNotifMsg(`✓ WhatsApp abierto para ${entrega.clienteNombre}`);
+    setTimeout(() => setNotifMsg(''), 4000);
+  };
   const [vista,setVista]=useState("lista");
   const [rutaActiva,setRutaActiva]=useState(null);
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
@@ -551,6 +624,36 @@ function RutasTab(){
           </div>
         </div>
         {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"8px 14px",marginBottom:12,color:G,fontSize:12,fontWeight:600}}>{msg}</div>}
+        {notifMsg&&<div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 14px",marginBottom:12,fontSize:13,color:"#1d4ed8",fontWeight:600}}>{notifMsg}</div>}
+        {isAdmin&&(()=>{
+          const driver=posiciones.find(p=>p.ruta_id===ruta.id);
+          if(!driver) return null;
+          const proxima=ruta.entregas.find(e=>e.estado==="pendiente");
+          if(!proxima) return null;
+          const cli=clientes.find(c=>c.id===proxima.clienteId);
+          if(!cli?.lat||!cli?.lng) return null;
+          const distKm=haversine(Number(driver.lat),Number(driver.lng),cli.lat,cli.lng);
+          if(distKm>1.5) return null;
+          const eta=calcETA(ruta,proxima,driver);
+          const nombre=driver.usuario||"El repartidor";
+          return(
+            <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:10,padding:"12px 16px",
+              marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <span style={{fontSize:20}}>⚡</span>
+              <div style={{flex:1,fontSize:13}}>
+                <span style={{fontWeight:700,color:"#92400e"}}>{nombre}</span>
+                {" está a "}<span style={{fontWeight:700}}>{Math.round(distKm*1000)}m</span>
+                {" de "}<span style={{fontWeight:700}}>{proxima.clienteNombre}</span>
+                {eta!==null&&<span style={{color:"#6b7280"}}>{" (~"}{eta}{" min)"}</span>}
+              </div>
+              <button onClick={()=>notificarCliente(proxima,eta,nombre)}
+                style={{padding:"6px 14px",background:"#25d366",color:"#fff",border:"none",
+                  borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,whiteSpace:"nowrap"}}>
+                💬 Avisar al cliente
+              </button>
+            </div>
+          );
+        })()}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:G}}>{entregados}</div><div style={{fontSize:11,color:"#888"}}>Entregados</div></div>
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{pendientes}</div><div style={{fontSize:11,color:"#888"}}>Pendientes</div></div>
@@ -576,7 +679,21 @@ function RutasTab(){
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
                   <span style={{fontSize:18,opacity:.7}}>📍</span>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{e.clienteNombre}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
+                      {e.clienteNombre}
+                      {isAdmin&&e.estado==="pendiente"&&(()=>{
+                        const driver=posiciones.find(p=>p.ruta_id===ruta.id);
+                        if(!driver) return null;
+                        const eta=calcETA(ruta,e,driver);
+                        if(eta===null) return null;
+                        const urgent=eta<=10;
+                        return(<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:20,
+                          background:urgent?"#fef2f2":"#f0fdf4",color:urgent?"#dc2626":G,
+                          border:`1px solid ${urgent?"#fecaca":"#bbf7d0"}`}}>
+                          {urgent?"⚡":"🕐"} ~{eta}min
+                        </span>);
+                      })()}
+                    </div>
                     <div style={{fontSize:12,color:"#888"}}>
                       {e.ciudad||""}{e.hora?" · "+e.hora:""}
                       {(e.horarioDesde||e.horarioHasta)&&(
@@ -739,6 +856,18 @@ function RutasTab(){
                     <button onClick={()=>revertirEntrega(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12}}>Revertir</button>
                   )}
                   <button onClick={()=>abrirMaps(e)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12}}>Maps</button>
+                  {isAdmin&&e.estado==="pendiente"&&(()=>{
+                    const driver=posiciones.find(p=>p.ruta_id===ruta.id);
+                    const eta=driver?calcETA(ruta,e,driver):null;
+                    const nombre=driver?.usuario||"";
+                    return(
+                      <button onClick={()=>notificarCliente(e,eta,nombre)}
+                        style={{padding:"6px 12px",background:"#25d366",color:"#fff",border:"none",borderRadius:6,
+                          cursor:"pointer",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                        💬 {eta!==null?`Avisar (~${eta}min)`:"Avisar"}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );
