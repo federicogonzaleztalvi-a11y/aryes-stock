@@ -28,7 +28,7 @@ function Badge({ count, color }) {
   );
 }
 
-function AlertRow({ icon, title, subtitle, accent, action, actionLabel }) {
+function AlertRow({ icon, title, subtitle, accent, action, actionLabel, secondAction, secondActionLabel }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
@@ -45,14 +45,24 @@ function AlertRow({ icon, title, subtitle, accent, action, actionLabel }) {
           {subtitle}
         </div>
       </div>
-      {action && (
-        <button onClick={action} style={{
-          padding: '4px 12px', background: accent + '18', color: accent,
-          border: `1px solid ${accent}44`, borderRadius: 6,
-          fontFamily: F.sans, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-          flexShrink: 0, whiteSpace: 'nowrap',
-        }}>{actionLabel}</button>
-      )}
+      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+        {action && (
+          <button onClick={action} style={{
+            padding: '4px 12px', background: accent + '18', color: accent,
+            border: `1px solid ${accent}44`, borderRadius: 6,
+            fontFamily: F.sans, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>{actionLabel}</button>
+        )}
+        {secondAction && (
+          <button onClick={secondAction} style={{
+            padding: '4px 12px', background: '#3a7d1e18', color: '#3a7d1e',
+            border: '1px solid #3a7d1e44', borderRadius: 6,
+            fontFamily: F.sans, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>{secondActionLabel}</button>
+        )}
+      </div>
     </div>
   );
 }
@@ -261,6 +271,8 @@ export default function AlertasPanel({ setTab }) {
                 accent="#dc2626"
                 action={() => setTab('lotes')}
                 actionLabel="Ver lotes"
+                secondAction={() => setTab('ventas')}
+                secondActionLabel="Crear venta"
               />
             )}
           />

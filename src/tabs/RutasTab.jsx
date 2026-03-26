@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { db } from '../lib/constants.js';
@@ -77,8 +77,10 @@ function RutasTab(){
   const [msg,setMsg]=useState("");
   const [busqCli,setBusqCli]=useState("");
   const [optimizando, setOptimizando] = useState(false);
-  // Evidence capture: { clienteId, nota, fotoBase64 }
+  // Evidence capture: { clienteId, nota, fotoBase64, firmaBase64 }
   const [evidencia, setEvidencia] = useState(null);
+  const [firmaActiva, setFirmaActiva] = useState(false);
+  const firmaRef = React.useRef(null);
   const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
 
   const ruta=rutas.find(r=>r.id===rutaActiva)||null;
@@ -177,9 +179,9 @@ function RutasTab(){
     setTimeout(() => setMsg(""), 5000);
   };
 
-  const marcarEntregado=(rutaId,clienteId,nota='',fotoBase64='')=>{
+  const marcarEntregado=(rutaId,clienteId,nota='',fotoBase64='',firmaBase64='')=>{
     const hora=new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"});
-    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora,notaEntrega:nota||'',fotoEntrega:fotoBase64||''}:ev)}:r);
+    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora,notaEntrega:nota||'',fotoEntrega:fotoBase64||'',firmaEntrega:firmaBase64||''}:ev)}:r);
     setRutas(upd);
     const updRuta=upd.find(r=>r.id===rutaId);
     if(updRuta) db.upsert('rutas',{
@@ -193,7 +195,7 @@ function RutasTab(){
   const confirmarEntrega = (rutaId, clienteId) => {
     const ev = evidencia;
     setEvidencia(null);
-    marcarEntregado(rutaId, clienteId, ev?.nota || '', ev?.fotoBase64 || '');
+    marcarEntregado(rutaId, clienteId, ev?.nota || '', ev?.fotoBase64 || '', ev?.firmaBase64 || '');
   };
 
   // Convert a File object to base64 string
@@ -203,6 +205,51 @@ function RutasTab(){
     reader.onerror = () => rej(new Error('read error'));
     reader.readAsDataURL(file);
   });
+
+  // ── Signature canvas helpers ───────────────────────────────────────────────
+  const firmaStartDraw = (ev) => {
+    const canvas = firmaRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    const x = (ev.touches?.[0]?.clientX ?? ev.clientX) - rect.left;
+    const y = (ev.touches?.[0]?.clientY ?? ev.clientY) - rect.top;
+    ctx.moveTo(x, y);
+    canvas._drawing = true;
+  };
+  const firmaDrawMove = (ev) => {
+    const canvas = firmaRef.current;
+    if (!canvas || !canvas._drawing) return;
+    ev.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+    const x = (ev.touches?.[0]?.clientX ?? ev.clientX) - rect.left;
+    const y = (ev.touches?.[0]?.clientY ?? ev.clientY) - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+  const firmaStopDraw = () => {
+    const canvas = firmaRef.current;
+    if (canvas) canvas._drawing = false;
+  };
+  const firmaLimpiar = () => {
+    const canvas = firmaRef.current;
+    if (!canvas) return;
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    setEvidencia(ev => ({ ...ev, firmaBase64: '' }));
+  };
+  const firmaCapturar = () => {
+    const canvas = firmaRef.current;
+    if (!canvas) return;
+    const b64 = canvas.toDataURL('image/png');
+    setEvidencia(ev => ({ ...ev, firmaBase64: b64 }));
+    setFirmaActiva(false);
+  };
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
     const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"no_entregado",hora:new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"})}:ev)}:r);
@@ -229,6 +276,30 @@ function RutasTab(){
   const abrirMaps=(e)=>{
     const q=encodeURIComponent((e.ciudad||e.clienteNombre)+" Uruguay");
     window.open("https://maps.google.com/?q="+q,"_blank","noopener,noreferrer");
+  };
+
+  // Opens Google Maps with all pending deliveries as waypoints (full route navigation)
+  const abrirRutaCompleta = () => {
+    if (!ruta || ruta.entregas.length === 0) return;
+    const pendientes = ruta.entregas.filter(e => e.estado !== "entregado");
+    if (pendientes.length === 0) return;
+    // Google Maps URL format: /dir/origin/waypoint1/waypoint2/.../destination
+    // Use client name + city + Uruguay as search terms — works without geocoded coords
+    const stops = pendientes.map(e =>
+      encodeURIComponent([(e.clienteNombre||''), (e.ciudad||''), 'Uruguay'].filter(Boolean).join(', '))
+    );
+    if (stops.length === 1) {
+      window.open("https://maps.google.com/?q=" + stops[0], "_blank", "noopener,noreferrer");
+      return;
+    }
+    // First stop is origin, last is destination, rest are waypoints
+    const origin      = stops[0];
+    const destination = stops[stops.length - 1];
+    const waypoints   = stops.slice(1, -1).join('/');
+    const url = waypoints.length > 0
+      ? `https://www.google.com/maps/dir/${origin}/${waypoints}/${destination}`
+      : `https://www.google.com/maps/dir/${origin}/${destination}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const exportarCSV=()=>{
@@ -299,6 +370,14 @@ function RutasTab(){
                       fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>
               {optimizando?"⏳ Optimizando...":"🗺 Optimizar ruta"}
             </button>
+            {ruta.entregas.filter(e=>e.estado!=="entregado").length>0&&(
+              <button onClick={abrirRutaCompleta}
+                style={{padding:"7px 14px",background:"#3a7d1e",color:"#fff",border:"none",
+                        borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,
+                        display:"flex",alignItems:"center",gap:4}}>
+                🗺 Navegar ruta completa
+              </button>
+            )}
             <button onClick={exportarCSV} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>CSV</button>
             <button onClick={()=>setVista("historial")} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>Historial</button>
           </div>
@@ -331,19 +410,27 @@ function RutasTab(){
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{e.clienteNombre}</div>
                     <div style={{fontSize:12,color:"#888"}}>{e.ciudad||""}{e.hora?" · "+e.hora:""}</div>
-                    {isEntregado&&(e.notaEntrega||e.fotoEntrega)&&(
-                      <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                        {e.fotoEntrega&&(
-                          <img src={e.fotoEntrega} alt="evidencia"
-                            style={{width:56,height:42,objectFit:"cover",borderRadius:4,border:"1px solid #bbf7d0",cursor:"pointer"}}
-                            onClick={()=>window.open(e.fotoEntrega,'_blank')}
-                          />
+                        {isEntregado&&(e.notaEntrega||e.fotoEntrega||e.firmaEntrega)&&(
+                          <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                            {e.fotoEntrega&&(
+                              <img src={e.fotoEntrega} alt="evidencia"
+                                style={{width:56,height:42,objectFit:"cover",borderRadius:4,border:"1px solid #bbf7d0",cursor:"pointer"}}
+                                onClick={()=>window.open(e.fotoEntrega,'_blank')}
+                              />
+                            )}
+                            {e.firmaEntrega&&(
+                              <img src={e.firmaEntrega} alt="firma"
+                                style={{width:80,height:28,objectFit:"contain",borderRadius:4,
+                                        border:"1px solid #bbf7d0",background:"#fafafa",cursor:"pointer"}}
+                                onClick={()=>window.open(e.firmaEntrega,'_blank')}
+                                title="Firma del receptor"
+                              />
+                            )}
+                            {e.notaEntrega&&(
+                              <span style={{fontSize:11,color:"#4b5563",fontStyle:"italic"}}>"{e.notaEntrega}"</span>
+                            )}
+                          </div>
                         )}
-                        {e.notaEntrega&&(
-                          <span style={{fontSize:11,color:"#4b5563",fontStyle:"italic"}}>"{e.notaEntrega}"</span>
-                        )}
-                      </div>
-                    )}
                   </div>
                   <span style={{fontSize:11,padding:"2px 10px",borderRadius:20,fontWeight:700,background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fffbeb",color:isEntregado?G:isNoEnt?"#dc2626":"#92400e"}}>{e.estado==="pendiente"?"Pendiente":e.estado==="entregado"?"Entregado":"No entregado"}</span>
                 </div>
@@ -376,6 +463,44 @@ function RutasTab(){
                           {evidencia.fotoBase64&&(
                             <img src={evidencia.fotoBase64} alt="evidencia"
                               style={{width:80,height:60,objectFit:"cover",borderRadius:6,border:"1px solid #bbf7d0",marginBottom:8,display:"block"}}/>
+                          )}
+                          {/* Signature capture */}
+                          {!firmaActiva&&(
+                            <button onClick={()=>setFirmaActiva(true)}
+                              style={{padding:"5px 12px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,
+                                      cursor:"pointer",fontSize:12,marginBottom:8,display:"flex",alignItems:"center",gap:4}}>
+                              ✍️ {evidencia.firmaBase64?"Firma ✓ (cambiar)":"Agregar firma del receptor"}
+                            </button>
+                          )}
+                          {firmaActiva&&(
+                            <div style={{marginBottom:8}}>
+                              <div style={{fontSize:11,color:"#666",marginBottom:4}}>Firmar con el dedo o mouse:</div>
+                              <canvas ref={firmaRef} width={280} height={90}
+                                style={{border:"2px solid "+G,borderRadius:6,background:"#fafafa",touchAction:"none",display:"block"}}
+                                onMouseDown={firmaStartDraw} onMouseMove={firmaDrawMove}
+                                onMouseUp={firmaStopDraw} onMouseLeave={firmaStopDraw}
+                                onTouchStart={firmaStartDraw} onTouchMove={firmaDrawMove} onTouchEnd={firmaStopDraw}
+                              />
+                              <div style={{display:"flex",gap:6,marginTop:4}}>
+                                <button onClick={firmaCapturar}
+                                  style={{padding:"4px 12px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:700}}>
+                                  Guardar firma
+                                </button>
+                                <button onClick={firmaLimpiar}
+                                  style={{padding:"4px 10px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",fontSize:11}}>
+                                  Limpiar
+                                </button>
+                                <button onClick={()=>setFirmaActiva(false)}
+                                  style={{padding:"4px 10px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",fontSize:11}}>
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {evidencia.firmaBase64&&!firmaActiva&&(
+                            <img src={evidencia.firmaBase64} alt="firma"
+                              style={{width:120,height:40,objectFit:"contain",borderRadius:4,
+                                      border:"1px solid #bbf7d0",background:"#fafafa",marginBottom:6,display:"block"}}/>
                           )}
                           <div style={{display:"flex",gap:6}}>
                             <button onClick={()=>confirmarEntrega(ruta.id,e.clienteId)}

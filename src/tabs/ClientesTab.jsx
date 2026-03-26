@@ -10,6 +10,32 @@ function ClientesTab(){
   const { isAdmin } = useRole();
   const navigate = useNavigate();
   const G="#3a7d1e";
+  const [agingOpen, setAgingOpen] = useState(false);
+
+  // Aging report — deuda por antigüedad desde CFEs con saldo pendiente
+  const agingData = useMemo(() => {
+    const now = new Date();
+    const buckets = { c0_30: [], c31_60: [], c61_90: [], c91plus: [] };
+    const byCli = {};
+    cfes
+      .filter(f => f.saldoPendiente > 0 && f.clienteId)
+      .forEach(f => {
+        const daysRef = f.fechaVenc ? f.fechaVenc : f.fecha;
+        const dias = Math.floor((now - new Date(daysRef)) / 86400000);
+        const cli = f.clienteId;
+        if (!byCli[cli]) byCli[cli] = { nombre: f.clienteNombre, total: 0 };
+        byCli[cli].total += f.saldoPendiente;
+        const bucket = dias <= 30 ? 'c0_30' : dias <= 60 ? 'c31_60' : dias <= 90 ? 'c61_90' : 'c91plus';
+        if (!buckets[bucket].find(x => x.id === cli))
+          buckets[bucket].push({ id: cli, nombre: f.clienteNombre, monto: 0 });
+        buckets[bucket].find(x => x.id === cli).monto += f.saldoPendiente;
+      });
+    return {
+      buckets,
+      totalDeuda: Object.values(byCli).reduce((a, v) => a + v.total, 0),
+      clientesConDeuda: Object.keys(byCli).length,
+    };
+  }, [cfes]);
 
   // ── CRM metrics for the selected client ──────────────────────────────────
   const crmMetrics = useMemo(() => {
@@ -306,6 +332,59 @@ function ClientesTab(){
           ))}
         </div>
       )}
+      {/* ── Aging report ──────────────────────────────────────────────────────── */}
+      <div style={{marginTop:24,background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <button onClick={()=>setAgingOpen(o=>!o)}
+          style={{width:'100%',display:'flex',alignItems:'center',gap:10,background:'none',border:'none',cursor:'pointer',padding:0,textAlign:'left'}}>
+          <span style={{fontSize:16}}>📊</span>
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:500,color:'#1a1a1a',flex:1}}>
+            Aging de deuda — {agingData.clientesConDeuda} clientes · US$ {agingData.totalDeuda.toFixed(2)}
+          </span>
+          <span style={{fontSize:11,color:'#9ca3af'}}>{agingOpen?'▲':'▼'}</span>
+        </button>
+        {agingOpen&&(
+          <div style={{marginTop:16}}>
+            {agingData.totalDeuda===0?(
+              <div style={{textAlign:'center',padding:'20px',color:'#10b981',fontWeight:600,fontSize:13}}>
+                ✓ Sin deuda pendiente
+              </div>
+            ):(
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}}>
+                {[
+                  {label:'0–30 días',key:'c0_30',color:'#10b981',bg:'#f0fdf4'},
+                  {label:'31–60 días',key:'c31_60',color:'#f59e0b',bg:'#fffbeb'},
+                  {label:'61–90 días',key:'c61_90',color:'#f97316',bg:'#fff7ed'},
+                  {label:'+90 días',key:'c91plus',color:'#ef4444',bg:'#fef2f2'},
+                ].map(({label,key,color,bg})=>{
+                  const rows = agingData.buckets[key];
+                  const total = rows.reduce((a,r)=>a+r.monto,0);
+                  return(
+                    <div key={key} style={{background:bg,borderRadius:10,padding:'14px 16px'}}>
+                      <div style={{fontSize:11,fontWeight:700,color,textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{label}</div>
+                      <div style={{fontSize:22,fontWeight:800,color}}>US$ {total.toFixed(0)}</div>
+                      <div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{rows.length} cliente{rows.length!==1?'s':''}</div>
+                      {rows.length>0&&(
+                        <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:3}}>
+                          {rows.sort((a,b)=>b.monto-a.monto).map(r=>(
+                            <div key={r.id} style={{fontSize:11,display:'flex',justifyContent:'space-between'}}>
+                              <span style={{color:'#374151',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:90}}>{r.nombre}</span>
+                              <span style={{color,fontWeight:700}}>US$ {r.monto.toFixed(0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{fontSize:11,color:'#9ca3af',fontStyle:'italic'}}>
+              Basado en la fecha de vencimiento de CFEs con saldo pendiente.
+            </div>
+          </div>
+        )}
+      </div>
+
     </section></>
   );
 }
