@@ -868,22 +868,13 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
             <input
               readOnly
               onClick={()=>setCmdOpen(true)}
-              placeholder="Buscar todo…  ⌘K"
+              placeholder="Buscar o ejecutar..."
               style={{width:"100%",boxSizing:"border-box",padding:"7px 12px 7px 32px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.textXs,background:T.muted,outline:"none",cursor:"pointer"}}
             />
           </div>
           <div style={{flex:1}}/>
           <QuickStats critN={critN} orders={orders} />
           <NotificationBell critN={critN} orders={orders} setTab={setTab} />
-          <button onClick={()=>setCmdOpen(true)} title="Paleta de comandos (⌘K)"
-            style={{display:'flex',alignItems:'center',gap:6,background:T.muted,border:`1px solid ${T.border}`,
-              borderRadius:7,padding:'5px 10px',cursor:'pointer',fontFamily:T.sans,fontSize:11,
-              color:T.textSm,transition:'all .12s',marginRight:8}}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor='#3a7d1e';e.currentTarget.style.color='#3a7d1e';}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.textSm;}}>
-            <span style={{fontSize:13}}>→</span>
-            <span>K</span>
-          </button>
 
           {/* User pill with dropdown */}
           <UserMenuDropdown session={session} userMenuOpen={userMenuOpen} setUserMenuOpen={setUserMenuOpen} canTab={canTab} setTab={setTab} handleLogout={handleLogout} />
