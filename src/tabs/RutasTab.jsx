@@ -965,7 +965,7 @@ function RutasTab(){
                           style={{width:60,padding:"2px 6px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:12,fontFamily:"inherit"}}/>
                       </div>
                     )}
-                        {isEntregado&&(e.notaEntrega||e.fotoEntrega||e.firmaEntrega)&&(
+                        {(e.notaEntrega||e.fotoEntrega||e.firmaEntrega)&&evidencia?.clienteId!==e.clienteId&&(
                           <div style={{marginTop:6,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                             {e.fotoEntrega&&(
                               <img src={e.fotoEntrega} alt="evidencia"
@@ -995,10 +995,12 @@ function RutasTab(){
                       {evidencia?.clienteId===e.clienteId ? (
                         // Evidence capture panel — inline
                         <div style={{width:"100%",background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:12}}>
-                          <div style={{fontSize:12,fontWeight:700,color:G,marginBottom:8}}>Confirmar entrega</div>
+                          <div style={{fontSize:12,fontWeight:700,color:evidencia?.mode==='no_entregado'?'#dc2626':evidencia?.mode==='nota'?'#374151':G,marginBottom:8}}>
+                            {evidencia?.mode==='no_entregado'?'⚠️ Motivo de no entrega':evidencia?.mode==='nota'?'📝 Nota del repartidor':'✓ Confirmar entrega'}
+                          </div>
                           <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
                             <input
-                              placeholder="Nota de entrega (opcional)"
+                              placeholder={evidencia?.mode==="no_entregado"?"Motivo: no pagó, local cerrado, no estaba...":"Nota: cualquier comentario sobre esta entrega"}
                               value={evidencia.nota||""}
                               onChange={ev=>setEvidencia(e=>({...e,nota:ev.target.value}))}
                               style={{flex:1,minWidth:160,padding:"6px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:12,fontFamily:"inherit"}}
@@ -1058,9 +1060,24 @@ function RutasTab(){
                                       border:"1px solid #bbf7d0",background:"#fafafa",marginBottom:6,display:"block"}}/>
                           )}
                           <div style={{display:"flex",gap:6}}>
-                            <button onClick={()=>confirmarEntrega(ruta.id,e.clienteId)}
-                              style={{padding:"6px 16px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
-                              ✓ Confirmar
+                            <button
+                              onClick={()=>{
+                                if(evidencia?.mode==='no_entregado'){
+                                  marcarNoEntregado(ruta.id,e.clienteId,evidencia.nota||'',evidencia.fotoBase64||'');
+                                  setEvidencia(null);
+                                } else if(evidencia?.mode==='nota'){
+                                  // Guardar nota/foto en la entrega sin cambiar el estado
+                                  const upd=rutas.map(r=>r.id===ruta.id?{...r,entregas:r.entregas.map(x=>x.clienteId===e.clienteId?{...x,notaEntrega:evidencia.nota||x.notaEntrega||'',fotoEntrega:evidencia.fotoBase64||x.fotoEntrega||''}:x)}:r);
+                                  setRutas(upd);
+                                  const updRuta=upd.find(r=>r.id===ruta.id);
+                                  if(updRuta)db.upsert('rutas',{id:updRuta.id,vehiculo:updRuta.vehiculo,zona:updRuta.zona,dia:updRuta.dia,notas:updRuta.notas,entregas:updRuta.entregas,capacidad_kg:updRuta.capacidadKg||0,capacidad_bultos:updRuta.capacidadBultos||0,creado_en:updRuta.creadoEn,updated_at:new Date().toISOString()},'id').catch(()=>setHasPendingSync(true));
+                                  setEvidencia(null);
+                                } else {
+                                  confirmarEntrega(ruta.id,e.clienteId);
+                                }
+                              }}
+                              style={{padding:"6px 16px",background:evidencia?.mode==='no_entregado'?'#dc2626':G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontWeight:700,fontSize:12}}>
+                              {evidencia?.mode==='no_entregado'?'✗ Marcar no entregado':evidencia?.mode==='nota'?'💾 Guardar nota':'✓ Confirmar'}
                             </button>
                             <button onClick={()=>setEvidencia(null)}
                               style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",fontSize:12}}>
@@ -1074,7 +1091,8 @@ function RutasTab(){
                             style={{padding:"6px 12px",background:G,color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontWeight:600,fontSize:12}}>
                             ✓ Entregado
                           </button>
-                          <button onClick={()=>marcarNoEntregado(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #fecaca",borderRadius:6,cursor:"pointer",fontSize:12,color:"#dc2626",fontWeight:600}}>
+                          <button onClick={()=>setEvidencia({clienteId:e.clienteId,nota:'',fotoBase64:'',mode:'no_entregado'})}
+                            style={{padding:"6px 12px",background:"#fff",border:"1px solid #fecaca",borderRadius:6,cursor:"pointer",fontSize:12,color:"#dc2626",fontWeight:600}}>
                             ✗ No entregado
                           </button>
                         </>
@@ -1085,6 +1103,13 @@ function RutasTab(){
                     <button onClick={()=>revertirEntrega(ruta.id,e.clienteId)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12}}>Revertir</button>
                   )}
                   <button onClick={()=>abrirMaps(e)} style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12}}>Maps</button>
+                  {/* Botón nota/foto rápida — disponible siempre */}
+                  {evidencia?.clienteId!==e.clienteId&&(
+                    <button onClick={()=>setEvidencia({clienteId:e.clienteId,nota:e.notaEntrega||'',fotoBase64:'',mode:'nota'})}
+                      style={{padding:"6px 12px",background:"#fff",border:"1px solid #e5e7eb",color:"#374151",borderRadius:6,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",gap:4}}>
+                      📝 {e.notaEntrega?'Ver nota':'Nota/Foto'}
+                    </button>
+                  )}
                   {isAdmin&&e.estado==="pendiente"&&(()=>{
                     const driver=posiciones.find(p=>p.ruta_id===ruta.id);
                     const eta=driver?calcETA(ruta,e,driver):null;
