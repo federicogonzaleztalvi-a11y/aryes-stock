@@ -62,7 +62,7 @@ CREATE TRIGGER trg_fill_stock_after
 CREATE OR REPLACE VIEW stock_ledger AS
 SELECT
   sm.id,
-  sm.timestamp,
+  sm."timestamp",
   sm.fecha,
   sm.producto_id,
   sm.producto_nombre,
@@ -77,7 +77,7 @@ SELECT
   sm.notas,
   sm.org_id
 FROM stock_movements sm
-ORDER BY sm.timestamp DESC;
+ORDER BY sm."timestamp" DESC;
 
 -- ── 5. Point-in-time stock query ─────────────────────────────
 -- Returns stock balance at any moment in time.
@@ -94,9 +94,9 @@ AS $$
   SELECT stock_after
   FROM stock_movements
   WHERE producto_id = p_product_uuid
-    AND timestamp  <= p_at
+    AND "timestamp" <= p_at
     AND stock_after IS NOT NULL
-  ORDER BY timestamp DESC
+  ORDER BY "timestamp" DESC
   LIMIT 1;
 $$;
 
