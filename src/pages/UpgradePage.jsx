@@ -32,7 +32,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
     setLoading(planId);
     setErr('');
     try {
-      const r = await fetch('/api/stripe-checkout', {
+      const r = await fetch('/api/stripe', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
