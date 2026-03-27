@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ReportePDF from '../components/ReportePDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
 
 function InformesTab(){
@@ -50,6 +51,11 @@ function InformesTab(){
           <button key={p} onClick={()=>setPeriodo(p)} style={{padding:"6px 14px",borderRadius:20,border:"2px solid "+(periodo===p?"#3a7d1e":"#e5e7eb"),background:periodo===p?"#3a7d1e":"#fff",color:periodo===p?"#fff":"#666",fontWeight:600,fontSize:12,cursor:"pointer"}}>
             {p==="semana"?"7 dias":p==="mes"?"30 dias":"90 dias"}</button>))}</div></div>
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#3a7d1e",fontSize:13,fontWeight:600}}>{msg}</div>}
+
+      {/* ── Reporte PDF ── */}
+      <div style={{marginBottom:28}}>
+        <ReportePDF />
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:28}}>
         <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",border:"2px solid "+(stockCritico>0?"#ef4444":"transparent")}}>
           <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Total productos</div>
