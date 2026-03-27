@@ -9,6 +9,7 @@ import { useErrorReporting } from './hooks/useErrorReporting.ts';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
+const RegisterPage     = lazy(() => import('./pages/RegisterPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 function readSession() {
@@ -114,6 +115,10 @@ function LoginScreen({ onLogin }) {
             style={{ background: '#3a7d1e', color: '#fff', border: '1px solid #3a7d1e', fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.4 : 1, borderRadius: 4 }}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
+            ¿No tenés cuenta?{' '}
+            <a href="/register" style={{ color: '#3a7d1e', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
+          </p>
         </div>
       </div>
     </div>
@@ -188,6 +193,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/catalogo" element={<CatalogoPage />} />
           {/* B2B order portal — OTP auth, no WMS session required */}
           <Route path="/pedidos" element={<PedidosPage />} />
+          {/* Public self-registration */}
+          <Route path="/register" element={<RegisterPage />} />
           {/* Everything else → authenticated app */}
           <Route path="*" element={<Root />} />
         </Routes>
