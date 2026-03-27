@@ -45,6 +45,8 @@ import UserMenuDropdown from './components/UserMenuDropdown.jsx';
 import { useApp } from './context/AppContext.tsx';
 import { useConfirm } from './components/ConfirmDialog.jsx';
 import TabLoader from './components/TabLoader.jsx';
+import AppSidebar, { getNavForRole, canAccessTab } from './components/AppSidebar.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -690,25 +692,6 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
 
 
 
-class ErrorBoundary extends React.Component {
-  constructor(props){super(props);this.state={hasError:false,error:null};}
-  static getDerivedStateFromError(error){return {hasError:true,error};}
-  componentDidCatch(error,info){console.error('[Stock] ErrorBoundary caught:',error,info);}
-  render(){
-    if(this.state.hasError){
-      return (
-        <div style={{padding:'24px',fontFamily:'Inter,sans-serif',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,margin:16}}>
-          <p style={{color:'#dc2626',fontWeight:600,marginBottom:8}}>Error al cargar este mÃ³dulo</p>
-          <p style={{color:'#7a7368',fontSize:12,marginBottom:12}}>{String(this.state.error?.message||'Error desconocido')}</p>
-          <button onClick={()=>this.setState({hasError:false,error:null})} style={{background:'#dc2626',color:'#fff',border:'none',padding:'8px 16px',borderRadius:4,cursor:'pointer',fontSize:12,fontWeight:600}}>Reintentar</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 // LOGIN SCREEN
 // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
@@ -839,34 +822,10 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   };
 
 
-  const NAV_ALL=[
-    {id:"dashboard",label:"Dashboard",icon:"ð"},
-    {id:"inventory",label:"Inventario",icon:"ð¦"},
-    {id:"orders",label:"Pedidos",icon:"ð"},
-    {id:"suppliers",label:"Proveedores",icon:"ð­"},
-    {id:"clientes",label:"Clientes",icon:"ð¥"},
-    {id:"ventas",label:"Ventas",icon:"ð§¾"},
-    {id:"facturacion",label:"FacturaciÃ³n",icon:"ð"},
-    {id:"movimientos",label:"Movimientos",icon:"ð"},
-    {id:"lotes",label:"Lotes/Venc.",icon:"ð"},{id:"conteo",label:"Conteo",icon:"ð¢"},{id:"transferencias",label:"Transferencias",icon:"â"},
-    {id:"deposito",label:"DepÃ³sito",icon:"ð"},
-    {id:"rutas",label:"Rutas",icon:"ð"},
-    {id:"tracking",label:"Tracking",icon:"ð"},
-    {id:"kpis",label:"KPIs",icon:"ð"},{id:"resultados",label:"Resultados",icon:"ð"},
-    {id:"recepcion",label:"Recepcion",icon:"ð¥"},{id:"compras",label:"Compras",icon:"ð§¾"},{id:"packing",label:"Packing",icon:"ð¦"},{id:"batch-picking",label:"Batch Pick",icon:"ð"},
-    {id:"informes",label:"Informes",icon:"ð"},{id:"devoluciones",label:"Devoluciones",icon:"â©"},{id:"precios",label:"Precios",icon:"ð²"},{id:"demanda",label:"Demanda",icon:"ð"},{id:"audit",label:"AuditorÃ­a",icon:"ð"},
-    {id:"importar",label:"Importar datos",icon:"ð"},
-    {id:"scanner",label:"Scanner",icon:"ð·"},
-    {id:"config",label:"Config",icon:"â"},
-  ];
-  const NAV_ROLES={
-    admin:["dashboard","inventory","orders","suppliers","clientes","ventas","facturacion","movimientos","lotes","deposito","rutas","tracking","kpis","resultados","recepcion","compras","informes","demanda","audit","importar","scanner","config","conteo","devoluciones","packing","precios","transferencias","batch-picking"],
-    operador:["dashboard","inventory","movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","scanner"],
-    vendedor:["dashboard","clientes","ventas","facturacion","kpis","resultados","informes"]
-  };
-  const NAV=NAV_ALL.filter(n=>(NAV_ROLES[session?.role||"admin"]||NAV_ROLES.admin).includes(n.id));
-  const canTab=(id)=>(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin).includes(id);
-  const activeTab=canTab(tab)?tab:(NAV_ROLES[session?.role||'admin']||NAV_ROLES.admin)[0];
+  // Nav constants extracted to AppSidebar.jsx
+  const NAV      = getNavForRole(session?.role || 'admin');
+  const canTab   = (id) => canAccessTab(session?.role || 'admin', id);
+  const activeTab = canTab(tab) ? tab : (getNavForRole(session?.role || 'admin')[0]?.id || 'dashboard');
 
   // If URL contains a tab id that this role cannot access, correct the URL silently.
   // Prevents /app/config displaying dashboard content while URL shows 'config'.
@@ -896,66 +855,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
       <style>{CSS}</style>
 
       {/* ââ SIDEBAR ââ */}
-      <aside style={{overflowY:"auto",width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
-        {/* Logo */}
-        <div style={{padding:"20px 20px 16px",borderBottom:`1px solid ${T.border}`}}>
-          {brandCfg.logoUrl
-            ? <img src={brandCfg.logoUrl} alt={brandCfg.name||'Logo'} style={{height:52,objectFit:'contain',maxWidth:"100%"}} onError={e=>{e.target.style.display='none';}}/>
-            : <img src="/logo.png" alt="Logo" style={{height:52,objectFit:'contain',maxWidth:"100%"}} onError={e=>{e.target.style.display='none';}}/>
-          }
-          {syncStatus==='sync'&&<div style={{fontSize:10,color:'#9a9a98',marginTop:3}}>â» Sincronizando...</div>}
-          {syncStatus==='ok'&&<div style={{fontSize:10,color:'#3a7d1e',marginTop:3}}>â Sincronizado</div>}
-          {syncStatus==='error'&&<div style={{fontSize:10,color:'#d97706',marginTop:3}}>â  Modo local</div>}
-          {hasPendingSync&&<div style={{fontSize:10,color:'#d97706',marginTop:3,fontWeight:600}}>â  Sync pendiente</div>}
-          <div style={{marginTop:6}}><Cap style={{color:brandCfg.color||T.green}}>{brandCfg.name||'GestiÃ³n de stock'}</Cap></div>
-        </div>
-
-        {/* Nav â grouped */}
-        <nav style={{padding:"10px 0",flex:1,overflowY:"auto"}}>
-          {(()=>{
-            const _role=session?.role||"admin";
-            const groups=[
-              {label:"Principal",ids:["dashboard","inventory","orders","suppliers"]},
-              {label:"Operaciones",ids:["movimientos","lotes","deposito","transferencias","rutas","tracking","recepcion","compras","scanner"]},
-              {label:"Comercial",ids:["clientes","ventas","facturacion"]},
-              {label:"AnÃ¡lisis",ids:["kpis","resultados","informes","demanda","audit"]},
-              {label:"Sistema",ids:["importar","config"]},
-            ];
-            return groups.map(g=>{
-              const items=NAV.filter(n=>g.ids.includes(n.id)&&n.id!=="usuarios");
-              if(!items.length) return null;
-              return (
-                <React.Fragment key={g.label}>
-                  <div style={{padding:"12px 18px 4px",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textXs}}>{g.label}</div>
-                  {(()=>{
-                    const vencidasN=cfes.filter(f=>['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&Math.floor((new Date(f.fechaVenc).getTime()-Date.now())/86400000)<0).length;
-                    const pendOrders=orders.filter(o=>o.status==='pending').length;
-                    return items.map(n=>{
-                    return (
-                      <button key={n.id} onClick={()=>setTab(n.id)}
-                        style={{width:"100%",textAlign:"left",padding:"8px 18px",background:tab===n.id?T.greenBg:"none",border:"none",borderLeft:tab===n.id?`3px solid ${T.green}`:`3px solid transparent`,fontFamily:T.sans,fontSize:13,fontWeight:tab===n.id?600:400,color:tab===n.id?T.green:T.textSm,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,borderRadius:"0 6px 6px 0",marginRight:8,transition:"background .15s"}}>
-                        <span style={{display:"flex",alignItems:"center",gap:8}}>
-                          <span style={{fontSize:14,lineHeight:1,opacity:tab===n.id?1:0.7}}>{n.icon}</span>
-                          {n.label}
-                        </span>
-                        {n.id==='dashboard'&&critN>0&&<span style={{background:T.danger,color:'#fff',fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:10,minWidth:18,textAlign:'center'}}>{critN}</span>}
-                        {n.id==='inventory'&&critN>0&&<span style={{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{critN}</span>}
-                        {n.id==='orders'&&pendOrders>0&&<span style={{background:T.amber,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{pendOrders}</span>}
-                        {n.id==='facturacion'&&vencidasN>0&&<span style={{background:T.danger,color:'#fff',fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10}}>{vencidasN}</span>}
-                      </button>
-                    );
-                    });
-                  })()}
-                </React.Fragment>
-              );
-            });
-          })()}
-        </nav>
-
-
-      
-
-      </aside>
+      <AppSidebar session={session} tab={tab} setTab={setTab} />
 
       {/* ââ MAIN ââ */}
       <main id="main-content" style={{marginLeft:220,flex:1,height:"100vh",overflowY:"auto",display:"flex",flexDirection:"column"}}>
