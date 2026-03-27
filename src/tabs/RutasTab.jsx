@@ -150,6 +150,24 @@ function RutasTab(){
   // Returns estimated minutes from driver's current position to a stop,
   // walking through all pending stops before it in order.
   // velocidad: km/h from GPS (default 30 km/h for Uruguay urban)
+  // ── Drag & drop reorder ─────────────────────────────────────────────────
+  const reordenarEntregas = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx || !ruta) return;
+    const updated = [...ruta.entregas];
+    const [moved] = updated.splice(fromIdx, 1);
+    updated.splice(toIdx, 0, moved);
+    const updRutas = rutas.map(r => r.id === ruta.id ? { ...r, entregas: updated } : r);
+    setRutas(updRutas);
+    // Persistir en Supabase
+    const updRuta = updRutas.find(r => r.id === ruta.id);
+    if (updRuta) db.upsert('rutas', {
+      id: updRuta.id, vehiculo: updRuta.vehiculo, zona: updRuta.zona,
+      dia: updRuta.dia, notas: updRuta.notas, entregas: updRuta.entregas,
+      capacidad_kg: updRuta.capacidadKg || 0, capacidad_bultos: updRuta.capacidadBultos || 0,
+      creado_en: updRuta.creadoEn, updated_at: new Date().toISOString(),
+    }, 'id').catch(() => setHasPendingSync(true));
+  };
+
   const calcETA = (ruta, entrega, driverPos) => {
     if (!driverPos || !driverPos.lat || !driverPos.lng) return null;
     const pendientes = ruta.entregas.filter(e => e.estado === 'pendiente');
@@ -212,6 +230,8 @@ function RutasTab(){
   const [distApplying, setDistApplying] = useState(false);
   // Evidence capture: { clienteId, nota, fotoBase64, firmaBase64 }
   const [evidencia, setEvidencia] = useState(null);
+  const [dragIdx, setDragIdx]     = useState(null);  // índice de la parada siendo arrastrada
+  const [dragOver, setDragOver]   = useState(null);  // índice de destino hover
   const [firmaActiva, setFirmaActiva] = useState(false);
   const firmaRef = React.useRef(null);
   const inp={padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"};
@@ -838,13 +858,41 @@ function RutasTab(){
           ))}
         </div>
         <div style={{display:"grid",gap:8}}>
-          {ruta.entregas.map((e, _i) =>{
+          {ruta.entregas.map((e, idx) =>{
             const isEntregado=e.estado==="entregado";
             const isNoEnt=e.estado==="no_entregado";
+            const isDragging = dragIdx === idx;
+            const isOver     = dragOver === idx;
             return(
-              <div key={e.clienteId} style={{background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fff",border:"1px solid "+(isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),borderRadius:10,padding:"12px 16px"}}>
+              <div key={e.clienteId}
+                draggable={!isEntregado && !isNoEnt}
+                onDragStart={() => { setDragIdx(idx); setDragOver(null); }}
+                onDragEnd={()   => { setDragIdx(null); setDragOver(null); }}
+                onDragOver={ev  => { ev.preventDefault(); if (dragIdx !== null && dragIdx !== idx) setDragOver(idx); }}
+                onDragLeave={()  => setDragOver(null)}
+                onDrop={ev => { ev.preventDefault(); if (dragIdx !== null) { reordenarEntregas(dragIdx, idx); } setDragIdx(null); setDragOver(null); }}
+                style={{
+                  background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fff",
+                  border:"2px solid "+(isOver?"#3a7d1e":isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),
+                  borderRadius:10, padding:"12px 16px",
+                  opacity: isDragging ? 0.4 : 1,
+                  transition: "border-color .15s, opacity .15s",
+                  cursor: (!isEntregado && !isNoEnt) ? "grab" : "default",
+                }}>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                  <span style={{fontSize:18,opacity:.7}}>📍</span>
+                  {/* Drag handle — solo visible en paradas pendientes */}
+                  {!isEntregado&&!isNoEnt&&(
+                    <span title="Arrastrar para reordenar"
+                      style={{fontSize:16,color:"#d1d5db",cursor:"grab",userSelect:"none",
+                        padding:"0 2px",lineHeight:1,flexShrink:0}}
+                      onMouseDown={e=>e.currentTarget.closest('[draggable]').style.cursor='grabbing'}
+                      onMouseUp={e=>e.currentTarget.closest('[draggable]').style.cursor='grab'}
+                    >⠿</span>
+                  )}
+                  {(!isEntregado&&!isNoEnt)
+                    ? <span style={{fontSize:12,fontWeight:800,color:"#9ca3af",minWidth:20,textAlign:"center",flexShrink:0}}>{idx+1}</span>
+                    : <span style={{fontSize:18,opacity:.7}}>📍</span>
+                  }
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
                       {e.clienteNombre}
