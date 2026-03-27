@@ -352,11 +352,35 @@ function RutasTab(){
     marcarEntregado(rutaId, clienteId, ev?.nota || '', ev?.fotoBase64 || '', ev?.firmaBase64 || '');
   };
 
-  // Convert a File object to base64 string
+  // Convert a File to compressed base64 JPEG via canvas resize.
+  // Target: max 800px on longest side, JPEG quality 0.72 → ~100-200KB output.
+  // A raw 12MP phone photo is 3-8MB; this reduces it by ~95%.
+  // Embedded in JSONB: keeping photos small prevents row size limit failures.
   const fotoABase64 = (file) => new Promise((res, rej) => {
+    const MAX_PX = 800;
+    const QUALITY = 0.72;
     const reader = new FileReader();
-    reader.onload  = () => res(reader.result);
     reader.onerror = () => rej(new Error('read error'));
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = () => rej(new Error('image load error'));
+      img.onload = () => {
+        // Calculate output dimensions preserving aspect ratio
+        let { width, height } = img;
+        if (width > height) {
+          if (width > MAX_PX) { height = Math.round(height * MAX_PX / width); width = MAX_PX; }
+        } else {
+          if (height > MAX_PX) { width = Math.round(width * MAX_PX / height); height = MAX_PX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width  = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        res(canvas.toDataURL('image/jpeg', QUALITY));
+      };
+      img.src = ev.target.result;
+    };
     reader.readAsDataURL(file);
   });
 
