@@ -300,7 +300,11 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
     setLoading(true);
     try {
       const r = await fetch(`${window.location.origin}/api/pedido`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.token}`,
+        },
         body: JSON.stringify({
           org: ORG, clienteId: session.clienteId,
           clienteNombre: session.nombre, clienteTelefono: session.tel,
