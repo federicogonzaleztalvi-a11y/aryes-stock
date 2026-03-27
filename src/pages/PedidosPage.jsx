@@ -1,4 +1,4 @@
-// ── PedidosPage — Portal de pedidos B2B con autenticación OTP por teléfono ──
+// ââ PedidosPage â Portal de pedidos B2B con autenticaciÃ³n OTP por telÃ©fono ââ
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 const G           = '#3a7d1e';
@@ -20,7 +20,7 @@ function loadSession() {
 }
 function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
 
-// ── LoginStep ─────────────────────────────────────────────────────────────────
+// ââ LoginStep âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function LoginStep({ onLogin }) {
   const [tel,     setTel]     = useState('');
   const [code,    setCode]    = useState('');
@@ -31,7 +31,7 @@ function LoginStep({ onLogin }) {
   const [err,     setErr]     = useState('');
 
   const sendOTP = async () => {
-    if (!tel.trim()) { setErr('Ingresá tu número de WhatsApp'); return; }
+    if (!tel.trim()) { setErr('IngresÃ¡ tu nÃºmero de WhatsApp'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/otp-send`, {
@@ -39,16 +39,16 @@ function LoginStep({ onLogin }) {
         body: JSON.stringify({ tel: tel.trim(), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Error al enviar el código'); return; }
+      if (!r.ok) { setErr(d.error || 'Error al enviar el cÃ³digo'); return; }
       setNombre(d.clienteNombre || '');
       if (d._devMode && d.code) setDevCode(d.code);
       setStep('code');
-    } catch { setErr('Error de conexión.'); }
+    } catch { setErr('Error de conexiÃ³n.'); }
     finally { setLoading(false); }
   };
 
   const verifyOTP = async () => {
-    if (!code.trim()) { setErr('Ingresá el código recibido'); return; }
+    if (!code.trim()) { setErr('IngresÃ¡ el cÃ³digo recibido'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/otp-verify`, {
@@ -56,9 +56,9 @@ function LoginStep({ onLogin }) {
         body: JSON.stringify({ tel: tel.trim(), code: code.trim(), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Código incorrecto'); return; }
+      if (!r.ok) { setErr(d.error || 'CÃ³digo incorrecto'); return; }
       saveSession(d.session); onLogin(d.session);
-    } catch { setErr('Error de conexión.'); }
+    } catch { setErr('Error de conexiÃ³n.'); }
     finally { setLoading(false); }
   };
 
@@ -72,7 +72,7 @@ function LoginStep({ onLogin }) {
       <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px',
         maxWidth: 400, width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>🌿</div>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>ð¿</div>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 26,
             fontWeight: 700, color: '#1a1a1a', marginBottom: 6 }}>Aryes</div>
           <div style={{ fontSize: 13, color: '#6b7280' }}>Portal de pedidos para clientes</div>
@@ -84,7 +84,7 @@ function LoginStep({ onLogin }) {
           <>
             <label style={{ fontSize: 12, fontWeight: 700, color: '#374151',
               textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 8 }}>
-              Tu número de WhatsApp
+              Tu nÃºmero de WhatsApp
             </label>
             <input type="tel" placeholder="+598 9X XXX XXX" value={tel}
               onChange={e => setTel(e.target.value)}
@@ -92,13 +92,13 @@ function LoginStep({ onLogin }) {
               onFocus={e => e.target.style.borderColor = G}
               onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
             <p style={{ fontSize: 12, color: '#9ca3af', margin: '8px 0 20px' }}>
-              Ingresá el número que registraste con Aryes.
+              IngresÃ¡ el nÃºmero que registraste con Aryes.
             </p>
             <button onClick={sendOTP} disabled={loading}
               style={{ width: '100%', padding: '14px 0', background: loading ? '#9ca3af' : G,
                 color: '#fff', border: 'none', borderRadius: 12, fontSize: 15,
                 fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? 'Enviando...' : 'Enviar código →'}
+              {loading ? 'Enviando...' : 'Enviar cÃ³digo â'}
             </button>
           </>
         ) : (
@@ -106,16 +106,16 @@ function LoginStep({ onLogin }) {
             {nombre && <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0',
               borderRadius: 10, padding: '10px 14px', marginBottom: 16,
               fontSize: 14, color: G, fontWeight: 600 }}>
-              ¡Hola, {nombre.split(' ')[0]}! 👋
+              Â¡Hola, {nombre.split(' ')[0]}! ð
             </div>}
             <label style={{ fontSize: 12, fontWeight: 700, color: '#374151',
               textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 8 }}>
-              Código de acceso
+              CÃ³digo de acceso
             </label>
             {devCode && <div style={{ background: '#fffbeb', border: '1px solid #fde68a',
               borderRadius: 8, padding: '8px 12px', marginBottom: 12,
               fontSize: 12, color: '#92400e' }}>
-              🔧 Modo dev — tu código:{' '}
+              ð§ Modo dev â tu cÃ³digo:{' '}
               <strong style={{ fontSize: 18, letterSpacing: 4 }}>{devCode}</strong>
             </div>}
             <input type="text" inputMode="numeric" placeholder="1234"
@@ -125,19 +125,19 @@ function LoginStep({ onLogin }) {
               onFocus={e => e.target.style.borderColor = G}
               onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
             <p style={{ fontSize: 12, color: '#9ca3af', margin: '8px 0 20px' }}>
-              Código de 4 dígitos. Válido por 10 minutos.
+              CÃ³digo de 4 dÃ­gitos. VÃ¡lido por 10 minutos.
             </p>
             <button onClick={verifyOTP} disabled={loading}
               style={{ width: '100%', padding: '14px 0', background: loading ? '#9ca3af' : G,
                 color: '#fff', border: 'none', borderRadius: 12, fontSize: 15,
                 fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 12 }}>
-              {loading ? 'Verificando...' : 'Ingresar al catálogo →'}
+              {loading ? 'Verificando...' : 'Ingresar al catÃ¡logo â'}
             </button>
             <button onClick={() => { setStep('tel'); setCode(''); setErr(''); setDevCode(''); }}
               style={{ width: '100%', padding: '10px 0', background: '#f9fafb',
                 border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 13,
                 color: '#6b7280', cursor: 'pointer' }}>
-              ← Cambiar número
+              â Cambiar nÃºmero
             </button>
           </>
         )}
@@ -146,7 +146,7 @@ function LoginStep({ onLogin }) {
   );
 }
 
-// ── ProductCard ───────────────────────────────────────────────────────────────
+// ââ ProductCard âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function ProductCard({ item, qty, onAdd, onRemove }) {
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0ec',
@@ -165,7 +165,7 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
           {item.unidad}
           {item.stock > 0 && item.stock <= 10 && (
             <span style={{ marginLeft: 8, color: '#d97706', fontWeight: 700 }}>
-              ⚠ últimas {item.stock} uds.
+              â  Ãºltimas {item.stock} uds.
             </span>
           )}
         </div>
@@ -178,7 +178,7 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button onClick={() => onRemove(item)}
                 style={{ width: 32, height: 32, border: `1px solid ${G}`, borderRadius: 8,
-                  background: '#fff', color: G, fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>−</button>
+                  background: '#fff', color: G, fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>â</button>
               <span style={{ fontSize: 16, fontWeight: 700, color: '#1a1a1a',
                 minWidth: 24, textAlign: 'center' }}>{qty}</span>
               <button onClick={() => onAdd(item)}
@@ -201,7 +201,7 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
   );
 }
 
-// ── HistorialPanel ────────────────────────────────────────────────────────────
+// ââ HistorialPanel ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function HistorialPanel({ orders, loading, onReordenar }) {
   if (loading) return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 20px',
@@ -211,11 +211,11 @@ function HistorialPanel({ orders, loading, onReordenar }) {
   );
   if (!orders.length) return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>ð</div>
       <div style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
-        Todavía no tenés pedidos
+        TodavÃ­a no tenÃ©s pedidos
       </div>
-      <p style={{ fontSize: 13, color: '#9ca3af' }}>Tus pedidos confirmados aparecerán acá.</p>
+      <p style={{ fontSize: 13, color: '#9ca3af' }}>Tus pedidos confirmados aparecerÃ¡n acÃ¡.</p>
     </div>
   );
   const BADGE = {
@@ -253,7 +253,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
                   <div style={{ fontSize: 12, color: '#6b7280' }}>
                     {items.length} producto{items.length !== 1 ? 's' : ''}
                     {order.notas && <span style={{ marginLeft: 8, color: '#d97706' }}>
-                      · 📝 {order.notas.slice(0, 40)}
+                      Â· ð {order.notas.slice(0, 40)}
                     </span>}
                   </div>
                 </div>
@@ -262,7 +262,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
                   style={{ padding: '8px 16px', background: G, color: '#fff', border: 'none',
                     borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                     whiteSpace: 'nowrap' }}>
-                  🔄 Repetir pedido
+                  ð Repetir pedido
                 </button>
               </div>
               <div style={{ padding: '0 18px 14px', borderTop: '1px solid #f3f4f6' }}>
@@ -270,7 +270,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between',
                     fontSize: 12, color: '#6b7280', padding: '4px 0',
                     borderBottom: idx < items.length - 1 ? '1px solid #f9fafb' : 'none' }}>
-                    <span>{it.cantidad || it.qty || 1} × {it.nombre || it.descripcion}</span>
+                    <span>{it.cantidad || it.qty || 1} Ã {it.nombre || it.descripcion}</span>
                     <span>{fmtUSD(it.subtotal || 0)}</span>
                   </div>
                 ))}
@@ -283,7 +283,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
   );
 }
 
-// ── CartPanel ─────────────────────────────────────────────────────────────────
+// ââ CartPanel âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 function CartPanel({ carrito, items, session, onClose, onConfirm }) {
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
@@ -309,11 +309,12 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
             cantidad: l.qty, precioUnit: l.item.precio, subtotal: l.item.precio * l.qty,
           })),
           total, notas,
+          idempotencyKey: `${session.tel}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
         }),
       });
       if (r.ok) { setDone(true); onConfirm(); }
       else { const d = await r.json(); alert(d.error || 'Error'); }
-    } catch { alert('Error de conexión'); }
+    } catch { alert('Error de conexiÃ³n'); }
     finally { setLoading(false); }
   };
 
@@ -322,16 +323,16 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ background: '#fff', borderRadius: 20, padding: 40,
         maxWidth: 360, width: '100%', textAlign: 'center' }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>â</div>
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22,
-          fontWeight: 700, marginBottom: 8 }}>¡Pedido enviado!</div>
+          fontWeight: 700, marginBottom: 8 }}>Â¡Pedido enviado!</div>
         <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-          Tu pedido fue recibido. Te avisamos cuando esté confirmado.
+          Tu pedido fue recibido. Te avisamos cuando estÃ© confirmado.
         </p>
         <button onClick={onClose}
           style={{ padding: '12px 32px', background: G, color: '#fff', border: 'none',
             borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-          Ver más productos
+          Ver mÃ¡s productos
         </button>
       </div>
     </div>
@@ -351,7 +352,7 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
             Tu pedido ({lineas.length} producto{lineas.length !== 1 ? 's' : ''})
           </div>
           <button onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#6b7280' }}>×</button>
+            style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#6b7280' }}>Ã</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
           {lineas.map(({ item, qty }) => (
@@ -359,7 +360,7 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
               alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f9fafb' }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{item.nombre}</div>
-                <div style={{ fontSize: 12, color: '#6b7280' }}>{qty} × {fmtUSD(item.precio)}</div>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>{qty} Ã {fmtUSD(item.precio)}</div>
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: G }}>{fmtUSD(item.precio * qty)}</div>
             </div>
@@ -370,7 +371,7 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
               Notas del pedido
             </label>
             <textarea value={notas} onChange={e => setNotas(e.target.value)}
-              placeholder="Ej: entregar antes del mediodía..." rows={3}
+              placeholder="Ej: entregar antes del mediodÃ­a..." rows={3}
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb',
                 borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical',
                 boxSizing: 'border-box' }} />
@@ -386,7 +387,7 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
               background: loading || lineas.length === 0 ? '#9ca3af' : G,
               color: '#fff', border: 'none', borderRadius: 12, fontSize: 15,
               fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Enviando pedido...' : '✓ Confirmar pedido'}
+            {loading ? 'Enviando pedido...' : 'â Confirmar pedido'}
           </button>
         </div>
       </div>
@@ -394,7 +395,7 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ââ Main ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function PedidosPage() {
   const [session,   setSession]   = useState(() => loadSession());
   const [vista,     setVista]     = useState('catalogo');
@@ -466,7 +467,7 @@ export default function PedidosPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
 
-      {/* ── Header ── */}
+      {/* ââ Header ââ */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb',
         position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
 
@@ -474,7 +475,7 @@ export default function PedidosPage() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 20px',
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20,
-            fontWeight: 700, color: G, marginRight: 'auto' }}>🌿 Aryes</div>
+            fontWeight: 700, color: G, marginRight: 'auto' }}>ð¿ Aryes</div>
           <div style={{ fontSize: 13, color: '#6b7280' }}>
             Hola, <strong>{session.nombre.split(' ')[0]}</strong>
           </div>
@@ -483,9 +484,9 @@ export default function PedidosPage() {
               color: totalItems > 0 ? '#fff' : '#9ca3af', border: 'none',
               borderRadius: 20, cursor: totalItems > 0 ? 'pointer' : 'default',
               fontSize: 13, fontWeight: 700 }}>
-            🛒 {totalItems > 0
+            ð {totalItems > 0
               ? `${totalItems} producto${totalItems !== 1 ? 's' : ''}`
-              : 'Carrito vacío'}
+              : 'Carrito vacÃ­o'}
           </button>
           <button onClick={logout}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#9ca3af' }}>
@@ -496,7 +497,7 @@ export default function PedidosPage() {
         {/* Tabs */}
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 20px',
           display: 'flex', gap: 4, borderBottom: '1px solid #f3f4f6' }}>
-          {[{id:'catalogo',label:'🛍 Catálogo'},{id:'historial',label:'📋 Mis pedidos'}].map(tab => (
+          {[{id:'catalogo',label:'ð CatÃ¡logo'},{id:'historial',label:'ð Mis pedidos'}].map(tab => (
             <button key={tab.id} onClick={() => setVista(tab.id)}
               style={{ padding: '10px 18px', border: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: 700, background: 'transparent',
@@ -508,7 +509,7 @@ export default function PedidosPage() {
           ))}
         </div>
 
-        {/* Buscador — solo en catálogo */}
+        {/* Buscador â solo en catÃ¡logo */}
         {vista === 'catalogo' && (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: '10px 20px 14px',
             display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -533,12 +534,12 @@ export default function PedidosPage() {
         )}
       </div>
 
-      {/* ── Catálogo ── */}
+      {/* ââ CatÃ¡logo ââ */}
       {vista === 'catalogo' && (
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 14 }}>
-              Cargando catálogo...
+              Cargando catÃ¡logo...
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 14 }}>
@@ -561,7 +562,7 @@ export default function PedidosPage() {
         </div>
       )}
 
-      {/* ── Historial ── */}
+      {/* ââ Historial ââ */}
       {vista === 'historial' && (
         <HistorialPanel
           orders={historial}
@@ -578,7 +579,7 @@ export default function PedidosPage() {
         />
       )}
 
-      {/* ── Cart ── */}
+      {/* ââ Cart ââ */}
       {showCart && (
         <CartPanel carrito={carrito} items={items} session={session}
           onClose={() => setShowCart(false)}
