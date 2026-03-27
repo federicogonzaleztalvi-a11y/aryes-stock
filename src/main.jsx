@@ -10,6 +10,7 @@ const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
 const RegisterPage     = lazy(() => import('./pages/RegisterPage.jsx'));
+const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 function readSession() {
@@ -195,6 +196,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/pedidos" element={<PedidosPage />} />
           {/* Public self-registration */}
           <Route path="/register" element={<RegisterPage />} />
+          {/* Upgrade / pricing page */}
+          <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
           {/* Everything else → authenticated app */}
           <Route path="*" element={<Root />} />
         </Routes>

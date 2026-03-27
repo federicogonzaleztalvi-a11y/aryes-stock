@@ -94,11 +94,14 @@ async function handler(req, res) {
     method:  'POST',
     headers: { ...headers, Prefer: 'return=minimal' },
     body: JSON.stringify({
-      id:         orgId,
-      name:       empresa.trim(),
-      email:      email.trim().toLowerCase(),
-      plan:       'trial',
-      active:     true,
+      id:                  orgId,
+      name:                empresa.trim(),
+      email:               email.trim().toLowerCase(),
+      plan:                'trial',
+      plan_name:           'trial',
+      subscription_status: 'trial',
+      trial_ends_at:       new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      active:              true,
     }),
   });
 
