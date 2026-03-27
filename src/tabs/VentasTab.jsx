@@ -49,7 +49,7 @@ function VentasTab(){
   const G="#3a7d1e";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
-  // clientes now reactive from AppContext â no focus refresh needed
+  // clientes now reactive from AppContext → no focus refresh needed
 
 
   const [vista,setVista]=useState('lista');
@@ -62,7 +62,7 @@ function VentasTab(){
   const [showFacturar,setShowFacturar]=useState(false);
   const [facturarVenta,setFacturarVenta]=useState(null);
 
-  // Quick-cobro handler â same logic as FacturacionTab.handleSaveCobro
+  // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
   const handleSaveCobroRapido = (cobro) => {
     const nuevo = { ...cobro, createdAt: new Date().toISOString() };
     setCobros([nuevo, ...cobros]);
@@ -79,11 +79,11 @@ function VentasTab(){
     }, 'id').catch(e => { console.warn('[VentasTab] cobro upsert failed:', e?.message||e); setHasPendingSync(true); });
     // Update CFE saldo if facturas applied
     if (cfes && cobro.facturasAplicar?.length) {
-      // let FacturacionTab handle the saldo update on next render â cobro is persisted
+      // let FacturacionTab handle the saldo update on next render → cobro is persisted
     }
     setShowCobro(false);
     setCobroPrefill(null);
-    showMsg('Cobro registrado â');
+    showMsg('Cobro registrado →');
   };
 
   const showMsg=(text,type='ok')=>{setMsg({text,type});setTimeout(()=>setMsg({text:'',type:'ok'}),4000);};
@@ -122,7 +122,7 @@ function VentasTab(){
     if(disponible < Number(itemCant)){
       showMsg(`Stock insuficiente. Disponible: ${disponible} ${prod.unit||'u'}`,'err');return;
     }
-    // ââ Price list resolution ââââââââââââââââââââââââââââââââââââââââââââââââ
+    // →→ Price list resolution →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
     // Priority: 1) manual override 2) custom item price in list 3) list discount 4) precioVenta
     let precio = prod.precioVenta || prod.precio || prod.price || 0;
     if (itemPrecio > 0) {
@@ -167,8 +167,8 @@ function VentasTab(){
 
   const guardarVenta=async()=>{
     if(saving)return;
-    if(!form.clienteId&&!form.clienteNombre){showMsg('SeleccionÃ¡ un cliente','err');return;}
-    if(form.items.length===0){showMsg('AgregÃ¡ al menos un producto','err');return;}
+    if(!form.clienteId&&!form.clienteNombre){showMsg('Seleccioná un cliente','err');return;}
+    if(form.items.length===0){showMsg('Agregá al menos un producto','err');return;}
 
     // STOCK VALIDATION at save time
     const stockErrors=[];
@@ -177,7 +177,7 @@ function VentasTab(){
       const idx=updProds.findIndex(p=>p.id===it.productoId);
       if(idx>-1){
         if(Number(it.cantidad)>Number(updProds[idx].stock||0)){
-          stockErrors.push(`Stock insuficiente: ${it.nombre} â disponible ${updProds[idx].stock||0}, solicitado ${it.cantidad}`);
+          stockErrors.push(`Stock insuficiente: ${it.nombre} → disponible ${updProds[idx].stock||0}, solicitado ${it.cantidad}`);
         }
       }
     });
@@ -198,7 +198,7 @@ function VentasTab(){
 
       // DESCUENTA STOCK INMEDIATAMENTE al crear la venta
       const now=new Date().toISOString();
-      // Capture stock BEFORE deduction â needed as lock value for patchWithLock
+      // Capture stock BEFORE deduction → needed as lock value for patchWithLock
       const stockBefore=Object.fromEntries(
         form.items.map(it=>[it.productoId, Number(updProds.find(p=>p.id===it.productoId)?.stock||0)])
       );
@@ -250,7 +250,7 @@ function VentasTab(){
       const upd=[venta,...ventas];
       setVentas(upd);
       setForm(emptyForm);setVista('lista');
-      showMsg(`â Venta ${venta.nroVenta} creada â stock descontado`,'ok');
+      showMsg(`→ Venta ${venta.nroVenta} creada → stock descontado`,'ok');
     }finally{setSaving(false);}
   };
 
@@ -262,7 +262,7 @@ function VentasTab(){
     // Persist estado to Supabase
     db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>{
       console.warn('[VentasTab] estado patch failed:',e?.message||e);
-      showMsg('â  Estado actualizado localmente â no se pudo sincronizar con el servidor','warn');
+      showMsg('→  Estado actualizado localmente → no se pudo sincronizar con el servidor','warn');
     });
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Optimistic UI: restore stock locally immediately
@@ -328,8 +328,8 @@ function VentasTab(){
       const [,link,nombre]=msg.text.split(':');
       return(
         <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
-          <span style={{color:G,fontSize:13,fontWeight:600}}>Venta entregada. Â¿Notificar a {nombre||'cliente'}?</span>
-          <a href={link} target='_blank' rel='noreferrer' style={{background:'#25d366',color:'#fff',padding:'8px 18px',borderRadius:8,fontWeight:700,fontSize:13,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>ð© Enviar WhatsApp</a>
+          <span style={{color:G,fontSize:13,fontWeight:600}}>Venta entregada. ¿Notificar a {nombre||'cliente'}?</span>
+          <a href={link} target='_blank' rel='noreferrer' style={{background:'#25d366',color:'#fff',padding:'8px 18px',borderRadius:8,fontWeight:700,fontSize:13,textDecoration:'none',display:'flex',alignItems:'center',gap:6}}>📊© Enviar WhatsApp</a>
         </div>
       );
     }
@@ -341,24 +341,24 @@ function VentasTab(){
   if(vista==='form')return(
     <section style={{padding:'28px 36px',maxWidth:900,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
-        <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>â</button>
+        <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>→</button>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Nueva orden de venta</h2>
       </div>
       <MsgBanner/>
       <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16}}>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14}}>
-          {/* CLIENTE â siempre desde lista */}
+          {/* CLIENTE → siempre desde lista */}
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Cliente</label>
             <select value={form.clienteId} onChange={e=>{const cl=clientes.find(c=>c.id===e.target.value);setForm(f=>({...f,clienteId:e.target.value,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}} style={inp}>
-              <option value=''>â Seleccionar cliente â</option>
+              <option value=''>→ Seleccionar cliente →</option>
               {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
-            {/* Active price list badge â computed outside JSX */}
+            {/* Active price list badge → computed outside JSX */}
             {activaLista&&(
               <div style={{marginTop:5,fontSize:11,fontWeight:700,color:activaLista.color||G,
                 background:(activaLista.color||G)+'18',padding:'3px 10px',borderRadius:20,display:'inline-block'}}>
-                {activaLista.nombre} Â· â{activaLista.descuento}%
+                {activaLista.nombre} · →{activaLista.descuento}%
               </div>
             )}
             {!showNewClient
@@ -367,7 +367,7 @@ function VentasTab(){
                 <input value={newClientNombre} onChange={e=>setNewClientNombre(e.target.value)} placeholder='Nombre del cliente' style={{...inp,flex:1,padding:'6px 8px'}}
                   onKeyDown={e=>e.key==='Enter'&&addNewClientInline()}/>
                 <button onClick={addNewClientInline} style={{padding:'6px 12px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,fontWeight:600}}>OK</button>
-                <button onClick={()=>setShowNewClient(false)} style={{padding:'6px 10px',background:'none',border:'1px solid #e5e7eb',borderRadius:6,cursor:'pointer',fontSize:12}}>â</button>
+                <button onClick={()=>setShowNewClient(false)} style={{padding:'6px 10px',background:'none',border:'1px solid #e5e7eb',borderRadius:6,cursor:'pointer',fontSize:12}}>→</button>
               </div>
             }
           </div>
@@ -387,11 +387,11 @@ function VentasTab(){
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
               <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
-                <option value=''>â Producto â</option>
-                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} â stock: {p.stock} {p.unit||''}</option>)}
+                <option value=''>→ Producto →</option>
+                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} → stock: {p.stock} {p.unit||''}</option>)}
               </select>
             </div>
-            {/* Lot selector â only shown when selected product has available lots */}
+            {/* Lot selector → only shown when selected product has available lots */}
             {itemProd && lotes.filter(l => l.productoId === itemProd && Number(l.cantidad) > 0).length > 0 && (
               <div style={{flex:2,minWidth:140}}>
                 <select value={itemLote} onChange={e=>setItemLote(e.target.value)}
@@ -401,7 +401,7 @@ function VentasTab(){
                     .sort((a,b)=>new Date(a.fechaVenc||'9999')-new Date(b.fechaVenc||'9999'))
                     .map(l=>(
                       <option key={l.id} value={l.id}>
-                        {l.lote||'Sin nro'} Â· {Number(l.cantidad)} {l.unidad||'u'}{l.fechaVenc?' Â· '+new Date(l.fechaVenc+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):''}
+                        {l.lote||'Sin nro'} · {Number(l.cantidad)} {l.unidad||'u'}{l.fechaVenc?' · '+new Date(l.fechaVenc+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):''}
                       </option>
                     ))}
                 </select>
@@ -422,9 +422,9 @@ function VentasTab(){
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
-                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmtUSD(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmtUSD(it.costoUnit):'â'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#3a7d1e':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'â'}</td>
+                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmtUSD(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmtUSD(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#3a7d1e':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${(it.cantidad*it.precioUnit).toLocaleString('es-UY')}</td>
-                    <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>â</button></td>
+                    <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
                   </tr>
                 ))}
                 {Number(form.descuento)>0&&(
@@ -451,7 +451,7 @@ function VentasTab(){
       <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
         <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{padding:'10px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
         <button onClick={guardarVenta} disabled={saving} style={{padding:'10px 28px',background:saving?'#9ca3af':G,color:'#fff',border:'none',borderRadius:8,cursor:saving?'not-allowed':'pointer',fontWeight:700,fontSize:14}}>
-          {saving?'Guardandoâ¦':'Crear orden de venta'}
+          {saving?'Guardando→¦':'Crear orden de venta'}
         </button>
       </div>
     </section>
@@ -463,11 +463,11 @@ function VentasTab(){
     return(
       <section style={{padding:'28px 36px',maxWidth:800,margin:'0 auto'}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
-          <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>â</button>
+          <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>→</button>
           <div style={{flex:1}}>
             <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>
-              {v.nroVenta} â {v.clienteNombre}
-              {v.tieneDevolucion&&<span style={{marginLeft:10,fontSize:11,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:20,verticalAlign:'middle'}}>â© Con devoluciÃ³n</span>}
+              {v.nroVenta} → {v.clienteNombre}
+              {v.tieneDevolucion&&<span style={{marginLeft:10,fontSize:11,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:20,verticalAlign:'middle'}}>→© Con devolución</span>}
             </h2>
             <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{v.fecha}</p>
           </div>
@@ -479,8 +479,8 @@ function VentasTab(){
           {v.estado==='confirmada'&&<button onClick={()=>cambiarEstado(v.id,'preparada')} style={{padding:'7px 16px',background:'#8b5cf6',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar preparada</button>}
           {(v.estado==='preparada'||v.estado==='confirmada')&&<button onClick={()=>cambiarEstado(v.id,'entregada')} style={{padding:'7px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar entregada</button>}
           {v.estado!=='cancelada'&&v.estado!=='entregada'&&<button onClick={()=>cambiarEstado(v.id,'cancelada')} style={{padding:'7px 16px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>Cancelar (restaura stock)</button>}
-          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #3a7d1e',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#3a7d1e'}}>ð° Cobrar</button>}
-          {v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>ð Facturar</button>}
+          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #3a7d1e',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#3a7d1e'}}>📊° Cobrar</button>}
+          {v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>📊 Facturar</button>}
         </div>
         <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -517,13 +517,13 @@ function VentasTab(){
     <section style={{padding:'28px 36px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Ãrdenes de Venta</h2>
-          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>GestiÃ³n de ventas a clientes â remitos y estado de entrega</p>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Írdenes de Venta</h2>
+          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestión de ventas a clientes → remitos y estado de entrega</p>
         </div>
         <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
       </div>
       <MsgBanner/>
-      {/* ââ Pedidos del portal B2B âââââââââââââââââââââââââââââââââââââââ */}
+      {/* →→ Pedidos del portal B2B →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→ */}
       <PedidosPortalPanel onImportar={async (order)=>{
         // Convert portal order to venta
         const _cli=clientes.find(c=>c.id===order.cliente_id);
@@ -557,13 +557,13 @@ function VentasTab(){
           headers:{apikey:SKEY2,Authorization:`Bearer ${SKEY2}`,'Content-Type':'application/json',Prefer:'return=minimal'},
           body:JSON.stringify({estado:'importada',venta_id:newVenta.id}),
         }).catch(()=>{});
-        showMsg('â Pedido importado como venta '+newVenta.nroVenta);
+        showMsg('→ Pedido importado como venta '+newVenta.nroVenta);
       }}/>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
         {[
           {l:'Total ventas',v:ventas.length,c:'#6b7280'},
           {l:'Pendientes',v:ventas.filter(v=>v.estado==='pendiente').length,c:'#f59e0b'},
-          {l:'En preparaciÃ³n',v:ventas.filter(v=>v.estado==='preparada'||v.estado==='confirmada').length,c:'#8b5cf6'},
+          {l:'En preparación',v:ventas.filter(v=>v.estado==='preparada'||v.estado==='confirmada').length,c:'#8b5cf6'},
           {l:'Facturado este mes',v:'$'+totalMes.toLocaleString('es-UY'),c:G},
         ].map(s=>(
           <div key={s.l} style={{background:'#fff',borderRadius:10,padding:'14px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
@@ -573,7 +573,7 @@ function VentasTab(){
         ))}
       </div>
       <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
-        <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder='Buscar cliente o NÂ° venta...' style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',flex:1,minWidth:200}}/>
+        <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder='Buscar cliente o N° venta...' style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',flex:1,minWidth:200}}/>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           {['todos','pendiente','confirmada','preparada','entregada','cancelada'].map(est=>(
             <button key={est} onClick={()=>setFiltroEstado(est)} style={{padding:'6px 12px',borderRadius:20,border:'2px solid '+(filtroEstado===est?(ESTADOS[est]||G):'#e5e7eb'),background:filtroEstado===est?(ESTADOS[est]||G):'#fff',color:filtroEstado===est?'#fff':'#666',fontWeight:600,fontSize:11,cursor:'pointer',textTransform:'capitalize'}}>
@@ -584,8 +584,8 @@ function VentasTab(){
       </div>
       {ventasFiltradas.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
-          <div style={{fontSize:40,marginBottom:12}}>ð</div>
-          <p>{ventas.length===0?'No hay Ã³rdenes de venta aÃºn':'Sin resultados para este filtro'}</p>
+          <div style={{fontSize:40,marginBottom:12}}>📊</div>
+          <p>{ventas.length===0?'No hay órdenes de venta aún':'Sin resultados para este filtro'}</p>
           <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Crear primera venta</button>
         </div>
       ):(
@@ -593,7 +593,7 @@ function VentasTab(){
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
             <thead>
               <tr style={{background:'#f9fafb',borderBottom:'2px solid #e5e7eb'}}>
-                {['NÂ° Orden','Cliente','Fecha','Productos','Total','Estado',''].map(h=>(
+                {['N° Orden','Cliente','Fecha','Productos','Total','Estado',''].map(h=>(
                   <th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5}}>{h}</th>
                 ))}
               </tr>
@@ -603,7 +603,7 @@ function VentasTab(){
                 <tr key={v.id} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa',cursor:'pointer'}} onClick={()=>{setVentaSel(v);setVista('detalle');}}>
                   <td style={{padding:'11px 14px',fontFamily:'monospace',fontWeight:700,color:G,fontSize:12}}>
                     {v.nroVenta}
-                    {v.tieneDevolucion&&<span style={{marginLeft:5,fontSize:9,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'1px 5px',borderRadius:20,verticalAlign:'middle'}}>â© DEV</span>}
+                    {v.tieneDevolucion&&<span style={{marginLeft:5,fontSize:9,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'1px 5px',borderRadius:20,verticalAlign:'middle'}}>→© DEV</span>}
                   </td>
                   <td style={{padding:'11px 14px',fontWeight:600}}>{v.clienteNombre}</td>
                   <td style={{padding:'11px 14px',color:'#6b7280'}}>{v.fecha}</td>
@@ -632,10 +632,10 @@ function VentasTab(){
         notas: facturarVenta.notas||'',
       }}
       onSave={(cfe)=>{
-        // Save CFE directly â same logic as FacturacionTab.handleSaveCFE
+        // Save CFE directly → same logic as FacturacionTab.handleSaveCFE
         const CFE_TIPOS={
           'e-Factura':{code:'eFact'},'e-Ticket':{code:'eTick'},
-          'e-Remito':{code:'eRem'},'e-N.CrÃ©d.':{code:'eNC'},
+          'e-Remito':{code:'eRem'},'e-N.Créd.':{code:'eNC'},
         };
         const code = CFE_TIPOS[cfe.tipo]?.code||'CFE';
         const seq  = cfes.length + 1;
@@ -654,7 +654,7 @@ function VentasTab(){
           created_at: nuevo.createdAt,
         }, 'id').catch(()=>setHasPendingSync(true));
         setShowFacturar(false); setFacturarVenta(null);
-        showMsg(`CFE ${numero} emitida â`);
+        showMsg(`CFE ${numero} emitida →`);
       }}
       onClose={()=>{setShowFacturar(false);setFacturarVenta(null);}}
     />}
