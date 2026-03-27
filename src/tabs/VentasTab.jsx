@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
+import ModalFactura from './facturacion/ModalFactura.jsx';
 import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
 
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
-          cfes, cobros, setCobros } = useApp();
+          cfes, setCfes, cobros, setCobros } = useApp();
   const G="#3a7d1e";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
@@ -21,6 +22,8 @@ function VentasTab(){
   const [busqueda,setBusqueda]=useState('');
   const [showCobro,setShowCobro]=useState(false);
   const [cobroPrefill,setCobroPrefill]=useState(null);
+  const [showFacturar,setShowFacturar]=useState(false);
+  const [facturarVenta,setFacturarVenta]=useState(null);
 
   // Quick-cobro handler — same logic as FacturacionTab.handleSaveCobro
   const handleSaveCobroRapido = (cobro) => {
@@ -443,6 +446,7 @@ function VentasTab(){
           {(v.estado==='preparada'||v.estado==='confirmada')&&<button onClick={()=>cambiarEstado(v.id,'entregada')} style={{padding:'7px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar entregada</button>}
           {v.estado!=='cancelada'&&v.estado!=='entregada'&&<button onClick={()=>cambiarEstado(v.id,'cancelada')} style={{padding:'7px 16px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>Cancelar (restaura stock)</button>}
           {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #3a7d1e',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#3a7d1e'}}>💰 Cobrar</button>}
+          {v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>📄 Facturar</button>}
         </div>
         <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -579,6 +583,47 @@ function VentasTab(){
           </table>
         </div>
       )}
+    {showFacturar&&facturarVenta&&<ModalFactura
+      clientes={clientes}
+      productos={products}
+      prefill={{
+        clienteId: facturarVenta.clienteId,
+        items: (facturarVenta.items||[]).map(it=>({...it,
+          productoId: it.productId||it.productoId||'',
+          descripcion: it.nombre||it.descripcion||'',
+          cantidad: it.cantidad||it.qty||1,
+          precioUnit: it.precioUnit||it.precio||0,
+          subtotal: it.subtotal||(it.precioUnit||it.precio||0)*(it.cantidad||it.qty||1),
+        })),
+        notas: facturarVenta.notas||'',
+      }}
+      onSave={(cfe)=>{
+        // Save CFE directly — same logic as FacturacionTab.handleSaveCFE
+        const CFE_TIPOS={
+          'e-Factura':{code:'eFact'},'e-Ticket':{code:'eTick'},
+          'e-Remito':{code:'eRem'},'e-N.Créd.':{code:'eNC'},
+        };
+        const code = CFE_TIPOS[cfe.tipo]?.code||'CFE';
+        const seq  = cfes.length + 1;
+        const numero = `${code}-${String(seq).padStart(6,'0')}`;
+        const nuevo = { ...cfe, id: crypto.randomUUID(), numero,
+          saldoPendiente: cfe.total, createdAt: new Date().toISOString() };
+        setCfes(prev => [nuevo, ...prev]);
+        db.upsert('invoices', {
+          id: nuevo.id, numero, tipo: nuevo.tipo, moneda: nuevo.moneda,
+          fecha: nuevo.fecha, fecha_venc: nuevo.fechaVenc||null,
+          cliente_id: nuevo.clienteId||null, cliente_nombre: nuevo.clienteNombre,
+          cliente_rut: nuevo.clienteRut||'', subtotal: nuevo.subtotal||0,
+          iva_total: nuevo.ivaTotal||0, descuento: nuevo.descuento||0,
+          total: nuevo.total, saldo_pendiente: nuevo.total,
+          status: nuevo.status, items: nuevo.items, notas: nuevo.notas||'',
+          created_at: nuevo.createdAt,
+        }, 'id').catch(()=>setHasPendingSync(true));
+        setShowFacturar(false); setFacturarVenta(null);
+        showMsg(`CFE ${numero} emitida ✓`);
+      }}
+      onClose={()=>{setShowFacturar(false);setFacturarVenta(null);}}
+    />}
     {showCobro&&<ModalCobro
       clientes={clientes} cfes={cfes||[]}
       prefillClienteId={cobroPrefill?.clienteId}
