@@ -77,10 +77,21 @@ export const LS = {
 // ─── db — Supabase REST client ────────────────────────────────────────────────
 export const db = {
   async get(table, query = '') {
-    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
-      headers: getAuthHeaders({ 'Prefer': 'return=representation' }),
-    });
-    return r.ok ? r.json() : [];
+    let r;
+    try {
+      r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+        headers: getAuthHeaders({ 'Prefer': 'return=representation' }),
+      });
+    } catch (networkErr) {
+      // Network failure — return null so callers preserve existing state
+      console.warn('[db.get] network error:', table, networkErr?.message);
+      return null;
+    }
+    if (r.ok) return r.json();
+    // Auth failure (401/403) or server error (5xx) — return null, NOT []
+    // Returning [] would overwrite valid local state with empty data
+    console.warn('[db.get] non-ok response:', table, r.status);
+    return null;
   },
 
   async upsert(table, data, conflictCol = '') {
