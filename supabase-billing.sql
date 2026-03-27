@@ -7,7 +7,8 @@ ALTER TABLE organizations
   ADD COLUMN IF NOT EXISTS stripe_customer_id     TEXT UNIQUE,
   ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT UNIQUE,
   ADD COLUMN IF NOT EXISTS subscription_status    TEXT NOT NULL DEFAULT 'trial',
-  ADD COLUMN IF NOT EXISTS plan_name              TEXT NOT NULL DEFAULT 'trial';
+  ADD COLUMN IF NOT EXISTS plan_name              TEXT NOT NULL DEFAULT 'trial',
+  ADD COLUMN IF NOT EXISTS mp_payment_id           TEXT;
 
 -- Set trial for existing trial orgs
 UPDATE organizations

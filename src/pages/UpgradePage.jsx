@@ -32,7 +32,8 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
     setLoading(planId);
     setErr('');
     try {
-      const r = await fetch('/api/stripe', {
+      // MercadoPago — cambiar a /api/stripe cuando tengas LLC en Delaware
+      const r = await fetch('/api/mercadopago', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
       )}
 
       <p style={{ marginTop: 32, fontFamily: F.sans, fontSize: 12, color: '#9a9a98', textAlign: 'center' }}>
-        Pago seguro con Stripe · Cancelá cuando quieras · Soporte en {' '}
+        Pago seguro con MercadoPago · Cancelá cuando quieras · Soporte en {' '}
         <a href="mailto:hola@aryes.com.uy" style={{ color: G }}>hola@aryes.com.uy</a>
       </p>
     </div>
