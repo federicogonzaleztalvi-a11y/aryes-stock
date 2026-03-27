@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
+import ClienteImporter from '../components/ClienteImporter.jsx';
 
 function ClientesTab(){
   const { clientes: items, setClientes: setItems, ventas, cfes, priceListas } = useApp();
@@ -77,6 +78,7 @@ function ClientesTab(){
   const [q,setQ]=useState('');
   const [filtro,setFiltro]=useState('Todos');
   const [vista,setVista]=useState('lista');
+  const [showImporter, setShowImporter] = useState(false);
   const [msg,setMsg]=useState('');
   const [verTodasVentas, setVerTodasVentas]=useState(false);
   const sel=items.find(x=>x.id===selId);
@@ -322,7 +324,10 @@ function ClientesTab(){
     <>{ConfirmDialog}<section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Clientes <span style={{fontSize:16,color:'#888',fontWeight:400}}>({filtered.length})</span></h2>
-        {isAdmin&&<button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>}
+        {isAdmin&&<div style={{display:'flex',gap:8}}>
+        <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>
+        <button onClick={()=>setShowImporter(true)} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>📥 Importar CSV</button>
+      </div>}
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
       <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap'}}>
