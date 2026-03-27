@@ -1,6 +1,26 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db } from '../lib/constants.js';
+import { db, SB_URL, getAuthHeaders } from '../lib/constants.js';
+
+
+async function callRpc(fnName, params = {}) {
+  const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fnName}`, {
+    method: 'POST', headers, body: JSON.stringify(params),
+  });
+  if (r.ok) return { data: await r.json() };
+  const err = await r.json().catch(() => ({}));
+  throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
+}
+
+async function fetchNextNroDevolucion(devolucionesLocal) {
+  try {
+    const { data } = await callRpc('next_nro_devolucion', {});
+    if (typeof data === 'string' && data.startsWith('DEV-')) return data;
+  } catch { /* fallback below */ }
+  const nums = (devolucionesLocal || []).map(d => parseInt((d.nroDevolucion || 'DEV-0000').replace('DEV-', '')) || 0);
+  return 'DEV-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
+}
 
 function DevolucionesTab(){
   const { products: prods, setProducts: setProds,
@@ -18,126 +38,76 @@ function DevolucionesTab(){
       items:(venta.items||[]).map(it=>({...it,cantDevolver:0,estado:"pendiente",inspeccion:""}))});
     setVista("nueva");
   };
-  const confirmarDevolucion=()=>{
+  const confirmarDevolucion=async ()=>{
     const itemsDevueltos=form.items.filter(it=>Number(it.cantDevolver)>0);
     if(itemsDevueltos.length===0){setMsg("Ingresa al menos un item a devolver");return;}
     if(!form.motivo){setMsg("Ingresa el motivo de la devolucion");return;}
-    // Reingresar stock de items aprobados
-    const updProds=[...prods];
-    // Capture stock BEFORE reingress — needed as lock value for patchWithLock
-    const stockBefore={};
-    itemsDevueltos.forEach(it=>{
-      if(it.inspeccion==="aprobado"){
-        const idx=updProds.findIndex(p=>p.id===it.productoId);
-        if(idx>-1){
-          stockBefore[updProds[idx].id]=Number(updProds[idx].stock||0);
-          updProds[idx]={...updProds[idx],stock:Number(updProds[idx].stock||0)+Number(it.cantDevolver)};
-        }
+    // ── Optimistic UI ────────────────────────────────────────────────────
+    const now = new Date().toISOString();
+    const updProds = [...prods];
+    const updLotes = [...lotes];
+
+    itemsDevueltos.forEach(it => {
+      if (it.inspeccion !== 'aprobado') return;
+      const idx = updProds.findIndex(p => p.id === it.productoId);
+      if (idx > -1) {
+        updProds[idx] = { ...updProds[idx], stock: Number(updProds[idx].stock || 0) + Number(it.cantDevolver) };
+      }
+      if (it.loteId) {
+        const li = updLotes.findIndex(l => l.id === it.loteId);
+        if (li > -1) updLotes[li] = { ...updLotes[li], cantidad: Number(updLotes[li].cantidad || 0) + Number(it.cantDevolver) };
       }
     });
     setProds(updProds);
-    // Persist approved stock increments to Supabase — patchWithLock prevents overwrites
-    const now = new Date().toISOString();
-    const stockWrites = itemsDevueltos
-      .filter(it => it.inspeccion === 'aprobado')
-      .map(it => {
-        const p = updProds.find(x => x.id === it.productoId);
-        if (!p || stockBefore[p.id] === undefined) return Promise.resolve();
-        return db.patchWithLock('products', { stock: p.stock, updated_at: now }, 'uuid=eq.' + it.productoId, 'stock', stockBefore[p.id]);
-      });
-    Promise.allSettled(stockWrites).then(results => {
-      const failed = results.filter(r => r.status === 'rejected').length;
-      if (failed > 0) {
-        console.warn('[Devoluciones] ' + failed + ' patchWithLock(s) failed — stock safe in AppContext');
-        setHasPendingSync(true);
-      }
-    });
+    setLotes(updLotes);
 
-    // M-1a: Reintegrar stock al lote de origen si el item tiene loteId
-    const updLotes = [...lotes];
-    itemsDevueltos
-      .filter(it => it.inspeccion === 'aprobado' && it.loteId)
-      .forEach(it => {
-        const idx = updLotes.findIndex(l => l.id === it.loteId);
-        if (idx > -1) {
-          updLotes[idx] = { ...updLotes[idx], cantidad: Number(updLotes[idx].cantidad||0) + Number(it.cantDevolver) };
-          db.upsert('lotes', {
-            id: updLotes[idx].id,
-            producto_id: updLotes[idx].productoId,
-            producto_nombre: updLotes[idx].productoNombre,
-            lote: updLotes[idx].lote||'',
-            fecha_venc: updLotes[idx].fechaVenc||null,
-            cantidad: updLotes[idx].cantidad,
-            proveedor: updLotes[idx].proveedor||'',
-            notas: updLotes[idx].notas||'',
-            creado_en: updLotes[idx].creado,
-            updated_at: new Date().toISOString(),
-          }, 'id').catch(e => {
-            console.warn('[Devoluciones] lote reintegro upsert failed:', e?.message||e);
-            setHasPendingSync(true);
-          });
-        }
-      });
-    if (updLotes !== lotes) setLotes(updLotes);
-
-    // M-1b: Marcar la venta original como tieneDevolucion = true
     if (form.ventaId) {
-      const updVentas = ventas.map(v =>
-        v.id === form.ventaId ? { ...v, tieneDevolucion: true } : v
-      );
-      setVentas(updVentas);
-      db.patch('ventas', { tiene_devolucion: true, updated_at: new Date().toISOString() }, 'id=eq.' + form.ventaId)
-        .catch(e => {
-          console.warn('[Devoluciones] venta patch failed:', e?.message||e);
-          setHasPendingSync(true);
-        });
+      setVentas(ventas.map(v => v.id === form.ventaId ? { ...v, tieneDevolucion: true } : v));
     }
-    const dev={id:crypto.randomUUID(),nroDevolucion:(()=>{
-      const nums=devoluciones.map(d=>parseInt((d.nroDevolucion||'DEV-0000').replace('DEV-',''))||0);
-      return 'DEV-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
-    })(),
-      ventaId:form.ventaId,clienteNombre:form.clienteNombre,motivo:form.motivo,notas:form.notas,
-      items:itemsDevueltos,estado:"procesada",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
-    // Register a stock movement for each approved item
-    // type:'manual_in' = stock entered manually (return restock)
-    itemsDevueltos
-      .filter(it => it.inspeccion === 'aprobado')
-      .forEach(it => {
-        const prod = updProds.find(p => p.id === it.productoId);
-        if (!prod) return;
-        addMov({
-          type:        'manual_in',
-          productId:   prod.id,
-          productName: prod.nombre || prod.name || it.nombre,
-          qty:         Number(it.cantDevolver),
-          unit:        prod.unit || prod.unidad || it.unidad || 'u',
-          stockAfter:  prod.stock,
-          supplierId:  '',
-          supplierName:'',
-          note:        `Devolucion ${dev.nroDevolucion} — ${form.motivo}`,
-        });
+
+    // Generate nroDevolucion atomically via DB sequence
+    const nroDevolucion = await fetchNextNroDevolucion(devoluciones);
+    const dev = {
+      id: crypto.randomUUID(), nroDevolucion,
+      ventaId: form.ventaId, clienteNombre: form.clienteNombre,
+      motivo: form.motivo, notas: form.notas,
+      items: itemsDevueltos, estado: 'procesada',
+      fecha: new Date().toLocaleDateString('es-UY'),
+      creadoEn: now,
+    };
+    setDevoluciones([dev, ...devoluciones]);
+
+    // ── Atomic DB write via create_devolucion RPC ────────────────────────
+    const userEmail = (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.email || 'sistema'; } catch { return 'sistema'; } })();
+    try {
+      await callRpc('create_devolucion', {
+        p_id:             dev.id,
+        p_nro_devolucion: dev.nroDevolucion,
+        p_venta_id:       form.ventaId || '',
+        p_cliente_nombre: form.clienteNombre || '',
+        p_motivo:         form.motivo || '',
+        p_notas:          form.notas || '',
+        p_items:          itemsDevueltos,
+        p_user_email:     userEmail,
       });
-    const upd=[dev,...devoluciones];
-    setDevoluciones(upd);
-    // Persist to Supabase devoluciones table (non-blocking)
-    db.insert('devoluciones',{
-      id:              dev.id,
-      nro_devolucion:  dev.nroDevolucion,
-      venta_id:        dev.ventaId||null,
-      cliente_nombre:  dev.clienteNombre,
-      motivo:          dev.motivo,
-      notas:           dev.notas||'',
-      items:           dev.items,
-      estado:          dev.estado,
-      fecha:           dev.fecha||null,
-      creado_en:       dev.creadoEn,
-    }).catch(e=>{
-      console.warn('[DevolucionesTab] insert failed:',e?.message||e);
-      setMsg('⚠ Devolucion guardada localmente — no se sincronizó con el servidor. Datos seguros.');
-      setTimeout(()=>setMsg(''),6000);
-    });
-    setVista("lista");
-    setMsg("Devolucion "+dev.nroDevolucion+" procesada. Stock actualizado para items aprobados.");
+    } catch (rpcErr) {
+      // Revert all optimistic state
+      setProds(prods);
+      setLotes(lotes);
+      setVentas(ventas);
+      setDevoluciones(devoluciones);
+      const errMsg = rpcErr?.message || '';
+      if (errMsg.includes('authentication_required')) {
+        setMsg('Sesión expirada. Recargá la página.');
+      } else {
+        setMsg('Error al procesar la devolución. Verificá tu conexión e intentá de nuevo.');
+        console.error('[DevolucionesTab] create_devolucion RPC failed:', errMsg);
+      }
+      return;
+    }
+
+    setVista('lista');
+    setMsg('Devolución ' + dev.nroDevolucion + ' procesada. Stock actualizado para items aprobados.');
 
     // M-1 bonus: auto-generate nota de crédito si hay items aprobados y existe venta
     const montoDev = itemsDevueltos
