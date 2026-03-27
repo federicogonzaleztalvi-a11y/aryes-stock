@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { db, SB_URL, SKEY } from '../lib/constants.js';
 import { useRole } from '../hooks/useRole.ts';
+import ModalCobro from './facturacion/ModalCobro.jsx';
 
 // ── Haversine distance (km) between two lat/lng points ────────────────────
 function haversine(lat1, lng1, lat2, lng2) {
@@ -116,7 +117,7 @@ async function geocodeAddress(direccion, ciudad) {
 }
 
 function RutasTab(){
-  const { clientes, setClientes, rutas, setRutas, setHasPendingSync } = useApp();
+  const { clientes, setClientes, rutas, setRutas, setHasPendingSync, cfes, cobros, setCobros } = useApp();
   const { isAdmin } = useRole();
   const G="#3a7d1e";
   const { confirm, ConfirmDialog } = useConfirm();
@@ -124,6 +125,8 @@ function RutasTab(){
   // ── ETA: posiciones en tiempo real desde aryes_tracking ──────────────────
   const [posiciones, setPosiciones] = useState([]); // [{id, lat, lng, ruta_id, velocidad, usuario}]
   const [notifMsg,   setNotifMsg]   = useState(''); // feedback after WA send
+  const [showCobro,  setShowCobro]  = useState(false);
+  const [cobroPrefill, setCobroPrefill] = useState(null);
 
   const fetchPosiciones = useCallback(async () => {
     try {
@@ -557,6 +560,161 @@ function RutasTab(){
   const pendientes=ruta?ruta.entregas.filter(e=>e.estado==="pendiente").length:0;
   const entregados=ruta?ruta.entregas.filter(e=>e.estado==="entregado").length:0;
 
+
+  // ── COBRANZA EN RUTA VIEW ─────────────────────────────────────────────────
+  if(vista==="cobranza"&&ruta){
+    const fmtUSD = n => 'US$ ' + Number(n).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // Calcular saldo por cliente de la ruta
+    const clientesRuta = ruta.entregas.map(e => {
+      const cli = clientes.find(c => c.id === e.clienteId);
+      // Facturas pendientes de cobro de este cliente
+      const facturasCliente = cfes.filter(f =>
+        f.clienteId === e.clienteId && (f.saldoPendiente||0) > 0
+      );
+      const saldoTotal = facturasCliente.reduce((s,f) => s + (f.saldoPendiente||0), 0);
+      // Cobros ya realizados hoy
+      const hoy = new Date().toISOString().slice(0,10);
+      const cobradoHoy = cobros.filter(c =>
+        c.clienteId === e.clienteId && c.fecha === hoy
+      ).reduce((s,c) => s + (c.monto||0), 0);
+      return {
+        clienteId:     e.clienteId,
+        clienteNombre: e.clienteNombre,
+        telefono:      e.telefono || cli?.telefono || '',
+        ciudad:        e.ciudad || '',
+        estado:        e.estado,
+        facturas:      facturasCliente,
+        saldoTotal,
+        cobradoHoy,
+      };
+    }).filter(c => c.saldoTotal > 0 || c.cobradoHoy > 0);
+
+    const totalARuta   = clientesRuta.reduce((s,c) => s + c.saldoTotal, 0);
+    const totalCobrado = clientesRuta.reduce((s,c) => s + c.cobradoHoy, 0);
+    const totalRestante= totalARuta - totalCobrado;
+
+    return(
+      <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
+          <button onClick={()=>setVista("detalle")}
+            style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#888"}}>←</button>
+          <div style={{flex:1}}>
+            <h2 style={{fontFamily:"Playfair Display,serif",fontSize:22,color:"#1a1a1a",margin:0}}>
+              💰 Cobranza en ruta
+            </h2>
+            <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>
+              {ruta.vehiculo} · {ruta.zona}
+            </p>
+          </div>
+        </div>
+
+        {/* Resumen del día */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+          {[
+            {l:"Total a cobrar", v:fmtUSD(totalARuta),    c:"#f59e0b"},
+            {l:"Cobrado hoy",    v:fmtUSD(totalCobrado),  c:G},
+            {l:"Pendiente",      v:fmtUSD(totalRestante),  c:totalRestante>0?"#dc2626":G},
+          ].map(kpi=>(
+            <div key={kpi.l} style={{background:"#fff",borderRadius:10,padding:"12px 16px",
+              boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+              <div style={{fontSize:11,color:"#888",marginBottom:4}}>{kpi.l}</div>
+              <div style={{fontSize:18,fontWeight:800,color:kpi.c}}>{kpi.v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Lista de clientes con deuda */}
+        {clientesRuta.length===0?(
+          <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:12,
+            padding:32,textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:8}}>✅</div>
+            <div style={{fontSize:15,fontWeight:700,color:G}}>Sin deudas en esta ruta</div>
+            <p style={{fontSize:13,color:"#6b7280",marginTop:4}}>
+              Todos los clientes de esta ruta están al día.
+            </p>
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {clientesRuta.map(cli=>(
+              <div key={cli.clienteId} style={{background:"#fff",borderRadius:12,
+                border:cli.cobradoHoy>=cli.saldoTotal?"1px solid #bbf7d0":"1px solid #fde68a",
+                boxShadow:"0 1px 4px rgba(0,0,0,.05)",overflow:"hidden"}}>
+                <div style={{padding:"14px 18px",display:"flex",
+                  alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:160}}>
+                    <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:2}}>
+                      {cli.clienteNombre}
+                    </div>
+                    <div style={{fontSize:12,color:"#6b7280"}}>
+                      {cli.ciudad&&<span>{cli.ciudad} · </span>}
+                      {cli.facturas.length} factura{cli.facturas.length!==1?"s":""}
+                      {cli.cobradoHoy>0&&(
+                        <span style={{marginLeft:8,color:G,fontWeight:700}}>
+                          ✓ Cobrado hoy: {fmtUSD(cli.cobradoHoy)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:18,fontWeight:800,
+                      color:cli.cobradoHoy>=cli.saldoTotal?G:"#f59e0b"}}>
+                      {fmtUSD(cli.saldoTotal)}
+                    </div>
+                    <div style={{fontSize:11,color:"#9ca3af"}}>saldo pendiente</div>
+                  </div>
+                  {cli.cobradoHoy<cli.saldoTotal&&(
+                    <button onClick={()=>{
+                      setCobroPrefill({
+                        clienteId:     cli.clienteId,
+                        clienteNombre: cli.clienteNombre,
+                      });
+                      setShowCobro(true);
+                    }}
+                      style={{padding:"9px 18px",background:G,color:"#fff",border:"none",
+                        borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:700,
+                        whiteSpace:"nowrap"}}>
+                      💰 Cobrar
+                    </button>
+                  )}
+                </div>
+                {/* Facturas detalle */}
+                <div style={{padding:"0 18px 12px",borderTop:"1px solid #f3f4f6"}}>
+                  {cli.facturas.map(f=>(
+                    <div key={f.id} style={{display:"flex",justifyContent:"space-between",
+                      fontSize:12,color:"#6b7280",padding:"3px 0"}}>
+                      <span>{f.numero} · {f.fecha}</span>
+                      <span style={{fontWeight:600,color:"#374151"}}>{fmtUSD(f.saldoPendiente||0)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ModalCobro */}
+        {showCobro&&cobroPrefill&&<ModalCobro
+          clientes={clientes} cfes={cfes} cobros={cobros}
+          prefill={cobroPrefill}
+          onSave={(cobro)=>{
+            setCobros(prev=>[cobro,...prev]);
+            db.upsert('collections',{
+              id:cobro.id, cliente_id:cobro.clienteId,
+              monto:cobro.monto, metodo:cobro.metodo,
+              fecha:cobro.fecha, fecha_cheque:cobro.fechaCheque||null,
+              notas:cobro.notas||'', facturas_aplicar:cobro.facturasAplicar||[],
+              created_at:cobro.createdAt,
+            },'id').catch(()=>setHasPendingSync(true));
+            setShowCobro(false); setCobroPrefill(null);
+          }}
+          onClose={()=>{setShowCobro(false);setCobroPrefill(null);}}
+        />}
+      </section>
+    );
+  }
+
   // HISTORIAL VIEW
   if(vista==="historial"){
     const hist=rutas.flatMap(r=>r.entregas.filter(e=>e.estado==="entregado").map(e=>({...e,vehiculo:r.vehiculo,zona:r.zona})));
@@ -620,6 +778,12 @@ function RutasTab(){
               </button>
             )}
             <button onClick={exportarCSV} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>CSV</button>
+            <button onClick={()=>setVista("cobranza")}
+              style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",
+                      borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,
+                      display:"flex",alignItems:"center",gap:5}}>
+              💰 Cobranza en ruta
+            </button>
             <button onClick={()=>setVista("historial")} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>Historial</button>
           </div>
         </div>
@@ -681,6 +845,20 @@ function RutasTab(){
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
                       {e.clienteNombre}
+                      {(()=>{
+                        const saldoCli=cfes.filter(f=>f.clienteId===e.clienteId&&(f.saldoPendiente||0)>0)
+                          .reduce((s,f)=>s+(f.saldoPendiente||0),0);
+                        if(saldoCli<=0) return null;
+                        return(<span title={"Deuda: US$ "+saldoCli.toFixed(2)}
+                          style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:20,
+                            background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",
+                            marginLeft:6,cursor:"pointer"}}
+                          onClick={ev=>{ev.stopPropagation();
+                            setCobroPrefill({clienteId:e.clienteId,clienteNombre:e.clienteNombre});
+                            setShowCobro(true);}}>
+                          💰 Deuda
+                        </span>);
+                      })()}
                       {isAdmin&&e.estado==="pendiente"&&(()=>{
                         const driver=posiciones.find(p=>p.ruta_id===ruta.id);
                         if(!driver) return null;
