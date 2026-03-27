@@ -1,11 +1,6 @@
 -- ============================================================
 -- REMEDIATION: nroVenta race condition
--- Audit finding: nro_venta generated client-side with Math.max()
--- on local React state. Two concurrent users produce duplicate
--- invoice numbers. No UNIQUE constraint in the DB.
---
--- Fix: Postgres sequence + RPC. Atomic — impossible to duplicate.
--- Safe to re-run (CREATE SEQUENCE IF NOT EXISTS / CREATE OR REPLACE).
+-- Run in Supabase SQL Editor. Safe to re-run.
 -- ============================================================
 
 -- 1. Create sequence starting after current max nro_venta
@@ -45,12 +40,21 @@ END;
 $$;
 
 -- 3. UNIQUE constraint (belt-and-suspenders)
--- NOT VALID: enforces new rows immediately, skips scan of existing data
-ALTER TABLE ventas
-  ADD CONSTRAINT IF NOT EXISTS ventas_nro_venta_unique
-  UNIQUE (nro_venta)
-  NOT VALID;
+-- Skips constraint creation if it already exists
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'ventas_nro_venta_unique'
+    AND conrelid = 'ventas'::regclass
+  ) THEN
+    ALTER TABLE ventas
+      ADD CONSTRAINT ventas_nro_venta_unique UNIQUE (nro_venta)
+      NOT VALID;
+  END IF;
+END $$;
 
 -- Verify:
--- SELECT next_nro_venta();  -- returns 'V-XXXX'
--- SELECT next_nro_venta();  -- returns 'V-XXXX+1'
+-- SELECT next_nro_venta();
+-- SELECT next_nro_venta();
+-- Both should return consecutive V-XXXX values
