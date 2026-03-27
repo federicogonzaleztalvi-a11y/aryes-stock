@@ -2,7 +2,7 @@
 // El código se devuelve en la respuesta para desarrollo (modo sin SMS)
 // Cuando se conecte Twilio, se comenta la línea `code` en la respuesta
 
-const SB_URL      = process.env.SUPABASE_URL     || 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY; // service key para escribir otp_sessions
 const SB_ANON     = process.env.SUPABASE_ANON_KEY;
 

@@ -3,7 +3,7 @@
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
-const SB_URL       = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_URL       = process.env.SUPABASE_URL;
 // No fallback — missing key causes verifySession() to always return null → 401 on every call.
 // Fail loudly: a missing anon key means auth is broken, not silently degraded.
 const SB_ANON_KEY  = process.env.SUPABASE_ANON_KEY;

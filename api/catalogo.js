@@ -2,7 +2,7 @@
 // GET /api/catalogo?org=aryes              â all products (public catalog)
 // GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
 
-const SB_URL  = process.env.SUPABASE_URL     || 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
 const CORS = {

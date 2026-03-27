@@ -2,7 +2,7 @@
 // All Supabase Auth operations use SECURITY DEFINER RPCs (bypasses GoTrue restrictions)
 // UPDATE/DELETE on public.users use service_role key (bypasses RLS)
 
-const SB_URL = process.env.SUPABASE_URL || 'https://mrotnqybqvmvlexncvno.supabase.co';
+const SB_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 
