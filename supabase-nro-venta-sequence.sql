@@ -40,7 +40,6 @@ END;
 $$;
 
 -- 3. UNIQUE constraint (belt-and-suspenders)
--- Skips constraint creation if it already exists
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -49,12 +48,10 @@ BEGIN
     AND conrelid = 'ventas'::regclass
   ) THEN
     ALTER TABLE ventas
-      ADD CONSTRAINT ventas_nro_venta_unique UNIQUE (nro_venta)
-      NOT VALID;
+      ADD CONSTRAINT ventas_nro_venta_unique UNIQUE (nro_venta);
   END IF;
 END $$;
 
 -- Verify:
 -- SELECT next_nro_venta();
 -- SELECT next_nro_venta();
--- Both should return consecutive V-XXXX values
