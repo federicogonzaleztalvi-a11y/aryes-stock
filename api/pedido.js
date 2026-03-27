@@ -1,5 +1,8 @@
 // api/pedido.js — Recibe pedidos del portal B2B y los guarda en b2b_orders
 // Idempotency: si el mismo idempotency_key ya existe, devuelve el pedido existente
+
+import { log, withObservability } from './_log.js';
+
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
@@ -9,8 +12,8 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-export default async function handler(req, res) {
-  Object.entries(CORS).forEach(([k,v]) => res.setHeader(k,v));
+async function handler(req, res) {
+  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   if (!SB_URL || !SB_ANON)    return res.status(500).json({ error: 'Server misconfigured' });
@@ -46,6 +49,7 @@ export default async function handler(req, res) {
     if (checkR.ok) {
       const existing = await checkR.json();
       if (existing?.[0]?.id) {
+        log.info('pedido', 'idempotent hit', { orderId: existing[0].id, idempotencyKey });
         return res.status(200).json({ ok: true, orderId: existing[0].id, idempotent: true });
       }
     }
@@ -65,21 +69,25 @@ export default async function handler(req, res) {
   };
 
   const r = await fetch(`${SB_URL}/rest/v1/b2b_orders`, {
-    method: 'POST',
+    method:  'POST',
     headers: { ...headers, Prefer: 'return=representation' },
-    body: JSON.stringify(order),
+    body:    JSON.stringify(order),
   });
 
   if (!r.ok) {
     const err = await r.text();
-    // Conflict en idempotency_key — race condition, devolver éxito igual
+    // Conflict en idempotency_key — race condition, devolver éxito
     if (r.status === 409 && idempotencyKey) {
+      log.warn('pedido', 'idempotency conflict (race)', { idempotencyKey });
       return res.status(200).json({ ok: true, idempotent: true });
     }
-    console.error('[pedido] Supabase error:', r.status, err);
+    log.error('pedido', 'db error', { status: r.status, body: err.substring(0, 200) });
     return res.status(502).json({ error: 'Error al guardar el pedido' });
   }
 
   const saved = await r.json();
+  log.info('pedido', 'created', { orderId: saved?.[0]?.id, org, total });
   return res.status(200).json({ ok: true, orderId: saved?.[0]?.id });
 }
+
+export default withObservability('pedido', handler);

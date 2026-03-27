@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
+import { useErrorReporting } from './hooks/useErrorReporting.ts';
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
@@ -121,6 +122,7 @@ function LoginScreen({ onLogin }) {
 
 // ── Root: owns auth state, renders Login OR App ───────────────────
 function Root() {
+  useErrorReporting(); // captura errores JS globales y promises sin catch
   const [session, setSession] = useState(() => readSession());
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem(ONBOARDING_KEY); }
