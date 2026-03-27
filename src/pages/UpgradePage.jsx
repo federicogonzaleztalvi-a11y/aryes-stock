@@ -33,7 +33,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
     setErr('');
     try {
       // MercadoPago — cambiar a /api/stripe cuando tengas LLC en Delaware
-      const r = await fetch('/api/mercadopago', {
+      const r = await fetch('/api/payments', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
