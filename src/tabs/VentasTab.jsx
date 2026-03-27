@@ -1,9 +1,30 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db } from '../lib/constants.js';
+import { db, SB_URL, SKEY, getAuthHeaders } from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
+
+// ── fetchNextNroVenta — calls Postgres sequence via RPC ───────────────────────
+// Atomic: impossible to produce duplicates regardless of concurrent users.
+// Falls back to local Math.max() only if the RPC fails (e.g. offline).
+async function fetchNextNroVenta(ventasLocal) {
+  try {
+    const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/next_nro_venta`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    });
+    if (r.ok) {
+      const nro = await r.json();
+      if (typeof nro === 'string' && nro.startsWith('V-')) return nro;
+    }
+  } catch { /* fallback below */ }
+  // Offline fallback — still better than nothing
+  const nums = (ventasLocal || []).map(v => parseInt((v.nroVenta || 'V-0000').replace('V-', '')) || 0);
+  return 'V-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
+}
 
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
@@ -155,11 +176,7 @@ function VentasTab(){
         clienteNombre:cl?.nombre||form.clienteNombre,
         total:totalVenta(form.items,form.descuento),
         estado:'pendiente',
-        nroVenta:(()=>{
-          // Use max existing nroVenta to avoid collisions with cancelled sales
-          const nums=ventas.map(v=>parseInt((v.nroVenta||'V-0000').replace('V-',''))||0);
-          return 'V-'+String((nums.length?Math.max(...nums):0)+1).padStart(4,'0');
-        })(),
+        nroVenta: await fetchNextNroVenta(ventas),
         creadoEn:new Date().toISOString()
       };
 
@@ -490,12 +507,12 @@ function VentasTab(){
       </div>
       <MsgBanner/>
       {/* ââ Pedidos del portal B2B âââââââââââââââââââââââââââââââââââââââ */}
-      <PedidosPortalPanel onImportar={(order)=>{
+      <PedidosPortalPanel onImportar={async (order)=>{
         // Convert portal order to venta
         const _cli=clientes.find(c=>c.id===order.cliente_id);
         const newVenta={
           id:crypto.randomUUID(),
-          nroVenta:'V-'+String(Math.max(0,...ventas.map(v=>parseInt(v.nroVenta?.replace('V-','')||0)))+1).padStart(4,'0'),
+          nroVenta: await fetchNextNroVenta(ventas),
           clienteId:order.cliente_id||'',
           clienteNombre:order.cliente_nombre,
           items:order.items.map(it=>({...it,costoUnit:0})),
