@@ -6,6 +6,8 @@ import { useRole } from '../hooks/useRole.ts';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 
 // ── Haversine distance (km) between two lat/lng points ────────────────────
+import GeneradorRuta from '../components/GeneradorRuta.jsx';
+
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -198,6 +200,7 @@ function RutasTab(){
   };
   const [vista,setVista]=useState("lista");
   const [rutaActiva,setRutaActiva]=useState(null);
+  const [showGenerador, setShowGenerador] = useState(false);
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
   const [msg,setMsg]=useState("");
   const [busqCli,setBusqCli]=useState("");
@@ -1064,7 +1067,13 @@ function RutasTab(){
           <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>Rutas de Reparto</h2>
           <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>Planifica y gestiona las rutas de entrega</p>
         </div>
-        <button onClick={()=>setVista("historial")} style={{padding:"8px 16px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:13}}>Ver historial</button>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setShowGenerador(true)}
+            style={{padding:"9px 20px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
+            🤖 Generar desde pedidos
+          </button>
+          <button onClick={()=>setVista("historial")} style={{padding:"8px 16px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:13}}>Ver historial</button>
+        </div>
       </div>
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       {isAdmin&&<div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:20}}>
@@ -1228,5 +1237,16 @@ function RutasTab(){
     </section></>
   );
 }
+
+      {showGenerador && (
+        <GeneradorRuta
+          onClose={() => setShowGenerador(false)}
+          onCreada={(ruta) => {
+            setShowGenerador(false);
+            setRutaActiva(ruta.id);
+            setVista('detalle');
+          }}
+        />
+      )}
 
 export default RutasTab;
