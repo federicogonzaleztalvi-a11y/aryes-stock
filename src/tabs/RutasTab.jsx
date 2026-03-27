@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { db, SB_URL, SKEY } from '../lib/constants.js';
+import { db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
 import { useRole } from '../hooks/useRole.ts';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 
@@ -130,7 +130,7 @@ function RutasTab(){
 
   const fetchPosiciones = useCallback(async () => {
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/aryes_tracking?select=*`,
+      const r = await fetch(`${SB_URL}/rest/v1/aryes_tracking?select=*&org_id=eq.${getOrgId()}`,
         { headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY } });
       const d = await r.json();
       if (Array.isArray(d)) setPosiciones(d);

@@ -2,6 +2,7 @@
 // Se usa en VentasTab. El admin ve los pedidos entrantes y los importa con un click.
 
 import { useState, useEffect, useCallback } from 'react';
+import { getOrgId } from '../lib/constants.js';
 
 const G = '#3a7d1e';
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -36,7 +37,7 @@ export default function PedidosPortalPanel({ onImportar }) {
       const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
       const token   = session?.access_token || SKEY;
       const r = await fetch(
-        `${SB_URL}/rest/v1/b2b_orders?estado=eq.pendiente&order=creado_en.desc&limit=20`,
+        `${SB_URL}/rest/v1/b2b_orders?estado=eq.pendiente&org_id=eq.${getOrgId()}&order=creado_en.desc&limit=20`,
         { headers: { apikey: SKEY, Authorization: `Bearer ${token}`, Accept: 'application/json' } }
       );
       const d = await r.json();
