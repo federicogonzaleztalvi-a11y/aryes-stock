@@ -26,6 +26,22 @@ async function fetchNextNroVenta(ventasLocal) {
   return 'V-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
 }
 
+// ── callRpc — invoca una función Postgres SECURITY DEFINER ───────────────────
+// Thin wrapper over the Supabase RPC endpoint.
+// Returns { data } on success, throws on error with parsed message.
+async function callRpc(fnName, params = {}) {
+  const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fnName}`, {
+    method:  'POST',
+    headers,
+    body:    JSON.stringify(params),
+  });
+  if (r.ok) return { data: await r.json() };
+  const err = await r.json().catch(() => ({}));
+  // Postgres RAISE EXCEPTION messages come through as err.message
+  throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
+}
+
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
@@ -195,43 +211,41 @@ function VentasTab(){
       });
       setProducts(updProds);
 
-      // Persist stock to Supabase â patchWithLock prevents concurrent overwrites
-      // lockField='stock', lockValue=stockBefore ensures we only patch if DB still matches
-      const stockWrites=form.items.map(it=>{
-        const newStock=updProds.find(p=>p.id===it.productoId)?.stock;
-        if(newStock===undefined) return Promise.resolve();
-        return db.patchWithLock('products',{stock:newStock,updated_at:now},'uuid=eq.'+it.productoId,'stock',stockBefore[it.productoId]);
-      });
-      const stockResults=await Promise.allSettled(stockWrites);
-      const stockFailed=stockResults.filter(r=>r.status==='rejected').length;
-      if(stockFailed>0){
-        console.warn('[Stock] venta stock patchWithLock: '+stockFailed+' writes failed â data safe in localStorage');
-        setMsg({text:'â  Venta guardada localmente. '+stockFailed+' producto(s) no sincronizaron con el servidor â se sincronizarÃ¡n al reconectar.',type:'warn'});
-      }
-
-      // Register movements for each item
-      if(addMov){
-        form.items.forEach(it=>{
-          addMov({type:'venta',productId:it.productoId,productName:it.nombre,supplierId:'',supplierName:'',qty:it.cantidad,unit:it.unidad,stockAfter:updProds.find(p=>p.id===it.productoId)?.stock,note:`Venta ${venta.nroVenta} â ${cl?.nombre||venta.clienteNombre}`});
+      // ── Atomic DB write via create_venta RPC ──────────────────────────────
+      // One Postgres transaction: validate stock + deduct + movements + venta + audit.
+      // If anything fails, Postgres rolls back everything — no partial state.
+      // Optimistic UI above gives immediate feedback; on error we revert.
+      try {
+        const userEmail = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema'; } catch { return 'sistema'; } })();
+        await callRpc('create_venta', {
+          p_id:             venta.id,
+          p_nro_venta:      venta.nroVenta,
+          p_cliente_id:     venta.clienteId || '',
+          p_cliente_nombre: venta.clienteNombre || '',
+          p_items:          venta.items,
+          p_total:          venta.total,
+          p_descuento:      venta.descuento || 0,
+          p_notas:          venta.notas || '',
+          p_fecha_entrega:  venta.fechaEntrega || '',
+          p_creado_en:      venta.creadoEn,
+          p_user_email:     userEmail,
         });
+      } catch (rpcErr) {
+        // RPC failed — revert optimistic UI to keep client consistent with DB
+        setProducts(products); // restore pre-optimistic products
+        const errMsg = rpcErr?.message || '';
+        if (errMsg.includes('insufficient_stock')) {
+          const parts = errMsg.split(':');
+          showMsg(`Stock insuficiente: ${parts[1]||'producto'} — disponible ${parts[2]||'?'}, solicitado ${parts[3]||'?'}`,'err');
+        } else if (errMsg.includes('authentication_required')) {
+          showMsg('Sesión expirada. Recargá la página.', 'err');
+        } else {
+          showMsg('Error al guardar la venta. Verificá tu conexión e intentá de nuevo.', 'err');
+          console.error('[VentasTab] create_venta RPC failed:', errMsg);
+        }
+        setSaving(false);
+        return;
       }
-
-      // Persist venta to Supabase
-      try{
-        await db.insert('ventas',{
-          id:venta.id,nro_venta:venta.nroVenta,
-          cliente_id:venta.clienteId||null,cliente_nombre:venta.clienteNombre||null,
-          items:venta.items,total:venta.total,descuento:venta.descuento||0,
-          estado:venta.estado,notas:venta.notas||null,
-          fecha_entrega:venta.fechaEntrega||null,creado_en:venta.creadoEn,
-        });
-      }catch { /* non-blocking */ }
-
-      // Audit log
-      try{await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,
-        user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch { /* non-blocking */ }})(),
-        action:'venta_creada',detail:JSON.stringify({id:venta.id,nroVenta:venta.nroVenta,clienteNombre:venta.clienteNombre,total:venta.total})
-      });}catch { /* non-blocking */ }
 
       const upd=[venta,...ventas];
       setVentas(upd);
@@ -251,25 +265,28 @@ function VentasTab(){
       showMsg('â  Estado actualizado localmente â no se pudo sincronizar con el servidor','warn');
     });
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
-      // Restore stock on cancel â patchWithLock prevents concurrent overwrites
+      // Optimistic UI: restore stock locally immediately
       const updProds=[...products];
       const now=new Date().toISOString();
-      const restoreWrites=[];
       venta.items?.forEach(it=>{
         const idx=updProds.findIndex(p=>p.id===it.productoId);
         if(idx>-1){
-          const stockAntes=Number(updProds[idx].stock||0);
-          const restoredStock=stockAntes+Number(it.cantidad);
+          const restoredStock=(updProds[idx].stock||0)+Number(it.cantidad);
           updProds[idx]={...updProds[idx],stock:restoredStock,updatedAt:now};
-          restoreWrites.push(
-            db.patchWithLock('products',{stock:restoredStock,updated_at:now},'uuid=eq.'+it.productoId,'stock',stockAntes)
-              .catch(e=>{console.warn('[VentasTab] stock restore patchWithLock failed:',e?.message||e);setHasPendingSync(true);})
-          );
         }
       });
       setProducts(updProds);
-      Promise.allSettled(restoreWrites);
-      showMsg('Venta cancelada â stock restaurado','ok');
+
+      // Atomic DB cancel via RPC
+      const userEmail=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch{return 'sistema';}})();
+      callRpc('cancel_venta',{p_venta_id:id,p_user_email:userEmail})
+        .then(()=>{ showMsg('Venta cancelada — stock restaurado','ok'); })
+        .catch(e=>{
+          // RPC failed — revert optimistic stock restore
+          setProducts(products);
+          console.error('[VentasTab] cancel_venta RPC failed:',e?.message);
+          showMsg('Error al cancelar la venta. Intentá de nuevo.','err');
+        });
     } else if(estado==='entregada'){
       const cl=clientes.find(c=>c.id===venta?.clienteId);
       const tel=cl?.telefono||'';
