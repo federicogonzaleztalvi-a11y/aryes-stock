@@ -868,14 +868,14 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
             <input
               readOnly
               onClick={()=>setCmdOpen(true)}
-              placeholder="Buscar todo→¦  →K"
+              placeholder="Buscar todo…  ⌘K"
               style={{width:"100%",boxSizing:"border-box",padding:"7px 12px 7px 32px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.textXs,background:T.muted,outline:"none",cursor:"pointer"}}
             />
           </div>
           <div style={{flex:1}}/>
           <QuickStats critN={critN} orders={orders} />
           <NotificationBell critN={critN} orders={orders} setTab={setTab} />
-          <button onClick={()=>setCmdOpen(true)} title="Paleta de comandos (→K)"
+          <button onClick={()=>setCmdOpen(true)} title="Paleta de comandos (⌘K)"
             style={{display:'flex',alignItems:'center',gap:6,background:T.muted,border:`1px solid ${T.border}`,
               borderRadius:7,padding:'5px 10px',cursor:'pointer',fontFamily:T.sans,fontSize:11,
               color:T.textSm,transition:'all .12s',marginRight:8}}
