@@ -6,7 +6,8 @@
     "api/catalogo.js":   { "maxDuration": 10 },
     "api/pedido.js":     { "maxDuration": 10 },
     "api/otp-send.js":   { "maxDuration": 15 },
-    "api/otp-verify.js": { "maxDuration": 10 }
+    "api/otp-verify.js": { "maxDuration": 10 },
+    "api/historial.js":  { "maxDuration": 10 }
   },
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
