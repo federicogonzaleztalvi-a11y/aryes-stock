@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, db } from '../lib/constants.js';
+import { LS, db, SB_URL, getAuthHeaders } from '../lib/constants.js';
+
+
+// ── callRpc — invoca una función Postgres SECURITY DEFINER ───────────────────
+async function callRpc(fnName, params = {}) {
+  const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fnName}`, {
+    method: 'POST', headers, body: JSON.stringify(params),
+  });
+  if (r.ok) return { data: await r.json() };
+  const err = await r.json().catch(() => ({}));
+  throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
+}
 
 function RecepcionTab(){
   const { products: prods, setProducts: setProds, orders: pedidos, addMov, lotes, setLotes } = useApp();
@@ -75,10 +87,8 @@ function RecepcionTab(){
     if(items.length===0){setMsg('No hay items');return;}
     const ahora=new Date().toISOString();
 
-    // 1. Update stock
+    // ── Optimistic UI: update stock locally for immediate feedback ─────────
     const updProds=[...prods];
-    // Capture stock BEFORE receiving — needed as lock value for patchWithLock
-    const stockBefore={};
     items.forEach(it=>{
       if(!it.nombre||Number(it.cantidadRecibida)===0)return;
       const idx=updProds.findIndex(p=>
@@ -87,121 +97,78 @@ function RecepcionTab(){
         p.name?.toLowerCase()===it.nombre.toLowerCase()
       );
       if(idx>-1){
-        stockBefore[updProds[idx].id]=Number(updProds[idx].stock||0);
         updProds[idx]={...updProds[idx],stock:(Number(updProds[idx].stock||0)+Number(it.cantidadRecibida))};
       }
     });
     setProds(updProds);
 
-    // Register a stock movement for each received item
-    // type:'delivery' matches the existing MovementType and AppContext conventions
-    items.forEach(it=>{
-      if(!it.nombre||Number(it.cantidadRecibida)===0) return;
-      const prod=updProds.find(p=>
-        p.id===it.productoId||
-        p.nombre?.toLowerCase()===it.nombre.toLowerCase()||
-        p.name?.toLowerCase()===it.nombre.toLowerCase()
-      );
-      if(!prod) return;
-      const ref=nroRemito
-        ? `Recepcion${pedidoSel?' (pedido)':' (manual)'} — remito ${nroRemito}`
-        : `Recepcion${pedidoSel?' (pedido)':' (manual)'}`;
-      addMov({
-        type:       'delivery',
-        productId:  prod.id,
-        productName:prod.nombre||prod.name||it.nombre,
-        qty:        Number(it.cantidadRecibida),
-        unit:       prod.unit||prod.unidad||it.unidad||'u',
-        stockAfter: prod.stock,
-        supplierId: pedidoSel?.supplierId||'',
-        supplierName:proveedor||'',
-        note:       ref,
-      });
-    });
-
-    // Persist stock to Supabase — patchWithLock prevents concurrent overwrites
-    const stockPatches = items
-      .filter(it=>it.nombre&&Number(it.cantidadRecibida)>0)
-      .map(it=>{
-        const p=updProds.find(x=>x.id===it.productoId||x.nombre?.toLowerCase()===it.nombre.toLowerCase()||x.name?.toLowerCase()===it.nombre.toLowerCase());
-        if(!p||stockBefore[p.id]===undefined) return Promise.resolve();
-        return db.patchWithLock('products',{stock:p.stock,updated_at:ahora},'uuid=eq.'+p.id,'stock',stockBefore[p.id]);
-      });
-    Promise.allSettled(stockPatches).then(results=>{
-      const failed=results.filter(r=>r.status==='rejected').length;
-      if(failed>0){
-        console.warn('[Recepcion] '+failed+' patchWithLock(s) failed — data safe in localStorage');
-        setMsg('⚠ Recepcion guardada. '+failed+' producto(s) no sincronizaron con el servidor.');
-      }
-    });
-
-    // 2. Create lots for items with vencimiento
+    // ── Optimistic UI: add lotes locally ────────────────────────────────────
     const updLotes=[...lotes];
-    const nuevosLotes=[];
     items.forEach(it=>{
       if(!it.vencimiento||Number(it.cantidadRecibida)===0)return;
       const prod=updProds.find(p=>p.id===it.productoId||p.nombre?.toLowerCase()===it.nombre.toLowerCase()||p.name?.toLowerCase()===it.nombre.toLowerCase());
-      const nuevoLote={
+      updLotes.push({
         id:crypto.randomUUID(),
         productoId:prod?.id||it.productoId,
         productoNombre:it.nombre,
-        lote:it.lote||('REC-'+Date.now()),
+        lote:it.lote||(`REC-${Date.now()}`),
         cantidad:Number(it.cantidadRecibida),
         fechaVenc:it.vencimiento,
-        proveedor:proveedor,
+        proveedor,
         notas:'Ingreso por recepcion',
         creadoEn:ahora,
-      };
-      updLotes.push(nuevoLote);
-      nuevosLotes.push(nuevoLote);
+      });
     });
     setLotes(updLotes);
-    // Persist new lots to Supabase (non-blocking)
-    nuevosLotes.forEach(l=>{
-      db.upsert('lotes',{
-        id:l.id, producto_id:l.productoId, producto_nombre:l.productoNombre,
-        lote:l.lote, fecha_venc:l.fechaVenc||null, cantidad:l.cantidad,
-        proveedor:l.proveedor||'', notas:l.notas||'', creado_en:l.creadoEn,
-        updated_at:l.creadoEn,
-      },'id').catch(e=>console.warn('[RecepcionTab] lote upsert failed:',e?.message||e));
-    });
 
-    // 3. Save recepcion record
+    // ── Optimistic UI: add recepcion to local list ──────────────────────────
+    const recId=crypto.randomUUID();
     const rec={
-      id:crypto.randomUUID(),
-      fecha,
-      proveedor,
-      nroRemito,
-      notas,
-      pedidoId:pedidoSel?.id||null,
-      items,
-      estado:'completada',
-      creadoEn:ahora,
-      diferencias:items.filter(it=>it.diferencia!==0).length
+      id:recId, fecha, proveedor, nroRemito, notas,
+      pedidoId:pedidoSel?.id||null, items,
+      estado:'completada', creadoEn:ahora,
+      diferencias:items.filter(it=>it.diferencia!==0).length,
     };
     const updRec=[rec,...recepciones];
     setRecepciones(updRec);
     LS.set(KREC,updRec);
-    // Supabase: persist recepcion server-side
-    try{
-      await db.insert('recepciones',{
-        id: rec.id,
-        fecha: rec.fecha||null,
-        proveedor: rec.proveedor||null,
-        nro_remito: rec.nroRemito||null,
-        notas: rec.notas||null,
-        pedido_id: rec.pedidoId||null,
-        items: rec.items,
-        estado: rec.estado,
-        diferencias: rec.diferencias||0,
-        creado_en: rec.creadoEn,
+
+    // ── Atomic DB write via create_recepcion RPC ─────────────────────────────
+    // One Postgres transaction: stock increments + movements + lotes + recepcion + audit.
+    // On error: revert all optimistic state updates.
+    const userEmail=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch{return 'sistema';}})();
+    try {
+      await callRpc('create_recepcion', {
+        p_id:         recId,
+        p_fecha:      fecha || '',
+        p_proveedor:  proveedor || '',
+        p_nro_remito: nroRemito || '',
+        p_notas:      notas || '',
+        p_pedido_id:  pedidoSel?.id || '',
+        p_items:      items,
+        p_user_email: userEmail,
       });
-    }catch { /* non-blocking */ }
-    // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch { /* non-blocking */ }})(),action:'recepcion',detail:JSON.stringify({id:rec.id,proveedor:rec.proveedor,items:rec.items?.length||0,diferencias:rec.diferencias})}); }catch { /* non-blocking */ }
+    } catch (rpcErr) {
+      // Revert all optimistic state
+      setProds(prods);
+      setLotes(lotes);
+      setRecepciones(recepciones);
+      LS.set(KREC, recepciones);
+      const errMsg = rpcErr?.message || '';
+      if (errMsg.includes('authentication_required')) {
+        setMsg('Sesión expirada. Recargá la página.');
+      } else if (errMsg.includes('product_not_found')) {
+        const parts = errMsg.split(':');
+        setMsg(`Producto no encontrado: ${parts[1]||'desconocido'}. Verificá el catálogo.`);
+      } else {
+        setMsg('Error al confirmar la recepción. Verificá tu conexión e intentá de nuevo.');
+        console.error('[RecepcionTab] create_recepcion RPC failed:', errMsg);
+      }
+      setSaving(false);
+      return;
+    }
 
-
-    setMsg('Recepcion confirmada. Stock actualizado.');
+    setMsg('Recepción confirmada. Stock actualizado.');
     setVista('lista');
     setTimeout(()=>setMsg(''),4000);
       }finally{setSaving(false);}
