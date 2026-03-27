@@ -14,9 +14,10 @@ export default function ConfigInline({
 }) {
   // ── Brand config state — top level, no IIFE ──────────────────────────────
   const [localBrand, setLocalBrand] = useState({
-    name:    brandCfg.name    || '',
-    logoUrl: brandCfg.logoUrl || '',
-    color:   brandCfg.color   || '#3a7d1e',
+    name:       brandCfg.name       || '',
+    logoUrl:    brandCfg.logoUrl    || '',
+    color:      brandCfg.color      || '#3a7d1e',
+    ownerPhone: brandCfg.ownerPhone || '',
   });
   const [brandSaving, setBrandSaving] = useState(false);
   const [brandSaved,  setBrandSaved]  = useState(false);
@@ -24,9 +25,10 @@ export default function ConfigInline({
   // Sync localBrand when parent brandCfg changes (e.g. after initial DB load)
   useEffect(() => {
     setLocalBrand({
-      name:    brandCfg.name    || '',
-      logoUrl: brandCfg.logoUrl || '',
-      color:   brandCfg.color   || '#3a7d1e',
+      name:       brandCfg.name       || '',
+      logoUrl:    brandCfg.logoUrl    || '',
+      color:      brandCfg.color      || '#3a7d1e',
+      ownerPhone: brandCfg.ownerPhone || '',
     });
   }, [brandCfg.name, brandCfg.logoUrl, brandCfg.color]);
 
@@ -133,6 +135,17 @@ export default function ConfigInline({
                       Vista previa
                     </div>
                   </div>
+                </div>
+
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Teléfono para resumen WhatsApp</label>
+                  <input
+                    value={localBrand.ownerPhone||''}
+                    onChange={e=>setLocalBrand(b=>({...b,ownerPhone:e.target.value}))}
+                    placeholder='Ej: 59899123456 (con código de país)'
+                    style={inp2}
+                  />
+                  <div style={{fontSize:11,color:'#9a9a98',marginTop:4}}>Tu número de WhatsApp. El resumen diario se enviará directo a este número desde el Dashboard.</div>
                 </div>
 
                 <div style={{paddingTop:8,borderTop:'1px solid #e2e2de',display:'flex',alignItems:'center',gap:12}}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
+import WhatsAppDashboard from '../components/WhatsAppDashboard.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import SetupChecklist from '../components/SetupChecklist.jsx';
 import AlertasPanel from '../components/AlertasPanel.jsx';
@@ -216,6 +217,9 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   return (
     <div className="au" style={{display:'grid',gap:24,fontFamily:F.sans}}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400&family=Playfair+Display:wght@400;500&display=swap"/>
+
+      {/* ── WhatsApp resumen diario ─────────────────────────────────── */}
+      <WhatsAppDashboard />
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>
