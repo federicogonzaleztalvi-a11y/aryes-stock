@@ -149,23 +149,24 @@ const describeAction = (action: string, detail: string): string => {
     })();
   }, [session?.role]);  
 
-  // ── Load operational data (movements, ventas, recepciones) ────────────────
+  // ── Load operational data — parallelized into 3 independent batches ────────
+  // REMEDIATION: was 15 sequential awaits in one try/catch.
+  // A single failure blocked all subsequent loads silently.
+  // Now: 3 parallel batches, each with independent error handling.
+  // A failure in one batch does not affect the others.
   useEffect(() => {
     if (!session) return;
     (async () => {
+
+      // ── Batch A: commercial data (critical for daily ops UI) ──────────────
+      const [sbVentas, sbClients, sbCollections, sbInvoices] = await Promise.all([
+        db.get<Record<string, any>[]>('ventas?order=creado_en.desc&limit=500'),
+        db.get<Record<string, any>[]>('clients?order=created_at.asc&limit=2000'),
+        db.get<Record<string, any>[]>('collections?order=created_at.desc&limit=500'),
+        db.get<Record<string, any>[]>('invoices?order=created_at.desc&limit=500'),
+      ]);
+
       try {
-        const sbMovs = await db.get<Record<string, any>[]>('stock_movements?order=timestamp.desc&limit=2000');
-        if (sbMovs?.length > 0) {
-          const mapped = sbMovs.map(r => ({ id:r.id, tipo:r.tipo, productoId:r.producto_id, productoNombre:r.producto_nombre, cantidad:r.cantidad, referencia:r.referencia, notas:r.notas, fecha:r.fecha, timestamp:r.timestamp }));
-          setMovements(mapped as unknown as Movement[]); LS.set('aryes8-movements', mapped);
-        } else {
-          const lsMovs = LS.get<any[]>('aryes8-movements', []);
-          if (lsMovs.length > 0 && session.role !== 'vendedor') {
-            const rows = lsMovs.map(m => ({ id:m.id, tipo:m.tipo, producto_id:m.productoId, producto_nombre:m.productoNombre, cantidad:m.cantidad, referencia:m.referencia, notas:m.notas, fecha:m.fecha, timestamp:m.timestamp || new Date().toISOString() }));
-            db.insertMany('stock_movements', rows).catch(e => console.warn('[AppContext] movement backfill failed:', e?.message || e));
-          }
-        }
-        const sbVentas = await db.get<Record<string, any>[]>('ventas?order=creado_en.desc&limit=500');
         if (sbVentas?.length > 0) {
           const mappedVentas: Venta[] = sbVentas.map(r => ({
             id: r.id, nroVenta: r.nro_venta, clienteId: r.cliente_id || '',
@@ -174,37 +175,8 @@ const describeAction = (action: string, detail: string): string => {
             notas: r.notas || '', fechaEntrega: r.fecha_entrega || null, creadoEn: r.creado_en,
             tieneDevolucion: r.tiene_devolucion || false,
           }));
-          setVentas(mappedVentas); // ← updates AppContext state — reactive
-          // LS.set is handled by the useEffect above
+          setVentas(mappedVentas);
         }
-        // Load invoices (cfes) from Supabase
-        const sbInvoices = await db.get<Record<string, any>[]>('invoices?order=created_at.desc&limit=500');
-        if (sbInvoices?.length > 0) {
-          const mappedCfes: Cfe[] = sbInvoices.map(r => ({
-            id: r.id, numero: r.numero||'', tipo: r.tipo||'', moneda: r.moneda||'UYU',
-            fecha: r.fecha||'', fechaVenc: r.fecha_venc||null,
-            clienteId: r.cliente_id||null, clienteNombre: r.cliente_nombre||'',
-            clienteRut: r.cliente_rut||'', subtotal: r.subtotal||0,
-            ivaTotal: r.iva_total||0, descuento: r.descuento||0,
-            total: r.total||0, saldoPendiente: r.saldo_pendiente||0,
-            status: r.status||'borrador', items: r.items||[], notas: r.notas||'',
-            createdAt: r.created_at||'',
-          }));
-          setCfes(mappedCfes); // reactive — LS.set handled by useEffect
-        }
-        // Load collections (cobros) from Supabase
-        const sbCollections = await db.get<Record<string, any>[]>('collections?order=created_at.desc&limit=500');
-        if (sbCollections?.length > 0) {
-          const mappedCobros: Cobro[] = sbCollections.map(r => ({
-            id: r.id, clienteId: r.cliente_id||null, monto: r.monto||0,
-            metodo: r.metodo||'', fecha: r.fecha||'', fechaCheque: r.fecha_cheque||null,
-            notas: r.notas||'', facturasAplicar: r.facturas_aplicar||[],
-            createdAt: r.created_at||'',
-          }));
-          setCobros(mappedCobros); // reactive — LS.set handled by useEffect
-        }
-        // Load clients from Supabase
-        const sbClients = await db.get<Record<string, any>[]>('clients?order=created_at.asc&limit=2000');
         if (sbClients?.length > 0) {
           const mappedClientes: Cliente[] = sbClients.map(r => ({
             id: r.id, nombre: r.nombre||r.name||'', tipo: r.tipo||r.type||'',
@@ -221,10 +193,53 @@ const describeAction = (action: string, detail: string): string => {
             geocodedAt: r.geocoded_at || null,
             notas: r.notas||'', creado: r.created_at||'',
           }));
-          setClientes(mappedClientes); // reactive — LS.set handled by useEffect
+          setClientes(mappedClientes);
         }
-        // Load lotes from Supabase
-        const sbLotes = await db.get<Record<string, any>[]>('lotes?order=fecha_venc.asc.nullslast&limit=2000');
+        if (sbCollections?.length > 0) {
+          const mappedCobros: Cobro[] = sbCollections.map(r => ({
+            id: r.id, clienteId: r.cliente_id||null, monto: r.monto||0,
+            metodo: r.metodo||'', fecha: r.fecha||'', fechaCheque: r.fecha_cheque||null,
+            notas: r.notas||'', facturasAplicar: r.facturas_aplicar||[],
+            createdAt: r.created_at||'',
+          }));
+          setCobros(mappedCobros);
+        }
+        if (sbInvoices?.length > 0) {
+          const mappedCfes: Cfe[] = sbInvoices.map(r => ({
+            id: r.id, numero: r.numero||'', tipo: r.tipo||'', moneda: r.moneda||'UYU',
+            fecha: r.fecha||'', fechaVenc: r.fecha_venc||null,
+            clienteId: r.cliente_id||null, clienteNombre: r.cliente_nombre||'',
+            clienteRut: r.cliente_rut||'', subtotal: r.subtotal||0,
+            ivaTotal: r.iva_total||0, descuento: r.descuento||0,
+            total: r.total||0, saldoPendiente: r.saldo_pendiente||0,
+            status: r.status||'borrador', items: r.items||[], notas: r.notas||'',
+            createdAt: r.created_at||'',
+          }));
+          setCfes(mappedCfes);
+        }
+      } catch (e) { console.warn('[AppContext] batch-A (commercial) failed:', e); }
+
+      // ── Batch B: operations data ─────────────────────────────────────────
+      const [sbMovs, sbLotes, sbRutas, sbDevs, sbConteos] = await Promise.all([
+        db.get<Record<string, any>[]>('stock_movements?order=timestamp.desc&limit=2000'),
+        db.get<Record<string, any>[]>('lotes?order=fecha_venc.asc.nullslast&limit=2000'),
+        db.get<Record<string, any>[]>('rutas?order=creado_en.desc&limit=200'),
+        db.get<Record<string, any>[]>('devoluciones?order=creado_en.desc&limit=500'),
+        db.get<Record<string, any>[]>('conteos?order=creado_en.desc&limit=200'),
+      ]);
+
+      try {
+        if (sbMovs?.length > 0) {
+          const mapped = sbMovs.map(r => ({ id:r.id, tipo:r.tipo, productoId:r.producto_id, productoNombre:r.producto_nombre, cantidad:r.cantidad, referencia:r.referencia, notas:r.notas, fecha:r.fecha, timestamp:r.timestamp }));
+          setMovements(mapped as unknown as Movement[]); LS.set('aryes8-movements', mapped);
+        } else {
+          // Backfill localStorage → Supabase if Supabase returned empty
+          const lsMovs = LS.get<any[]>('aryes8-movements', []);
+          if (lsMovs.length > 0 && session.role !== 'vendedor') {
+            const rows = lsMovs.map(m => ({ id:m.id, tipo:m.tipo, producto_id:m.productoId, producto_nombre:m.productoNombre, cantidad:m.cantidad, referencia:m.referencia, notas:m.notas, fecha:m.fecha, timestamp:m.timestamp || new Date().toISOString() }));
+            db.insertMany('stock_movements', rows).catch(e => console.warn('[AppContext] movement backfill failed:', e?.message || e));
+          }
+        }
         if (sbLotes?.length > 0) {
           const mappedLotes: Lote[] = sbLotes.map(r => ({
             id: r.id, productoId: r.producto_id||'', productoNombre: r.producto_nombre||'',
@@ -232,31 +247,8 @@ const describeAction = (action: string, detail: string): string => {
             cantidad: Number(r.cantidad)||0, proveedor: r.proveedor||'',
             notas: r.notas||'', creadoEn: r.creado_en||'',
           }));
-          setLotes(mappedLotes); // reactive — LS.set handled by useEffect
+          setLotes(mappedLotes);
         }
-        // Load devoluciones from Supabase
-        const sbDevs = await db.get<Record<string, any>[]>('devoluciones?order=creado_en.desc&limit=500');
-        if (sbDevs?.length > 0) {
-          const mappedDevs: Devolucion[] = sbDevs.map(r => ({
-            id: r.id, nroDevolucion: r.nro_devolucion||'', ventaId: r.venta_id||'',
-            clienteNombre: r.cliente_nombre||'', motivo: r.motivo||'',
-            notas: r.notas||'', items: r.items||[], estado: r.estado||'procesada',
-            fecha: r.fecha||'', creadoEn: r.creado_en||'',
-          }));
-          setDevoluciones(mappedDevs); // reactive — LS.set handled by useEffect
-        }
-        // Load conteos from Supabase
-        const sbConteos = await db.get<Record<string, any>[]>('conteos?order=creado_en.desc&limit=200');
-        if (sbConteos?.length > 0) {
-          const mappedConteos: Conteo[] = sbConteos.map(r => ({
-            id: r.id, fecha: r.fecha||'', items: r.items||[],
-            completado: r.completado||false, creadoEn: r.creado_en||'',
-            finalizadoEn: r.finalizado_en||undefined,
-          }));
-          setConteos(mappedConteos); // reactive — LS.set handled by useEffect
-        }
-        // Load rutas from Supabase
-        const sbRutas = await db.get<Record<string, any>[]>('rutas?order=creado_en.desc&limit=200');
         if (sbRutas?.length > 0) {
           const mappedRutas: Ruta[] = sbRutas.map(r => ({
             id: r.id, vehiculo: r.vehiculo||'', zona: r.zona||'',
@@ -265,11 +257,39 @@ const describeAction = (action: string, detail: string): string => {
             capacidadKg:     r.capacidad_kg     ? Number(r.capacidad_kg)     : undefined,
             capacidadBultos: r.capacidad_bultos ? Number(r.capacidad_bultos) : undefined,
           }));
-          setRutas(mappedRutas); // reactive — LS.set handled by useEffect
+          setRutas(mappedRutas);
         }
-        // Load audit log from Supabase
-        const sbAudit = await db.get<Record<string, any>[]>('audit_log?order=timestamp.desc&limit=500');
-        if (sbAudit && sbAudit.length > 0) {
+        if (sbDevs?.length > 0) {
+          const mappedDevs: Devolucion[] = sbDevs.map(r => ({
+            id: r.id, nroDevolucion: r.nro_devolucion||'', ventaId: r.venta_id||'',
+            clienteNombre: r.cliente_nombre||'', motivo: r.motivo||'',
+            notas: r.notas||'', items: r.items||[], estado: r.estado||'procesada',
+            fecha: r.fecha||'', creadoEn: r.creado_en||'',
+          }));
+          setDevoluciones(mappedDevs);
+        }
+        if (sbConteos?.length > 0) {
+          const mappedConteos: Conteo[] = sbConteos.map(r => ({
+            id: r.id, fecha: r.fecha||'', items: r.items||[],
+            completado: r.completado||false, creadoEn: r.creado_en||'',
+            finalizadoEn: r.finalizado_en||undefined,
+          }));
+          setConteos(mappedConteos);
+        }
+      } catch (e) { console.warn('[AppContext] batch-B (operations) failed:', e); }
+
+      // ── Batch C: secondary data (audit, financial, pricing) ──────────────
+      const [sbAudit, sbPI, sbTransfers, sbPriceListas, sbPriceItems, sbRecs] = await Promise.all([
+        db.get<Record<string, any>[]>('audit_log?order=timestamp.desc&limit=500'),
+        db.get<Record<string, any>[]>('purchase_invoices?order=creado_en.desc&limit=300'),
+        db.get<Record<string, any>[]>('transfers?order=creado_en.desc&limit=200'),
+        db.get<Record<string, any>[]>('price_lists?order=id.asc'),
+        db.get<Record<string, any>[]>('price_list_items?order=lista_id.asc'),
+        db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500'),
+      ]);
+
+      try {
+        if (sbAudit?.length > 0) {
           const mappedAudit: AuditLog[] = sbAudit.map(r => ({
             id: r.id, timestamp: r.timestamp||'', user: r.user||'sistema',
             action: r.action||'', detail: r.detail||'{}',
@@ -281,9 +301,7 @@ const describeAction = (action: string, detail: string): string => {
           }));
           setAuditLogs(mappedAudit);
         }
-        // Load purchase invoices from Supabase
-        const sbPI = await db.get<Record<string, any>[]>('purchase_invoices?order=creado_en.desc&limit=300');
-        if (sbPI && sbPI.length > 0) {
+        if (sbPI?.length > 0) {
           const mappedPI: PurchaseInvoice[] = sbPI.map(r => ({
             id: r.id, proveedorId: r.proveedor_id||'', proveedorNombre: r.proveedor_nombre||'',
             numero: r.numero||'', fecha: r.fecha||'', fechaVenc: r.fecha_venc||null,
@@ -296,9 +314,7 @@ const describeAction = (action: string, detail: string): string => {
           }));
           setPurchaseInvoices(mappedPI);
         }
-        // Load transfers from Supabase
-        const sbTransfers = await db.get<Record<string, any>[]>('transfers?order=creado_en.desc&limit=200');
-        if (sbTransfers && sbTransfers.length > 0) {
+        if (sbTransfers?.length > 0) {
           const mappedTransfers: Transfer[] = sbTransfers.map(r => ({
             id: r.id, productoId: r.producto_id, productoNombre: r.producto_nombre||'',
             cantidad: Number(r.cantidad)||0, origen: r.origen||'', destino: r.destino||'',
@@ -306,9 +322,7 @@ const describeAction = (action: string, detail: string): string => {
           }));
           setTransfers(mappedTransfers);
         }
-        // Load price lists from Supabase
-        const sbPriceListas = await db.get<Record<string, any>[]>('price_lists?order=id.asc');
-        if (sbPriceListas && sbPriceListas.length > 0) {
+        if (sbPriceListas?.length > 0) {
           const mappedListas: PriceLista[] = sbPriceListas.map(r => ({
             id: r.id, nombre: r.nombre||'', descuento: Number(r.descuento)||0,
             color: r.color||'#3b82f6', activa: r.activa!==false,
@@ -316,17 +330,18 @@ const describeAction = (action: string, detail: string): string => {
           }));
           setPriceListas(mappedListas);
         }
-        const sbPriceItems = await db.get<Record<string, any>[]>('price_list_items?order=lista_id.asc');
-        if (sbPriceItems && sbPriceItems.length > 0) {
+        if (sbPriceItems?.length > 0) {
           const mappedItems: PriceListItem[] = sbPriceItems.map(r => ({
             id: r.id, listaId: r.lista_id, productUuid: r.product_uuid,
             precio: Number(r.precio)||0, updatedAt: r.updated_at||'',
           }));
           setPriceListItems(mappedItems);
         }
-        const sbRecs = await db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500');
-        if (sbRecs?.length > 0) LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
-      } catch (e) { console.warn('[AppContext] operational load failed', e); }
+        if (sbRecs?.length > 0) {
+          LS.set('aryes-recepciones', sbRecs.map(r => ({ id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito, notas:r.notas, pedidoId:r.pedido_id, items:r.items, estado:r.estado, diferencias:r.diferencias, creadoEn:r.creado_en })));
+        }
+      } catch (e) { console.warn('[AppContext] batch-C (secondary) failed:', e); }
+
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run when role changes, not on every JWT refresh
   }, [session?.role]);
