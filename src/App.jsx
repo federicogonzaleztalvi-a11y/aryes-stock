@@ -864,12 +864,11 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         <div style={{display:"flex",alignItems:"center",gap:12,padding:"0 44px",height:56,background:T.card,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:100,flexShrink:0}}>
           {/* Search */}
           <div style={{flex:1,maxWidth:380,position:"relative"}}>
-            <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:T.textXs,pointerEvents:"none"}}>📊</span>
             <input
               readOnly
               onClick={()=>setCmdOpen(true)}
               placeholder="Buscar o ejecutar..."
-              style={{width:"100%",boxSizing:"border-box",padding:"7px 12px 7px 32px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.textXs,background:T.muted,outline:"none",cursor:"pointer"}}
+              style={{width:"100%",boxSizing:"border-box",padding:"7px 14px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.textXs,background:T.muted,outline:"none",cursor:"pointer"}}
             />
           </div>
           <div style={{flex:1}}/>
