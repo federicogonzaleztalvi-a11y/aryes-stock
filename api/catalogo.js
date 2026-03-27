@@ -1,6 +1,6 @@
-// Public catalog API — no auth required from client side.
-// GET /api/catalogo?org=aryes              → all products (public catalog)
-// GET /api/catalogo?org=aryes&cliente=UUID → products with client's prices applied
+// Public catalog API â no auth required from client side.
+// GET /api/catalogo?org=aryes              â all products (public catalog)
+// GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
 
 const SB_URL  = process.env.SUPABASE_URL     || 'https://mrotnqybqvmvlexncvno.supabase.co';
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -33,12 +33,11 @@ export default async function handler(req, res) {
   };
 
   try {
-    // ── 1. Load products ────────────────────────────────────────────────────
+    // ââ 1. Load products ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     const prodQuery = [
       'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock',
       `org_id=eq.${org}`,
-      'stock=gt.0',
-      'order=category.asc,name.asc',
+            'order=category.asc,name.asc',
       'limit=500',
     ].join('&');
 
@@ -46,10 +45,10 @@ export default async function handler(req, res) {
     if (!prodRes.ok) return res.status(502).json({ error: 'Database error' });
     const products = await prodRes.json();
 
-    // ── 2. Load client's price list if clienteId provided ───────────────────
+    // ââ 2. Load client's price list if clienteId provided âââââââââââââââââââ
     let listaId   = null;
     let descGlobal = 0;       // % global discount for the list
-    let itemMap   = {};       // productUuid → precio específico
+    let itemMap   = {};       // productUuid â precio especÃ­fico
 
     if (clienteId) {
       // Get the client's lista_id
@@ -87,10 +86,10 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── 3. Build response — only expose what clients need ───────────────────
+    // ââ 3. Build response â only expose what clients need âââââââââââââââââââ
     const items = products
       // Public catalog (no cliente) still requires precio_venta > 0
-      .filter(p => clienteId || Number(p.precio_venta) > 0)
+      .filter(p => true) // show all products — precio 0 = consultar precio
       .map(p => {
         const base = Number(p.precio_venta) || 0;
         let precio = base;
@@ -120,7 +119,7 @@ export default async function handler(req, res) {
     const categorias = [...new Set(items.map(i => i.categoria))].sort();
 
     setHeaders(res, { 'Cache-Control': clienteId
-      ? 'private, max-age=60'                          // personalized — don't cache in CDN
+      ? 'private, max-age=60'                          // personalized â don't cache in CDN
       : 'public, s-maxage=60, stale-while-revalidate=300' });
 
     return res.status(200).json({
