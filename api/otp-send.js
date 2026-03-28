@@ -73,7 +73,7 @@ export default async function handler(req, res) {
 
   const key = SB_SVC_KEY || SB_ANON;
   const cliRes = await fetch(
-    `${SB_URL}/rest/v1/clients?or=(telefono.eq.${encodeURIComponent(telClean)},telefono.eq.0${encodeURIComponent(telClean.slice(-8))},telefono.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,nombre,lista_id&limit=1`,
+    `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},telefono.eq.0${encodeURIComponent(telClean.slice(-8))},telefono.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   const clients = await cliRes.json();
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
     try {
       const telE164 = toE164Uruguay(telClean);
       await sendSmsInfobip(telE164, code);
-      return res.status(200).json({ ok: true, clienteNombre: clients[0].nombre });
+      return res.status(200).json({ ok: true, clienteNombre: clients[0].name });
     } catch (err) {
       console.error('[otp-send] Error enviando SMS:', err.message);
       return res.status(500).json({ error: 'Error al enviar el código. Intentá de nuevo.' });
@@ -112,5 +112,5 @@ export default async function handler(req, res) {
 
   // Dev mode
   console.warn('[otp-send] DEV MODE — código devuelto en respuesta (sin SMS)');
-  return res.status(200).json({ ok: true, clienteNombre: clients[0].nombre, code, _devMode: true });
+  return res.status(200).json({ ok: true, clienteNombre: clients[0].name, code, _devMode: true });
 }
