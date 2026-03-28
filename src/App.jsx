@@ -800,6 +800,8 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   const tab = urlTab || 'dashboard';
   const setTab = (id) => navigate('/app/' + id, { replace: false });
   const [modal,          setModal]          = useState(null);
+  const [appMsg,         setAppMsg]         = useState('');
+  const showMsg = (text) => { setAppMsg(text); setTimeout(() => setAppMsg(''), 4000); };
   const [editProd,       setEditProd]       = useState(null);
   const [editSup,        setEditSup]        = useState(null);
   const [viewSup,        setViewSup]        = useState(null);
