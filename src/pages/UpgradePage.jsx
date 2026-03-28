@@ -56,7 +56,16 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <img src="/logo.png" alt="Logo" style={{ height: 44, objectFit: 'contain', marginBottom: 20 }} onError={e => e.target.style.display = 'none'} />
-        {reason === 'trial_expired' ? (
+        {reason === 'canceled' ? (
+          <>
+            <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
+              Tu cuenta fue cancelada
+            </h1>
+            <p style={{ fontFamily: F.sans, fontSize: 15, color: '#6a6a68', maxWidth: 420 }}>
+              Tus datos están guardados. Reactivá tu suscripción para volver a acceder.
+            </p>
+          </>
+        ) : reason === 'trial_expired' ? (
           <>
             <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
               Tu periodo de prueba venció

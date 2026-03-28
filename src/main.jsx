@@ -150,7 +150,55 @@ function Root() {
     setSession(null);
   };
 
+  // Verificar si el trial venció — mostrar pantalla de upgrade
+  const [orgStatus, setOrgStatus] = React.useState(null); // null=loading, 'ok', 'expired', 'canceled'
+
+  React.useEffect(() => {
+    if (!session?.orgId) return;
+    // Verificar estado de la org en Supabase
+    const SB_URL = import.meta.env.VITE_SUPABASE_URL;
+    const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.orgId) + '&select=subscription_status,trial_ends_at,active&limit=1', {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + session.access_token }
+    })
+    .then(r => r.json())
+    .then(orgs => {
+      const org = orgs?.[0];
+      if (!org) { setOrgStatus('ok'); return; } // si no hay org, dejar pasar (Aryes legacy)
+      if (!org.active) { setOrgStatus('canceled'); return; }
+      if (org.subscription_status === 'active') { setOrgStatus('ok'); return; }
+      if (org.subscription_status === 'trial') {
+        const trialEnd = org.trial_ends_at ? new Date(org.trial_ends_at) : null;
+        if (!trialEnd || trialEnd > new Date()) { setOrgStatus('ok'); return; }
+        setOrgStatus('expired');
+        return;
+      }
+      if (org.subscription_status === 'past_due') { setOrgStatus('ok'); return; } // gracia de 3 días
+      if (org.subscription_status === 'canceled') { setOrgStatus('canceled'); return; }
+      setOrgStatus('ok'); // default: dejar pasar
+    })
+    .catch(() => setOrgStatus('ok')); // si falla el check, dejar pasar (no bloquear por error de red)
+  }, [session?.orgId]);
+
   if (!session) return <LoginScreen onLogin={handleLogin} />;
+  // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
+  if (session && orgStatus === null) return (
+    <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, border: '3px solid #3a7d1e', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+    </div>
+  );
+  // Trial vencido o cuenta cancelada → página de upgrade
+  if (orgStatus === 'expired') return (
+    <Suspense fallback={null}>
+      <UpgradePage session={session} reason="trial_expired" />
+    </Suspense>
+  );
+  if (orgStatus === 'canceled') return (
+    <Suspense fallback={null}>
+      <UpgradePage session={session} reason="canceled" />
+    </Suspense>
+  );
   return (
     <>
       <AppProvider session={session} onLogout={handleLogout} onSessionUpdate={setSession}>
