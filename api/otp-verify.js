@@ -76,14 +76,19 @@ export default async function handler(req, res) {
     `?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(tel8)},phone.eq.598${encodeURIComponent(tel8)})` +
     `&select=id,name,lista_id,email,cond_pago&limit=1`;
 
-  console.log('[otp-verify] buscando cliente con URL:', cliUrl);
+  console.log('[otp-verify] buscando cliente, tel:', telClean, 'tel8:', tel8);
+  console.log('[otp-verify] SB_URL:', SB_URL ? 'ok' : 'UNDEFINED', 'key:', key ? 'ok' : 'UNDEFINED');
 
   const cliRes = await fetch(cliUrl, {
     headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' }
   });
-  const clients = await cliRes.json();
+  const cliText = await cliRes.text();
+  console.log('[otp-verify] respuesta cruda:', cliRes.status, cliText.slice(0, 200));
+  
+  let clients;
+  try { clients = JSON.parse(cliText); } catch(e) { clients = []; }
 
-  console.log('[otp-verify] resultado clientes:', JSON.stringify(clients));
+  console.log('[otp-verify] clientes encontrados:', Array.isArray(clients) ? clients.length : 'no-array');
 
   if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
 
