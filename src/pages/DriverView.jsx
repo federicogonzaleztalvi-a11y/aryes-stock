@@ -107,6 +107,26 @@ export default function DriverView() {
     }
   };
 
+  // ── ETA calculation ──────────────────────────────────────────────────────
+  // Estimates minutes to delivery for a stop based on departure time + avg per stop
+  const calcETA = (idx) => {
+    if (!ruta?.salidaEn) return null;
+    const salida     = new Date(ruta.salidaEn);
+    const minsPorParada = ruta.minsPorParada || 12; // default 12 min per stop
+    const pendAntes  = ruta.entregas.slice(0, idx).filter(e => e.estado === 'pendiente').length;
+    const elapsed    = Math.floor((Date.now() - salida.getTime()) / 60000);
+    const etaMins    = Math.max(0, (pendAntes + 1) * minsPorParada - elapsed);
+    return etaMins;
+  };
+
+  // ── Salir a entregar ─────────────────────────────────────────────────────
+  const salirAEntregar = async () => {
+    const updRuta = { ...ruta, salidaEn: new Date().toISOString(), enRuta: true };
+    setRuta(updRuta);
+    showMsg('🚀 ¡En ruta! El cliente puede ver tu progreso.');
+    await saveRuta(updRuta);
+  };
+
   const showMsg = (text, type = 'ok') => {
     setMsg({ text, type });
     setTimeout(() => setMsg(''), 3500);
@@ -127,6 +147,8 @@ export default function DriverView() {
     setPanel(null); setNota(''); setFoto(null);
     showMsg(`✅ Entregado a ${e.clienteNombre}`);
     await saveRuta(updRuta);
+    // Auto-notify client via WhatsApp with tracking link
+    autoNotificar(e, 'entregado');
   };
 
   // ── Mark not delivered ────────────────────────────────────────────────────
@@ -154,13 +176,27 @@ export default function DriverView() {
   };
 
   // ── WhatsApp notification ─────────────────────────────────────────────────
-  const notificar = (e) => {
+  const notificar = (e, etaMins = null) => {
     const tel = (e.telefono || '').replace(/\D/g, '');
     if (!tel) { showMsg('⚠️ Este cliente no tiene teléfono', 'err'); return; }
-    // Build tracking link for this client
     const trackingUrl = `${window.location.origin}/tracking?ruta=${rutaId}&cliente=${e.clienteId}&org=${orgId}`;
     const nombre = e.clienteNombre.split(' ')[0];
-    const msg = `Hola ${nombre}, te avisamos que nuestro repartidor está en camino a tu local. Seguí tu entrega en tiempo real: ${trackingUrl} 🚚`;
+    const etaStr = etaMins !== null
+      ? (etaMins <= 3 ? 'en pocos minutos' : `en aproximadamente ${etaMins} minutos`)
+      : 'próximamente';
+    const msg = `Hola ${nombre}, nuestro repartidor estará llegando a tu local *${etaStr}*. Seguí tu entrega en tiempo real: ${trackingUrl} 🚚`;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const autoNotificar = (e, tipo) => {
+    // Auto-open WhatsApp on delivery confirmation — driver just taps send
+    const tel = (e.telefono || '').replace(/\D/g, '');
+    if (!tel) return;
+    const trackingUrl = `${window.location.origin}/tracking?ruta=${rutaId}&cliente=${e.clienteId}&org=${orgId}`;
+    const nombre = e.clienteNombre.split(' ')[0];
+    const msg = tipo === 'entregado'
+      ? `Hola ${nombre}, tu pedido fue entregado exitosamente. Podés verlo acá: ${trackingUrl} ✅`
+      : `Hola ${nombre}, no pudimos completar la entrega hoy. Nos pondremos en contacto. Ver detalles: ${trackingUrl}`;
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -218,6 +254,20 @@ export default function DriverView() {
           <span>✅ {entregados} entregados</span>
           <span>⏳ {pendientes} pendientes</span>
         </div>
+
+        {/* Salir a entregar — activa modo en ruta */}
+        {!ruta.enRuta && pendientes > 0 && (
+          <button
+            onClick={salirAEntregar}
+            style={{ marginTop: 12, width: '100%', background: '#fff', color: G, border: 'none', borderRadius: 10, padding: '12px', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+            🚀 Salir a entregar
+          </button>
+        )}
+        {ruta.enRuta && ruta.salidaEn && (
+          <div style={{ marginTop: 10, fontSize: 11, opacity: 0.8, textAlign: 'center' }}>
+            🕐 En ruta desde {new Date(ruta.salidaEn).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
       </div>
 
       {/* Stop cards */}
@@ -256,6 +306,15 @@ export default function DriverView() {
                         🕐 {e.horarioDesde || '?'} - {e.horarioHasta || '?'}
                       </div>
                     )}
+                    {isPendiente && ruta.enRuta && (() => {
+                      const eta = calcETA(idx);
+                      if (eta === null) return null;
+                      return (
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginTop: 2 }}>
+                          ⏱ ETA: {eta <= 2 ? '¡Llegando!' : `~${eta} min`}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
@@ -290,7 +349,7 @@ export default function DriverView() {
                     ✅ Confirmar entrega
                   </button>
                   <button
-                    onClick={() => notificar(e)}
+                    onClick={() => notificar(e, ruta.enRuta ? calcETA(idx) : null)}
                     style={{ background: '#25D366', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 14px', fontSize: 18, cursor: 'pointer' }}>
                     💬
                   </button>

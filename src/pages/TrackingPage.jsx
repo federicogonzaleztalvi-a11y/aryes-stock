@@ -10,6 +10,7 @@ const G = '#3a7d1e';
 const F = { sans: "'Inter',system-ui,sans-serif" };
 
 const STATUS = {
+  en_ruta:      { label: 'En camino',    emoji: '🚚', color: '#f59e0b', bg: '#fffbeb', desc: 'Tu repartidor está en camino.' },
   pendiente:    { label: 'En camino',    emoji: '🚚', color: '#f59e0b', bg: '#fffbeb', desc: 'Tu pedido está en ruta.' },
   entregado:    { label: 'Entregado',    emoji: '✅', color: G,         bg: '#f0fdf4', desc: 'Tu pedido fue entregado.' },
   no_entregado: { label: 'No entregado', emoji: '⚠️', color: '#dc2626', bg: '#fef2f2', desc: 'No pudimos completar la entrega.' },
@@ -49,7 +50,16 @@ export default function TrackingPage() {
       const myIdx     = ruta.entregas.findIndex(e => e.clienteId === clienteId);
       const aheadPend = ruta.entregas.slice(0, myIdx).filter(e => e.estado === 'pendiente').length;
 
-      setData({ entrega, ruta, aheadPend });
+      // ETA calculation
+      let etaMins = null;
+      if (entrega.estado === 'pendiente' && ruta.salidaEn && ruta.enRuta) {
+        const salida = new Date(ruta.salidaEn);
+        const minsPorParada = ruta.minsPorParada || 12;
+        const elapsed = Math.floor((Date.now() - salida.getTime()) / 60000);
+        etaMins = Math.max(0, (aheadPend + 1) * minsPorParada - elapsed);
+      }
+
+      setData({ entrega, ruta, aheadPend, etaMins });
       setLastUpd(new Date());
     } catch {
       if (!silent) setError('Error al cargar. Verifica tu conexion.');
@@ -84,7 +94,7 @@ export default function TrackingPage() {
 
   if (!data) return null;
 
-  const { entrega, ruta, aheadPend } = data;
+  const { entrega, ruta, aheadPend, etaMins } = data;
   const cfg    = STATUS[entrega.estado] || STATUS.pendiente;
   const isPend = entrega.estado === 'pendiente';
 
@@ -122,15 +132,29 @@ export default function TrackingPage() {
                   Posicion en la ruta
                 </div>
                 {aheadPend === 0 ? (
-                  <div style={{ fontSize:15, fontWeight:700, color:'#f59e0b' }}>
-                    ¡Sos la proxima parada!
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:700, color:'#f59e0b', marginBottom: etaMins !== null ? 6 : 0 }}>
+                      ¡Sos la proxima parada!
+                    </div>
+                    {etaMins !== null && (
+                      <div style={{ fontSize:13, color:'#6a6a68' }}>
+                        ⏱ ETA: {etaMins <= 2 ? '¡Llegando en pocos minutos!' : `~${etaMins} minutos`}
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-                    <span style={{ fontSize:32, fontWeight:800, color:G }}>{aheadPend}</span>
-                    <span style={{ fontSize:14, color:'#6a6a68' }}>
-                      {aheadPend === 1 ? 'parada antes que vos' : 'paradas antes que vos'}
-                    </span>
+                  <div>
+                    <div style={{ display:'flex', alignItems:'baseline', gap:6, marginBottom: etaMins !== null ? 4 : 0 }}>
+                      <span style={{ fontSize:32, fontWeight:800, color:G }}>{aheadPend}</span>
+                      <span style={{ fontSize:14, color:'#6a6a68' }}>
+                        {aheadPend === 1 ? 'parada antes que vos' : 'paradas antes que vos'}
+                      </span>
+                    </div>
+                    {etaMins !== null && (
+                      <div style={{ fontSize:13, color:'#6a6a68' }}>
+                        ⏱ Tiempo estimado: ~{etaMins} minutos
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -139,9 +163,25 @@ export default function TrackingPage() {
             </>
           )}
 
-          {entrega.estado === 'entregado' && entrega.notaEntrega && (
-            <div style={{ background:'#f0fdf4', borderRadius:8, padding:'10px 12px', marginTop:12, fontSize:13, color:'#166534' }}>
-              📝 {entrega.notaEntrega}
+          {entrega.estado === 'entregado' && (
+            <div style={{ marginTop: 12 }}>
+              {entrega.fotoEntrega && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#9a9a98', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>
+                    Foto de entrega
+                  </div>
+                  <img
+                    src={entrega.fotoEntrega}
+                    alt="Foto de entrega"
+                    style={{ width:'100%', maxWidth:280, borderRadius:10, border:'2px solid #bbf7d0', display:'block' }}
+                  />
+                </div>
+              )}
+              {entrega.notaEntrega && (
+                <div style={{ background:'#f0fdf4', borderRadius:8, padding:'10px 12px', fontSize:13, color:'#166534' }}>
+                  📝 {entrega.notaEntrega}
+                </div>
+              )}
             </div>
           )}
 
