@@ -65,8 +65,48 @@ function ClientesTab(){
     const saldoPendiente = cfes
       .filter(c => c.clienteId === selId && ['emitida','cobrado_parcial'].includes(c.status))
       .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
-    return { ventasCount: clienteVentas.length, totalComprado, ticketPromedio, diasDesdeUltima, topProductos, ultimasVentas: clienteVentas.slice(0, 5), allVentas: clienteVentas, saldoPendiente };
+    // P&L — margen por cliente basado en costoUnit registrado en cada item
+    let ingresosBrutos = 0, costoTotal = 0, itemsConCosto = 0, itemsTotal = 0;
+    clienteVentas.forEach(v => (v.items || []).forEach(it => {
+      const qty     = Number(it.cantidad || 0);
+      const precio  = Number(it.precioUnit || 0);
+      const costo   = Number(it.costoUnit  || 0);
+      ingresosBrutos += qty * precio;
+      itemsTotal++;
+      if (costo > 0) { costoTotal += qty * costo; itemsConCosto++; }
+    }));
+    const ganancia        = ingresosBrutos - costoTotal;
+    const margenPct       = ingresosBrutos > 0 ? (ganancia / ingresosBrutos) * 100 : 0;
+    const tieneCosto      = itemsConCosto > 0;
+    const coberturasCosto = itemsTotal > 0 ? Math.round((itemsConCosto / itemsTotal) * 100) : 0;
+
+    return { ventasCount: clienteVentas.length, totalComprado, ticketPromedio, diasDesdeUltima,
+             topProductos, ultimasVentas: clienteVentas.slice(0, 5), allVentas: clienteVentas,
+             saldoPendiente, ingresosBrutos, costoTotal, ganancia, margenPct, tieneCosto, coberturasCosto };
   }, [selId, ventas, cfes]);
+  // ── P&L ranking — todos los clientes con costo disponible ──────────────
+  const clienteRanking = useMemo(() => {
+    return items.map(cli => {
+      const cliVentas = ventas.filter(v => v.clienteId === cli.id && v.estado !== 'cancelada');
+      let ingresos = 0, costo = 0, itemsConCosto = 0, itemsTotal = 0;
+      cliVentas.forEach(v => (v.items || []).forEach(it => {
+        const qty = Number(it.cantidad || 0);
+        ingresos += qty * Number(it.precioUnit || 0);
+        itemsTotal++;
+        if (Number(it.costoUnit || 0) > 0) {
+          costo += qty * Number(it.costoUnit);
+          itemsConCosto++;
+        }
+      }));
+      const ganancia  = ingresos - costo;
+      const margenPct = ingresos > 0 ? (ganancia / ingresos) * 100 : null;
+      return { id: cli.id, nombre: cli.nombre, ingresos, costo, ganancia, margenPct,
+               ventasCount: cliVentas.length, tieneCosto: itemsConCosto > 0 };
+    })
+    .filter(c => c.tieneCosto && c.ventasCount > 0)
+    .sort((a, b) => (b.margenPct || 0) - (a.margenPct || 0));
+  }, [items, ventas]);
+
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
@@ -151,6 +191,42 @@ function ClientesTab(){
     <section style={{padding:'32px 40px',maxWidth:700,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',marginBottom:28}}>{backBtn}<h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>{editId?'Editar cliente':'Nuevo cliente'}</h2></div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+
+      {/* ── Ranking P&L de clientes ─────────────────────────────────────── */}
+      {clienteRanking.length > 0 && (
+        <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:'16px 20px',marginBottom:20}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#9a9a98',textTransform:'uppercase',letterSpacing:.5,marginBottom:12}}>
+            Rentabilidad por cliente (últimas ventas con costo)
+          </div>
+          <div style={{display:'grid',gap:6}}>
+            {clienteRanking.slice(0,5).map((c,i) => {
+              const margen = c.margenPct;
+              const color  = margen>=20?G:margen>=10?'#d97706':'#dc2626';
+              const emoji  = margen>=20?'🟢':margen>=10?'🟡':'🔴';
+              return (
+                <div key={c.id}
+                  onClick={()=>setSelId(c.id)}
+                  style={{display:'flex',alignItems:'center',gap:12,padding:'8px 10px',borderRadius:8,cursor:'pointer',background:selId===c.id?'#f0fdf4':'transparent',':hover':{background:'#f9f9f7'}}}>
+                  <span style={{fontSize:12,color:'#9a9a98',width:16,textAlign:'center',flexShrink:0}}>{i+1}</span>
+                  <span style={{flex:1,fontSize:13,fontWeight:500,color:'#1a1a18'}}>{c.nombre}</span>
+                  <span style={{fontSize:11,color:'#9a9a98'}}>{c.ventasCount} ventas</span>
+                  <div style={{width:80,height:6,background:'#f0f0ec',borderRadius:4,flexShrink:0}}>
+                    <div style={{height:6,borderRadius:4,background:color,width:`${Math.min(100,Math.max(0,margen))}%`}}/>
+                  </div>
+                  <span style={{fontSize:13,fontWeight:700,color,width:52,textAlign:'right',flexShrink:0}}>
+                    {emoji} {margen.toFixed(0)}%
+                  </span>
+                </div>
+              );
+            })}
+            {clienteRanking.length > 5 && (
+              <div style={{fontSize:11,color:'#9a9a98',textAlign:'center',paddingTop:4}}>
+                + {clienteRanking.length - 5} clientes más — seleccioná uno para ver su P&L completo
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         {[{l:'Nombre *',k:'nombre',full:true},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección',k:'direccion',full:true},{l:'Ciudad',k:'ciudad'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito (USD)',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>(
           <div key={fld.k} style={{gridColumn:fld.full?'1/-1':'auto'}}>
@@ -271,6 +347,50 @@ function ClientesTab(){
                   </div>
                 ))}
               </div>
+
+              {/* ── P&L por cliente ─────────────────────────────────────── */}
+              {crmMetrics.tieneCosto && (
+                <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'16px 20px',marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:.5,marginBottom:12}}>
+                    Rentabilidad (P&L)
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:12}}>
+                    {[
+                      { l:'Ingresos', v:'$'+Number(crmMetrics.ingresosBrutos).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#1a1a18' },
+                      { l:'Costo', v:'$'+Number(crmMetrics.costoTotal).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#dc2626' },
+                      { l:'Ganancia', v:'$'+Number(crmMetrics.ganancia).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}), c:crmMetrics.ganancia>=0?G:'#dc2626' },
+                    ].map(m=>(
+                      <div key={m.l} style={{textAlign:'center'}}>
+                        <div style={{fontSize:11,color:'#9a9a98',marginBottom:4}}>{m.l}</div>
+                        <div style={{fontSize:15,fontWeight:700,color:m.c}}>{m.v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Margen bar */}
+                  <div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'#6a6a68',marginBottom:5}}>
+                      <span>Margen bruto</span>
+                      <span style={{fontWeight:700,color:crmMetrics.margenPct>=20?G:crmMetrics.margenPct>=10?'#d97706':'#dc2626'}}>
+                        {crmMetrics.margenPct.toFixed(1)}%
+                        {crmMetrics.margenPct>=20?' ✓':crmMetrics.margenPct>=10?' ⚠️':' 🔴'}
+                      </span>
+                    </div>
+                    <div style={{background:'#e2e8f0',borderRadius:6,height:8}}>
+                      <div style={{
+                        background:crmMetrics.margenPct>=20?G:crmMetrics.margenPct>=10?'#d97706':'#dc2626',
+                        borderRadius:6,height:8,
+                        width:`${Math.min(100,Math.max(0,crmMetrics.margenPct))}%`,
+                        transition:'width .4s'
+                      }}/>
+                    </div>
+                    {crmMetrics.coberturasCosto < 80 && (
+                      <div style={{fontSize:10,color:'#9a9a98',marginTop:5}}>
+                        ⚠️ Solo {crmMetrics.coberturasCosto}% de items tienen costo cargado — el margen puede estar subestimado
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
                 {/* Top productos */}
