@@ -80,6 +80,43 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   const transitVal = pending.reduce((s,o)=>s+(+o.totalCost||0),0);
   const critCov    = products.filter(p=>(p.dailyUsage||0)>0&&p.stock>0&&(p.stock/(p.dailyUsage||0.001))<14).length;
 
+  // ── Dynamic reorder point — velocity-based stock coverage ─────────────────
+  // Uses last 30 days of 'Salida' movements to compute daily velocity per product
+  // diasRestantes = stock / velocidad_diaria
+  // Semaforo: rojo < 7d, amarillo 7-14d, verde > 14d
+  const velocityData = React.useMemo(() => {
+    const DAYS = 30;
+    const cutoff = new Date(Date.now() - DAYS * 86400000).toISOString();
+
+    // Sum Salida movements per product in last 30 days
+    const salidaMap = {};
+    for (const m of (movements || [])) {
+      if (m.tipo !== 'Salida') continue;
+      if (m.timestamp < cutoff) continue;
+      const pid = m.productoId || m.producto_id;
+      if (!pid) continue;
+      salidaMap[pid] = (salidaMap[pid] || 0) + (Number(m.cantidad) || 0);
+    }
+
+    // Build velocity list — only products with actual sales movement
+    return (products || [])
+      .filter(p => salidaMap[p.id] > 0)
+      .map(p => {
+        const totalSalida  = salidaMap[p.id] || 0;
+        const unidadDia    = totalSalida / DAYS;
+        const diasRestantes = unidadDia > 0 ? Math.floor((p.stock || 0) / unidadDia) : 999;
+        const semaforo     = diasRestantes < 7 ? 'rojo' : diasRestantes < 14 ? 'amarillo' : 'verde';
+        return { id: p.id, nombre: p.nombre || p.name, stock: p.stock, unidad: p.unit,
+                 unidadDia, diasRestantes, semaforo, totalSalida };
+      })
+      .filter(p => p.semaforo !== 'verde') // solo los que tienen riesgo
+      .sort((a, b) => a.diasRestantes - b.diasRestantes)
+      .slice(0, 10);
+  }, [products, movements]);
+
+  const velocityRojo    = velocityData.filter(p => p.semaforo === 'rojo').length;
+  const velocityAmar    = velocityData.filter(p => p.semaforo === 'amarillo').length;
+
   // ── Billing metrics — cfes and cobros received as reactive props from AppContext
 
   const deudaTotal = cfes
@@ -610,6 +647,50 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             <div style={{padding:'32px',textAlign:'center',color:'#9a9a98',
               fontFamily:F.sans,fontSize:13,background:'#f9f9f7',borderRadius:10}}>
               Sin actividad registrada aún
+            </div>
+          )}
+
+          {/* ── Dynamic reorder point widget ───────────────────────── */}
+          {velocityData.length > 0 && (
+            <div style={{marginTop:12}}>
+              <SectionHeader title={`Cobertura por velocidad de venta`}/>
+              <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e2de',overflow:'hidden'}}>
+                {/* Summary badges */}
+                <div style={{display:'flex',gap:8,padding:'10px 14px',borderBottom:'1px solid #f5f5f3',flexWrap:'wrap'}}>
+                  {velocityRojo > 0 && (
+                    <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'#fef2f2',color:'#dc2626'}}>
+                      🔴 {velocityRojo} {velocityRojo===1?'producto':'productos'} &lt; 7 días
+                    </span>
+                  )}
+                  {velocityAmar > 0 && (
+                    <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'#fffbeb',color:'#d97706'}}>
+                      🟡 {velocityAmar} {velocityAmar===1?'producto':'productos'} &lt; 14 días
+                    </span>
+                  )}
+                </div>
+                {/* Product rows */}
+                {velocityData.map((p, i) => (
+                  <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+                    padding:'9px 14px',borderBottom:i<velocityData.length-1?'1px solid #f5f5f3':'none'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:F.sans,fontSize:12,fontWeight:500,color:'#1a1a18',
+                        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.nombre}</div>
+                      <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>
+                        Stock: {p.stock} {p.unidad} · {p.unidadDia.toFixed(1)} uds/día
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
+                      <div style={{fontFamily:F.sans,fontSize:13,fontWeight:700,
+                        color:p.semaforo==='rojo'?'#dc2626':'#d97706'}}>
+                        {p.diasRestantes < 1 ? '< 1 día' : `${p.diasRestantes} días`}
+                      </div>
+                      <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98'}}>
+                        {p.semaforo==='rojo'?'⚠️ Reponer urgente':'🕐 Planificar reposición'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
