@@ -63,7 +63,7 @@ function SectionHeader({ title, action, actionLabel }) {
   );
 }
 
-function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[]}) {
+function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[], confirmOrder, showMsg}) {
 
   // Pull ventas reactively — avoids adding a prop to the parent call site
   const { ventas = [], clientes = [], brandCfg = {} } = useApp();
@@ -537,10 +537,19 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
                     {/* Action buttons */}
                     <div style={{display:'flex',gap:6,flexShrink:0}}>
-                      {/* Review & confirm via OrderModal */}
-                      <button onClick={()=>setModal({type:'order',product:s.prod})}
+                      {/* Crear pedido directo sin pasar por modal */}
+                      <button onClick={()=>{
+                        if(window.confirm(`Crear pedido de ${s.cantSugerida} ${s.unidad} de ${s.nombre} a ${s.sup?.name||'proveedor'}?`)){
+                          confirmOrder(s.prod, s.cantSugerida);
+                          showMsg('Pedido creado: '+s.cantSugerida+' '+s.unidad+' de '+s.nombre);
+                        }
+                      }} style={{padding:'7px 14px',background:'#fff',border:`1px solid ${G}`,borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700,color:G}}>
+                        Confirmar
+                      </button>
+                      {/* Revisar detalles via OrderModal con cantidad pre-cargada */}
+                      <button onClick={()=>setModal({type:'order',product:s.prod,suggestedQty:s.cantSugerida})}
                         style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>
-                        Revisar y pedir
+                        Revisar
                       </button>
                       {/* Quick WhatsApp to supplier */}
                       {waMsg && (

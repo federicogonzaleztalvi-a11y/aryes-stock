@@ -960,7 +960,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización → reconectando...</span>
       </div>}
       {/* →→ DASHBOARD →→ */}
-        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols} cfes={cfes} cobros={cobros}/></Suspense></ErrorBoundary>}
+        {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols} cfes={cfes} cobros={cobros} confirmOrder={confirmOrder} showMsg={showMsg}/></Suspense></ErrorBoundary>}
 
         {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline setModal={setModal} setEditProd={setEditProd}/></Suspense></ErrorBoundary>}
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
@@ -1019,7 +1019,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         {ConfirmDialog}
         {/* →→ MODALS →→ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
-      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)}/>}
+      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)} suggestedQty={modal.suggestedQty||null}/>}
       {modal?.type==="orderDone"&&(
         <Modal title={modal.order.productName} sub="Pedido registrado correctamente" onClose={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:T.border,borderRadius:6,overflow:"hidden",marginBottom:20}}>

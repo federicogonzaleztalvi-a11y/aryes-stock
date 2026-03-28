@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { T, totalLead, avgDaily, rop, safetyStock, eoq, alertLevel, ALERT_CFG,
          Modal, Inp, Btn, Cap, StockBar, fmtDate, fmtShort } from '../lib/ui.jsx';
 
-const OrderModal=({product,supplier,onConfirm,onClose})=>{
+const OrderModal=({product,supplier,onConfirm,onClose,suggestedQty})=>{
   const lead=totalLead(supplier);
   const daily=avgDaily(product.history);
   const r=rop(product.history,lead);
   const ss=safetyStock(product.history,lead);
   const eq=eoq(product.history,product.unitCost);
   const {level,daysToROP,daysOut}=alertLevel(product,supplier);
-  const [qty,setQty]=useState(eq||Math.ceil(daily*lead*1.5));
-  const [useEOQ,setUseEOQ]=useState(true);
+  const initQty=suggestedQty||eq||Math.ceil(daily*lead*1.5);
+  const [qty,setQty]=useState(initQty);
+  const [useEOQ,setUseEOQ]=useState(!suggestedQty);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{if(useEOQ)setQty(eq||Math.ceil(daily*lead*1.5));},[useEOQ]);
   const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
@@ -80,6 +81,11 @@ const OrderModal=({product,supplier,onConfirm,onClose})=>{
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:10}}>
             <div>
               <div style={{display:"flex",gap:8,marginBottom:10}}>
+                {suggestedQty && (
+                  <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:6,padding:'8px 12px',fontSize:12,color:'#d97706',fontWeight:600,marginBottom:8}}>
+                    Cantidad sugerida por el sistema: <strong>{suggestedQty} {product.unit}</strong>
+                  </div>
+                )}
                 {[{id:true,label:`EOQ — ${eq} ${product.unit}`,hint:"Óptimo por costo"},{id:false,label:"Manual",hint:"Ingresar cantidad"}].map(opt=>(
                   <button key={String(opt.id)} onClick={()=>setUseEOQ(opt.id)}
                     style={{flex:1,padding:"10px 12px",border:`1px solid ${useEOQ===opt.id?T.green:T.border}`,background:useEOQ===opt.id?T.greenBg:T.card,cursor:"pointer",textAlign:"left",borderRadius:4}}>
