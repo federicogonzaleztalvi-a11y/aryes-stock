@@ -79,8 +79,15 @@ export default async function handler(req, res) {
   console.log('[otp-verify] buscando cliente, tel:', telClean, 'tel8:', tel8);
   console.log('[otp-verify] SB_URL:', SB_URL ? 'ok' : 'UNDEFINED', 'key:', key ? 'ok' : 'UNDEFINED');
 
+  // Usar service key para bypass RLS en la búsqueda del cliente
+  const clientKey = SB_SVC_KEY || SB_ANON;
   const cliRes = await fetch(cliUrl, {
-    headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' }
+    headers: { 
+      apikey: clientKey, 
+      Authorization: `Bearer ${clientKey}`, 
+      Accept: 'application/json',
+      Prefer: 'count=none'
+    }
   });
   const cliText = await cliRes.text();
   console.log('[otp-verify] status:', cliRes.status, 'body:', cliText.slice(0, 300));
