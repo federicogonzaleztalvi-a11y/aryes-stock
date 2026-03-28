@@ -256,16 +256,43 @@ function VentasTab(){
     }finally{setSaving(false);}
   };
 
-  const cambiarEstado=(id,estado)=>{
+  const cambiarEstado=async(id,nuevoEstado)=>{
     const venta=ventas.find(v=>v.id===id);
-    const upd=ventas.map(v=>v.id===id?{...v,estado,updatedAt:new Date().toISOString()}:v);
+    const userEmail=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch{return 'sistema';}})();
+    const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
+
+    // Optimistic update
+    const ts=new Date().toISOString();
+    const newEntry={from:venta?.estado,to:nuevoEstado,ts,user:userEmail};
+    const upd=ventas.map(v=>v.id===id?{...v,estado:nuevoEstado,estadoLog:[...(v.estadoLog||[]),newEntry],updatedAt:ts}:v);
     setVentas(upd);
-    if(ventaSel?.id===id)setVentaSel({...ventaSel,estado});
-    // Persist estado to Supabase
-    db.patch('ventas',{estado,updated_at:new Date().toISOString()},'id=eq.'+id).catch(e=>{
-      console.warn('[VentasTab] estado patch failed:',e?.message||e);
-      showMsg('→  Estado actualizado localmente → no se pudo sincronizar con el servidor','warn');
-    });
+    if(ventaSel?.id===id)setVentaSel({...ventaSel,estado:nuevoEstado,estadoLog:[...(ventaSel.estadoLog||[]),newEntry]});
+
+    // Call state machine RPC (validates transition server-side)
+    try{
+      const {SB_URL,SKEY}=await import('../lib/constants.js');
+      const r=await fetch(SB_URL+'/rest/v1/rpc/transition_venta_state',{
+        method:'POST',
+        headers:{apikey:SKEY,Authorization:'Bearer '+sessionToken,'Content-Type':'application/json'},
+        body:JSON.stringify({p_venta_id:id,p_new_estado:nuevoEstado,p_user_email:userEmail})
+      });
+      if(!r.ok){
+        const err=await r.json().catch(()=>({}));
+        const msg=err?.message||'';
+        if(msg.includes('invalid_transition')){
+          // Revert optimistic update
+          setVentas(ventas);
+          if(ventaSel?.id===id)setVentaSel(venta||null);
+          showMsg('Transición no permitida: '+venta?.estado+' → '+nuevoEstado,'err');
+          return;
+        }
+        console.warn('[VentasTab] transition RPC failed:',msg);
+      }
+    }catch(e){
+      console.warn('[VentasTab] transition RPC error:',e?.message||e);
+    }
+    // Handle side effects
+    const estado=nuevoEstado;
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Optimistic UI: restore stock locally immediately
       const updProds=[...products];
@@ -485,6 +512,37 @@ function VentasTab(){
           {v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>📊 Facturar</button>}
           {(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setRemitoVenta(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#374151'}}>📄 Remito</button>}
         </div>
+        {/* ── Estado timeline ─────────────────────────────────────── */}
+        {v.estadoLog?.length > 0 && (
+          <div style={{background:'#fff',borderRadius:12,padding:'14px 20px',marginBottom:12,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#9a9a98',textTransform:'uppercase',letterSpacing:.5,marginBottom:12}}>
+              Historial de estados
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:0}}>
+              {v.estadoLog.map((entry,i)=>{
+                const colors={pendiente:'#9ca3af',confirmada:'#3b82f6',preparada:'#8b5cf6',en_ruta:'#f59e0b',entregada:G,cancelada:'#dc2626'};
+                const labels={pendiente:'Pendiente',confirmada:'Confirmada',preparada:'Preparada',en_ruta:'En ruta',entregada:'Entregada',cancelada:'Cancelada'};
+                const color=colors[entry.to]||'#9ca3af';
+                const ts=entry.ts?new Date(entry.ts).toLocaleString('es-UY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+                return (
+                  <div key={i} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',flexShrink:0}}>
+                      <div style={{width:10,height:10,borderRadius:'50%',background:color,marginTop:4,flexShrink:0}}/>
+                      {i<v.estadoLog.length-1&&<div style={{width:2,height:24,background:'#e5e7eb',margin:'2px 0'}}/>}
+                    </div>
+                    <div style={{paddingBottom:i<v.estadoLog.length-1?8:0}}>
+                      <span style={{fontSize:12,fontWeight:700,color}}>{labels[entry.to]||entry.to}</span>
+                      {entry.user&&entry.user!=='sistema'&&<span style={{fontSize:11,color:'#9a9a98'}}> · {entry.user.split('@')[0]}</span>}
+                      {ts&&<span style={{fontSize:11,color:'#9a9a98'}}> · {ts}</span>}
+                      {entry.nota&&<div style={{fontSize:11,color:'#6a6a68',marginTop:2}}>📝 {entry.nota}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
             <thead><tr style={{background:'#f9fafb',borderBottom:'2px solid #e5e7eb'}}>{['Producto','Cant.','Precio u.','Subtotal'].map(h=><th key={h} style={{padding:'9px 14px',textAlign:'left',fontWeight:600,color:'#6b7280',fontSize:11,textTransform:'uppercase',letterSpacing:.5}}>{h}</th>)}</tr></thead>

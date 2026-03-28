@@ -174,6 +174,7 @@ const describeAction = (action: string, detail: string): string => {
             total: r.total || 0, descuento: r.descuento || 0, estado: r.estado || 'pendiente',
             notas: r.notas || '', fechaEntrega: r.fecha_entrega || null, creadoEn: r.creado_en,
             tieneDevolucion: r.tiene_devolucion || false,
+            estadoLog: r.estado_log || [], estadoUpdatedBy: r.estado_updated_by || '',
           }));
           setVentas(mappedVentas);
         }
