@@ -1,16 +1,64 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/chat.js":       { "maxDuration": 30 },
-    "api/admin-users.js":{ "maxDuration": 15 },
-    "api/catalogo.js":   { "maxDuration": 10 },
-    "api/pedido.js":     { "maxDuration": 10 },
-    "api/otp-send.js":   { "maxDuration": 15 },
-    "api/otp-verify.js": { "maxDuration": 10 },
-    "api/historial.js":  { "maxDuration": 10 }
+    "api/chat.js": {
+      "maxDuration": 30
+    },
+    "api/admin-users.js": {
+      "maxDuration": 15
+    },
+    "api/catalogo.js": {
+      "maxDuration": 10
+    },
+    "api/pedido.js": {
+      "maxDuration": 10
+    },
+    "api/otp-send.js": {
+      "maxDuration": 15
+    },
+    "api/otp-verify.js": {
+      "maxDuration": 10
+    },
+    "api/historial.js": {
+      "maxDuration": 10
+    }
   },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 }
