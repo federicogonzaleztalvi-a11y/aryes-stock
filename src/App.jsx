@@ -1019,7 +1019,27 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         {ConfirmDialog}
         {/* →→ MODALS →→ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
-      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={qty=>confirmOrder(modal.product,qty)} onClose={()=>setModal(null)} suggestedQty={modal.suggestedQty||null}/>}
+      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={async (qty)=>{
+        await confirmOrder(modal.product, qty);
+        const sup=getSup(modal.product.supplierId);
+        const tel=(sup?.whatsapp||sup?.phone||'').replace(/[^0-9]/g,'');
+        const lead=sup?Object.values(sup.times||{}).reduce((s,v)=>s+Number(v||0),0):14;
+        const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
+        if(tel){
+          const msg=[
+            `Hola${sup?.contact?' '+sup.contact.split(' ')[0]:''},`,
+            `Confirmamos pedido de *${qty} ${modal.product.unit} de ${modal.product.name}*.`,
+            `Llegada estimada: ${arrival.toLocaleDateString('es-UY',{day:'2-digit',month:'2-digit',year:'numeric'})}`,
+            `Por favor confirmar disponibilidad y fecha de despacho.`
+          ].join('\n');
+          setTimeout(()=>{
+            if(window.confirm(`Pedido creado. Notificar a ${sup?.name||'proveedor'} por WhatsApp?`)){
+              window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
+            }
+          },300);
+        }
+        setModal(null);
+      }} onClose={()=>setModal(null)} suggestedQty={modal.suggestedQty||null}/>}
       {modal?.type==="orderDone"&&(
         <Modal title={modal.order.productName} sub="Pedido registrado correctamente" onClose={()=>setModal(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:T.border,borderRadius:6,overflow:"hidden",marginBottom:20}}>

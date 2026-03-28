@@ -536,29 +536,27 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                     </div>
 
                     {/* Action buttons */}
-                    <div style={{display:'flex',gap:6,flexShrink:0}}>
-                      {/* Crear pedido directo sin pasar por modal */}
-                      <button onClick={()=>{
-                        if(window.confirm(`Crear pedido de ${s.cantSugerida} ${s.unidad} de ${s.nombre} a ${s.sup?.name||'proveedor'}?`)){
-                          confirmOrder(s.prod, s.cantSugerida);
-                          showMsg('Pedido creado: '+s.cantSugerida+' '+s.unidad+' de '+s.nombre);
-                        }
-                      }} style={{padding:'7px 14px',background:'#fff',border:`1px solid ${G}`,borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700,color:G}}>
-                        Confirmar
-                      </button>
+                    <div style={{display:'flex',gap:6,flexShrink:0,flexWrap:'wrap',justifyContent:'flex-end'}}>
                       {/* Revisar detalles via OrderModal con cantidad pre-cargada */}
                       <button onClick={()=>setModal({type:'order',product:s.prod,suggestedQty:s.cantSugerida})}
-                        style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>
-                        Revisar
+                        style={{padding:'7px 14px',background:'#fff',border:`1px solid ${G}`,borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700,color:G}}>
+                        Revisar pedido
                       </button>
-                      {/* Quick WhatsApp to supplier */}
-                      {waMsg && (
-                        <a href={`https://wa.me/${tel}?text=${encodeURIComponent(waMsg)}`}
-                          target="_blank" rel="noreferrer"
-                          style={{padding:'7px 12px',background:'#25D366',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:4}}>
-                          💬
-                        </a>
-                      )}
+                      {/* Confirmar directo — Amazon: system suggests, human confirms with one click */}
+                      <button onClick={()=>{
+                        confirmOrder(s.prod, s.cantSugerida);
+                        showMsg(`Pedido creado: ${s.cantSugerida} ${s.unidad} de ${s.nombre}`);
+                        // Auto-open WhatsApp to supplier after confirming
+                        if(waMsg && tel){
+                          setTimeout(()=>{
+                            if(window.confirm(`Pedido creado. Notificar a ${s.sup?.name||'proveedor'} por WhatsApp?`)){
+                              window.open(`https://wa.me/${tel}?text=${encodeURIComponent(waMsg)}`, '_blank');
+                            }
+                          }, 300);
+                        }
+                      }} style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>
+                        Confirmar pedido
+                      </button>
                     </div>
                   </div>
                 );
