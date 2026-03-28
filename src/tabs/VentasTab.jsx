@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { db, SB_URL, SKEY, getAuthHeaders } from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import ModalFactura from './facturacion/ModalFactura.jsx';
+import RemitoPDF from '../components/RemitoPDF.jsx';
 import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
 
 // ── fetchNextNroVenta — calls Postgres sequence via RPC ───────────────────────
@@ -45,7 +46,7 @@ async function callRpc(fnName, params = {}) {
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
-          cfes, setCfes, cobros, setCobros } = useApp();
+          cfes, setCfes, cobros, setCobros, brandCfg } = useApp();
   const G="#3a7d1e";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
 
@@ -61,6 +62,7 @@ function VentasTab(){
   const [cobroPrefill,setCobroPrefill]=useState(null);
   const [showFacturar,setShowFacturar]=useState(false);
   const [facturarVenta,setFacturarVenta]=useState(null);
+  const [remitoVenta,setRemitoVenta]=useState(null);
 
   // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
   const handleSaveCobroRapido = (cobro) => {
@@ -481,6 +483,7 @@ function VentasTab(){
           {v.estado!=='cancelada'&&v.estado!=='entregada'&&<button onClick={()=>cambiarEstado(v.id,'cancelada')} style={{padding:'7px 16px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>Cancelar (restaura stock)</button>}
           {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #3a7d1e',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#3a7d1e'}}>📊° Cobrar</button>}
           {v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>📊 Facturar</button>}
+          {(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setRemitoVenta(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#374151'}}>📄 Remito</button>}
         </div>
         <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
@@ -617,6 +620,7 @@ function VentasTab(){
           </table>
         </div>
       )}
+    {remitoVenta&&<RemitoPDF venta={remitoVenta} brandCfg={brandCfg} onClose={()=>setRemitoVenta(null)}/>}
     {showFacturar&&facturarVenta&&<ModalFactura
       clientes={clientes}
       productos={products}
