@@ -244,67 +244,47 @@ function RutasTab(){
   const zonasHoy = zonasConfig.filter(z => z.dias?.includes(hoy));
 
   // Sugeridor de ruta — core del algoritmo
-  const generarSugerencia = React.useCallback(() => {
+  // generarSugerencia como función regular — evita TDZ con esbuild
+  // (no captura nada del scope en tiempo de declaración)
+  function generarSugerencia() {
     const nvehiculos = Math.max(1, parseInt(vehiculosDisp) || 1);
+    const diaHoy = new Date().toLocaleDateString('es-UY', { weekday: 'long' });
+    const diaHoyCapitalized = diaHoy.charAt(0).toUpperCase() + diaHoy.slice(1);
+    const zonasDeHoy = (zonasConfig || []).filter(z => (z.dias||[]).includes(diaHoyCapitalized));
 
-    // 1. Clientes a entregar hoy
-    // Ventas entregadas o en ruta para ver qué ya fue — excluir
-    const ventasPendientes = (window.__appVentas__ || []).filter(v =>
-      ['confirmada','preparada'].includes(v.estado)
-    );
-
-    // Modo A: si hay zonas configuradas para hoy, filtrar por zona
+    // Modo A: zonas configuradas → filtrar clientes por zona
+    // Modo B: sin zonas → todos los clientes
     let clientesHoy;
-    if (zonasHoy.length > 0) {
-      const nombresZonas = zonasHoy.map(z => z.nombre.toLowerCase());
+    if (zonasDeHoy.length > 0) {
+      const nombresZonas = zonasDeHoy.map(z => z.nombre.toLowerCase());
       clientesHoy = clientes.filter(c =>
         c.zonaEntrega && nombresZonas.includes(c.zonaEntrega.toLowerCase())
       );
-      // Si ningún cliente tiene zona asignada, usar todos (fallback a Modo B)
       if (clientesHoy.length === 0) clientesHoy = clientes;
     } else {
-      // Modo B: todos los clientes sin filtro de zona
       clientesHoy = clientes;
     }
 
-    // 2. Cruzar con ventas pendientes para saber quién tiene entrega hoy
-    const conEntrega = clientesHoy.filter(c =>
-      ventasPendientes.some(v => v.clienteId === c.id)
-    );
-
-    // Si no hay ventas pendientes, usar todos los de la zona de hoy
-    const candidatos = conEntrega.length > 0 ? conEntrega : clientesHoy;
-
-    if (candidatos.length === 0) {
+    if (clientesHoy.length === 0) {
       setSugerencia({ vehiculos: [], msg: 'No hay clientes para entregar hoy.' });
       return;
     }
 
-    // 3. Geocodificar los que tienen dirección pero no coords
-    // (asumimos que ya tienen lat/lng del geocoding automático)
-    const conCoords = candidatos.filter(c => c.lat && c.lng);
-    const sinCoords = candidatos.filter(c => !c.lat || !c.lng);
-
-    // 4. Optimizar nearest-neighbor global
+    const conCoords = clientesHoy.filter(c => c.lat && c.lng);
+    const sinCoords = clientesHoy.filter(c => !c.lat || !c.lng);
     const todos = [...conCoords];
     const totalParadas = todos.length;
     const porVehiculo = Math.ceil(totalParadas / nvehiculos);
-
-    // Dividir en clusters geográficos por vehículo (simple: por proximidad)
-    const vehiculos = [];
+    const vehiculosArr = [];
     const usados = new Set();
 
     for (let v = 0; v < nvehiculos; v++) {
       const paradas = [];
-      // Punto de partida: el no usado más al norte (simplificación)
       let start = todos.find(c => !usados.has(c.id));
       if (!start) break;
-
       usados.add(start.id);
       paradas.push(start);
       let current = start;
-
-      // Nearest-neighbor para este vehículo
       while (paradas.length < porVehiculo) {
         let nearest = null, minDist = Infinity;
         for (const c of todos) {
@@ -317,21 +297,15 @@ function RutasTab(){
         paradas.push(nearest);
         current = nearest;
       }
-
-      vehiculos.push({
-        vehiculo: `Vehículo ${v + 1}`,
-        paradas,
-        km: calcKm(paradas),
-      });
+      vehiculosArr.push({ vehiculo: `Vehículo ${v + 1}`, paradas, km: calcKm(paradas) });
     }
 
-    // Agregar sin coordenadas al final del primer vehículo
-    if (sinCoords.length > 0 && vehiculos.length > 0) {
-      vehiculos[0].sinGeocode = sinCoords;
+    if (sinCoords.length > 0 && vehiculosArr.length > 0) {
+      vehiculosArr[0].sinGeocode = sinCoords;
     }
 
-    setSugerencia({ vehiculos, totalCandidatos: candidatos.length, zonasHoy, hoy });
-  }, [clientes, vehiculosDisp, zonasHoy, hoy]);
+    setSugerencia({ vehiculos: vehiculosArr, totalCandidatos: clientesHoy.length, zonasHoy: zonasDeHoy, hoy: diaHoyCapitalized });
+  }
 
   function calcKm(paradas) {
     let km = 0;
