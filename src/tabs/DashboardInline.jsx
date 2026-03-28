@@ -66,7 +66,7 @@ function SectionHeader({ title, action, actionLabel }) {
 function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[]}) {
 
   // Pull ventas reactively — avoids adding a prop to the parent call site
-  const { ventas = [] } = useApp();
+  const { ventas = [], clientes = [] } = useApp();
 
   // today: stable reference that only changes when the calendar day changes
   // Using useMemo with a day-key prevents both stale-midnight and every-render issues
@@ -116,6 +116,48 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
   const velocityRojo    = velocityData.filter(p => p.semaforo === 'rojo').length;
   const velocityAmar    = velocityData.filter(p => p.semaforo === 'amarillo').length;
+
+  // ── Demand sensing — Unilever-style customer replenishment prediction ──────
+  // Calculates avg days between orders per client.
+  // If days_since_last_order > avg_interval * 0.8 → alert: cliente listo para reponer
+  const demandSensing = React.useMemo(() => {
+    return clientes
+      .map(cli => {
+        const cliVentas = ventas
+          .filter(v => v.clienteId === cli.id && v.estado !== 'cancelada')
+          .sort((a, b) => new Date(a.creadoEn) - new Date(b.creadoEn));
+
+        if (cliVentas.length < 2) return null; // need at least 2 orders to calc interval
+
+        // Calculate average days between orders
+        let totalDays = 0;
+        for (let i = 1; i < cliVentas.length; i++) {
+          const d1 = new Date(cliVentas[i - 1].creadoEn);
+          const d2 = new Date(cliVentas[i].creadoEn);
+          totalDays += Math.abs(d2 - d1) / 86400000;
+        }
+        const avgInterval    = totalDays / (cliVentas.length - 1);
+        const lastOrder      = new Date(cliVentas[cliVentas.length - 1].creadoEn);
+        const diasDesdeUltima = Math.floor((Date.now() - lastOrder) / 86400000);
+        const ratio           = diasDesdeUltima / avgInterval;
+
+        if (ratio < 0.8) return null; // not yet ready to replenish
+
+        return {
+          id:            cli.id,
+          nombre:        cli.nombre,
+          diasDesde:     diasDesdeUltima,
+          avgInterval:   Math.round(avgInterval),
+          ratio,
+          urgencia:      ratio >= 1.2 ? 'alta' : 'media',
+          telefono:      cli.telefono || '',
+          ultimaCompra:  lastOrder.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit' }),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.ratio - a.ratio)
+      .slice(0, 6);
+  }, [clientes, ventas]);
 
   // ── Billing metrics — cfes and cobros received as reactive props from AppContext
 
@@ -690,6 +732,40 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Demand sensing widget — clientes a contactar hoy ─────── */}
+          {demandSensing.length > 0 && (
+            <div style={{marginTop:12}}>
+              <SectionHeader title="Clientes a contactar hoy" action={()=>setTab('clientes')} actionLabel="Ver clientes"/>
+              <div style={{background:'#fff',borderRadius:10,border:'1px solid #e2e2de',overflow:'hidden'}}>
+                <div style={{padding:'8px 14px',borderBottom:'1px solid #f5f5f3',background:'#f9f9f7',fontSize:11,color:'#6a6a68'}}>
+                  Basado en su frecuencia de compra histórica — listos para reponer
+                </div>
+                {demandSensing.map((c, i) => {
+                  const isAlta = c.urgencia === 'alta';
+                  const tel    = (c.telefono||'').replace(/\D/g,'');
+                  const waUrl  = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(`Hola ${c.nombre.split(' ')[0]}, ¿te quedaste sin stock? Te ayudamos a reponer 🚚`)}` : null;
+                  return (
+                    <div key={c.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',borderBottom:i<demandSensing.length-1?'1px solid #f5f5f3':'none'}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:isAlta?'#dc2626':'#f59e0b',flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontFamily:F.sans,fontSize:12,fontWeight:600,color:'#1a1a18',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.nombre}</div>
+                        <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>
+                          Última compra: {c.ultimaCompra} · Compra cada ~{c.avgInterval}d · Han pasado {c.diasDesde}d
+                        </div>
+                      </div>
+                      {waUrl && (
+                        <a href={waUrl} target="_blank" rel="noreferrer"
+                          style={{background:'#25D366',color:'#fff',border:'none',borderRadius:8,padding:'5px 10px',fontSize:11,fontWeight:700,cursor:'pointer',textDecoration:'none',flexShrink:0}}>
+                          💬 WA
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
