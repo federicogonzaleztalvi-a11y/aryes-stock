@@ -1,4 +1,4 @@
-// api/otp-verify.js — Verifica el OTP e identifica al cliente
+// api/otp-verify.js — Verifica el OTP e identifica al cliente (v2 phone/name)
 // SECURITY: tracks failed attempts, locks after MAX_ATTEMPTS,
 //           persists session token in portal_sessions for server-side validation
 
