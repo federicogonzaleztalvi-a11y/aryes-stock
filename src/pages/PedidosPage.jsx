@@ -163,9 +163,9 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
         {item.marca && <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 8 }}>{item.marca}</div>}
         <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>
           {item.unidad}
-          {item.stock > 0 && item.stock <= 10 && (
+          {(item.available_stock ?? item.stock) > 0 && (item.available_stock ?? item.stock) <= 10 && (
             <span style={{ marginLeft: 8, color: '#d97706', fontWeight: 700 }}>
-              →  últimas {item.stock} uds.
+              ⚠️ últimas {item.available_stock ?? item.stock} uds.
             </span>
           )}
         </div>

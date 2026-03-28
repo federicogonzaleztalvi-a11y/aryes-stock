@@ -1,6 +1,11 @@
-// api/pedido.js — Recibe pedidos del portal B2B y los guarda en b2b_orders
-// SECURITY: validates portal session token before accepting any order
-// Idempotency: duplicate idempotency_key returns the existing order
+// api/pedido.js — B2B portal order endpoint
+// SECURITY: validates portal session token
+// ATP: calls create_b2b_order_with_reservations RPC (atomic)
+//   - validates available_stock for all items
+//   - creates all reservations
+//   - inserts b2b_order
+//   - all in one Postgres transaction (all-or-nothing)
+// INTERNAL OPS: unaffected — VentasTab / create_venta unchanged
 
 import { log, withObservability } from './_log.js';
 
@@ -14,15 +19,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// ── Validate portal session token ─────────────────────────────────────────
-// Looks up the token in portal_sessions (written by otp-verify.js).
-// Returns the session row if valid, null if invalid/expired.
 async function validatePortalSession(token) {
   if (!token) return null;
-
-  // Use service key — portal_sessions is RESTRICTIVE (no REST access)
   const key = SB_SVC || SB_ANON;
-
   const r = await fetch(
     `${SB_URL}/rest/v1/portal_sessions` +
     `?token=eq.${encodeURIComponent(token)}` +
@@ -30,7 +29,6 @@ async function validatePortalSession(token) {
     `&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
-
   if (!r.ok) return null;
   const rows = await r.json();
   return rows?.[0] || null;
@@ -43,11 +41,10 @@ async function handler(req, res) {
   if (!SB_URL || !SB_ANON)    return res.status(500).json({ error: 'Server misconfigured' });
 
   // ── 1. Authenticate ───────────────────────────────────────────────────────
-  // Token comes from Authorization: Bearer <token> header
-  const authHeader = req.headers['authorization'] || '';
-  const token      = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
+  const authHeader    = req.headers['authorization'] || '';
+  const token         = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
   const portalSession = await validatePortalSession(token);
+
   if (!portalSession) {
     log.warn('pedido', 'unauthorized — invalid or missing session token');
     return res.status(401).json({ error: 'Sesión inválida. Iniciá sesión nuevamente.' });
@@ -55,80 +52,107 @@ async function handler(req, res) {
 
   // ── 2. Parse body ─────────────────────────────────────────────────────────
   const {
-    items           = [],
-    total           = 0,
-    notas           = '',
-    idempotencyKey  = null,
+    items          = [],
+    total          = 0,
+    notas          = '',
+    idempotencyKey = null,
   } = req.body || {};
 
   if (!items.length) {
     return res.status(400).json({ error: 'El pedido no tiene productos' });
   }
 
-  // Use values from the validated server-side session — never trust the body
-  // for identity-related fields (clienteId, tel, org)
+  // Identity from validated server-side session — never trust the body
   const org           = portalSession.org_id;
   const clienteId     = portalSession.cliente_id;
   const clienteTel    = portalSession.tel;
-
-  // clienteNombre still comes from body (cosmetic only — not used for auth)
   const clienteNombre = (req.body?.clienteNombre || '').substring(0, 100);
 
-  const headers = {
-    apikey:         SB_ANON,
-    Authorization: `Bearer ${SB_ANON}`,
+  // Pre-generate order ID (used as reservation reference_id)
+  const orderId = crypto.randomUUID();
+
+  const rpcHeaders = {
+    apikey:          SB_ANON,
+    Authorization:  `Bearer ${SB_ANON}`,
     'Content-Type': 'application/json',
     Accept:         'application/json',
   };
 
-  // ── 3. Idempotency check ──────────────────────────────────────────────────
-  if (idempotencyKey) {
-    const checkR = await fetch(
-      `${SB_URL}/rest/v1/b2b_orders?idempotency_key=eq.${encodeURIComponent(idempotencyKey)}&limit=1`,
-      { headers }
-    );
-    if (checkR.ok) {
-      const existing = await checkR.json();
-      if (existing?.[0]?.id) {
-        log.info('pedido', 'idempotent hit', { orderId: existing[0].id, idempotencyKey });
-        return res.status(200).json({ ok: true, orderId: existing[0].id, idempotent: true });
-      }
-    }
-  }
-
-  // ── 4. Insert order ───────────────────────────────────────────────────────
-  const order = {
-    org_id:          org,
-    cliente_id:      clienteId,
-    cliente_nombre:  clienteNombre,
-    cliente_tel:     clienteTel,
-    items,
-    total:           Number(total) || 0,
-    moneda:          'USD',
-    notas:           notas || '',
-    estado:          'pendiente',
-    idempotency_key: idempotencyKey || null,
-  };
-
-  const r = await fetch(`${SB_URL}/rest/v1/b2b_orders`, {
+  // ── 3. Call atomic RPC: create_b2b_order_with_reservations ───────────────
+  // This single RPC validates available_stock for ALL items, creates ALL
+  // reservations, and inserts the order — all in one Postgres transaction.
+  // If any item has insufficient stock → full rollback, no partial state.
+  const rpcRes = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, {
     method:  'POST',
-    headers: { ...headers, Prefer: 'return=representation' },
-    body:    JSON.stringify(order),
+    headers: rpcHeaders,
+    body: JSON.stringify({
+      p_order_id:        orderId,
+      p_org_id:          org,
+      p_cliente_id:      clienteId,
+      p_cliente_nombre:  clienteNombre,
+      p_cliente_tel:     clienteTel,
+      p_items:           items,
+      p_total:           Number(total) || 0,
+      p_notas:           notas || '',
+      p_idempotency_key: idempotencyKey || null,
+      p_ttl_hours:       6,
+    }),
   });
 
-  if (!r.ok) {
-    const err = await r.text();
-    if (r.status === 409 && idempotencyKey) {
-      log.warn('pedido', 'idempotency conflict (race)', { idempotencyKey });
-      return res.status(200).json({ ok: true, idempotent: true });
+  if (!rpcRes.ok) {
+    const errBody = await rpcRes.json().catch(() => ({}));
+    const errMsg  = errBody?.message || errBody?.details || '';
+
+    // Parse structured errors from the RPC
+    if (errMsg.includes('item_insufficient:')) {
+      // Format: 'item_insufficient:{productId}:{available}:{requested}'
+      const parts     = errMsg.split(':');
+      const productId = parts[1] || '';
+      const available = parts[2] || '0';
+      // Find the product name from items
+      const itemMatch = items.find(i => i.productId === productId);
+      const nombre    = itemMatch?.nombre || productId;
+      log.warn('pedido', 'insufficient stock', { productId, available });
+      return res.status(409).json({
+        error:     `Stock insuficiente para: ${nombre}. Disponible: ${available}. Actualizá tu pedido.`,
+        productId,
+        available: Number(available),
+      });
     }
-    log.error('pedido', 'db error', { status: r.status, body: err.substring(0, 200) });
-    return res.status(502).json({ error: 'Error al guardar el pedido' });
+
+    if (errMsg.includes('product_not_found')) {
+      log.warn('pedido', 'product not found in RPC', { errMsg });
+      return res.status(404).json({ error: 'Uno o más productos no fueron encontrados.' });
+    }
+
+    // Idempotent hit — order already exists
+    const rpcData = await rpcRes.json().catch(() => null);
+    if (rpcData?.idempotent) {
+      log.info('pedido', 'idempotent hit', { orderId: rpcData.orderId });
+      return res.status(200).json({ ok: true, orderId: rpcData.orderId, idempotent: true });
+    }
+
+    log.error('pedido', 'RPC error', { status: rpcRes.status, errMsg });
+    return res.status(502).json({ error: 'Error al procesar el pedido. Intentá de nuevo.' });
   }
 
-  const saved = await r.json();
-  log.info('pedido', 'created', { orderId: saved?.[0]?.id, org, clienteId, total });
-  return res.status(200).json({ ok: true, orderId: saved?.[0]?.id });
+  const result = await rpcRes.json();
+
+  // Handle idempotent response from RPC (order already existed)
+  if (result?.idempotent) {
+    log.info('pedido', 'idempotent hit via RPC', { orderId: result.orderId });
+    return res.status(200).json({ ok: true, orderId: result.orderId, idempotent: true });
+  }
+
+  log.info('pedido', 'order created with reservations', {
+    orderId: result.orderId || orderId,
+    org,
+    clienteId,
+    items:  items.length,
+    total,
+  });
+
+  return res.status(200).json({ ok: true, orderId: result.orderId || orderId });
 }
 
 export default withObservability('pedido', handler);

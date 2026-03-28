@@ -41,9 +41,31 @@ export default async function handler(req, res) {
       'limit=500',
     ].join('&');
 
-    const prodRes = await fetch(`${SB_URL}/rest/v1/products?${prodQuery}`, { headers });
+    // Parallel: products + active B2B reservations for ATP
+    const now = new Date().toISOString();
+    const resQuery = [
+      'select=product_id,quantity',
+      `org_id=eq.${org}`,
+      'status=eq.active',
+      `expires_at=gte.${now}`,
+    ].join('&');
+
+    const [prodRes, resRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/products?${prodQuery}`, { headers }),
+      fetch(`${SB_URL}/rest/v1/stock_reservations?${resQuery}`, { headers }),
+    ]);
+
     if (!prodRes.ok) return res.status(502).json({ error: 'Database error' });
     const products = await prodRes.json();
+
+    // Build reserved_qty map: productId -> total reserved
+    const reservedMap = {};
+    if (resRes.ok) {
+      const reservations = await resRes.json();
+      for (const r of (reservations || [])) {
+        reservedMap[r.product_id] = (reservedMap[r.product_id] || 0) + Number(r.quantity);
+      }
+    }
 
     // ââ 2. Load client's price list if clienteId provided âââââââââââââââââââ
     let listaId   = null;
@@ -104,15 +126,21 @@ export default async function handler(req, res) {
           }
         }
 
+        const physicalStock  = Number(p.stock) || 0;
+        const reservedStock  = reservedMap[p.uuid] || 0;
+        const availableStock = Math.max(0, physicalStock - reservedStock);
+
         return {
-          id:        p.uuid,
-          nombre:    p.name,
-          unidad:    p.unit,
-          categoria: p.category || 'General',
-          marca:     p.brand    || '',
+          id:             p.uuid,
+          nombre:         p.name,
+          unidad:         p.unit,
+          categoria:      p.category || 'General',
+          marca:          p.brand    || '',
           precio,
-          precioBase: base,
-          stock:     Number(p.stock) || 0,
+          precioBase:     base,
+          stock:          physicalStock,    // physical (unchanged — used by internal ops)
+          available_stock: availableStock,  // available for B2B orders (ATP)
+          reserved_stock:  reservedStock,   // informational
         };
       });
 
