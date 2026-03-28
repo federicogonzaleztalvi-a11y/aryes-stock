@@ -6,7 +6,7 @@
 -- 1. Table
 CREATE TABLE IF NOT EXISTS stock_reservations (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  product_id    UUID        NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_id    TEXT        NOT NULL REFERENCES products(uuid) ON DELETE CASCADE,
   org_id        TEXT        NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   quantity      NUMERIC     NOT NULL CHECK (quantity > 0),
   status        TEXT        NOT NULL DEFAULT 'active'
@@ -44,7 +44,7 @@ CREATE POLICY "sr_authenticated_read" ON stock_reservations
 -- 4. available_stock view — B2B only
 CREATE OR REPLACE VIEW available_stock_b2b AS
 SELECT
-  p.id                                                  AS product_id,
+  p.uuid                                                AS product_id,
   p.org_id,
   p.nombre,
   p.stock                                               AS physical_stock,
@@ -58,9 +58,9 @@ SELECT
   )                                                     AS available_stock
 FROM products p
 LEFT JOIN stock_reservations sr
-  ON sr.product_id = p.id
+  ON sr.product_id = p.uuid
  AND sr.org_id     = p.org_id
-GROUP BY p.id, p.org_id, p.nombre, p.stock;
+GROUP BY p.id, p.uuid, p.org_id, p.nombre, p.stock;
 
 -- 5. ATOMIC RPC: create_b2b_order_with_reservations
 -- Validates available_stock for all items, creates all reservations,
@@ -84,7 +84,7 @@ SECURITY DEFINER
 AS $$
 DECLARE
   item          JSONB;
-  v_product_id  UUID;
+  v_product_id  TEXT;
   v_qty         NUMERIC;
   v_physical    NUMERIC;
   v_reserved    NUMERIC;
@@ -110,7 +110,7 @@ BEGIN
   -- PHASE 1: Validate available_stock for ALL items (with FOR UPDATE locks)
   -- No writes happen until every item passes validation
   FOR item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-    v_product_id := (item->>'productId')::UUID;
+    v_product_id := (item->>'productId')::TEXT;
     v_qty        := (item->>'qty')::NUMERIC;
 
     IF v_product_id IS NULL OR v_qty IS NULL OR v_qty <= 0 THEN
@@ -120,7 +120,7 @@ BEGIN
     -- Lock product row
     SELECT stock INTO v_physical
     FROM products
-    WHERE id     = v_product_id
+    WHERE uuid   = v_product_id
       AND org_id = p_org_id
     FOR UPDATE;
 
@@ -148,7 +148,7 @@ BEGIN
 
   -- PHASE 2: All items validated — create reservations
   FOR item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-    v_product_id := (item->>'productId')::UUID;
+    v_product_id := (item->>'productId')::TEXT;
     v_qty        := (item->>'qty')::NUMERIC;
 
     IF v_product_id IS NULL OR v_qty IS NULL OR v_qty <= 0 THEN
