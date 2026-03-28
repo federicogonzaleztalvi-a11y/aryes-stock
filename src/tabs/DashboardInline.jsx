@@ -66,10 +66,40 @@ function SectionHeader({ title, action, actionLabel }) {
 function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[]}) {
 
   // Pull ventas reactively — avoids adding a prop to the parent call site
-  const { ventas = [], clientes = [] } = useApp();
+  const { ventas = [], clientes = [], brandCfg = {} } = useApp();
 
   // today: stable reference that only changes when the calendar day changes
   // Using useMemo with a day-key prevents both stale-midnight and every-render issues
+  // ── Resumen diario WhatsApp — Amazon: system pushes info to operator ────
+  const generarResumenWA = React.useCallback(() => {
+    const hoy    = new Date();
+    const ayer   = new Date(hoy - 86400000);
+    const fechaStr = hoy.toLocaleDateString('es-UY', { weekday:'long', day:'numeric', month:'long' });
+    const ventasAyer = ventas.filter(v => {
+      const d = new Date(v.creadoEn);
+      return d >= ayer && d < hoy && v.estado !== 'cancelada';
+    });
+    const totalAyer  = ventasAyer.reduce((s, v) => s + Number(v.total || 0), 0);
+    const enCero     = (products || []).filter(p => Number(p.stock) <= 0);
+    const bajMin     = (products || []).filter(p => Number(p.stock) > 0 && Number(p.stock) <= Number(p.minStock));
+    const deuda      = cfes.filter(f => ['emitida','cobrado_parcial'].includes(f.status))
+                           .reduce((s, f) => s + (f.saldoPendiente || f.total || 0), 0);
+    const lines = [
+      `📊 *Resumen ${fechaStr}*`,
+      ``,
+      `💰 Ventas ayer: *${ventasAyer.length} órdenes* · U$S ${totalAyer.toLocaleString('es-UY',{minimumFractionDigits:0})}`,
+      enCero.length   > 0 ? `🔴 Stock en cero: *${enCero.length} productos*` : `✅ Sin productos en cero`,
+      bajMin.length   > 0 ? `🟡 Bajo mínimo: *${bajMin.length} productos*` : null,
+      demandSensing.length > 0 ? `📞 Clientes a contactar: *${demandSensing.length}*` : null,
+      deuda           > 0 ? `💳 Deuda pendiente: *U$S ${deuda.toLocaleString('es-UY',{minimumFractionDigits:0})}*` : null,
+      ``,
+      `_Aryes Stock · ${hoy.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}_`
+    ].filter(Boolean).join('\n');
+    const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
+    if (!tel) { alert('Configurá tu número en Configuración → Marca y empresa'); return; }
+    window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(lines), '_blank');
+  }, [ventas, products, cfes, demandSensing, brandCfg]);
+
   const today = React.useMemo(() => new Date(), [new Date().toDateString()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Stock metrics ──────────────────────────────────────────────────────────
@@ -334,7 +364,13 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
       {/* ── KPI Row 1: Operaciones ────────────────────────────────── */}
       <div>
-        <SectionHeader title="Operaciones" />
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:0}}>
+          <SectionHeader title="Operaciones" />
+          <button onClick={generarResumenWA}
+            style={{background:'#25D366',color:'#fff',border:'none',borderRadius:8,padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+            📲 Resumen del día
+          </button>
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,
           background:'#e2e2de',borderRadius:12,overflow:'hidden'}}>
           <KpiCard label="Capital en stock" value={fmtUSD(stockValue)}
