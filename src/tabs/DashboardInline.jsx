@@ -147,6 +147,36 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   const velocityRojo    = velocityData.filter(p => p.semaforo === 'rojo').length;
   const velocityAmar    = velocityData.filter(p => p.semaforo === 'amarillo').length;
 
+  // ── Sugerencias de reposicion — Amazon-style: system detects, human confirms ──
+  // Combina velocity data con proveedor + EOQ para generar sugerencias completas
+  const sugerenciasReposicion = React.useMemo(() => {
+    return velocityData
+      .filter(p => p.semaforo === 'rojo') // solo los criticos < 7 dias
+      .map(p => {
+        const prod = products.find(pr => pr.id === p.id);
+        if (!prod) return null;
+        const sup  = suppliers.find(s => s.id === prod.supplierId);
+        // EOQ simplificado: (velocidad_30d * lead_time * 1.5) redondeado
+        const lead   = sup ? Object.values(sup.times||{}).reduce((s,v)=>s+Number(v||0),0) : 14;
+        const eqSugg = Math.ceil(p.unidadDia * (lead || 14) * 1.5);
+        const costo  = eqSugg * Number(prod.unitCost || 0);
+        return {
+          id:         p.id,
+          nombre:     p.nombre,
+          stock:      p.stock,
+          unidad:     p.unidad,
+          diasRestantes: p.diasRestantes,
+          unidadDia:  p.unidadDia,
+          cantSugerida: eqSugg,
+          costo,
+          sup,
+          prod,
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 8);
+  }, [velocityData, products, suppliers]);
+
   // ── Demand sensing — Unilever-style customer replenishment prediction ──────
   // Calculates avg days between orders per client.
   // If days_since_last_order > avg_interval * 0.8 → alert: cliente listo para reponer
@@ -416,6 +446,88 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
       {/* ── Main grid: alertas + deudores + llegadas ─────────────── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:16}}>
+
+        {/* ── Sugerencias de reposicion (Amazon: sistema detecta, humano confirma) ── */}
+        {sugerenciasReposicion.length > 0 && (
+          <div style={{marginBottom:24}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <div>
+                <div style={{fontFamily:F.sans,fontSize:11,fontWeight:700,color:'#dc2626',textTransform:'uppercase',letterSpacing:.5}}>
+                  Reposicion urgente
+                </div>
+                <div style={{fontFamily:F.sans,fontSize:12,color:'#6a6a68',marginTop:2}}>
+                  {sugerenciasReposicion.length} producto{sugerenciasReposicion.length!==1?'s':''} con stock para menos de 7 dias
+                </div>
+              </div>
+              <button onClick={()=>setTab('orders')}
+                style={{background:'none',border:'none',cursor:'pointer',fontSize:12,fontWeight:700,color:G,padding:0}}>
+                Ver pedidos →
+              </button>
+            </div>
+
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {sugerenciasReposicion.map(s=>{
+                const tel = (s.sup?.whatsapp||s.sup?.phone||'').replace(/[^0-9]/g,'');
+                const waMsg = tel ? [
+                  `Hola${s.sup?.contact?' '+s.sup.contact.split(' ')[0]:''},`,
+                  `Necesitamos reponer *${s.nombre}*.`,
+                  `Cantidad sugerida: *${s.cantSugerida} ${s.unidad}*`,
+                  `Stock actual: ${s.stock} ${s.unidad} (${s.diasRestantes}d restantes al ritmo actual)`,
+                  `Por favor confirmar disponibilidad y fecha de entrega.`
+                ].join('\n') : null;
+
+                return (
+                  <div key={s.id} style={{background:'#fff',borderRadius:12,padding:'14px 16px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #fecaca',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+
+                    {/* Urgency dot + info */}
+                    <div style={{flex:1,minWidth:200}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                        <div style={{width:8,height:8,borderRadius:'50%',background:'#dc2626',flexShrink:0,animation:'pulseDot 1.8s ease infinite'}}/>
+                        <span style={{fontFamily:F.sans,fontSize:13,fontWeight:700,color:'#1a1a18'}}>{s.nombre}</span>
+                        <span style={{fontFamily:F.sans,fontSize:11,color:'#dc2626',fontWeight:700}}>
+                          {s.diasRestantes < 1 ? 'HOY' : `${s.diasRestantes}d`}
+                        </span>
+                      </div>
+                      <div style={{fontFamily:F.sans,fontSize:11,color:'#6a6a68'}}>
+                        Stock: {s.stock} {s.unidad} · {s.unidadDia.toFixed(1)} {s.unidad}/dia
+                        {s.sup && ` · ${s.sup.flag||''} ${s.sup.name}`}
+                      </div>
+                    </div>
+
+                    {/* Suggested quantity + cost */}
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      <div style={{fontFamily:F.sans,fontSize:12,fontWeight:700,color:'#1a1a18'}}>
+                        Sugerido: {s.cantSugerida} {s.unidad}
+                      </div>
+                      {s.costo > 0 && (
+                        <div style={{fontFamily:F.sans,fontSize:11,color:'#6a6a68'}}>
+                          USD {s.costo.toLocaleString('es-UY',{minimumFractionDigits:0})}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{display:'flex',gap:6,flexShrink:0}}>
+                      {/* Review & confirm via OrderModal */}
+                      <button onClick={()=>setModal({type:'order',product:s.prod})}
+                        style={{padding:'7px 14px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>
+                        Revisar y pedir
+                      </button>
+                      {/* Quick WhatsApp to supplier */}
+                      {waMsg && (
+                        <a href={`https://wa.me/${tel}?text=${encodeURIComponent(waMsg)}`}
+                          target="_blank" rel="noreferrer"
+                          style={{padding:'7px 12px',background:'#25D366',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center',gap:4}}>
+                          💬
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* LEFT: alertas de inventario */}
         <div>
