@@ -129,6 +129,8 @@ function RutasTab(){
   const [notifMsg,   setNotifMsg]   = useState(''); // feedback after WA send
   const [showCobro,  setShowCobro]  = useState(false);
   const [cobroPrefill, setCobroPrefill] = useState(null);
+  // ── showGenerador declarado al inicio — evita TDZ en esbuild ─────────────
+  const [showGenerador, setShowGenerador] = useState(false);
 
   const fetchPosiciones = useCallback(async () => {
     try {
@@ -229,7 +231,6 @@ function RutasTab(){
   const [showZonasConfig, setShowZonasConfig] = React.useState(false);
   const [zonaForm, setZonaForm] = React.useState({ nombre:'', dias:[], color:'#3b82f6' });
   const [showSugeridor, setShowSugeridor] = React.useState(false);
-  const [showGenerador, setShowGenerador] = React.useState(false);
   const [sugerencia, setSugerencia] = React.useState(null); // { vehiculos: [{vehiculo, entregas}] }
   const [vehiculosDisp, setVehiculosDisp] = React.useState('');
   const hoy = DIAS_SEMANA[new Date().getDay()];
