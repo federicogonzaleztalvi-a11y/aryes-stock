@@ -83,12 +83,11 @@ export default async function handler(req, res) {
     headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' }
   });
   const cliText = await cliRes.text();
-  console.log('[otp-verify] respuesta cruda:', cliRes.status, cliText.slice(0, 200));
+  console.log('[otp-verify] status:', cliRes.status, 'body:', cliText.slice(0, 300));
   
   let clients;
   try { clients = JSON.parse(cliText); } catch(e) { clients = []; }
-
-  console.log('[otp-verify] clientes encontrados:', Array.isArray(clients) ? clients.length : 'no-array');
+  console.log('[otp-verify] clientes:', Array.isArray(clients) ? clients.length : typeof clients);
 
   if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
 
