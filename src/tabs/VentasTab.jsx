@@ -666,7 +666,7 @@ function VentasTab(){
     <section style={{padding:'28px 36px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <div>
-          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Írdenes de Venta</h2>
+          <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Ó�rdenes de Venta</h2>
           <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestión de ventas a clientes → remitos y estado de entrega</p>
         </div>
         <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
