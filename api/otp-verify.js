@@ -76,36 +76,23 @@ export default async function handler(req, res) {
     `?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(tel8)},phone.eq.598${encodeURIComponent(tel8)})` +
     `&select=id,name,lista_id,email,cond_pago&limit=1`;
 
-  // DIAGNÓSTICO TEMPORAL
-  return res.status(200).json({ 
-    _diag: true,
-    sb_url: SB_URL ? SB_URL.slice(0,30) : 'UNDEFINED',
-    has_svc: !!SB_SVC_KEY,
-    has_anon: !!SB_ANON,
-    tel: telClean,
-    tel8,
-    cliUrl: cliUrl.slice(0,100)
-  });
-  // FIN DIAGNÓSTICO
   console.log('[otp-verify] buscando cliente, tel:', telClean, 'tel8:', tel8);
   console.log('[otp-verify] SB_URL:', SB_URL ? 'ok' : 'UNDEFINED', 'key:', key ? 'ok' : 'UNDEFINED');
 
-  // Usar service key para bypass RLS en la búsqueda del cliente
-  const clientKey = SB_SVC_KEY || SB_ANON;
-  const cliRes = await fetch(cliUrl, {
-    headers: { 
-      apikey: clientKey, 
-      Authorization: `Bearer ${clientKey}`, 
-      Accept: 'application/json',
-      Prefer: 'count=none'
-    }
-  });
-  const cliText = await cliRes.text();
-  console.log('[otp-verify] status:', cliRes.status, 'body:', cliText.slice(0, 300));
-  
-  let clients;
-  try { clients = JSON.parse(cliText); } catch(e) { clients = []; }
-  console.log('[otp-verify] clientes:', Array.isArray(clients) ? clients.length : typeof clients);
+  let clients = [];
+  try {
+    const clientKey = SB_SVC_KEY || SB_ANON;
+    const cliRes = await fetch(cliUrl, {
+      headers: { apikey: clientKey, Authorization: `Bearer ${clientKey}`, Accept: 'application/json' }
+    });
+    const cliText = await cliRes.text();
+    console.log('[otp-verify] supabase status:', cliRes.status, 'body:', cliText.slice(0, 200));
+    clients = JSON.parse(cliText);
+  } catch(e) {
+    console.error('[otp-verify] fetch error:', e.message);
+    return res.status(500).json({ error: 'Error buscando cliente' });
+  }
+  console.log('[otp-verify] clientes:', JSON.stringify(clients).slice(0, 100));
 
   if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
 
