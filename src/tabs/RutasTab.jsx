@@ -229,6 +229,7 @@ function RutasTab(){
   const [showZonasConfig, setShowZonasConfig] = React.useState(false);
   const [zonaForm, setZonaForm] = React.useState({ nombre:'', dias:[], color:'#3b82f6' });
   const [showSugeridor, setShowSugeridor] = React.useState(false);
+  const [showGenerador, setShowGenerador] = React.useState(false);
   const [sugerencia, setSugerencia] = React.useState(null); // { vehiculos: [{vehiculo, entregas}] }
   const [vehiculosDisp, setVehiculosDisp] = React.useState('');
   const hoy = DIAS_SEMANA[new Date().getDay()];
@@ -370,7 +371,6 @@ function RutasTab(){
     setShowSugeridor(false);
     setSugerencia(null);
   };
-  const [showGenerador, setShowGenerador] = useState(false);
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
   const [msg,setMsg]=useState("");
   const [busqCli,setBusqCli]=useState("");
