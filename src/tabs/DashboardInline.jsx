@@ -91,7 +91,16 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       `💰 Ventas ayer: *${ventasAyer.length} órdenes* · U$S ${totalAyer.toLocaleString('es-UY',{minimumFractionDigits:0})}`,
       enCero.length   > 0 ? `🔴 Stock en cero: *${enCero.length} productos*` : `✅ Sin productos en cero`,
       bajMin.length   > 0 ? `🟡 Bajo mínimo: *${bajMin.length} productos*` : null,
-      demandSensing.length > 0 ? `📞 Clientes a contactar: *${demandSensing.length}*` : null,
+      (() => {
+        // inline demand sensing count (avoids temporal dead zone)
+        const ds = ventas.filter(v => {
+          if (!v.clienteId || v.estado === 'cancelada') return false;
+          const cliVentas = ventas.filter(x => x.clienteId === v.clienteId && x.estado !== 'cancelada');
+          return cliVentas.length >= 2;
+        });
+        const uniqueClients = [...new Set(ds.map(v => v.clienteId))].length;
+        return uniqueClients > 0 ? `📞 Clientes a contactar: *${uniqueClients}*` : null;
+      })(),
       deuda           > 0 ? `💳 Deuda pendiente: *U$S ${deuda.toLocaleString('es-UY',{minimumFractionDigits:0})}*` : null,
       ``,
       `_Aryes Stock · ${hoy.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}_`
