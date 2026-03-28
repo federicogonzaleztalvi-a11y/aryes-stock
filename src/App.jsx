@@ -1009,6 +1009,31 @@ function _buildCtx(role,products,suppliers,orders,movements){
   return {rol:'Admin',total_productos:(products||[]).length,en_cero:zero.length,bajo_minimo:low.length,proveedores:(suppliers||[]).length,pedidos_pendientes:(orders||[]).filter(o=>o.estado==='pendiente').length,productos:(products||[]).map(p=>({n:p.nombre,m:p.marca,s:p.stock,min:p.minStock,p:p.precioVenta||p.precio})).slice(0,100),criticos:zero.map(p=>p.nombre),movimientos:(movements||[]).slice(0,20),pedidos:(orders||[]).filter(o=>o.estado==='pendiente').slice(0,15)};
 }
 
+
+// ── generateExcel — genera y descarga un .xlsx desde el chat IA ──────────────
+function generateExcel({titulo='Informe', columnas=[], filas=[]}) {
+  // Generar CSV y descargarlo (funciona sin librerías externas)
+  // Formato: BOM UTF-8 para que Excel lo abra correctamente con tildes
+  const BOM = '\uFEFF';
+  const sep = ';'; // punto y coma para compatibilidad con Excel en español
+
+  const header = columnas.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(sep);
+  const rows = filas.map(fila =>
+    fila.map(cell => '"'+String(cell==null?'':cell).replace(/"/g,'""')+'"').join(sep)
+  );
+
+  const csv = BOM + [header, ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (titulo||'informe').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ _-]/g,'_') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function AIChatFloat({session,products,suppliers,orders,movements}){
   const [open,setOpen]=React.useState(false);
   const [msgs,setMsgs]=React.useState([]);
@@ -1036,7 +1061,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
     setMsgs(next);setBusy(true);
     try{
       const ctx=_buildCtx(role,products,suppliers,orders,movements);
-      const sys='Sos el asistente de stock, WMS para gestión de inventario. Adaptá las respuestas al negocio. Respondé en espaÍ±ol, conciso y directo. Usá solo los datos del contexto. Podés sugerir acciones concretas. Máx 200 palabras salvo informes.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
+      const sys='Sos el asistente de stock y WMS. Respondé en español, conciso y directo. Usá solo los datos del contexto. Max 200 palabras salvo informes.\n\nPUEDES GENERAR ARCHIVOS EXCEL. Cuando el usuario pida un Excel, exportar datos o descargar, respondé EXACTAMENTE con este formato (sin nada antes ni después):\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nCuando generes Excel, incluí TODOS los datos del contexto relevantes (no solo ejemplos).\nEjemplos de pedidos de Excel y qué poner:\ninventario/stock → titulo=Inventario, columnas=[Producto,Marca,Stock,Mínimo,Precio], filas=todos los productos\nventas → titulo=Ventas, columnas=[Número,Cliente,Total,Estado,Fecha], filas=todas las ventas\nclientes → titulo=Clientes, columnas=[Nombre,Teléfono,Saldo], filas=todos los clientes\nSi piden análisis en texto, respondé normal. Solo usá [EXCEL:...] cuando pidan archivo/Excel/exportar.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
       const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
       const r=await fetch('/api/chat',{
         method:'POST',
@@ -1044,8 +1069,21 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))})
       });
       const d=await r.json();
-      const reply=d.content?.[0]?.text||'No pude procesar la respuesta.';
-      setMsgs(p=>[...p,{r:'a',t:reply}]);
+      const raw=d.content?.[0]?.text||'No pude procesar la respuesta.';
+      // Detectar si la respuesta es un Excel
+      const excelMatch=raw.match(/\[EXCEL:(\{[\s\S]*\})\]/);
+      if(excelMatch){
+        try{
+          const excelData=JSON.parse(excelMatch[1]);
+          generateExcel(excelData);
+          const reply='✅ Excel generado y descargado: **'+excelData.titulo+'**\n'+excelData.filas.length+' filas exportadas.';
+          setMsgs(p=>[...p,{r:'a',t:reply}]);
+        }catch(e){
+          setMsgs(p=>[...p,{r:'a',t:'Hubo un error al generar el Excel. Intentá de nuevo.'}]);
+        }
+      } else {
+        setMsgs(p=>[...p,{r:'a',t:raw}]);
+      }
       if(!open) setUnread(n=>n+1);
     }catch{
       setMsgs(p=>[...p,{r:'a',t:'Error de conexión. Verificá tu internet e intentá de nuevo.'}]);
