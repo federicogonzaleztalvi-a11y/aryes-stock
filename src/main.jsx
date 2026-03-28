@@ -12,6 +12,7 @@ const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
 const RegisterPage     = lazy(() => import('./pages/RegisterPage.jsx'));
 const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
 const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
+const TrackingPage     = lazy(() => import('./pages/TrackingPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 function readSession() {
@@ -245,6 +246,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/pedidos" element={<PedidosPage />} />
           {/* Driver mobile view — no auth required, reads from Supabase directly */}
           <Route path="/driver" element={<DriverView />} />
+          {/* Public client delivery tracking — no auth */}
+          <Route path="/tracking" element={<TrackingPage />} />
           {/* Public self-registration */}
           <Route path="/register" element={<RegisterPage />} />
           {/* Upgrade / pricing page */}

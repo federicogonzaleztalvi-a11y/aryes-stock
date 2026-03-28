@@ -157,7 +157,10 @@ export default function DriverView() {
   const notificar = (e) => {
     const tel = (e.telefono || '').replace(/\D/g, '');
     if (!tel) { showMsg('⚠️ Este cliente no tiene teléfono', 'err'); return; }
-    const msg = `Hola ${e.clienteNombre.split(' ')[0]}, te avisamos que estamos llegando a tu local. ¡Gracias! 🚚`;
+    // Build tracking link for this client
+    const trackingUrl = `${window.location.origin}/tracking?ruta=${rutaId}&cliente=${e.clienteId}&org=${orgId}`;
+    const nombre = e.clienteNombre.split(' ')[0];
+    const msg = `Hola ${nombre}, te avisamos que nuestro repartidor está en camino a tu local. Seguí tu entrega en tiempo real: ${trackingUrl} 🚚`;
     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
