@@ -3,7 +3,8 @@ import React, {
   createContext, useContext,
   useState, useEffect, useMemo,
 } from 'react';
-import { LS, db, SB_URL, SKEY } from '../lib/constants.js';
+import { LS, db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
+import { useRealtime } from '../hooks/useRealtime.js';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
@@ -419,6 +420,95 @@ const describeAction = (action: string, detail: string): string => {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [session, dbReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Realtime sync — multi-device (Supabase Realtime) ────────────────────
+  // When another device/user changes data in Supabase, these callbacks
+  // update local state immediately without requiring a page reload.
+  useRealtime({
+    onProductChange: ({ eventType, new: row, old: oldRow }) => {
+      if (!row && !oldRow) return;
+      setProducts(ps => {
+        if (eventType === 'INSERT') {
+          if (ps.find(p => p.id === row.uuid)) return ps; // already have it
+          const p = { id:row.uuid, nombre:row.nombre||row.name||'', tipo:row.tipo||row.type||'',
+            rut:row.rut||'', telefono:row.telefono||row.phone||'', stock:Number(row.stock)||0,
+            minStock:Number(row.min_stock)||0, unitCost:Number(row.unit_cost)||0, unit:row.unit||'',
+            supplierId:row.supplier_id||'', name:row.name||row.nombre||'', brand:row.brand||'',
+            category:row.category||'', precioVenta:Number(row.precio_venta)||0,
+            dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
+          return [p as any, ...ps];
+        }
+        if (eventType === 'UPDATE') {
+          return ps.map(p => p.id === row.uuid
+            ? { ...p, stock: Number(row.stock)||0, nombre: row.nombre||row.name||p.nombre,
+                unitCost: Number(row.unit_cost)||p.unitCost,
+                precioVenta: Number(row.precio_venta)||p.precioVenta,
+                updatedAt: row.updated_at||'' }
+            : p);
+        }
+        if (eventType === 'DELETE') return ps.filter(p => p.id !== (oldRow?.uuid || row?.uuid));
+        return ps;
+      });
+    },
+
+    onVentaChange: ({ eventType, new: row, old: oldRow }) => {
+      if (!row && !oldRow) return;
+      setVentas(vs => {
+        if (eventType === 'INSERT') {
+          if (vs.find(v => v.id === row.id)) return vs;
+          const v = { id:row.id, nroVenta:row.nro_venta, clienteId:row.cliente_id||'',
+            clienteNombre:row.cliente_nombre||'', items:row.items||[], total:row.total||0,
+            descuento:row.descuento||0, estado:row.estado||'pendiente',
+            notas:row.notas||'', fechaEntrega:row.fecha_entrega||null, creadoEn:row.creado_en,
+            tieneDevolucion:false, estadoLog:row.estado_log||[] };
+          return [v as any, ...vs];
+        }
+        if (eventType === 'UPDATE') {
+          return vs.map(v => v.id === row.id
+            ? { ...v, estado: row.estado||v.estado, estadoLog: row.estado_log||v.estadoLog,
+                total: Number(row.total)||v.total }
+            : v);
+        }
+        if (eventType === 'DELETE') return vs.filter(v => v.id !== (oldRow?.id || row?.id));
+        return vs;
+      });
+    },
+
+    onRutaChange: ({ eventType, new: row, old: oldRow }) => {
+      if (!row && !oldRow) return;
+      setRutas(rs => {
+        if (eventType === 'INSERT') {
+          if (rs.find(r => r.id === row.id)) return rs;
+          return [row as any, ...rs];
+        }
+        if (eventType === 'UPDATE') {
+          // For rutas, the key field is entregas (delivery statuses)
+          return rs.map(r => r.id === row.id
+            ? { ...r, entregas: row.entregas || r.entregas,
+                enRuta: row.en_ruta || r.enRuta,
+                salidaEn: row.salida_en || r.salidaEn }
+            : r);
+        }
+        if (eventType === 'DELETE') return rs.filter(r => r.id !== (oldRow?.id || row?.id));
+        return rs;
+      });
+    },
+
+    onClienteChange: ({ eventType, new: row, old: oldRow }) => {
+      if (!row && !oldRow) return;
+      setClientes(cs => {
+        if (eventType === 'INSERT') {
+          if (cs.find(c => c.id === row.id)) return cs;
+          return [row as any, ...cs];
+        }
+        if (eventType === 'UPDATE') {
+          return cs.map(c => c.id === row.id ? { ...c, ...row } : c);
+        }
+        if (eventType === 'DELETE') return cs.filter(c => c.id !== (oldRow?.id || row?.id));
+        return cs;
+      });
+    },
+  }, !!session); // only enable when logged in
 
   // ── Retry wrapper ─────────────────────────────────────────────────────────
   const dbWriteWithRetry = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
