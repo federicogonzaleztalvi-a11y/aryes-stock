@@ -606,6 +606,10 @@ function RutasTab(){
   const clientesFiltrados=clientes.filter(c=>c.nombre&&c.nombre.toLowerCase().includes(busqCli.toLowerCase())).slice(0,6);
   const pendientes=ruta?ruta.entregas.filter(e=>e.estado==="pendiente").length:0;
   const entregados=ruta?ruta.entregas.filter(e=>e.estado==="entregado").length:0;
+  const ratingsData = ruta ? ruta.entregas.filter(e => e.rating > 0) : [];
+  const ratingProm  = ratingsData.length > 0
+    ? (ratingsData.reduce((s,e) => s + e.rating, 0) / ratingsData.length).toFixed(1)
+    : null;
 
 
   // ── COBRANZA EN RUTA VIEW ─────────────────────────────────────────────────
@@ -790,6 +794,11 @@ function RutasTab(){
                   <div style={{fontSize:11,color:"#888"}}>{h.vehiculo} · {h.zona} · {h.ciudad||""}</div>
                 </div>
                 <div style={{fontSize:12,color:G,fontWeight:700}}>{h.hora}</div>
+                {h.rating > 0 && (
+                  <span style={{fontSize:12}} title={`Calificacion: ${h.rating}/5${h.ratingNota?' — '+h.ratingNota:''}`}>
+                    {'⭐'.repeat(h.rating)}
+                  </span>
+                )}
                 <span style={{background:"#f0fdf4",color:G,fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Entregado</span>
               </div>
             ))}
@@ -875,6 +884,12 @@ function RutasTab(){
         })()}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:G}}>{entregados}</div><div style={{fontSize:11,color:"#888"}}>Entregados</div></div>
+          {ratingProm && (
+            <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
+              <div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{ratingProm}⭐</div>
+              <div style={{fontSize:11,color:"#888"}}>Satisfaccion ({ratingsData.length})</div>
+            </div>
+          )}
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{pendientes}</div><div style={{fontSize:11,color:"#888"}}>Pendientes</div></div>
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{ruta.entregas.length}</div><div style={{fontSize:11,color:"#888"}}>Total</div></div>
         </div>

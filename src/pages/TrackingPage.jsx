@@ -22,10 +22,14 @@ export default function TrackingPage() {
   const clienteId = params.get('cliente');
   const orgId     = params.get('org') || 'aryes';
 
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
-  const [lastUpd, setLastUpd] = useState(null);
+  const [data,       setData]       = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState('');
+  const [lastUpd,    setLastUpd]    = useState(null);
+  const [rating,     setRating]     = useState(0);      // 1-5 stars
+  const [ratingNote, setRatingNote] = useState('');
+  const [ratingDone, setRatingDone] = useState(false);
+  const [ratingSaving, setRatingSaving] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!rutaId || !clienteId) {
@@ -182,6 +186,52 @@ export default function TrackingPage() {
                   📝 {entrega.notaEntrega}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Rating widget — solo cuando entregado y no calificado aún */}
+          {entrega.estado === 'entregado' && !ratingDone && !entrega.rating && (
+            <div style={{ background:'#f9f9f7', borderRadius:10, padding:'14px 16px', marginTop:12 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#1a1a18', marginBottom:10 }}>
+                ¿Cómo fue tu entrega?
+              </div>
+              {/* Stars */}
+              <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+                {[1,2,3,4,5].map(s => (
+                  <button key={s} onClick={() => setRating(s)}
+                    style={{ fontSize:28, background:'none', border:'none', cursor:'pointer',
+                             opacity: s <= rating ? 1 : 0.25, transition:'opacity .15s' }}>
+                    ⭐
+                  </button>
+                ))}
+              </div>
+              {rating > 0 && (
+                <>
+                  <textarea
+                    value={ratingNote}
+                    onChange={e => setRatingNote(e.target.value)}
+                    placeholder="Comentario opcional..."
+                    rows={2}
+                    style={{ width:'100%', boxSizing:'border-box', border:'1px solid #e2e2de',
+                             borderRadius:8, padding:'8px 12px', fontSize:13, resize:'none',
+                             fontFamily:'Inter,sans-serif', outline:'none', marginBottom:8 }}
+                  />
+                  <button onClick={saveRating} disabled={ratingSaving}
+                    style={{ width:'100%', background:G, color:'#fff', border:'none',
+                             borderRadius:8, padding:'10px', fontSize:13, fontWeight:700,
+                             cursor: ratingSaving ? 'default' : 'pointer',
+                             opacity: ratingSaving ? 0.6 : 1 }}>
+                    {ratingSaving ? 'Guardando...' : 'Enviar calificación'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          {/* Rating already submitted */}
+          {(ratingDone || entrega.rating > 0) && entrega.estado === 'entregado' && (
+            <div style={{ background:'#f0fdf4', borderRadius:10, padding:'12px 16px', marginTop:12,
+                          textAlign:'center', fontSize:13, color:G, fontWeight:600 }}>
+              ¡Gracias por tu calificación! {'⭐'.repeat(entrega.rating || rating)}
             </div>
           )}
 
