@@ -45,7 +45,6 @@ export default async function handler(req, res) {
     `${SB_URL}/rest/v1/otp_sessions` +
     `?tel=eq.${encodeURIComponent(telClean)}` +
     `&used=eq.false` +
-    `&locked=eq.false` +
     `&expires_at=gte.${new Date().toISOString()}` +
     `&order=created_at.desc&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
@@ -73,7 +72,8 @@ export default async function handler(req, res) {
         apikey: key, Authorization: `Bearer ${key}`,
         'Content-Type': 'application/json', Prefer: 'return=minimal',
       },
-      body: JSON.stringify({ failed_attempts: newAttempts, locked: shouldLock }),
+      body: JSON.stringify({ failed_attempts: newAttempts }),
+    // locked column does not exist — skip
     });
 
     if (shouldLock) {
@@ -103,8 +103,8 @@ export default async function handler(req, res) {
   // ── 4. Look up the client ─────────────────────────────────────────────────
   const cliRes = await fetch(
     `${SB_URL}/rest/v1/clients` +
-    `?or=(telefono.eq.${encodeURIComponent(telClean)},telefono.eq.0${encodeURIComponent(telClean.slice(-8))},telefono.eq.598${encodeURIComponent(telClean.slice(-8))})` +
-    `&select=id,nombre,lista_id,email,ciudad,condPago:cond_pago&limit=1`,
+    `?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(telClean.slice(-8))},phone.eq.598${encodeURIComponent(telClean.slice(-8))})` +
+    `&select=id,name,lista_id,email,city,cond_pago&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   const clients = await cliRes.json();
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
       token:     sessionToken,
       expiresAt,
       clienteId: cliente.id,
-      nombre:    cliente.nombre,
+      nombre:    cliente.name,
       listaId:   cliente.lista_id || null,
       tel:       telClean,
       org,
