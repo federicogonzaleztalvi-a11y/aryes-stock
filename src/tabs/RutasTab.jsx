@@ -1611,10 +1611,6 @@ function RutasTab(){
         </div>
       )}
 
-    </section></>
-  );
-}
-
       {showGenerador && (
         <GeneradorRuta
           onClose={() => setShowGenerador(false)}
@@ -1625,5 +1621,8 @@ function RutasTab(){
           }}
         />
       )}
+    </section></>
+  );
+}
 
 export default RutasTab;
