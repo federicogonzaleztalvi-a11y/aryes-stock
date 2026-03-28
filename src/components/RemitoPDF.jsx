@@ -110,9 +110,11 @@ export default function RemitoPDF({ venta, brandCfg, onClose }) {
               <img src={brandCfg.logoUrl} alt="logo" style={{ height: 48, marginBottom: 8, display: 'block' }} />
             )}
             <div style={{ fontSize: 20, fontWeight: 700, color: G }}>{brandCfg?.name || 'Empresa'}</div>
-            {brandCfg?.rut  && <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>RUT: {brandCfg.rut}</div>}
-            {brandCfg?.tel  && <div style={{ fontSize: 11, color: '#666' }}>Tel: {brandCfg.tel}</div>}
-            {brandCfg?.dir  && <div style={{ fontSize: 11, color: '#666' }}>{brandCfg.dir}</div>}
+            {brandCfg?.rut       && <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>RUT: {brandCfg.rut}</div>}
+            {brandCfg?.ownerPhone && <div style={{ fontSize: 11, color: '#666' }}>Tel: {brandCfg.ownerPhone}</div>}
+            {brandCfg?.email      && <div style={{ fontSize: 11, color: '#666' }}>{brandCfg.email}</div>}
+            {brandCfg?.direccion  && <div style={{ fontSize: 11, color: '#666' }}>{brandCfg.direccion}</div>}
+            {brandCfg?.web        && <div style={{ fontSize: 11, color: '#666' }}>{brandCfg.web}</div>}
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18' }}>REMITO</div>
@@ -225,7 +227,7 @@ export default function RemitoPDF({ venta, brandCfg, onClose }) {
 
         {/* Footer */}
         <div style={{ marginTop: 24, textAlign: 'center', fontSize: 10, color: '#bbb', borderTop: '1px solid #eee', paddingTop: 12 }}>
-          Documento no válido como comprobante fiscal · {brandCfg?.name || ''} · {new Date().getFullYear()}
+          Documento no válido como comprobante fiscal · {brandCfg?.name || ''}{brandCfg?.rut ? ` · RUT ${brandCfg.rut}` : ''} · {new Date().getFullYear()}
         </div>
 
       </div>

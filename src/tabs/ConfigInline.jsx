@@ -18,6 +18,10 @@ export default function ConfigInline({
     logoUrl:    brandCfg.logoUrl    || '',
     color:      brandCfg.color      || '#3a7d1e',
     ownerPhone: brandCfg.ownerPhone || '',
+    rut:        brandCfg.rut        || '',
+    direccion:  brandCfg.direccion  || '',
+    email:      brandCfg.email      || '',
+    web:        brandCfg.web        || '',
   });
   const [brandSaving, setBrandSaving] = useState(false);
   const [brandSaved,  setBrandSaved]  = useState(false);
@@ -29,8 +33,12 @@ export default function ConfigInline({
       logoUrl:    brandCfg.logoUrl    || '',
       color:      brandCfg.color      || '#3a7d1e',
       ownerPhone: brandCfg.ownerPhone || '',
+      rut:        brandCfg.rut        || '',
+      direccion:  brandCfg.direccion  || '',
+      email:      brandCfg.email      || '',
+      web:        brandCfg.web        || '',
     });
-  }, [brandCfg.name, brandCfg.logoUrl, brandCfg.color]);
+  }, [brandCfg.name, brandCfg.logoUrl, brandCfg.color, brandCfg.rut]);
 
   const saveBrand = async () => {
     setBrandSaving(true);
@@ -146,6 +154,51 @@ export default function ConfigInline({
                     style={inp2}
                   />
                   <div style={{fontSize:11,color:'#9a9a98',marginTop:4}}>Tu número de WhatsApp. El resumen diario se enviará directo a este número desde el Dashboard.</div>
+                </div>
+
+                {/* Datos fiscales para documentos */}
+                <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'14px 16px',marginTop:4}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'#166534',marginBottom:12}}>
+                    📄 Datos para remitos y facturas
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                    <div>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>RUT de la empresa</label>
+                      <input
+                        value={localBrand.rut||''}
+                        onChange={e=>setLocalBrand(b=>({...b,rut:e.target.value}))}
+                        placeholder='Ej: 21234567890'
+                        style={inp2}
+                      />
+                    </div>
+                    <div>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Email de la empresa</label>
+                      <input
+                        value={localBrand.email||''}
+                        onChange={e=>setLocalBrand(b=>({...b,email:e.target.value}))}
+                        placeholder='contacto@empresa.com'
+                        style={inp2}
+                      />
+                    </div>
+                    <div style={{gridColumn:'1/-1'}}>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Dirección</label>
+                      <input
+                        value={localBrand.direccion||''}
+                        onChange={e=>setLocalBrand(b=>({...b,direccion:e.target.value}))}
+                        placeholder='Ej: Av. 18 de Julio 1234, Montevideo'
+                        style={inp2}
+                      />
+                    </div>
+                    <div>
+                      <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Sitio web</label>
+                      <input
+                        value={localBrand.web||''}
+                        onChange={e=>setLocalBrand(b=>({...b,web:e.target.value}))}
+                        placeholder='www.empresa.com'
+                        style={inp2}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{paddingTop:8,borderTop:'1px solid #e2e2de',display:'flex',alignItems:'center',gap:12}}>
