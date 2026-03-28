@@ -318,8 +318,19 @@ function VentasTab(){
     }catch(e){
       console.warn('[VentasTab] transition RPC error:',e?.message||e);
     }
-    // Handle side effects
+    // Handle side effects + auto-notifications (MercadoLibre: transitions generate events)
     const estado=nuevoEstado;
+
+    // Auto WhatsApp when venta goes en_ruta — notify client with tracking info
+    if(estado==='en_ruta' && venta?.clienteId){
+      const cli = clientes.find(c => c.id === venta.clienteId);
+      const tel = (cli?.telefono||'').replace(/[^0-9]/g,'');
+      if(tel){
+        const nombre = (venta.clienteNombre||'').split(' ')[0];
+        const msg    = `Hola ${nombre}, tu pedido ${venta.nroVenta} ya esta en camino. Te avisamos cuando llegue a tu local!`;
+        setTimeout(()=>{ window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank'); }, 300);
+      }
+    }
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Optimistic UI: restore stock locally immediately
       const updProds=[...products];
