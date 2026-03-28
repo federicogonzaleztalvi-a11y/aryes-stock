@@ -116,30 +116,59 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   // Semaforo: rojo < 7d, amarillo 7-14d, verde > 14d
   const velocityData = React.useMemo(() => {
     const DAYS = 30;
-    const cutoff = new Date(Date.now() - DAYS * 86400000).toISOString();
+    const now      = Date.now();
+    const cutoff   = new Date(now - DAYS * 86400000).toISOString();
+    // Same window, one year ago — for seasonality comparison (Unilever demand planning)
+    const yearMs   = 365 * 86400000;
+    const cutoffYA = new Date(now - yearMs - DAYS * 86400000).toISOString();
+    const endYA    = new Date(now - yearMs).toISOString();
 
-    // Sum Salida movements per product in last 30 days
+    // Sum Salida movements — current 30d and same period last year
     const salidaMap = {};
+    const salidaYA  = {}; // year-ago
     for (const m of (movements || [])) {
       if (m.tipo !== 'Salida') continue;
-      if (m.timestamp < cutoff) continue;
       const pid = m.productoId || m.producto_id;
       if (!pid) continue;
-      salidaMap[pid] = (salidaMap[pid] || 0) + (Number(m.cantidad) || 0);
+      const ts = m.timestamp || '';
+      if (ts >= cutoff) {
+        salidaMap[pid] = (salidaMap[pid] || 0) + (Number(m.cantidad) || 0);
+      } else if (ts >= cutoffYA && ts < endYA) {
+        salidaYA[pid] = (salidaYA[pid] || 0) + (Number(m.cantidad) || 0);
+      }
     }
 
-    // Build velocity list — only products with actual sales movement
     return (products || [])
       .filter(p => salidaMap[p.id] > 0)
       .map(p => {
         const totalSalida  = salidaMap[p.id] || 0;
         const unidadDia    = totalSalida / DAYS;
-        const diasRestantes = unidadDia > 0 ? Math.floor((p.stock || 0) / unidadDia) : 999;
-        const semaforo     = diasRestantes < 7 ? 'rojo' : diasRestantes < 14 ? 'amarillo' : 'verde';
+
+        // Seasonality: compare vs same period last year
+        const totalYA      = salidaYA[p.id] || 0;
+        const unidadDiaYA  = totalYA > 0 ? totalYA / DAYS : null;
+        // Season index: >1.2 = higher than usual, <0.8 = lower than usual
+        const seasonIndex  = unidadDiaYA ? unidadDia / unidadDiaYA : null;
+        // Adjusted velocity: if we have year-ago data, use max(current, yearAgo*1.1) to anticipate peaks
+        const unidadDiaAdj = unidadDiaYA && seasonIndex < 0.9
+          ? unidadDiaYA * 1.1  // last year was higher — use that as floor
+          : unidadDia;
+
+        const diasRestantes = unidadDiaAdj > 0 ? Math.floor((p.stock || 0) / unidadDiaAdj) : 999;
+        const semaforo      = diasRestantes < 7 ? 'rojo' : diasRestantes < 14 ? 'amarillo' : 'verde';
+
+        // Season alert
+        let seasonAlert = null;
+        if (seasonIndex !== null) {
+          if (seasonIndex > 1.3)  seasonAlert = { tipo: 'alta',  label: `+${Math.round((seasonIndex-1)*100)}% vs año pasado` };
+          if (seasonIndex < 0.75) seasonAlert = { tipo: 'baja',  label: `-${Math.round((1-seasonIndex)*100)}% vs año pasado` };
+        }
+
         return { id: p.id, nombre: p.nombre || p.name, stock: p.stock, unidad: p.unit,
-                 unidadDia, diasRestantes, semaforo, totalSalida };
+                 unidadDia, unidadDiaAdj, diasRestantes, semaforo,
+                 totalSalida, totalYA, seasonIndex, seasonAlert };
       })
-      .filter(p => p.semaforo !== 'verde') // solo los que tienen riesgo
+      .filter(p => p.semaforo !== 'verde')
       .sort((a, b) => a.diasRestantes - b.diasRestantes)
       .slice(0, 10);
   }, [products, movements]);
@@ -867,7 +896,18 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                         whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.nombre}</div>
                       <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>
                         Stock: {p.stock} {p.unidad} · {p.unidadDia.toFixed(1)} uds/día
+                        {p.unidadDiaAdj > p.unidadDia * 1.05 && (
+                          <span style={{color:'#d97706',marginLeft:4}}>
+                            (ajustado a {p.unidadDiaAdj.toFixed(1)} por estacionalidad)
+                          </span>
+                        )}
                       </div>
+                      {p.seasonAlert && (
+                        <div style={{fontFamily:F.sans,fontSize:10,fontWeight:700,marginTop:2,
+                          color:p.seasonAlert.tipo==='alta'?'#dc2626':'#3b82f6'}}>
+                          {p.seasonAlert.tipo==='alta'?'📈':'📉'} {p.seasonAlert.label}
+                        </div>
+                      )}
                     </div>
                     <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
                       <div style={{fontFamily:F.sans,fontSize:13,fontWeight:700,
