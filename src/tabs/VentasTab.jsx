@@ -85,7 +85,37 @@ function VentasTab(){
     }
     setShowCobro(false);
     setCobroPrefill(null);
-    showMsg('Cobro registrado →');
+    showMsg('Cobro registrado');
+
+    // Auto estado de cuenta (MercadoLibre: cobro genera comprobante automatico)
+    const cli = clientes.find(c => c.id === cobro.clienteId);
+    const tel = (cli?.telefono || '').replace(/[^0-9]/g, '');
+    if (tel && cobro.monto > 0) {
+      const saldoPend = cfes
+        .filter(c => c.clienteId === cobro.clienteId && ['emitida','cobrado_parcial'].includes(c.status))
+        .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
+      const saldoTras = Math.max(0, saldoPend - cobro.monto);
+      const nombre    = (cobro.clienteNombre || cli?.nombre || '').split(' ')[0];
+      const fecha     = new Date().toLocaleDateString('es-UY', {day:'2-digit',month:'2-digit',year:'numeric'});
+      const montoStr  = cobro.monto.toLocaleString('es-UY', {minimumFractionDigits:2});
+      const msg = [
+        `Hola ${nombre}, confirmamos recepcion del pago:`,
+        ``,
+        `Monto recibido: *U$S ${montoStr}*`,
+        `Forma de pago: ${cobro.metodo || 'Efectivo'}`,
+        `Fecha: ${fecha}`,
+        saldoTras > 0
+          ? `Saldo pendiente: *U$S ${saldoTras.toLocaleString('es-UY',{minimumFractionDigits:2})}*`
+          : `Cuenta al dia \u2705`,
+        ``,
+        `Gracias por su pago. ${brandCfg?.name || ''}`
+      ].join('\n');
+      setTimeout(() => {
+        if (window.confirm('Enviar comprobante por WhatsApp a ' + (cli?.nombre || cobro.clienteNombre) + '?')) {
+          window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank');
+        }
+      }, 400);
+    }
   };
 
   const showMsg=(text,type='ok')=>{setMsg({text,type});setTimeout(()=>setMsg({text:'',type:'ok'}),4000);};
