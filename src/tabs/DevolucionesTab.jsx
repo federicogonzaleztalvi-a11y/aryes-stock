@@ -216,6 +216,62 @@ function DevolucionesTab(){
         <p style={{fontSize:12,color:"#888",margin:0}}>Gestiona devoluciones de clientes con inspeccion y reingreso al stock</p>
       </div>
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
+
+      {/* Solicitudes del portal B2B — pendientes de aprobacion */}
+      {devoluciones.filter(d=>d.estado==='solicitada'||d.origen==='portal').length>0&&(
+        <div style={{marginBottom:24}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+            <h3 style={{fontSize:15,fontWeight:700,color:'#dc2626',margin:0}}>
+              Solicitudes del portal
+            </h3>
+            <span style={{background:'#fef2f2',color:'#dc2626',fontSize:11,fontWeight:800,
+              padding:'2px 8px',borderRadius:20,animation:'pulseDot 1.8s ease infinite'}}>
+              {devoluciones.filter(d=>d.estado==='solicitada'||d.origen==='portal').length} pendiente{devoluciones.filter(d=>d.estado==='solicitada'||d.origen==='portal').length!==1?'s':''}
+            </span>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {devoluciones.filter(d=>d.estado==='solicitada'||d.origen==='portal').map((d,i)=>(
+              <div key={d.id} style={{background:'#fff',borderRadius:12,padding:'14px 18px',
+                border:'1px solid #fecaca',boxShadow:'0 1px 4px rgba(0,0,0,.05)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                  <div style={{flex:1,minWidth:180}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                      <span style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{d.clienteNombre}</span>
+                      <span style={{background:'#fff3cd',color:'#856404',fontSize:11,fontWeight:700,
+                        padding:'2px 8px',borderRadius:20}}>Pendiente revision</span>
+                    </div>
+                    <div style={{fontSize:12,color:'#6a6a68'}}>
+                      {d.motivo} · {(d.items||[]).length} producto{(d.items||[]).length!==1?'s':''}
+                      {d.notas&&<span style={{marginLeft:6,color:'#d97706'}}>· {d.notas.slice(0,40)}</span>}
+                    </div>
+                    <div style={{fontSize:11,color:'#9a9a98',marginTop:2}}>{d.fecha||d.creadoEn?.slice(0,10)}</div>
+                  </div>
+                  <div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>iniciarDevolucion(
+                      ventas.find(v=>v.id===d.ventaId)||{id:d.ventaId,clienteNombre:d.clienteNombre,items:d.items||[]}
+                    )} style={{padding:'7px 14px',background:G,color:'#fff',border:'none',
+                      borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700}}>
+                      Procesar
+                    </button>
+                  </div>
+                </div>
+                {/* Items solicitados */}
+                {(d.items||[]).filter(it=>Number(it.cantDevolver)>0).length>0&&(
+                  <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid #f3f4f6'}}>
+                    {(d.items||[]).filter(it=>Number(it.cantDevolver)>0).map((it,j)=>(
+                      <div key={j} style={{fontSize:12,color:'#6a6a68',display:'flex',justifyContent:'space-between'}}>
+                        <span>{it.nombre||it.name}</span>
+                        <span style={{fontWeight:600}}>× {it.cantDevolver}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
         <div>
           <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",margin:"0 0 12px"}}>Iniciar devolucion desde venta</h3>

@@ -262,6 +262,14 @@ function HistorialPanel({ orders, loading, onReordenar }) {
                   </div>
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: G }}>{fmtUSD(order.total)}</div>
+                {(order.venta_estado === 'entregada' || order.estado === 'importada') && onSolicitarDev && (
+                  <button onClick={() => onSolicitarDev(order)}
+                    style={{ padding: '8px 14px', background: '#fff', color: '#dc2626',
+                      border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer',
+                      fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    Devolver
+                  </button>
+                )}
                 <button onClick={() => onReordenar(order)}
                   style={{ padding: '8px 16px', background: G, color: '#fff', border: 'none',
                     borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
@@ -415,6 +423,12 @@ export default function PedidosPage() {
   const [showCart,  setShowCart]  = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [historial, setHistorial] = useState([]);
+  const [devModal,  setDevModal]  = useState(null); // order para devolver
+  const [devItems,  setDevItems]  = useState([]);   // items con cantDevolver
+  const [devMotivo, setDevMotivo] = useState('');
+  const [devNotas,  setDevNotas]  = useState('');
+  const [devLoading, setDevLoading] = useState(false);
+  const [devMsg,    setDevMsg]    = useState('');
   const [histLoad,  setHistLoad]  = useState(false);
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
@@ -464,6 +478,31 @@ export default function PedidosPage() {
     if (q <= 0) { const n = { ...c }; delete n[item.id]; return n; }
     return { ...c, [item.id]: q };
   });
+
+  const confirmarDevolucion = async () => {
+    const itemsADev = devItems.filter(it => Number(it.cantDevolver) > 0);
+    if (!itemsADev.length) { setDevMsg('Selecciona al menos un producto'); return; }
+    if (!devMotivo)        { setDevMsg('Indica el motivo'); return; }
+    setDevLoading(true);
+    try {
+      const r = await fetch('/api/devolucion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ventaId:       devModal.venta_id || devModal.id,
+          clienteNombre: devModal.cliente_nombre || session?.nombre || '',
+          clienteTel:    (session?.tel||'').replace(/[^0-9]/g,''),
+          motivo:        devMotivo, notas: devNotas,
+          items:         itemsADev, org: ORG,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setDevMsg(d.error || 'Error al enviar'); setDevLoading(false); return; }
+      setDevModal(null); setDevMotivo(''); setDevNotas(''); setDevItems([]);
+      alert('Solicitud enviada. Te contactaremos para coordinar la devolución.');
+    } catch { setDevMsg('Error de conexión'); }
+    setDevLoading(false);
+  };
 
   const logout = () => {
     localStorage.removeItem(SESSION_KEY);
@@ -583,13 +622,76 @@ export default function PedidosPage() {
             });
             setCarrito(newCarrito);
             setVista('catalogo');
-            // Abrir el carrito automáticamente para que el cliente lo vea
             setTimeout(() => setShowCart(true), 150);
+          }}
+          onSolicitarDev={order => {
+            // Inicializar los items con cantDevolver = 0
+            const its = (order.items || []).map(it => ({ ...it, cantDevolver: 0 }));
+            setDevItems(its);
+            setDevMotivo('');
+            setDevNotas('');
+            setDevMsg('');
+            setDevModal(order);
           }}
         />
       )}
 
       {/* →→ Cart →→ */}
+      {/* →→ Modal devolucion →→ */}
+      {devModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:1000,
+          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:16, padding:24, maxWidth:480, width:'100%',
+            maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <div style={{ fontSize:16, fontWeight:800, color:'#1a1a18' }}>Solicitar devolucion</div>
+              <button onClick={()=>setDevModal(null)}
+                style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9a9a98' }}>x</button>
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#6a6a68', marginBottom:8, textTransform:'uppercase', letterSpacing:.5 }}>
+                Que productos queres devolver?
+              </div>
+              {devItems.map((it, i) => (
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid #f3f4f6' }}>
+                  <div style={{ flex:1, fontSize:13 }}>{it.nombre || it.name}</div>
+                  <div style={{ fontSize:11, color:'#9a9a98' }}>max. {it.cantidad || it.qty}</div>
+                  <input type="number" min={0} max={it.cantidad || it.qty}
+                    value={it.cantDevolver || 0}
+                    onChange={e => {
+                      const val = Math.min(Number(e.target.value), it.cantidad || it.qty || 0);
+                      setDevItems(prev => prev.map((x,j) => j===i ? {...x, cantDevolver: val} : x));
+                    }}
+                    style={{ width:60, padding:'4px 8px', border:'1px solid #e2e2de', borderRadius:6, fontSize:13, textAlign:'center' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ marginBottom:12 }}>
+              <select value={devMotivo} onChange={e=>setDevMotivo(e.target.value)}
+                style={{ width:'100%', padding:'8px 12px', border:'1px solid #e2e2de', borderRadius:8, fontSize:13 }}>
+                <option value="">Motivo de la devolucion...</option>
+                {['Producto danado','Error en el pedido','Producto vencido','Exceso de stock','Otro'].map(m=>(
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <textarea value={devNotas} onChange={e=>setDevNotas(e.target.value)}
+              placeholder="Descripcion adicional (opcional)..." rows={2}
+              style={{ width:'100%', boxSizing:'border-box', padding:'8px 12px', border:'1px solid #e2e2de',
+                borderRadius:8, fontSize:13, resize:'none', marginBottom:12 }}
+            />
+            {devMsg && <div style={{ color:'#dc2626', fontSize:12, marginBottom:10 }}>{devMsg}</div>}
+            <button onClick={confirmarDevolucion} disabled={devLoading}
+              style={{ width:'100%', background:'#dc2626', color:'#fff', border:'none',
+                borderRadius:10, padding:'12px', fontSize:14, fontWeight:700,
+                cursor: devLoading ? 'default':'pointer', opacity: devLoading ? 0.6:1 }}>
+              {devLoading ? 'Enviando...' : 'Enviar solicitud'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {showCart && (
         <CartPanel carrito={carrito} items={items} session={session}
           onClose={() => setShowCart(false)}
