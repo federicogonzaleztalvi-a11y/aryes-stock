@@ -561,11 +561,11 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             <Cap style={{color:T.green}}>Contacto</Cap>
             <div style={{marginTop:10,display:"grid",gap:8}}>
               {[
-                {icon:"📊¤",label:"Contacto",val:supplier.contact},
-                {icon:"→",label:"Email",val:supplier.email,href:`mailto:${supplier.email}`},
-                {icon:"📊",label:"Teléfono",val:supplier.phone,href:`tel:${supplier.phone}`},
-                {icon:"📊¬",label:"WhatsApp",val:supplier.whatsapp,href:supplier.whatsapp?`https://wa.me/${supplier.whatsapp.replace(/\D/g,"")}`:""},
-                {icon:"📊",label:"Ubicación",val:[supplier.city,supplier.country].filter(Boolean).join(", ")},
+                {icon:"👤",label:"Contacto",val:supplier.contact},
+                {icon:"✉️",label:"Email",val:supplier.email,href:`mailto:${supplier.email}`},
+                {icon:"📞",label:"Teléfono",val:supplier.phone,href:`tel:${supplier.phone}`},
+                {icon:"💬",label:"WhatsApp",val:supplier.whatsapp,href:supplier.whatsapp?`https://wa.me/${supplier.whatsapp.replace(/\D/g,"")}`:""},
+                {icon:"📍",label:"Ubicación",val:[supplier.city,supplier.country].filter(Boolean).join(", ")},
               ].filter(r=>r.val).map((r,i)=>(
                 <div key={i} style={{display:"flex",gap:10,alignItems:"center"}}>
                   <span style={{fontSize:14,width:20,textAlign:"center"}}>{r.icon}</span>

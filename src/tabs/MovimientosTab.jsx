@@ -88,7 +88,7 @@ function MovimientosTab(){
           <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Producto</label>
           <select value={form.productoId} onChange={e=>setForm(p=>({...p,productoId:e.target.value}))} style={{...inp,background:'#fff'}}>
             <option value=''>- Selecciona un producto -</option>
-            {prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=>(
+            {prods.filter(p=>p&&p.nombre).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).map(p=>(
               <option key={p.id} value={p.id}>{p.nombre}{p.stock!=null?' (stock: '+p.stock+')':''}</option>
             ))}
           </select>
