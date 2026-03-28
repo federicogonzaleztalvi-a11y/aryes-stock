@@ -185,6 +185,33 @@ function VentasTab(){
     });
     if(stockErrors.length>0){showMsg(stockErrors[0],'err');return;}
 
+    // CREDIT LIMIT VALIDATION — Amazon: correctness before committing
+    if(form.clienteId){
+      const cli = clientes.find(c => c.id === form.clienteId);
+      const limite = Number(cli?.limiteCredito || 0);
+      if(limite > 0){
+        // Sum open CFEs (emitida + cobrado_parcial) for this client
+        const deudaActual = cfes
+          .filter(c => c.clienteId === form.clienteId && ['emitida','cobrado_parcial'].includes(c.status))
+          .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
+        const totalVenta = Number(form.total || 0);
+        if(deudaActual + totalVenta > limite){
+          const exceso = (deudaActual + totalVenta - limite).toLocaleString('es-UY', {minimumFractionDigits:0});
+          const deudaStr = deudaActual.toLocaleString('es-UY', {minimumFractionDigits:0});
+          const limiteStr = limite.toLocaleString('es-UY', {minimumFractionDigits:0});
+          const proceed = window.confirm(
+            `⚠️ Límite de crédito excedido para ${cli.nombre}\n\n` +
+            `Deuda actual: U$S ${deudaStr}\n` +
+            `Esta venta: U$S ${totalVenta.toLocaleString('es-UY',{minimumFractionDigits:0})}\n` +
+            `Límite configurado: U$S ${limiteStr}\n` +
+            `Exceso: U$S ${exceso}\n\n` +
+            `¿Confirmar venta de todas formas?`
+          );
+          if(!proceed) return;
+        }
+      }
+    }
+
     setSaving(true);
     try{
       const cl=clientes.find(c=>c.id===form.clienteId);
@@ -586,39 +613,51 @@ function VentasTab(){
       <MsgBanner/>
       {/* →→ Pedidos del portal B2B →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→ */}
       <PedidosPortalPanel onImportar={async (order)=>{
-        // Convert portal order to venta
-        const _cli=clientes.find(c=>c.id===order.cliente_id);
-        const newVenta={
-          id:crypto.randomUUID(),
-          nroVenta: await fetchNextNroVenta(ventas),
-          clienteId:order.cliente_id||'',
-          clienteNombre:order.cliente_nombre,
-          items:order.items.map(it=>({...it,costoUnit:0})),
-          total:Number(order.total),
-          descuento:0,
-          estado:'pendiente',
-          fecha:new Date().toISOString().slice(0,10),
-          notas:order.notas||'',
-          origenPortal:true,
-          orderId:order.id,
-          creadoEn:new Date().toISOString(),
+        // Convert portal order to venta — enrich items with costs from product catalog
+        const ventaId  = crypto.randomUUID();
+        const nroVenta = await fetchNextNroVenta(ventas);
+        const enrichedItems = (order.items||[]).map(it => {
+          const prod = products.find(p =>
+            p.id === (it.productId||it.productoId) ||
+            (p.nombre||p.name||'').toLowerCase() === (it.nombre||it.name||'').toLowerCase()
+          );
+          return { ...it,
+            productoId: it.productId || it.productoId || '',
+            nombre:     it.nombre    || it.name        || '',
+            precioUnit: Number(it.precio || it.precioUnit || 0),
+            costoUnit:  prod ? Number(prod.unitCost || 0) : 0,
+            unidad:     it.unidad    || it.unit          || '',
+            cantidad:   Number(it.qty || it.cantidad     || 0),
+          };
+        });
+        const newVenta = {
+          id: ventaId, nroVenta,
+          clienteId:    order.cliente_id     || '',
+          clienteNombre:order.cliente_nombre || '',
+          items:        enrichedItems,
+          total:        Number(order.total   || 0),
+          descuento: 0, estado: 'pendiente',
+          fecha:     new Date().toISOString().slice(0, 10),
+          notas:     order.notas || '',
+          origenPortal: true, orderId: order.id,
+          creadoEn:  new Date().toISOString(), estadoLog: [],
         };
-        setVentas(v=>[newVenta,...v]);
-        db.upsert('ventas',{
-          id:newVenta.id,nro_venta:newVenta.nroVenta,
-          cliente_id:newVenta.clienteId,cliente_nombre:newVenta.clienteNombre,
-          items:newVenta.items,total:newVenta.total,descuento:0,
-          estado:'pendiente',fecha:newVenta.fecha,notas:newVenta.notas,
-        },'id').catch(()=>{});
-        // Mark order as imported
+        setVentas(v => [newVenta, ...v]);
+        await db.upsert('ventas', {
+          id: newVenta.id, nro_venta: newVenta.nroVenta,
+          cliente_id: newVenta.clienteId, cliente_nombre: newVenta.clienteNombre,
+          items: newVenta.items, total: newVenta.total, descuento: 0,
+          estado: 'pendiente', fecha: newVenta.fecha, notas: newVenta.notas,
+          b2b_order_id: order.id,
+        }, 'id').catch(() => {});
         const SB_URL2=import.meta.env.VITE_SUPABASE_URL;
         const SKEY2=import.meta.env.VITE_SUPABASE_ANON_KEY;
         if(SB_URL2&&order.id)fetch(`${SB_URL2}/rest/v1/b2b_orders?id=eq.${order.id}`,{
           method:'PATCH',
           headers:{apikey:SKEY2,Authorization:`Bearer ${SKEY2}`,'Content-Type':'application/json',Prefer:'return=minimal'},
-          body:JSON.stringify({estado:'importada',venta_id:newVenta.id}),
+          body:JSON.stringify({estado:'importada',venta_id:ventaId}),
         }).catch(()=>{});
-        showMsg('→ Pedido importado como venta '+newVenta.nroVenta);
+        showMsg(`Pedido importado como ${nroVenta}`);
       }}/>
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
         {[
