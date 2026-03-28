@@ -540,14 +540,14 @@ function VentasTab(){
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
                     <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmtUSD(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmtUSD(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#3a7d1e':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
-                    <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${(it.cantidad*it.precioUnit).toLocaleString('es-UY')}</td>
+                    <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString('es-UY')}</td>
                     <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
                   </tr>
                 ))}
                 {Number(form.descuento)>0&&(
                   <tr style={{borderTop:'1px solid #e5e7eb',background:'#fffbeb'}}>
                     <td colSpan='3' style={{padding:'8px 12px',textAlign:'right',color:'#92400e',fontWeight:600}}>Descuento {form.descuento}%</td>
-                    <td style={{padding:'8px 12px',color:'#92400e',fontWeight:700}}>-${(form.items.reduce((a,it)=>a+it.cantidad*it.precioUnit,0)*form.descuento/100).toLocaleString('es-UY')}</td>
+                    <td style={{padding:'8px 12px',color:'#92400e',fontWeight:700}}>-${(form.items.reduce((a,it)=>a+(Number(it.cantidad)||1)*(Number(it.precioUnit)||0),0)*form.descuento/100).toLocaleString('es-UY')}</td>
                     <td></td>
                   </tr>
                 )}
@@ -639,14 +639,14 @@ function VentasTab(){
                 <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
                   <td style={{padding:'10px 14px',fontWeight:500}}>{it.nombre}</td>
                   <td style={{padding:'10px 14px'}}>{it.cantidad} {it.unidad}</td>
-                  <td style={{padding:'10px 14px',color:'#6b7280'}}>${Number(it.precioUnit).toLocaleString('es-UY')}</td>
-                  <td style={{padding:'10px 14px',fontWeight:700,color:G}}>${(it.cantidad*it.precioUnit).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'10px 14px',color:'#6b7280'}}>${(Number(it.precioUnit)||0).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'10px 14px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString('es-UY')}</td>
                 </tr>
               ))}
               {Number(v.descuento)>0&&(
                 <tr style={{background:'#fffbeb',borderTop:'1px solid #e5e7eb'}}>
                   <td colSpan='3' style={{padding:'8px 14px',textAlign:'right',color:'#92400e',fontWeight:600}}>Descuento {v.descuento}%</td>
-                  <td style={{padding:'8px 14px',color:'#92400e',fontWeight:700}}>-${(v.items?.reduce((a,it)=>a+it.cantidad*it.precioUnit,0)*v.descuento/100).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'8px 14px',color:'#92400e',fontWeight:700}}>-${(v.items?.reduce((a,it)=>a+(Number(it.cantidad)||1)*(Number(it.precioUnit)||0),0)*v.descuento/100).toLocaleString('es-UY')}</td>
                 </tr>
               )}
               <tr style={{borderTop:'2px solid #e5e7eb',background:'#f0fdf4'}}>
