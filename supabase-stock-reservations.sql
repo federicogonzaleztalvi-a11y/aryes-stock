@@ -46,7 +46,7 @@ CREATE OR REPLACE VIEW available_stock_b2b AS
 SELECT
   p.uuid                                                AS product_id,
   p.org_id,
-  p.nombre,
+  p.name,
   p.stock                                               AS physical_stock,
   COALESCE(SUM(sr.quantity) FILTER (
     WHERE sr.status = 'active' AND sr.expires_at > NOW()
@@ -60,7 +60,7 @@ FROM products p
 LEFT JOIN stock_reservations sr
   ON sr.product_id = p.uuid
  AND sr.org_id     = p.org_id
-GROUP BY p.id, p.uuid, p.org_id, p.nombre, p.stock;
+GROUP BY p.id, p.uuid, p.org_id, p.name, p.stock;
 
 -- 5. ATOMIC RPC: create_b2b_order_with_reservations
 -- Validates available_stock for all items, creates all reservations,
