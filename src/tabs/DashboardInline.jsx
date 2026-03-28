@@ -12,6 +12,7 @@ const F = {
 
 const fmtUSD  = n => n>=1000?`USD ${(n/1000).toFixed(1)}k`:`USD ${n.toFixed(0)}`;
 const fmtMoney= (n,c='UYU')=>`${c==='UYU'?'$':c==='USD'?'US$':'€'} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+const G = '#3a7d1e';
 
 
 function Sparkline({ data=[], color=T.green, height=32, width=80 }) {
@@ -114,8 +115,33 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   // Uses last 30 days of 'Salida' movements to compute daily velocity per product
   // diasRestantes = stock / velocidad_diaria
   // Semaforo: rojo < 7d, amarillo 7-14d, verde > 14d
-  // Web Push Notifications — Delivery Hero: automatic status updates
-  const { state: pushState, subscribe: subscribePush } = usePushNotifications('admin');
+  // Web Push Notifications — inline (evita dependencia circular en bundle)
+  const [pushState, setPushState] = React.useState('loading');
+  const subscribePush = React.useCallback(async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushState('unsupported'); return; }
+    if (Notification.permission === 'denied') { setPushState('denied'); return; }
+    try {
+      setPushState('loading');
+      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+      const kr = await fetch('/api/push?action=vapid-key');
+      if (!kr.ok) throw new Error('no key');
+      const { publicKey } = await kr.json();
+      const raw = atob((publicKey + '='.repeat((4 - publicKey.length % 4) % 4)).replace(/-/g,'+').replace(/_/g,'/'));
+      const key = Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      const orgId = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.orgId||'aryes'; } catch { return 'aryes'; } })();
+      await fetch('/api/push?action=subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub.toJSON(), orgId, role:'admin' }) });
+      setPushState('subscribed');
+    } catch { setPushState('prompt'); }
+  }, []);
+  React.useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushState('unsupported'); return; }
+    if (Notification.permission === 'denied') { setPushState('denied'); return; }
+    navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription())
+      .then(sub => setPushState(sub ? 'subscribed' : 'prompt'))
+      .catch(() => setPushState('prompt'));
+  }, []);
 
   const velocityData = React.useMemo(() => {
     const DAYS = 30;
