@@ -219,9 +219,13 @@ function HistorialPanel({ orders, loading, onReordenar }) {
     </div>
   );
   const BADGE = {
-    pendiente: { label: 'Pendiente',  bg: '#fffbeb', color: '#d97706' },
-    importada: { label: 'Confirmado', bg: '#f0fdf4', color: '#16a34a' },
-    cancelada: { label: 'Cancelado',  bg: '#fef2f2', color: '#dc2626' },
+    pendiente:  { label: 'Pendiente',      icon: '⏳', bg: '#fffbeb', color: '#d97706' },
+    importada:  { label: 'Confirmado',     icon: '✅', bg: '#f0fdf4', color: '#16a34a' },
+    confirmada: { label: 'Confirmado',     icon: '✅', bg: '#f0fdf4', color: '#16a34a' },
+    preparada:  { label: 'En preparacion', icon: '📦', bg: '#eff6ff', color: '#3b82f6' },
+    en_ruta:    { label: 'En camino',      icon: '🚚', bg: '#f5f3ff', color: '#7c3aed' },
+    entregada:  { label: 'Entregado',      icon: '🎉', bg: '#f0fdf4', color: '#16a34a' },
+    cancelada:  { label: 'Cancelado',      icon: '❌', bg: '#fef2f2', color: '#dc2626' },
   };
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
@@ -230,7 +234,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {orders.map(order => {
-          const badge  = BADGE[order.estado] || BADGE.pendiente;
+          const badge  = BADGE[order.venta_estado] || BADGE[order.estado] || BADGE.pendiente;
           const items  = Array.isArray(order.items) ? order.items : [];
           const fecha  = new Date(order.creado_en).toLocaleDateString('es-UY', {
             day: '2-digit', month: 'short', year: 'numeric',
@@ -247,7 +251,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
                     <span style={{ fontSize: 13, color: '#9ca3af' }}>{fecha}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px',
                       borderRadius: 20, background: badge.bg, color: badge.color }}>
-                      {badge.label}
+                      {badge.icon} {badge.label}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: '#6b7280' }}>
@@ -262,7 +266,7 @@ function HistorialPanel({ orders, loading, onReordenar }) {
                   style={{ padding: '8px 16px', background: G, color: '#fff', border: 'none',
                     borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                     whiteSpace: 'nowrap' }}>
-                  📊 Repetir pedido
+                  �🔄 Repetir pedido
                 </button>
               </div>
               <div style={{ padding: '0 18px 14px', borderTop: '1px solid #f3f4f6' }}>
@@ -579,6 +583,8 @@ export default function PedidosPage() {
             });
             setCarrito(newCarrito);
             setVista('catalogo');
+            // Abrir el carrito automáticamente para que el cliente lo vea
+            setTimeout(() => setShowCart(true), 150);
           }}
         />
       )}

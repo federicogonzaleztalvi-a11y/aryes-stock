@@ -43,8 +43,31 @@ async function handler(req, res) {
   }
 
   const orders = await r.json();
-  log.info('historial', 'ok', { count: orders.length, org });
-  return res.status(200).json({ orders: Array.isArray(orders) ? orders : [] });
+  if (!Array.isArray(orders)) return res.status(200).json({ orders: [] });
+
+  // Enrich with venta estado — cross b2b_orders.venta_id with ventas.estado
+  const ventaIds = orders.filter(o => o.venta_id).map(o => o.venta_id);
+  let ventaEstados = {};
+  if (ventaIds.length > 0) {
+    try {
+      const vr = await fetch(
+        `${SB_URL}/rest/v1/ventas?id=in.(${ventaIds.map(id => `"${id}"`).join(',')})&select=id,estado`,
+        { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, Accept: 'application/json' } }
+      );
+      if (vr.ok) {
+        const ventas = await vr.json();
+        if (Array.isArray(ventas)) ventas.forEach(v => { ventaEstados[v.id] = v.estado; });
+      }
+    } catch { /* non-critical — continue without venta estado */ }
+  }
+
+  const enriched = orders.map(o => ({
+    ...o,
+    venta_estado: o.venta_id ? (ventaEstados[o.venta_id] || null) : null,
+  }));
+
+  log.info('historial', 'ok', { count: enriched.length, org });
+  return res.status(200).json({ orders: enriched });
 }
 
 export default withObservability('historial', handler);
