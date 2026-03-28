@@ -11,6 +11,7 @@ const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
 const RegisterPage     = lazy(() => import('./pages/RegisterPage.jsx'));
 const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
+const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 function readSession() {
@@ -242,6 +243,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/catalogo" element={<CatalogoPage />} />
           {/* B2B order portal — OTP auth, no WMS session required */}
           <Route path="/pedidos" element={<PedidosPage />} />
+          {/* Driver mobile view — no auth required, reads from Supabase directly */}
+          <Route path="/driver" element={<DriverView />} />
           {/* Public self-registration */}
           <Route path="/register" element={<RegisterPage />} />
           {/* Upgrade / pricing page */}

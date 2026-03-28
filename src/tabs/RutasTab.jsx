@@ -809,7 +809,15 @@ function RutasTab(){
             <h2 style={{fontFamily:"Playfair Display,serif",fontSize:22,color:"#1a1a1a",margin:0}}>🚚 {ruta.vehiculo} — {ruta.zona}</h2>
             <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>{ruta.dia||"Sin dia asignado"} · {ruta.entregas.length} paradas</p>
           </div>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button
+              onClick={()=>{
+                const url=`${window.location.origin}/driver?ruta=${ruta.id}&org=${ruta.org_id||'aryes'}`;
+                navigator.clipboard?.writeText(url).then(()=>setMsg('📱 Link copiado! Mandáselo al repartidor')).catch(()=>window.open(url,'_blank'));
+              }}
+              style={{padding:"7px 14px",background:"#1a1a18",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>
+              📱 Vista conductor
+            </button>
             <button onClick={optimizarRuta} disabled={optimizando||ruta.entregas.length<2}
               style={{padding:"7px 14px",background:optimizando?"#9ca3af":G,color:"#fff",
                       border:"none",borderRadius:8,cursor:optimizando?"not-allowed":"pointer",
