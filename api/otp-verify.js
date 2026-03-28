@@ -72,10 +72,6 @@ export default async function handler(req, res) {
 
   // 4. Buscar cliente por columna PHONE (no telefono)
   const tel8 = telClean.slice(-8);
-  const cliUrl = `${SB_URL}/rest/v1/clients` +
-    `?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(tel8)},phone.eq.598${encodeURIComponent(tel8)})` +
-    `&select=id,name,lista_id,email,cond_pago&limit=1`;
-
   console.log('[otp-verify] buscando cliente, tel:', telClean, 'tel8:', tel8);
   console.log('[otp-verify] SB_URL:', SB_URL ? 'ok' : 'UNDEFINED', 'key:', key ? 'ok' : 'UNDEFINED');
 
