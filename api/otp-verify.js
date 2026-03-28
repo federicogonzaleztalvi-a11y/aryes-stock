@@ -1,11 +1,10 @@
-// api/otp-verify.js v3 — columnas: phone, name (NO telefono, NO nombre)
+// api/otp-verify.js v4
 
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON    = process.env.SUPABASE_ANON_KEY;
-
-const MAX_ATTEMPTS   = 5;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_ATTEMPTS = 5;
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -35,16 +34,10 @@ export default async function handler(req, res) {
 
   // 1. Buscar OTP activo
   const otpRes = await fetch(
-    `${SB_URL}/rest/v1/otp_sessions` +
-    `?tel=eq.${encodeURIComponent(telClean)}` +
-    `&used=eq.false` +
-    `&expires_at=gte.${new Date().toISOString()}` +
-    `&order=created_at.desc&limit=1`,
+    `${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&used=eq.false&expires_at=gte.${new Date().toISOString()}&order=created_at.desc&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
-
   if (!otpRes.ok) return res.status(500).json({ error: 'Error al verificar código' });
-
   const otps = await otpRes.json();
   if (!otps?.length) return res.status(401).json({ error: 'Código expirado o inválido. Pedí uno nuevo.' });
 
@@ -70,26 +63,13 @@ export default async function handler(req, res) {
     body: JSON.stringify({ used: true }),
   });
 
-  // 4. Buscar cliente por columna PHONE (no telefono)
-  const tel8 = telClean.slice(-8);
-  console.log('[otp-verify] buscando cliente, tel:', telClean, 'tel8:', tel8);
-  console.log('[otp-verify] SB_URL:', SB_URL ? 'ok' : 'UNDEFINED', 'key:', key ? 'ok' : 'UNDEFINED');
-
-  let clients = [];
-  try {
-    const clientKey = SB_SVC_KEY || SB_ANON;
-    const cliRes = await fetch(cliUrl, {
-      headers: { apikey: clientKey, Authorization: `Bearer ${clientKey}`, Accept: 'application/json' }
-    });
-    const cliText = await cliRes.text();
-    console.log('[otp-verify] supabase status:', cliRes.status, 'body:', cliText.slice(0, 200));
-    clients = JSON.parse(cliText);
-  } catch(e) {
-    console.error('[otp-verify] fetch error:', e.message);
-    return res.status(500).json({ error: 'Error buscando cliente' });
-  }
-  console.log('[otp-verify] clientes:', JSON.stringify(clients).slice(0, 100));
-
+  // 4. Buscar cliente — MISMO código que otp-send.js (que funciona)
+  const cliRes = await fetch(
+    `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(telClean.slice(-8))},phone.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+  );
+  const clients = await cliRes.json();
+  console.log('[otp-verify] clients:', JSON.stringify(clients).slice(0, 100));
   if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
 
   const cliente = clients[0];
@@ -97,17 +77,12 @@ export default async function handler(req, res) {
   const expiresAt    = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 
   // 5. Guardar sesión
-  const sessRes = await fetch(`${SB_URL}/rest/v1/portal_sessions`, {
+  await fetch(`${SB_URL}/rest/v1/portal_sessions`, {
     method: 'POST',
     headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({ token: sessionToken, cliente_id: cliente.id, tel: telClean, org_id: org, expires_at: expiresAt }),
   });
 
-  if (!sessRes.ok) {
-    console.error('[otp-verify] portal_sessions error:', sessRes.status, await sessRes.text());
-  }
-
-  // 6. Respuesta — campo nombre usa cliente.name (columna en inglés)
   return res.status(200).json({
     ok: true,
     session: {
