@@ -72,6 +72,9 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   // today: stable reference that only changes when the calendar day changes
   // Using useMemo with a day-key prevents both stale-midnight and every-render issues
   // ── Resumen diario WhatsApp — Amazon: system pushes info to operator ────
+  // today como const simple — no useMemo para evitar TDZ con esbuild
+  const today = new Date();
+
   const generarResumenWA = React.useCallback(() => {
     const hoy    = new Date();
     const ayer   = new Date(hoy - 86400000);
@@ -108,11 +111,8 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
     if (!tel) { alert('Configurá tu número en Configuración → Marca y empresa'); return; }
     window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(lines), '_blank');
-  }, [ventas, products, cfes, demandSensing, brandCfg]);
+  }, [ventas, products, cfes, brandCfg]);
 
-  const today = React.useMemo(() => new Date(), [new Date().toDateString()]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Stock metrics ──────────────────────────────────────────────────────────
   const orderNow   = alerts.filter(p=>p.alert.level==='order_now').length;
   const orderSoon  = alerts.filter(p=>p.alert.level==='order_soon').length;
   const pending    = orders.filter(o=>o.status==='pending');
@@ -327,7 +327,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   },[cfes]);
 
   // ── Activity + arrivals ────────────────────────────────────────────────────
-  const in30 = new Date(); in30.setDate(today.getDate()+30);
+  const in30 = new Date(); in30.setDate(new Date().getDate()+30);
   const arrivingSoon = pending
     .filter(o=>o.expectedArrival&&new Date(o.expectedArrival)<=in30)
     .sort((a,b)=>new Date(a.expectedArrival)-new Date(b.expectedArrival))
@@ -415,7 +415,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
         map[k].ventas++;
       });
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 5);
-  }, [ventasActivas, today]);
+  }, [ventasActivas]);
 
   // ── Billing bar chart (last 6 months) ──────────────────────────────────────
 
