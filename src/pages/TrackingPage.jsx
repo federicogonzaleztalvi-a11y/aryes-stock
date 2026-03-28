@@ -48,10 +48,8 @@ export default function TrackingPage() {
 
       const myIdx     = ruta.entregas.findIndex(e => e.clienteId === clienteId);
       const aheadPend = ruta.entregas.slice(0, myIdx).filter(e => e.estado === 'pendiente').length;
-      const delivered = ruta.entregas.filter(e => e.estado === 'entregado').length;
-      const total     = ruta.entregas.length;
 
-      setData({ entrega, ruta, aheadPend, delivered, total });
+      setData({ entrega, ruta, aheadPend });
       setLastUpd(new Date());
     } catch {
       if (!silent) setError('Error al cargar. Verifica tu conexion.');
@@ -86,10 +84,10 @@ export default function TrackingPage() {
 
   if (!data) return null;
 
-  const { entrega, ruta, aheadPend, delivered, total } = data;
+  const { entrega, ruta, aheadPend } = data;
   const cfg    = STATUS[entrega.estado] || STATUS.pendiente;
   const isPend = entrega.estado === 'pendiente';
-  const pct    = total > 0 ? Math.round((delivered / total) * 100) : 0;
+
 
   return (
     <div style={{ minHeight:'100vh', background:'#f0f2f5', fontFamily:F.sans, paddingBottom:40 }}>
@@ -137,15 +135,7 @@ export default function TrackingPage() {
                 )}
               </div>
 
-              <div>
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'#9a9a98', marginBottom:6 }}>
-                  <span>Progreso de la ruta</span>
-                  <span>{delivered} de {total} entregas</span>
-                </div>
-                <div style={{ background:'#f0f0ec', borderRadius:8, height:8 }}>
-                  <div style={{ background:G, borderRadius:8, height:8, width:`${pct}%`, transition:'width .5s ease' }} />
-                </div>
-              </div>
+
             </>
           )}
 
