@@ -218,6 +218,158 @@ function RutasTab(){
   };
   const [vista,setVista]=useState("lista");
   const [rutaActiva,setRutaActiva]=useState(null);
+
+  // ── Configuracion de zonas de entrega ─────────────────────────────────────
+  // Modo A: empresa con dias fijos por zona (ej: Aryes — Centro los Lunes)
+  // Modo B: empresa sin zonas — ruta libre optimizada
+  const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const [zonasConfig, setZonasConfig] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem('aryes-zonas-config') || '[]'); } catch { return []; }
+  });
+  const [showZonasConfig, setShowZonasConfig] = React.useState(false);
+  const [zonaForm, setZonaForm] = React.useState({ nombre:'', dias:[], color:'#3b82f6' });
+  const [showSugeridor, setShowSugeridor] = React.useState(false);
+  const [sugerencia, setSugerencia] = React.useState(null); // { vehiculos: [{vehiculo, entregas}] }
+  const [vehiculosDisp, setVehiculosDisp] = React.useState('');
+  const hoy = DIAS_SEMANA[new Date().getDay()];
+
+  const saveZonas = (z) => {
+    setZonasConfig(z);
+    localStorage.setItem('aryes-zonas-config', JSON.stringify(z));
+  };
+
+  // Zonas que corresponden hoy
+  const zonasHoy = zonasConfig.filter(z => z.dias?.includes(hoy));
+
+  // Sugeridor de ruta — core del algoritmo
+  const generarSugerencia = React.useCallback(() => {
+    const nvehiculos = Math.max(1, parseInt(vehiculosDisp) || 1);
+
+    // 1. Clientes a entregar hoy
+    // Ventas entregadas o en ruta para ver qué ya fue — excluir
+    const ventasPendientes = (window.__appVentas__ || []).filter(v =>
+      ['confirmada','preparada'].includes(v.estado)
+    );
+
+    // Modo A: si hay zonas configuradas para hoy, filtrar por zona
+    let clientesHoy;
+    if (zonasHoy.length > 0) {
+      const nombresZonas = zonasHoy.map(z => z.nombre.toLowerCase());
+      clientesHoy = clientes.filter(c =>
+        c.zonaEntrega && nombresZonas.includes(c.zonaEntrega.toLowerCase())
+      );
+      // Si ningún cliente tiene zona asignada, usar todos (fallback a Modo B)
+      if (clientesHoy.length === 0) clientesHoy = clientes;
+    } else {
+      // Modo B: todos los clientes sin filtro de zona
+      clientesHoy = clientes;
+    }
+
+    // 2. Cruzar con ventas pendientes para saber quién tiene entrega hoy
+    const conEntrega = clientesHoy.filter(c =>
+      ventasPendientes.some(v => v.clienteId === c.id)
+    );
+
+    // Si no hay ventas pendientes, usar todos los de la zona de hoy
+    const candidatos = conEntrega.length > 0 ? conEntrega : clientesHoy;
+
+    if (candidatos.length === 0) {
+      setSugerencia({ vehiculos: [], msg: 'No hay clientes para entregar hoy.' });
+      return;
+    }
+
+    // 3. Geocodificar los que tienen dirección pero no coords
+    // (asumimos que ya tienen lat/lng del geocoding automático)
+    const conCoords = candidatos.filter(c => c.lat && c.lng);
+    const sinCoords = candidatos.filter(c => !c.lat || !c.lng);
+
+    // 4. Optimizar nearest-neighbor global
+    const todos = [...conCoords];
+    const totalParadas = todos.length;
+    const porVehiculo = Math.ceil(totalParadas / nvehiculos);
+
+    // Dividir en clusters geográficos por vehículo (simple: por proximidad)
+    const vehiculos = [];
+    const usados = new Set();
+
+    for (let v = 0; v < nvehiculos; v++) {
+      const paradas = [];
+      // Punto de partida: el no usado más al norte (simplificación)
+      let start = todos.find(c => !usados.has(c.id));
+      if (!start) break;
+
+      usados.add(start.id);
+      paradas.push(start);
+      let current = start;
+
+      // Nearest-neighbor para este vehículo
+      while (paradas.length < porVehiculo) {
+        let nearest = null, minDist = Infinity;
+        for (const c of todos) {
+          if (usados.has(c.id)) continue;
+          const d = haversine(current.lat, current.lng, c.lat, c.lng);
+          if (d < minDist) { minDist = d; nearest = c; }
+        }
+        if (!nearest) break;
+        usados.add(nearest.id);
+        paradas.push(nearest);
+        current = nearest;
+      }
+
+      vehiculos.push({
+        vehiculo: `Vehículo ${v + 1}`,
+        paradas,
+        km: calcKm(paradas),
+      });
+    }
+
+    // Agregar sin coordenadas al final del primer vehículo
+    if (sinCoords.length > 0 && vehiculos.length > 0) {
+      vehiculos[0].sinGeocode = sinCoords;
+    }
+
+    setSugerencia({ vehiculos, totalCandidatos: candidatos.length, zonasHoy, hoy });
+  }, [clientes, vehiculosDisp, zonasHoy, hoy]);
+
+  function calcKm(paradas) {
+    let km = 0;
+    for (let i = 1; i < paradas.length; i++) {
+      km += haversine(paradas[i-1].lat, paradas[i-1].lng, paradas[i].lat, paradas[i].lng);
+    }
+    return km.toFixed(1);
+  }
+
+  // Aplicar sugerencia — crear las rutas en el sistema
+  const aplicarSugerencia = async (v, vehiculoNombre) => {
+    const entregas = v.paradas.map(c => ({
+      clienteId:    c.id,
+      clienteNombre:c.nombre,
+      direccion:    c.direccion || '',
+      ciudad:       c.ciudad || '',
+      telefono:     c.telefono || '',
+      estado:       'pendiente',
+      hora:         '',
+      nota:         '',
+    }));
+    const nueva = {
+      id: crypto.randomUUID(),
+      vehiculo: vehiculoNombre || v.vehiculo,
+      zona: zonasHoy.map(z => z.nombre).join(', ') || 'Ruta libre',
+      dia: hoy, notas: `Generado automáticamente · ${v.paradas.length} paradas`,
+      entregas, creadoEn: new Date().toISOString(),
+      capacidadKg: 0, capacidadBultos: 0,
+    };
+    const upd = [nueva, ...rutas];
+    setRutas(upd);
+    db.upsert('rutas', {
+      id: nueva.id, vehiculo: nueva.vehiculo, zona: nueva.zona,
+      dia: nueva.dia, notas: nueva.notas, entregas: nueva.entregas,
+      capacidad_kg: 0, capacidad_bultos: 0,
+      creado_en: nueva.creadoEn, updated_at: new Date().toISOString(),
+    }, 'id').catch(() => {});
+    setShowSugeridor(false);
+    setSugerencia(null);
+  };
   const [showGenerador, setShowGenerador] = useState(false);
   const [form,setForm]=useState({vehiculo:"",zona:"",dia:"",notas:""});
   const [msg,setMsg]=useState("");
@@ -1185,16 +1337,146 @@ function RutasTab(){
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>Rutas de Reparto</h2>
-          <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>Planifica y gestiona las rutas de entrega</p>
+          <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>
+            Hoy: <strong>{hoy}</strong>
+            {zonasHoy.length>0&&<span style={{marginLeft:8,color:G,fontWeight:600}}>· Zonas de hoy: {zonasHoy.map(z=>z.nombre).join(', ')}</span>}
+          </p>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setShowSugeridor(true)}
+            style={{padding:"9px 18px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
+            ✨ Optimizar ruta de hoy
+          </button>
+          <button onClick={()=>setShowZonasConfig(true)}
+            style={{padding:"9px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:600,color:"#374151"}}>
+            🗺 Zonas
+          </button>
           <button onClick={()=>setShowGenerador(true)}
-            style={{padding:"9px 20px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
-            🤖 Generar desde pedidos
+            style={{padding:"9px 18px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
+            🤖 Desde pedidos
           </button>
           <button onClick={()=>setVista("historial")} style={{padding:"8px 16px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:13}}>Ver historial</button>
         </div>
       </div>
+
+      {/* ── Panel de configuracion de zonas ─────────────────────────────── */}
+      {showZonasConfig&&(
+        <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 12px rgba(0,0,0,.1)",marginBottom:20,border:"1px solid #e5e7eb"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#1a1a1a"}}>Configuracion de zonas de entrega</div>
+            <button onClick={()=>setShowZonasConfig(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#9ca3af"}}>✕</button>
+          </div>
+          <p style={{fontSize:12,color:"#6b7280",marginBottom:16}}>
+            Definí qué zonas se entregan cada día. Los clientes con "Zona de entrega" asignada se agrupan automáticamente.
+            Si no usás zonas, dejá esto vacío y usá "Optimizar ruta" con todos los clientes del día.
+          </p>
+          {/* Lista de zonas */}
+          {zonasConfig.map((z,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"#f9fafb",borderRadius:8,marginBottom:8}}>
+              <div style={{width:12,height:12,borderRadius:"50%",background:z.color,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <span style={{fontWeight:600,fontSize:13}}>{z.nombre}</span>
+                <span style={{fontSize:12,color:"#6b7280",marginLeft:8}}>{(z.dias||[]).join(', ')}</span>
+              </div>
+              <button onClick={()=>saveZonas(zonasConfig.filter((_,j)=>j!==i))}
+                style={{background:"none",border:"none",cursor:"pointer",color:"#dc2626",fontSize:12}}>Eliminar</button>
+            </div>
+          ))}
+          {/* Agregar zona */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,marginTop:12,alignItems:"end"}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Nombre de la zona</label>
+              <input value={zonaForm.nombre} onChange={e=>setZonaForm(f=>({...f,nombre:e.target.value}))}
+                placeholder="Ej: Centro, Pocitos, Malvin"
+                style={{padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,width:"100%",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Días de entrega</label>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                {DIAS_SEMANA.slice(1).map(d=>(
+                  <button key={d} onClick={()=>setZonaForm(f=>({...f,dias:f.dias?.includes(d)?f.dias.filter(x=>x!==d):[...(f.dias||[]),d]}))}
+                    style={{padding:"4px 8px",border:"1px solid #e5e7eb",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:600,
+                      background:zonaForm.dias?.includes(d)?G:"#fff",color:zonaForm.dias?.includes(d)?"#fff":"#374151"}}>
+                    {d.slice(0,3)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button onClick={()=>{
+              if(!zonaForm.nombre||(zonaForm.dias||[]).length===0) return;
+              saveZonas([...zonasConfig,{...zonaForm,id:crypto.randomUUID()}]);
+              setZonaForm({nombre:'',dias:[],color:'#3b82f6'});
+            }} style={{padding:"8px 16px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:700}}>
+              Agregar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sugeridor de ruta optima ─────────────────────────────────────── */}
+      {showSugeridor&&(
+        <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 2px 12px rgba(0,0,0,.1)",marginBottom:20,border:"1px solid #3b82f6"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:14,color:"#1a1a1a"}}>Optimizador de ruta — {hoy}</div>
+              <div style={{fontSize:12,color:"#6b7280",marginTop:2}}>
+                {zonasHoy.length>0
+                  ? `Modo A: zonas de hoy → ${zonasHoy.map(z=>z.nombre).join(', ')}`
+                  : 'Modo B: ruta libre — todos los clientes con entrega pendiente'}
+              </div>
+            </div>
+            <button onClick={()=>{setShowSugeridor(false);setSugerencia(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#9ca3af"}}>✕</button>
+          </div>
+
+          <div style={{display:"flex",gap:12,alignItems:"flex-end",marginBottom:16}}>
+            <div>
+              <label style={{fontSize:11,fontWeight:600,color:"#666",textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>Cantidad de vehículos</label>
+              <input type="number" min={1} max={10} value={vehiculosDisp} onChange={e=>setVehiculosDisp(e.target.value)}
+                placeholder="1"
+                style={{padding:"7px 10px",border:"1px solid #e5e7eb",borderRadius:6,fontSize:13,width:80}}/>
+            </div>
+            <button onClick={generarSugerencia}
+              style={{padding:"9px 20px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:700}}>
+              Generar sugerencia
+            </button>
+          </div>
+
+          {sugerencia&&(
+            <div>
+              {sugerencia.msg&&<p style={{color:"#6b7280",fontSize:13}}>{sugerencia.msg}</p>}
+              {(sugerencia.vehiculos||[]).map((v,i)=>(
+                <div key={i} style={{background:"#f0f7ff",borderRadius:10,padding:16,marginBottom:12,border:"1px solid #bfdbfe"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontWeight:700,fontSize:13,color:"#1e40af"}}>
+                      {v.vehiculo} — {v.paradas.length} paradas · ~{v.km} km
+                    </div>
+                    <button onClick={()=>aplicarSugerencia(v, v.vehiculo)}
+                      style={{padding:"6px 14px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:7,cursor:"pointer",fontSize:12,fontWeight:700}}>
+                      Crear esta ruta
+                    </button>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {v.paradas.map((p,j)=>(
+                      <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"#374151"}}>
+                        <span style={{width:20,height:20,borderRadius:"50%",background:"#3b82f6",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,flexShrink:0}}>{j+1}</span>
+                        <span style={{fontWeight:600}}>{p.nombre}</span>
+                        {p.direccion&&<span style={{color:"#9ca3af"}}>— {p.direccion}{p.ciudad?`, ${p.ciudad}`:''}</span>}
+                        {p.horarioDesde&&<span style={{color:"#059669",fontSize:11}}>🕐 {p.horarioDesde}-{p.horarioHasta||'?'}</span>}
+                      </div>
+                    ))}
+                    {v.sinGeocode&&v.sinGeocode.length>0&&(
+                      <div style={{marginTop:8,padding:"8px 10px",background:"#fffbeb",borderRadius:6,fontSize:11,color:"#92400e"}}>
+                        ⚠️ Sin coordenadas (se agregan al final): {v.sinGeocode.map(c=>c.nombre).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       {isAdmin&&<div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:20}}>
         <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:14}}>Nueva ruta</div>
