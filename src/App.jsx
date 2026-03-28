@@ -643,6 +643,76 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
           </div>
         )}
 
+        {/* Demand forecast — Unilever supplier collaboration light */}
+        {supProducts.length > 0 && (() => {
+          // Calculate velocity and days remaining for products of this supplier
+          const forecast = supProducts
+            .map(p => {
+              const avgDaily = p.dailyUsage || 0;
+              const diasRestantes = avgDaily > 0 ? Math.floor(p.stock / avgDaily) : null;
+              const needsOrder = diasRestantes !== null && diasRestantes < (totalLead(supplier) + 7);
+              return { ...p, diasRestantes, needsOrder, avgDaily };
+            })
+            .filter(p => p.needsOrder || p.stock <= 0)
+            .sort((a, b) => (a.diasRestantes || 0) - (b.diasRestantes || 0));
+
+          if (forecast.length === 0) return null;
+
+          const waMsg = [
+            `Hola, te enviamos nuestra proyeccion de compras:`,
+            ``,
+            ...forecast.map(p =>
+              `- ${p.name}: stock actual ${p.stock} ${p.unit}` +
+              (p.diasRestantes !== null ? `, cobertura ~${p.diasRestantes} dias` : ', sin stock') +
+              (p.avgDaily > 0 ? `, uso diario ~${p.avgDaily.toFixed(1)} ${p.unit}/dia` : '')
+            ),
+            ``,
+            `Lead time estimado: ${totalLead(supplier)} dias`,
+            `Por favor confirmar disponibilidad.`
+          ].join('\n');
+
+          const tel = (supplier.whatsapp || supplier.phone || '').replace(/\D/g, '');
+          const waUrl = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(waMsg)}` : null;
+
+          return (
+            <div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <Cap>Proyeccion de reposicion</Cap>
+                {waUrl && (
+                  <a href={waUrl} target="_blank" rel="noreferrer"
+                    style={{background:'#25D366',color:'#fff',fontSize:11,fontWeight:700,padding:'5px 12px',borderRadius:8,textDecoration:'none',display:'flex',alignItems:'center',gap:5}}>
+                    💬 Enviar proyeccion al proveedor
+                  </a>
+                )}
+              </div>
+              <div style={{border:`1px solid ${T.border}`,borderRadius:6,overflow:'hidden'}}>
+                {forecast.map((p, i) => (
+                  <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+                    padding:'9px 12px',background:i%2===0?T.card:T.cardWarm,
+                    borderBottom:i<forecast.length-1?`1px solid ${T.border}`:'none'}}>
+                    <div>
+                      <div style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{p.name}</div>
+                      <div style={{fontFamily:T.sans,fontSize:10,color:T.textSm,marginTop:1}}>
+                        Stock: {p.stock} {p.unit}
+                        {p.avgDaily > 0 && ` · ${p.avgDaily.toFixed(1)} ${p.unit}/dia`}
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontFamily:T.sans,fontSize:12,fontWeight:700,
+                        color:p.diasRestantes===null||p.diasRestantes<7?'#dc2626':p.diasRestantes<14?'#d97706':'#3a7d1e'}}>
+                        {p.diasRestantes === null ? 'Sin stock' : `${p.diasRestantes}d restantes`}
+                      </div>
+                      <div style={{fontFamily:T.sans,fontSize:10,color:T.textXs}}>
+                        {p.needsOrder ? 'Pedir ahora' : 'Planificar'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Order history */}
         {supOrders.length>0 && (
           <div>
