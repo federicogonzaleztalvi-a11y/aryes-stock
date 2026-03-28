@@ -1,4 +1,4 @@
-// api/otp-send.js — Genera y envía un OTP por SMS via Infobip
+// api/otp-send.js — Genera y envía un OTP por WhatsApp o SMS via Infobip
 // Si INFOBIP_API_KEY no está configurado, devuelve el código en la respuesta (modo dev)
 
 const SB_URL     = process.env.SUPABASE_URL;
@@ -29,35 +29,62 @@ function toE164Uruguay(tel) {
   return digits;
 }
 
-async function sendSmsInfobip(to, code) {
-  const url = `${IB_BASE_URL}/sms/2/text/advanced`;
-  const body = {
-    messages: [{
-      destinations: [{ to }],
-      from: IB_SENDER || 'Aryes',
-      text: `Tu código de acceso a Aryes es: ${code}\n\nVálido por 10 minutos. No lo compartas.`,
-    }],
-  };
+async function sendViaInfobip(to, code) {
+  const mensaje = `Tu código de acceso a Aryes es: *${code}*\n\nVálido por 10 minutos. No lo compartas.`;
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `App ${IB_API_KEY}`,
-      'Content-Type':  'application/json',
-      'Accept':        'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('[otp-send] Infobip error:', err);
-    throw new Error('SMS no enviado: ' + err);
+  if (IB_CHANNEL === 'whatsapp') {
+    // WhatsApp via Infobip — mucho más barato que SMS (~10x)
+    const url = `${IB_BASE_URL}/whatsapp/1/message/text`;
+    const body = {
+      from: IB_SENDER,
+      to,
+      content: { text: mensaje },
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `App ${IB_API_KEY}`,
+        'Content-Type':  'application/json',
+        'Accept':        'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[otp-send] Infobip WhatsApp error:', err);
+      throw new Error('WhatsApp no enviado: ' + err);
+    }
+    const data = await res.json();
+    console.log('[otp-send] WhatsApp enviado via Infobip:', data?.messages?.[0]?.status?.name || 'ok');
+    return data;
+  } else {
+    // SMS via Infobip (fallback)
+    const url = `${IB_BASE_URL}/sms/2/text/advanced`;
+    const body = {
+      messages: [{
+        destinations: [{ to }],
+        from: IB_SENDER || 'Aryes',
+        text: `Tu código de acceso a Aryes es: ${code}\n\nVálido por 10 minutos. No lo compartas.`,
+      }],
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `App ${IB_API_KEY}`,
+        'Content-Type':  'application/json',
+        'Accept':        'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[otp-send] Infobip SMS error:', err);
+      throw new Error('SMS no enviado: ' + err);
+    }
+    const data = await res.json();
+    console.log('[otp-send] SMS enviado via Infobip:', data?.messages?.[0]?.status?.name);
+    return data;
   }
-
-  const data = await res.json();
-  console.log('[otp-send] SMS enviado via Infobip:', data?.messages?.[0]?.status?.name);
-  return data;
 }
 
 export default async function handler(req, res) {
@@ -102,10 +129,10 @@ export default async function handler(req, res) {
   if (IB_API_KEY && IB_BASE_URL) {
     try {
       const telE164 = toE164Uruguay(telClean);
-      await sendSmsInfobip(telE164, code);
+      await sendViaInfobip(telE164, code);
       return res.status(200).json({ ok: true, clienteNombre: clients[0].name });
     } catch (err) {
-      console.error('[otp-send] Error enviando SMS:', err.message);
+      console.error('[otp-send] Error enviando mensaje:', err.message);
       return res.status(500).json({ error: 'Error al enviar el código. Intentá de nuevo.' });
     }
   }
