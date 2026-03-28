@@ -114,6 +114,9 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   // Uses last 30 days of 'Salida' movements to compute daily velocity per product
   // diasRestantes = stock / velocidad_diaria
   // Semaforo: rojo < 7d, amarillo 7-14d, verde > 14d
+  // Web Push Notifications — Delivery Hero: automatic status updates
+  const { state: pushState, subscribe: subscribePush } = usePushNotifications('admin');
+
   const velocityData = React.useMemo(() => {
     const DAYS = 30;
     const now      = Date.now();
@@ -475,6 +478,45 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
       {/* ── Main grid: alertas + deudores + llegadas ─────────────── */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 280px',gap:16}}>
+
+        {/* ── Web Push Notification banner — Delivery Hero: opt-in para recibir alertas */}
+        {pushState === 'prompt' && (
+          <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:12,
+            padding:'14px 18px',display:'flex',alignItems:'center',gap:14,marginBottom:4}}>
+            <span style={{fontSize:24}}>🔔</span>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:F.sans,fontSize:13,fontWeight:700,color:'#1e40af',marginBottom:2}}>
+                Activar notificaciones push
+              </div>
+              <div style={{fontFamily:F.sans,fontSize:12,color:'#3b82f6'}}>
+                Recibite alertas en este dispositivo cuando hay pedidos nuevos, stock critico o entregas confirmadas
+              </div>
+            </div>
+            <button onClick={subscribePush}
+              style={{padding:'8px 16px',background:'#3b82f6',color:'#fff',border:'none',
+                borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:700,whiteSpace:'nowrap'}}>
+              Activar
+            </button>
+          </div>
+        )}
+        {pushState === 'subscribed' && (
+          <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,
+            padding:'10px 18px',display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+            <span>🔔</span>
+            <span style={{fontFamily:F.sans,fontSize:12,color:'#16a34a',fontWeight:600}}>
+              Notificaciones activas en este dispositivo
+            </span>
+          </div>
+        )}
+        {pushState === 'denied' && (
+          <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,
+            padding:'10px 18px',display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+            <span>🔕</span>
+            <span style={{fontFamily:F.sans,fontSize:12,color:'#dc2626'}}>
+              Notificaciones bloqueadas — activalas desde la configuracion del browser
+            </span>
+          </div>
+        )}
 
         {/* ── Sugerencias de reposicion (Amazon: sistema detecta, humano confirma) ── */}
         {sugerenciasReposicion.length > 0 && (

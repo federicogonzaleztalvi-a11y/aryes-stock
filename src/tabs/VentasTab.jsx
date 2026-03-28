@@ -5,6 +5,7 @@ import ModalCobro from './facturacion/ModalCobro.jsx';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import RemitoPDF from '../components/RemitoPDF.jsx';
 import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
+import { sendPush } from '../hooks/usePushNotifications';
 
 // ── fetchNextNroVenta — calls Postgres sequence via RPC ───────────────────────
 // Atomic: impossible to produce duplicates regardless of concurrent users.
@@ -350,6 +351,25 @@ function VentasTab(){
     }
     // Handle side effects + auto-notifications (MercadoLibre: transitions generate events)
     const estado=nuevoEstado;
+
+    // Web Push — notificar al admin en otros dispositivos (Delivery Hero automatic events)
+    const orgId = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.orgId||'aryes'; } catch { return 'aryes'; } })();
+    if (estado === 'en_ruta') {
+      sendPush(orgId, {
+        title: 'Venta en camino',
+        body:  `${venta?.clienteNombre || 'Cliente'} — ${venta?.nroVenta || ''} salió en ruta`,
+        url:   '/?tab=ventas',
+        tag:   'venta-en-ruta-' + (venta?.id || ''),
+      }).catch(() => {});
+    }
+    if (estado === 'entregada') {
+      sendPush(orgId, {
+        title: 'Entrega confirmada',
+        body:  `${venta?.clienteNombre || 'Cliente'} — ${venta?.nroVenta || ''} entregado`,
+        url:   '/?tab=ventas',
+        tag:   'venta-entregada-' + (venta?.id || ''),
+      }).catch(() => {});
+    }
 
     // Auto WhatsApp when venta goes en_ruta — notify client with tracking info
     if(estado==='en_ruta' && venta?.clienteId){
