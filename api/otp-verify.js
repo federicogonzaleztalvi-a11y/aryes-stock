@@ -76,6 +76,17 @@ export default async function handler(req, res) {
     `?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(tel8)},phone.eq.598${encodeURIComponent(tel8)})` +
     `&select=id,name,lista_id,email,cond_pago&limit=1`;
 
+  // DIAGNÓSTICO TEMPORAL
+  return res.status(200).json({ 
+    _diag: true,
+    sb_url: SB_URL ? SB_URL.slice(0,30) : 'UNDEFINED',
+    has_svc: !!SB_SVC_KEY,
+    has_anon: !!SB_ANON,
+    tel: telClean,
+    tel8,
+    cliUrl: cliUrl.slice(0,100)
+  });
+  // FIN DIAGNÓSTICO
   console.log('[otp-verify] buscando cliente, tel:', telClean, 'tel8:', tel8);
   console.log('[otp-verify] SB_URL:', SB_URL ? 'ok' : 'UNDEFINED', 'key:', key ? 'ok' : 'UNDEFINED');
 
