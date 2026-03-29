@@ -30,18 +30,11 @@ export default function PedidosPortalPanel({ onImportar }) {
   const [expand,  setExpand]  = useState(null);
 
   const fetchOrders = useCallback(async () => {
-    if (!SB_URL || !SKEY) return;
     setLoading(true);
     try {
-      // Need auth headers — try session
-      const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-      const token   = session?.access_token || SKEY;
-      const r = await fetch(
-        `${SB_URL}/rest/v1/b2b_orders?estado=eq.pendiente&org_id=eq.${getOrgId()}&order=creado_en.desc&limit=20`,
-        { headers: { apikey: SKEY, Authorization: `Bearer ${token}`, Accept: 'application/json' } }
-      );
+      const r = await fetch('/api/pedido?action=pendientes&org=aryes');
       const d = await r.json();
-      if (Array.isArray(d)) setOrders(d);
+      if (d.ok && Array.isArray(d.pedidos)) setOrders(d.pedidos);
     } catch {/* silent */}
     finally { setLoading(false); }
   }, []);

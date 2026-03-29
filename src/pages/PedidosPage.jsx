@@ -412,6 +412,103 @@ function CartPanel({ carrito, items, session, onClose, onConfirm }) {
 }
 
 // →→ Main →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
+
+// →→ HistorialPedidos →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
+function HistorialPedidos({ session }) {
+  const [pedidos, setPedidos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expand,  setExpand]  = useState(null);
+
+  const ESTADOS = {
+    pendiente:  { label: 'Pendiente',  color: '#f59e0b', bg: '#fffbeb' },
+    confirmada: { label: 'Confirmado', color: '#3b82f6', bg: '#eff6ff' },
+    preparada:  { label: 'Preparando', color: '#8b5cf6', bg: '#f5f3ff' },
+    en_ruta:    { label: 'En camino',  color: '#f97316', bg: '#fff7ed' },
+    entregada:  { label: 'Entregado',  color: '#3a7d1e', bg: '#f0fdf4' },
+    cancelada:  { label: 'Cancelado',  color: '#ef4444', bg: '#fef2f2' },
+  };
+
+  useEffect(() => {
+    if (!session?.token) return;
+    fetch(`${API}/api/pedido?action=historial`, {
+      headers: { Authorization: `Bearer ${session.token}` }
+    })
+      .then(r => r.json())
+      .then(d => { if (d.ok) setPedidos(d.pedidos || []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [session]);
+
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af', fontSize: 14 }}>
+      Cargando historial...
+    </div>
+  );
+
+  if (!pedidos.length) return (
+    <div style={{ textAlign: 'center', padding: 40 }}>
+      <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+      <div style={{ fontSize: 15, color: '#6b7280', fontWeight: 600 }}>Sin pedidos aún</div>
+      <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 6 }}>Tus pedidos aparecerán acá</div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      {pedidos.map(p => {
+        const est = ESTADOS[p.estado] || ESTADOS.pendiente;
+        const isExp = expand === p.id;
+        return (
+          <div key={p.id} onClick={() => setExpand(isExp ? null : p.id)}
+            style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #e5e7eb',
+              overflow: 'hidden', cursor: 'pointer',
+              boxShadow: isExp ? '0 2px 12px rgba(0,0,0,.08)' : 'none' }}>
+            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a' }}>
+                  {new Date(p.creado_en).toLocaleDateString('es-UY', { day:'2-digit', month:'short', year:'numeric' })}
+                </div>
+                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                  {Array.isArray(p.items) ? p.items.length : 0} producto{p.items?.length !== 1 ? 's' : ''}
+                  {p.notas ? ' · 📝 nota' : ''}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: G }}>{fmtUSD(p.total)}</div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: est.color,
+                  background: est.bg, padding: '2px 8px', borderRadius: 20, marginTop: 4, display: 'inline-block' }}>
+                  {est.label}
+                </span>
+              </div>
+              <span style={{ color: '#9ca3af', fontSize: 12 }}>{isExp ? '▲' : '▼'}</span>
+            </div>
+            {isExp && (
+              <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f3f4f6' }}>
+                <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                  {(p.items || []).map((it, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
+                      fontSize: 13, padding: '4px 0',
+                      borderBottom: i < p.items.length - 1 ? '1px solid #f9fafb' : 'none' }}>
+                      <span style={{ color: '#374151' }}>{it.cantidad} × {it.nombre} <span style={{ color: '#9ca3af' }}>({it.unidad})</span></span>
+                      <span style={{ fontWeight: 600, color: G }}>{fmtUSD(it.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+                {p.notas && (
+                  <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280',
+                    background: '#fffbeb', padding: '8px 10px', borderRadius: 8 }}>
+                    📝 {p.notas}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function PedidosPage() {
   const [session,   setSession]   = useState(() => loadSession());
   const [vista,     setVista]     = useState('catalogo');
@@ -420,6 +517,7 @@ export default function PedidosPage() {
   const [catFil,    setCatFil]    = useState('Todos');
   const [busq,      setBusq]      = useState('');
   const [carrito,   setCarrito]   = useState({});
+  const [tabPortal,  setTabPortal]  = useState('catalogo');
   const [showCart,  setShowCart]  = useState(false);
   const [loading,   setLoading]   = useState(false);
   const [historial, setHistorial] = useState([]);
@@ -611,29 +709,9 @@ export default function PedidosPage() {
 
       {/* →→ Historial →→ */}
       {vista === 'historial' && (
-        <HistorialPanel
-          orders={historial}
-          loading={histLoad}
-          onReordenar={order => {
-            const newCarrito = {};
-            (order.items || []).forEach(it => {
-              const id = it.productId || it.id;
-              if (id) newCarrito[id] = it.cantidad || it.qty || 1;
-            });
-            setCarrito(newCarrito);
-            setVista('catalogo');
-            setTimeout(() => setShowCart(true), 150);
-          }}
-          onSolicitarDev={order => {
-            // Inicializar los items con cantDevolver = 0
-            const its = (order.items || []).map(it => ({ ...it, cantDevolver: 0 }));
-            setDevItems(its);
-            setDevMotivo('');
-            setDevNotas('');
-            setDevMsg('');
-            setDevModal(order);
-          }}
-        />
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
+          <HistorialPedidos session={session} />
+        </div>
       )}
 
       {/* →→ Cart →→ */}

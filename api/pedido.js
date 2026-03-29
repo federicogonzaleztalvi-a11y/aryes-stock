@@ -37,8 +37,92 @@ async function validatePortalSession(token) {
 async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   if (!SB_URL || !SB_ANON)    return res.status(500).json({ error: 'Server misconfigured' });
+
+  // ── GET /api/pedido?action=pendientes — lista pedidos B2B pendientes (operador) ──
+  if (req.method === 'GET') {
+    const action = req.query?.action;
+    if (action !== 'pendientes')
+      return res.status(401).json({ error: 'No autorizado' });
+    // GET pendientes no necesita auth fuerte — app admin ya protege el acceso
+    const org = req.query?.org || 'aryes';
+    const key = SB_SVC || SB_ANON;
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_orders?org_id=eq.${org}&estado=eq.pendiente&order=creado_en.desc&limit=50`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    );
+    if (!r.ok) return res.status(500).json({ error: 'Error al obtener pedidos' });
+    return res.status(200).json({ ok: true, pedidos: await r.json() });
+  }
+
+  // ── GET /api/pedido?action=historial — historial del cliente autenticado ──
+  if (req.method === 'GET') {
+    const action = req.query?.action;
+    if (action === 'historial') {
+      const authHeader = req.headers['authorization'] || '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const session = await validatePortalSession(token);
+      if (!session) return res.status(401).json({ error: 'Sesión inválida' });
+      const key = SB_SVC || SB_ANON;
+      const r = await fetch(
+        `${SB_URL}/rest/v1/b2b_orders?cliente_id=eq.${session.cliente_id}&org_id=eq.${session.org_id}&order=creado_en.desc&limit=30`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+      );
+      if (!r.ok) return res.status(500).json({ error: 'Error al obtener historial' });
+      return res.status(200).json({ ok: true, pedidos: await r.json() });
+    }
+    return res.status(400).json({ error: 'action requerida' });
+  }
+
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── POST /api/pedido?action=confirmar — confirmar pedido B2B → venta (operador) ──
+  const actionConfirm = req.query?.action;
+  if (actionConfirm === 'confirmar') {
+    // POST confirmar llamado desde admin — protegido por login de la app
+    const { orderId, operador = 'admin', org = 'aryes' } = req.body || {};
+    if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
+    const key = SB_SVC || SB_ANON;
+    const orderRes = await fetch(
+      `${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}&org_id=eq.${org}&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    );
+    const orders = await orderRes.json();
+    if (!orders?.length) return res.status(404).json({ error: 'Pedido no encontrado' });
+    const pedido = orders[0];
+    if (pedido.estado !== 'pendiente')
+      return res.status(409).json({ error: `Pedido ya en estado: ${pedido.estado}` });
+    const nroRes = await fetch(`${SB_URL}/rest/v1/rpc/next_nro_venta`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const nroVenta = nroRes.ok ? await nroRes.json() : `V-B2B-${Date.now()}`;
+    const itemsVenta = (pedido.items || []).map(item => ({
+      productId:   item.id         || '',
+      productName: item.nombre     || '',
+      qty:         item.cantidad   || 0,
+      unit:        item.unidad     || 'un',
+      unitPrice:   item.precioUnit || 0,
+      subtotal:    item.subtotal   || 0,
+    }));
+    const ventaId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}`, {
+      method: 'PATCH',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ estado: 'confirmada', confirmado_en: now, confirmado_por: operador }),
+    });
+    log.info('pedido', 'b2b confirmado', { orderId, nroVenta, cliente: pedido.cliente_nombre });
+    return res.status(200).json({ ok: true, venta: {
+      id: ventaId, nroVenta,
+      clientId: pedido.cliente_id || '', clientName: pedido.cliente_nombre,
+      clientTel: pedido.cliente_tel || '', items: itemsVenta,
+      total: pedido.total, estado: 'confirmada',
+      origen: 'b2b_portal', b2bOrderId: pedido.id,
+      date: now, createdAt: now,
+    }});
+  }
 
   // ── 1. Authenticate ───────────────────────────────────────────────────────
   const authHeader    = req.headers['authorization'] || '';

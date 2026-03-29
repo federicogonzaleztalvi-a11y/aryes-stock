@@ -38,6 +38,23 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
 
   // ── Core data ──────────────────────────────────────────────────────────────
   const [products,  setProducts]  = useState<Product[]>(() => LS.get('aryes6-products',  []));
+
+  // Auto-enriquecer uuids desde Supabase si faltan (una sola vez al arrancar)
+  useEffect(() => {
+    const prods = LS.get('aryes6-products', []);
+    if (prods.length > 0 && prods.filter((p: any) => p.uuid).length === 0) {
+      fetch('/api/catalogo?org=aryes')
+        .then(r => r.json())
+        .then(d => {
+          const uuidByName: Record<string, string> = {};
+          (d.items || []).forEach((p: any) => { uuidByName[p.nombre] = p.id; });
+          const enriched = prods.map((p: any) => ({ ...p, uuid: uuidByName[p.name] || p.uuid }));
+          setProducts(enriched);
+          console.log('[AppContext] UUIDs sincronizados:', enriched.filter((p: any) => p.uuid).length);
+        })
+        .catch(() => {});
+    }
+  }, []);
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => LS.get('aryes6-suppliers', DEFAULT_SUPPLIERS));
   const [movements, setMovements] = useState<Movement[]>(() => LS.get('aryes8-movements', []));
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));

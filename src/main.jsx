@@ -6,10 +6,8 @@ import AryesApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 import { useErrorReporting } from './hooks/useErrorReporting.ts';
-import { initSentry, setSentryUser } from './lib/sentry.js';
-import * as Sentry from '@sentry/react';
-
-initSentry(null);
+import { setSentryUser, Sentry } from './lib/sentry.js';
+// sentry.js se auto-inicializa al importarse
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
