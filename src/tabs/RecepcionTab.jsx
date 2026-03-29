@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { LS, db, SB_URL, getAuthHeaders } from '../lib/constants.js';
 
@@ -62,6 +62,13 @@ function RecepcionTab(){
     }]);
     setVista('recepcion');
   };
+
+  // Bridge desde PedidosInline: lee pedido pre-cargado de sessionStorage al montar
+  useEffect(() => {
+    const raw = sessionStorage.getItem('aryes-recepcion-from-order');
+    sessionStorage.removeItem('aryes-recepcion-from-order');
+    try { iniciarRecepcion(JSON.parse(raw)); } catch {}
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateItem=(idx,field,val)=>{
     setItems(prev=>prev.map((it,i)=>{
