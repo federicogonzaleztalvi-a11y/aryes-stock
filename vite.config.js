@@ -1,11 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    ...(process.env.SENTRY_AUTH_TOKEN ? [sentryVitePlugin({ org: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT, authToken: process.env.SENTRY_AUTH_TOKEN })] : []),
+  ],
   build: {
     // es2022 target: prevents esbuild from transforming const/let declarations
     // which was causing Temporal Dead Zone (TDZ) errors in production
+    sourcemap: true,
     target: 'es2022',
   },
   test: {

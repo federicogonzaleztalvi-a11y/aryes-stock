@@ -6,6 +6,10 @@ import AryesApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
 import { useErrorReporting } from './hooks/useErrorReporting.ts';
+import { initSentry, setSentryUser } from './lib/sentry.js';
+import * as Sentry from '@sentry/react';
+
+initSentry(null);
 const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
@@ -137,7 +141,7 @@ function Root() {
     catch { return false; }
   });
 
-  const handleLogin = (s) => setSession(s);
+  const handleLogin = (s) => { setSession(s); setSentryUser(s); };
   const handleLogout = () => {
     try {
       const s = readSession();
@@ -149,6 +153,7 @@ function Root() {
       }
     } catch { /* non-blocking */ }
     localStorage.removeItem('aryes-session');
+    setSentryUser(null);
     setSession(null);
   };
 
@@ -236,6 +241,7 @@ function Root() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
+  <Sentry.ErrorBoundary fallback={<RootErrorBoundary><div/></RootErrorBoundary>}>
   <RootErrorBoundary>
     <BrowserRouter>
       <Suspense fallback={null}>
@@ -258,4 +264,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </Suspense>
     </BrowserRouter>
   </RootErrorBoundary>
+
+  </Sentry.ErrorBoundary>
 );
