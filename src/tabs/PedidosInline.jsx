@@ -199,8 +199,15 @@ function PedidosInline({ orders, getSup, markDelivered, setTab }) {
                     <PipelineBar order={o}/>
                     <div style={{ display:'flex', gap:8, marginTop:14, flexWrap:'wrap' }}>
                       {o.status==='pending'&&(
-                        <Btn small variant="success" onClick={()=>{markDelivered(o.id);setExpanded(null);}}>
-                          Marcar recibido
+                        <Btn small variant="success" onClick={()=>{
+                          sessionStorage.setItem('aryes-recepcion-from-order', JSON.stringify({
+                            id: o.id, productId: o.productId, productName: o.productName,
+                            supplierName: o.supplierName || '', qty: o.qty, unit: o.unit,
+                            expectedArrival: o.expectedArrival || '',
+                          }));
+                          setTab('recepcion');
+                        }}>
+                          Recibir mercaderia
                         </Btn>
                       )}
                       <button onClick={()=>setTab('deposito')} style={{ padding:'7px 14px', background:G, color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700 }}>
