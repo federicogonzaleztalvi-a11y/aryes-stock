@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
   const headers = {
     'apikey':        SB_ANON,
-    'Authorization': `Bearer ${SB_ANON}`,
+    'Authorization': `Bearer ${SB_KEY}`,
     'Accept':        'application/json',
   };
 
