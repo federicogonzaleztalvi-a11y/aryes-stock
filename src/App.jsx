@@ -23,6 +23,7 @@ const ComprasTab        = React.lazy(() => import('./tabs/ComprasTab.jsx'));
 const ResultadosTab     = React.lazy(() => import('./tabs/ResultadosTab.jsx'));
 const BatchPickingTab = React.lazy(() => import('./tabs/BatchPickingTab.jsx'));
 const PreciosTab = React.lazy(() => import('./tabs/PreciosTab.jsx'));
+const PreciosListasTab = React.lazy(() => import('./tabs/PreciosListasTab.jsx'));
 const KPIsTab = React.lazy(() => import('./tabs/KPIsTab.jsx'));
 const DemandaTab = React.lazy(() => import('./tabs/DemandaTab.jsx'));
 const AuditTab = React.lazy(() => import('./tabs/AuditTab.jsx'));
@@ -974,6 +975,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
         {activeTab==="config"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ConfigInline session={session} suppliers={suppliers} setSuppliers={setSuppliers} settingsTab={settingsTab} setSettingsTab={setSettingsTab} emailCfg={emailCfg} setEmailCfg={setEmailCfg} enriched={enriched} sendAlertEmail={sendAlertEmail} EmailSettings={EmailSettings} totalLead={totalLead} tfCols={tfCols} brandCfg={brandCfg} setBrandCfg={setBrandCfg}/></Suspense></ErrorBoundary>}
         {activeTab==="lotes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><LotesTab /></Suspense></ErrorBoundary>}
       {activeTab==="clientes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ClientesTab /></Suspense></ErrorBoundary>}
+      {activeTab==="precios"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PreciosListasTab /></Suspense></ErrorBoundary>}
       {activeTab==="movimientos"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><MovimientosTab /></Suspense></ErrorBoundary>}
       
       {activeTab==="deposito"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DepositoTab /></Suspense></ErrorBoundary>}
