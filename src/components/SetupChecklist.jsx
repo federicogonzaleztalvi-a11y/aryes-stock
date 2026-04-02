@@ -5,11 +5,14 @@ const G = '#1a8a3c';
 const F = { sans: "'Inter',system-ui,sans-serif" };
 
 const STEPS = [
-  { id: 'brand',    label: 'Configurar nombre y logo',      icon: '🏷',  tab: 'config'      },
-  { id: 'cliente',  label: 'Agregar primer cliente',         icon: '👥',  tab: 'clientes'    },
-  { id: 'products', label: 'Cargar productos al inventario', icon: '📦',  tab: 'inventory'   },
-  { id: 'cfe',      label: 'Emitir primera factura CFE',     icon: '🧾',  tab: 'facturacion' },
-  { id: 'dgi',      label: 'Conectar proveedor DGI',         icon: '🔗',  tab: 'config'      },
+  { id: 'brand',    label: 'Configurar nombre y logo',          icon: '🏷', tab: 'config',      desc: 'Dale identidad a tu plataforma' },
+  { id: 'supplier', label: 'Agregar primer proveedor',           icon: '🏭', tab: 'suppliers',   desc: 'Necesario para calcular lead times' },
+  { id: 'products', label: 'Cargar productos al inventario',     icon: '📦', tab: 'inventory',   desc: 'Importá desde Excel o uno por uno' },
+  { id: 'cliente',  label: 'Agregar primer cliente',             icon: '👥', tab: 'clientes',    desc: 'Con teléfono para activar el portal B2B' },
+  { id: 'venta',    label: 'Registrar primera venta',            icon: '💰', tab: 'ventas',      desc: 'El corazón del sistema' },
+  { id: 'ruta',     label: 'Crear primera ruta de entrega',      icon: '🚛', tab: 'rutas',       desc: 'Optimizá tus recorridos' },
+  { id: 'portal',   label: 'Activar portal B2B para un cliente', icon: '🛍', tab: 'clientes',    desc: 'Tus clientes piden solos' },
+  { id: 'cfe',      label: 'Emitir primera factura CFE',         icon: '🧾', tab: 'facturacion', desc: 'Facturación electrónica DGI' },
 ];
 
 function readLS(key) {
@@ -24,13 +27,20 @@ function SetupChecklist({ products = [], setTab }) {
   const clientes = readLS('aryes-clients');
   const cfes     = readLS('aryes-cfe');
 
+  const suppliers = readLS('aryes-suppliers');
+  const ventas    = readLS('aryes-ventas');
+  const rutas     = readLS('aryes-rutas');
+
   const steps = STEPS.map(s => {
     let done = false;
     if (s.id === 'brand')    done = !!(brand?.name);
+    if (s.id === 'supplier') done = suppliers.length > 0;
     if (s.id === 'cliente')  done = clientes.length > 0;
     if (s.id === 'products') done = products.length > 0;
+    if (s.id === 'venta')    done = ventas.length > 0;
+    if (s.id === 'ruta')     done = rutas.length > 0;
+    if (s.id === 'portal')   done = clientes.some(c => c.portal_activo !== false && c.telefono);
     if (s.id === 'cfe')      done = cfes.length > 0;
-    if (s.id === 'dgi')      done = !!(brand?.dgiConfig);
     return { ...s, done };
   });
 
