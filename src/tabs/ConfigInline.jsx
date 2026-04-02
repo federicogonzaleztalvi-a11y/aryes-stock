@@ -5,6 +5,112 @@ import { db } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
+// ── Gestión de zonas del depósito ────────────────────────────────────────
+function ZonasDeposito({ orgId }) {
+  const [zonas, setZonas] = React.useState([]);
+  const [editZona, setEditZona] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState('');
+  const SB = import.meta.env.VITE_SUPABASE_URL;
+  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const cargar = React.useCallback(async () => {
+    try {
+      const r = await fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${orgId}&active=eq.true&order=orden.asc`,
+        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
+      const data = await r.json();
+      setZonas(Array.isArray(data) ? data : []);
+    } catch(e) { console.error(e); }
+  }, [orgId]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const guardar = async () => {
+    if (!editZona?.nombre?.trim()) return;
+    setSaving(true);
+    try {
+      const body = { org_id: orgId, nombre: editZona.nombre, orden: editZona.orden || 0, descripcion: editZona.descripcion || '', categorias: editZona.categorias || [] };
+      if (editZona.id) {
+        await fetch(`${SB}/rest/v1/deposit_zones?id=eq.${editZona.id}`, { method:'PATCH', headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'}, body:JSON.stringify(body) });
+      } else {
+        await fetch(`${SB}/rest/v1/deposit_zones`, { method:'POST', headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'}, body:JSON.stringify(body) });
+      }
+      setEditZona(null); setMsg('Zona guardada'); setTimeout(()=>setMsg(''),3000); await cargar();
+    } catch(e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  const eliminar = async (id) => {
+    await fetch(`${SB}/rest/v1/deposit_zones?id=eq.${id}`, { method:'PATCH', headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'}, body:JSON.stringify({active:false}) });
+    await cargar();
+  };
+
+  return (
+    <div style={{display:'grid',gap:20,maxWidth:640}}>
+      <div>
+        <h3 style={{fontSize:16,fontWeight:600,margin:'0 0 6px'}}>Zonas del depósito</h3>
+        <p style={{fontSize:13,color:'#666',margin:0}}>Definí las zonas físicas del depósito y asignales categorías de productos. Esto permite ordenar el picking por recorrido óptimo.</p>
+      </div>
+      {msg && <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 14px',fontSize:13,color:'#166534',fontWeight:600}}>{msg}</div>}
+      <div style={{display:'grid',gap:8}}>
+        {zonas.map(z => (
+          <div key={z.id} style={{display:'flex',alignItems:'center',gap:12,background:'#f9f9f7',border:'1px solid #e5e5e0',borderRadius:8,padding:'12px 14px'}}>
+            <div style={{width:32,height:32,background:'#1a8a3c',color:'#fff',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0}}>{z.orden}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{z.nombre}</div>
+              {z.descripcion && <div style={{fontSize:11,color:'#9a9a98'}}>{z.descripcion}</div>}
+              {z.categorias?.length > 0 && <div style={{fontSize:11,color:'#1a8a3c',marginTop:2}}>{z.categorias.join(', ')}</div>}
+            </div>
+            <button onClick={()=>setEditZona({...z})} style={{background:'none',border:'1px solid #e5e5e0',borderRadius:6,padding:'4px 10px',fontSize:11,cursor:'pointer',color:'#4a4a48'}}>Editar</button>
+            <button onClick={()=>eliminar(z.id)} style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:16,padding:'0 4px'}}>×</button>
+          </div>
+        ))}
+        <button onClick={()=>setEditZona({nombre:'',orden:zonas.length+1,descripcion:'',categorias:[]})}
+          style={{background:'none',border:'1px dashed #d0d0cc',borderRadius:8,padding:'10px',fontSize:13,cursor:'pointer',color:'#6a6a68'}}>
+          + Nueva zona
+        </button>
+      </div>
+      {editZona && (
+        <div style={{background:'#f9f9f7',border:'1px solid #e5e5e0',borderRadius:10,padding:18,display:'grid',gap:12}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{editZona.id ? 'Editar zona' : 'Nueva zona'}</div>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:10}}>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Nombre</div>
+              <input value={editZona.nombre} onChange={e=>setEditZona(z=>({...z,nombre:e.target.value}))}
+                placeholder="Zona A" style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'8px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Orden</div>
+              <input type="number" value={editZona.orden} onChange={e=>setEditZona(z=>({...z,orden:+e.target.value}))}
+                style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'8px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:'#888',marginBottom:4}}>Descripción</div>
+            <input value={editZona.descripcion||''} onChange={e=>setEditZona(z=>({...z,descripcion:e.target.value}))}
+              placeholder="Ej: Sector refrigerados, fondo izquierda..." style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'8px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:'#888',marginBottom:4}}>Categorías de productos (separadas por coma)</div>
+            <input value={(editZona.categorias||[]).join(', ')} onChange={e=>setEditZona(z=>({...z,categorias:e.target.value.split(',').map(s=>s.trim()).filter(Boolean)}))}
+              placeholder="CHOCOLATES, PASTELERÍA, ADITIVOS..." style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'8px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={guardar} disabled={saving}
+              style={{flex:1,background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,padding:'10px',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
+              {saving?'Guardando...':'Guardar zona'}
+            </button>
+            <button onClick={()=>setEditZona(null)}
+              style={{background:'#f0f0ec',color:'#4a4a48',border:'none',borderRadius:8,padding:'10px 16px',fontSize:13,cursor:'pointer'}}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DominioCNAMEPanel({ orgId }) {
   const [dominios, setDominios] = React.useState([]);
   const [nuevo, setNuevo] = React.useState('');
@@ -156,7 +262,7 @@ export default function ConfigInline({
         <div>
           {/* Sub-tab bar */}
           <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:600,marginBottom:24}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"}].map(st=>(
+            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
@@ -379,6 +485,9 @@ export default function ConfigInline({
           )}
 
           {/* ── INTEGRACIONES ─────────────────────────────────────────────── */}
+          {settingsTab==="zonas" && (
+            <ZonasDeposito orgId={brandCfg?.orgId || 'aryes'} />
+          )}
           {settingsTab==="dominio" && (
             <div style={{display:"grid",gap:20,maxWidth:600}}>
               <div>

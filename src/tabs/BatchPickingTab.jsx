@@ -10,6 +10,25 @@ function BatchPickingTab(){
   const [picking,setPicking]=useState(null);
   const [recolectados,setRecolectados]=useState({});
   const [msg,setMsg]=useState("");
+  const [zonas,setZonas]=useState([]);
+
+  // Cargar zonas del depósito para ordenar picking
+  useState(()=>{
+    const SB=import.meta.env.VITE_SUPABASE_URL;
+    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+    fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.aryes&active=eq.true&order=orden.asc`,
+      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+      .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
+  });
+
+  // Función para obtener zona de un ítem por su categoría
+  const getZonaOrden=(item)=>{
+    const prod=prods.find(p=>(p.nombre||p.name)===item.nombre);
+    if(!prod||!zonas.length) return 999;
+    const cat=(prod.category||prod.categoria||'').toUpperCase();
+    const zona=zonas.find(z=>(z.categorias||[]).some(c=>cat.includes(c.toUpperCase())));
+    return zona?.orden ?? 999;
+  };
 
   const pendientes=ventas.filter(v=>["confirmada","preparada"].includes(v.estado));
 
@@ -29,6 +48,8 @@ function BatchPickingTab(){
       });
     });
     const items=Object.entries(mapa).map(([k,v])=>({key:k,...v}));
+    // Ordenar por zona del depósito para recorrido óptimo
+    items.sort((a,b)=>{ const za=getZonaOrden(a); const zb=getZonaOrden(b); return za-zb; });
     const init={};items.forEach(it=>init[it.key]=false);
     setPicking({id:crypto.randomUUID(),ventas:selVentas,items,creadoEn:new Date().toISOString()});
     setRecolectados(init);
