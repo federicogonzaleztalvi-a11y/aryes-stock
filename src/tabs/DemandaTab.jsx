@@ -62,6 +62,83 @@ function DemandaTab(){
           </table>
         </div>
       )}
+      {/* ── Demand Sensing — Clientes a contactar ─────────────── */}
+      {(()=>{
+        // Calcular frecuencia de compra por cliente
+        // Solo clientes con 2+ órdenes (necesario para calcular intervalo)
+        const hoy = new Date();
+        const clienteMap = {};
+        ventas.filter(v=>v.estado!=="cancelada"&&v.creadoEn).forEach(v=>{
+          const id = v.clienteId||v.clienteNombre||'?';
+          if(!clienteMap[id]) clienteMap[id]={ nombre:v.clienteNombre||id, ordenes:[], tel:v.clienteTelefono||'', ultimoItem:(v.items||[])[0]?.nombre||'' };
+          clienteMap[id].ordenes.push(new Date(v.creadoEn));
+        });
+
+        // Calcular ratio urgencia por cliente
+        const sensing = Object.values(clienteMap)
+          .filter(c=>c.ordenes.length>=2)
+          .map(c=>{
+            c.ordenes.sort((a,b)=>a-b);
+            // Intervalo promedio entre compras (en días)
+            let sumInterv=0;
+            for(let i=1;i<c.ordenes.length;i++) sumInterv+=(c.ordenes[i]-c.ordenes[i-1])/86400000;
+            const avgInterval = sumInterv/(c.ordenes.length-1);
+            const ultimaCompra = c.ordenes[c.ordenes.length-1];
+            const diasDesde = (hoy-ultimaCompra)/86400000;
+            const ratio = diasDesde/avgInterval;
+            return { ...c, avgInterval:Math.round(avgInterval), diasDesde:Math.round(diasDesde), ratio:Math.round(ratio*100)/100, ultimaCompra };
+          })
+          .filter(c=>c.ratio>=0.8) // Solo los que están cerca o pasaron su ventana
+          .sort((a,b)=>b.ratio-a.ratio)
+          .slice(0,8);
+
+        if(sensing.length===0) return null;
+
+        return (
+          <div style={{marginTop:28}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <h3 style={{fontFamily:"Playfair Display,serif",fontSize:20,color:"#1a1a1a",margin:0}}>Clientes a contactar</h3>
+              <span style={{background:"#fef3c7",color:"#92400e",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:20}}>Demand Sensing</span>
+            </div>
+            <p style={{fontSize:12,color:"#888",margin:"0 0 16px"}}>
+              Basado en frecuencia histórica de compra. Ratio = días sin comprar / intervalo promedio. {">"} 1.0 = ya pasó su ventana.
+            </p>
+            <div style={{display:"grid",gap:10}}>
+              {sensing.map((c,i)=>{
+                const urgente=c.ratio>=1.2;
+                const medio=c.ratio>=0.8&&c.ratio<1.2;
+                const color=urgente?"#dc2626":medio?"#d97706":"#1a8a3c";
+                const bg=urgente?"#fef2f2":medio?"#fffbeb":"#f0fdf4";
+                const waMsg=`Hola ${c.nombre.split(' ')[0]}, ¿cómo andas? Te contactamos porque hace ${c.diasDesde} días que no te visitamos. ¿Necesitás reponer ${c.ultimoItem||'mercadería'}? 🚛`;
+                return(
+                  <div key={i} style={{background:"#fff",border:`1px solid ${urgente?"#fecaca":medio?"#fde68a":"#bbf7d0"}`,borderRadius:10,padding:"14px 18px",display:"flex",alignItems:"center",gap:16}}>
+                    <div style={{width:48,height:48,borderRadius:12,background:bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <span style={{fontSize:18,fontWeight:800,color}}>{c.ratio.toFixed(1)}</span>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a"}}>{c.nombre}</div>
+                      <div style={{fontSize:12,color:"#6b7280",marginTop:2}}>
+                        Compra cada <strong>{c.avgInterval} días</strong> en promedio · Última hace <strong>{c.diasDesde} días</strong>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8,flexShrink:0}}>
+                      <span style={{background:bg,color,fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:20}}>
+                        {urgente?"🔴 Urgente":medio?"🟡 Pronto":"🟢 Cerca"}
+                      </span>
+                      {c.tel&&(
+                        <a href={`https://wa.me/${c.tel.replace(/\D/g,'')}?text=${encodeURIComponent(waMsg)}`} target="_blank" rel="noreferrer"
+                          style={{background:"#25d366",color:"#fff",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>
+                          📲 WA
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }
