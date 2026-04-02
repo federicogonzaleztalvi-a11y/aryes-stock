@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
 const ProductForm=({product,suppliers,onSave,onClose})=>{
-  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:22,imagen_url:"",history:[]};
+  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:22,imagen_url:"",descripcion:"",history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -66,6 +66,11 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
               style={{width:56,height:56,objectFit:"cover",borderRadius:8,border:`1px solid ${T.border}`,flexShrink:0}}/>
           )}
         </div>
+      </Field>
+      <Field label="Descripción / Ficha técnica" hint="Opcional — aparece en el catálogo al hacer click en el producto">
+        <textarea value={f.descripcion||""} onChange={e=>set("descripcion",e.target.value)}
+          placeholder="Usos, presentaciones, características técnicas, envases disponibles..."
+          style={{width:"100%",minHeight:80,fontFamily:"inherit",fontSize:13,border:`1px solid ${T.border}`,borderRadius:6,padding:"9px 11px",resize:"vertical",background:T.muted,color:T.text,boxSizing:"border-box"}}/>
       </Field>
       <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>
       {r!==null&&(

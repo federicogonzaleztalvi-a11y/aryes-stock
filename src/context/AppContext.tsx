@@ -465,7 +465,7 @@ const describeAction = (action: string, detail: string): string => {
       try {
         const prods = await db.get<Record<string, any>[]>('products', 'order=id.asc&limit=1000');
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
           setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', 'order=name.asc');
@@ -555,7 +555,7 @@ const describeAction = (action: string, detail: string): string => {
             rut:row.rut||'', telefono:row.telefono||row.phone||'', stock:Number(row.stock)||0,
             minStock:Number(row.min_stock)||0, unitCost:Number(row.unit_cost)||0, unit:row.unit||'',
             supplierId:row.supplier_id||'', name:row.name||row.nombre||'', brand:row.brand||'',
-            category:row.category||'', precioVenta:Number(row.precio_venta)||0, imagen_url:row.imagen_url||'',
+            category:row.category||'', precioVenta:Number(row.precio_venta)||0, imagen_url:row.imagen_url||'', descripcion:row.descripcion||'',
             dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
           return [p, ...ps];
         }
@@ -750,6 +750,7 @@ const describeAction = (action: string, detail: string): string => {
       precio_venta: Number(f.precioVenta) || 0,
       iva_rate: Number(f.iva_rate) ?? 22,
       imagen_url: (f.imagen_url || '') as string,
+      descripcion: (f.descripcion || '') as string,
       updated_at: now,
     };
     // Optimistic update
