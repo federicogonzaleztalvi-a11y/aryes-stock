@@ -7,6 +7,113 @@ import { useNavigate } from 'react-router-dom';
 import ClienteImporter from '../components/ClienteImporter.jsx';
 
 // ── Panel de teléfonos adicionales ───────────────────────────────────────
+function AddressesPanel({ clientId, orgId }) {
+  const [addresses, setAddresses] = React.useState([]);
+  const [form, setForm] = React.useState({ label:'Sucursal', direccion:'', ciudad:'', referencia:'' });
+  const [saving, setSaving] = React.useState(false);
+  const [show, setShow] = React.useState(false);
+  const SB = import.meta.env.VITE_SUPABASE_URL;
+  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const cargar = React.useCallback(async () => {
+    if (!clientId) return;
+    try {
+      const r = await fetch(
+        `${SB}/rest/v1/client_addresses?client_id=eq.${clientId}&org_id=eq.${orgId||'aryes'}&active=eq.true&order=created_at.asc`,
+        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
+      );
+      const data = await r.json();
+      setAddresses(Array.isArray(data) ? data : []);
+    } catch(e) { console.error(e); }
+  }, [clientId, orgId]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const agregar = async () => {
+    if (!form.direccion.trim()) return;
+    setSaving(true);
+    try {
+      await fetch(`${SB}/rest/v1/client_addresses`, {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ client_id: clientId, org_id: orgId||'aryes', ...form }),
+      });
+      setForm({ label:'Sucursal', direccion:'', ciudad:'', referencia:'' });
+      setShow(false);
+      await cargar();
+    } catch(e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  const eliminar = async (id) => {
+    await fetch(`${SB}/rest/v1/client_addresses?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ active: false }),
+    });
+    await cargar();
+  };
+
+  return (
+    <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid #e5e5e0'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <div style={{fontSize:12,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'0.08em'}}>
+          Direcciones de entrega
+        </div>
+        <button onClick={()=>setShow(!show)} style={{background:'none',border:'1px solid #e5e5e0',borderRadius:6,padding:'4px 12px',fontSize:12,cursor:'pointer',color:'#4a4a48'}}>
+          {show ? '× Cancelar' : '+ Agregar'}
+        </button>
+      </div>
+      {addresses.length === 0 && !show && (
+        <div style={{fontSize:13,color:'#9a9a98',fontStyle:'italic'}}>Sin direcciones adicionales registradas.</div>
+      )}
+      {addresses.map(a => (
+        <div key={a.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'8px 0',borderBottom:'1px solid #f0f0ec',fontSize:13}}>
+          <div>
+            <span style={{fontSize:10,fontWeight:700,color:'#1a8a3c',textTransform:'uppercase',letterSpacing:'0.05em'}}>{a.label}</span>
+            <div style={{fontWeight:600,color:'#1a1a18',marginTop:2}}>{a.direccion}</div>
+            {a.ciudad && <div style={{fontSize:12,color:'#9a9a98'}}>{a.ciudad}</div>}
+            {a.referencia && <div style={{fontSize:11,color:'#bbb',fontStyle:'italic'}}>{a.referencia}</div>}
+          </div>
+          <button onClick={()=>eliminar(a.id)} style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:16,padding:'0 4px',flexShrink:0}}>×</button>
+        </div>
+      ))}
+      {show && (
+        <div style={{display:'grid',gap:8,marginTop:12,background:'#f9f9f7',borderRadius:8,padding:14}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Etiqueta</div>
+              <select value={form.label} onChange={e=>setForm(f=>({...f,label:e.target.value}))}
+                style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 8px',fontSize:13,background:'#fff'}}>
+                <option>Sucursal</option><option>Depósito</option><option>Oficina</option><option>Local</option><option>Principal</option>
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:11,color:'#888',marginBottom:4}}>Ciudad</div>
+              <input value={form.ciudad} onChange={e=>setForm(f=>({...f,ciudad:e.target.value}))} placeholder="Montevideo"
+                style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:'#888',marginBottom:4}}>Dirección *</div>
+            <input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} placeholder="Av. 18 de Julio 1234"
+              style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:'#888',marginBottom:4}}>Referencia</div>
+            <input value={form.referencia} onChange={e=>setForm(f=>({...f,referencia:e.target.value}))} placeholder="Piso 2, timbre B, horario..."
+              style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <button onClick={agregar} disabled={saving||!form.direccion.trim()}
+            style={{background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,padding:'9px',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
+            {saving ? 'Guardando...' : 'Guardar dirección'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhonesPanel({ clientId, orgId }) {
   const [phones, setPhones] = React.useState([]);
   const [nuevo, setNuevo] = React.useState('');
@@ -400,6 +507,11 @@ function ClientesTab(){
       {/* ── Teléfonos adicionales ─────────────────────────────── */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
         <PhonesPanel clientId={sel.id} orgId={'aryes'} />
+      </div>
+
+      {/* ── Direcciones de entrega ────────────────────────────── */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
+        <AddressesPanel clientId={sel.id} orgId={'aryes'} />
       </div>
 
       {/* ── Actividad comercial ───────────────────────────────── */}

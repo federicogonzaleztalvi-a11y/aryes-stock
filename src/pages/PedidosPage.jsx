@@ -443,6 +443,21 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
   const total = subtotalNeto + ivaTotal;
 
+  // Direcciones de entrega del cliente
+  const [addresses, setAddresses] = React.useState([]);
+  const [selectedAddress, setSelectedAddress] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!session?.clienteId) return;
+    const SB = import.meta.env.VITE_SUPABASE_URL;
+    const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    fetch(`${SB}/rest/v1/client_addresses?client_id=eq.${session.clienteId}&active=eq.true&order=created_at.asc`,
+      { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data) && data.length > 0) { setAddresses(data); setSelectedAddress(data[0].id); } })
+      .catch(console.error);
+  }, [session?.clienteId]);
+
   const confirmar = async () => {
     setLoading(true);
     try {
@@ -457,6 +472,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
             cantidad: l.qty, precioUnit: l.item.precio, subtotal: l.item.precio * l.qty,
           })),
           total, notas,
+          direccion_entrega: addresses.find(a => a.id === selectedAddress)?.direccion || null,
           idempotencyKey: `${session.tel}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         }),
       });
@@ -629,6 +645,25 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
               </div>
             </div>
           ))}
+          {addresses.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Dirección de entrega</div>
+              <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
+                style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                  fontSize: 13, fontFamily: SANS, background: '#fafaf7', outline: 'none' }}>
+                {addresses.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}: {a.direccion}{a.ciudad ? ` — ${a.ciudad}` : ''}
+                  </option>
+                ))}
+              </select>
+              {addresses.find(a => a.id === selectedAddress)?.referencia && (
+                <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 4, fontStyle: 'italic' }}>
+                  {addresses.find(a => a.id === selectedAddress).referencia}
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ marginTop: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Notas del pedido</div>
             <textarea value={notas} onChange={e => setNotas(e.target.value)}
