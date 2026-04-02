@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, db } from '../lib/constants.js';
 import ModalFactura from './facturacion/ModalFactura.jsx';
+import FacturaPDF from '../components/FacturaPDF.jsx';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
 import { Pill, TabBtn, KpiCard, Lbl, Sel } from './facturacion/components.jsx';
@@ -24,6 +25,7 @@ function FacturacionTab({ products=[] }) {
   const [seq,     setSeq]     = useState(()=>LS.get(KSEQ,1));
 
   const [vista,   setVista]   = useState('comprobantes');
+  const [pdfCfe, setPdfCfe] = useState(null);
   const [showCFE, setShowCFE] = useState(false);
   const [showCob, setShowCob] = useState(false);
   const [prefill, setPrefill] = useState(null);
@@ -320,6 +322,9 @@ function FacturacionTab({ products=[] }) {
                       fontSize:16, color:G }}>{fmt.currency(c.total,c.moneda)}</div>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <Pill status={c.status} />
+                      <button onClick={()=>setPdfCfe(c)} title="Ver PDF" style={{
+                        background:'none', border:'none', cursor:'pointer',
+                        color:'#1a8a3c', fontSize:13, padding:0, fontWeight:600 }}>🖨️</button>
                       {c.status!=='anulada'&&c.status!=='cobrada' && (
                         <button onClick={()=>anular(c.id)} title="Anular" style={{
                           background:'none', border:'none', cursor:'pointer',
@@ -719,6 +724,7 @@ function FacturacionTab({ products=[] }) {
           onClose={()=>setShowCob(false)}
         />
       )}
+    {pdfCfe&&<FacturaPDF cfe={pdfCfe} brandCfg={brandCfg} onClose={()=>setPdfCfe(null)}/>}
     </div>
   );
 }
