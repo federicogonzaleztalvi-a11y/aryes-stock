@@ -458,6 +458,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
       .catch(console.error);
   }, [session?.clienteId]);
 
+  // Analytics helper — no-op si posthog no está cargado
+  const track = (event, props = {}) => {
+    try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {}
+  };
+
   const confirmar = async () => {
     setLoading(true);
     try {
@@ -476,7 +481,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
           idempotencyKey: `${session.tel}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         }),
       });
-      if (r.ok) { setDone(true); onConfirm(); }
+      if (r.ok) { track('pedido_confirmado', { items: lineas.length, total }); setDone(true); onConfirm(); }
       else { const d = await r.json(); alert(d.error || 'Error'); }
     } catch { alert('Error de conexion'); }
     finally { setLoading(false); }
@@ -738,6 +743,8 @@ export default function PedidosPage() {
         setCats(['Todos', ...(d.categorias || [])]);
         if (d.brandCfg?.nombre) setBrandNombre(d.brandCfg.nombre);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
+        try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
+        try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
       }
     } catch {}
     finally { setLoading(false); }
@@ -752,7 +759,7 @@ export default function PedidosPage() {
     return mCat && mQ;
   }), [items, catFil, busq]);
 
-  const addItem    = item => setCarrito(c => ({ ...c, [item.id]: (c[item.id] || 0) + 1 }));
+  const addItem    = item => { track('producto_agregado', { producto: item.nombre, precio: item.precio }); setCarrito(c => ({ ...c, [item.id]: (c[item.id] || 0) + 1 })); };
   const removeItem = item => setCarrito(c => {
     const q = (c[item.id] || 0) - 1;
     if (q <= 0) { const n = { ...c }; delete n[item.id]; return n; }
