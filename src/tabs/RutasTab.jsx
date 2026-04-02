@@ -114,7 +114,7 @@ function RutasTab(){
   // Modo B: empresa sin zonas — ruta libre optimizada
   const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const [zonasConfig, setZonasConfig] = React.useState(() => {
-    try { return LS.get('aryes-zonas-config', []); } catch { return []; }
+    try { return []; } catch { return []; } // zonas se cargan de deposit_zones en Supabase
   });
   const [showZonasConfig, setShowZonasConfig] = React.useState(false);
   const [zonaForm, setZonaForm] = React.useState({ nombre:'', dias:[], color:'#3b82f6' });
@@ -125,7 +125,7 @@ function RutasTab(){
 
   const saveZonas = (z) => {
     setZonasConfig(z);
-    LS.set('aryes-zonas-config', z);
+    // zonas guardadas en deposit_zones via ZonasDeposito panel
   };
 
   // Zonas que corresponden hoy

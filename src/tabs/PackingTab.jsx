@@ -1,10 +1,11 @@
+import { useApp } from '../context/AppContext.tsx';
 import { useState } from 'react';
 import { LS } from '../lib/constants.js';
 
 function PackingTab(){
   const G="#1a8a3c";
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
-  const [packings,setPackings]=useState(()=>LS.get("aryes-packings",[]));
+  const { ventas } = useApp();
+  const [packings,setPackings]=useState([]);
   const [sel,setSel]=useState(null);
   const [validados,setValidados]=useState({});
   const [bultos,setBultos]=useState(1);
@@ -29,7 +30,7 @@ function PackingTab(){
     const pk={id:crypto.randomUUID(),ventaId:sel.id,nroVenta:sel.nroVenta,clienteNombre:sel.clienteNombre,
       items:sel.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
     const upd=[pk,...packings];
-    setPackings(upd);LS.set("aryes-packings",upd);
+    setPackings(upd);
     setSel(null);
     setMsg("Packing "+sel.nroVenta+" confirmado. Listo para despacho.");
     setTimeout(()=>setMsg(""),4000);

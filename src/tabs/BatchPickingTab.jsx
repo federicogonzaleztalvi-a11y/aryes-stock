@@ -5,7 +5,7 @@ import { LS, fmt} from '../lib/constants.js';
 function BatchPickingTab(){
   const { products: prods, setProducts: setProds } = useApp();
   const G="#1a8a3c";
-  const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
+  const { ventas } = useApp();
   const [selIds,setSelIds]=useState([]);
   const [picking,setPicking]=useState(null);
   const [recolectados,setRecolectados]=useState({});

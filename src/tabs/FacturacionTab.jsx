@@ -5,6 +5,7 @@ import { LS, db } from '../lib/constants.js';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import FacturaPDF from '../components/FacturaPDF.jsx';
 import ModalCobro from './facturacion/ModalCobro.jsx';
+import { getOrgId } from '../lib/constants.js';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
 import { Pill, TabBtn, KpiCard, Lbl, Sel } from './facturacion/components.jsx';
 
@@ -22,7 +23,16 @@ function FacturacionTab({ products=[] }) {
 
   const { confirm, ConfirmDialog: _ConfirmDialog } = useConfirm();
   // clientes now from useApp() — reactive and always current
-  const [seq,     setSeq]     = useState(()=>LS.get(KSEQ,1));
+  const [seq, setSeq] = useState(1);
+  // Cargar seq desde Supabase al arrancar
+  useEffect(()=>{
+    const SB=import.meta.env.VITE_SUPABASE_URL;
+    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+    fetch(`${SB}/rest/v1/app_config?key=eq.cfe_seq_${getOrgId()}&select=value&limit=1`,
+      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+      .then(r=>r.json()).then(d=>{if(d?.[0]?.value)setSeq(Number(d[0].value)||1);})
+      .catch(()=>{});
+  },[]);
 
   const [vista,   setVista]   = useState('comprobantes');
   const [pdfCfe, setPdfCfe] = useState(null);
@@ -43,7 +53,16 @@ function FacturacionTab({ products=[] }) {
       saldoPendiente: form.total,
       createdAt: new Date().toISOString() };
     setCfes([nuevo,...cfes]);
-    setSeq(s=>{ const n=s+1; LS.set(KSEQ,n); return n; });
+    setSeq(s=>{
+      const n=s+1;
+      const SB=import.meta.env.VITE_SUPABASE_URL;
+      const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+      fetch(`${SB}/rest/v1/app_config`,{method:'POST',
+        headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({key:`cfe_seq_${getOrgId()}`,value:String(n),org_id:getOrgId()})
+      }).catch(()=>{});
+      return n;
+    });
     setShowCFE(false); setPrefill(null);
     // → invoices table (source of truth)
     db.upsert('invoices', {

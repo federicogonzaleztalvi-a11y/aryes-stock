@@ -5,7 +5,7 @@ import { LS, db } from '../lib/constants.js';
 function TransferenciasTab(){
   const { products: prods, transfers, setTransfers } = useApp();
   const G="#1a8a3c";
-  const [deposito]=useState(()=>LS.get("aryes-deposito",{}));
+  const [deposito]=useState({});
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
   const [msg,setMsg]=useState("");
   const [showForm,setShowForm]=useState(false);

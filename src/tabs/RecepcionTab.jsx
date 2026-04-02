@@ -20,7 +20,7 @@ function RecepcionTab(){
   const { products: prods, setProducts: setProds, orders: pedidos, addMov, lotes, setLotes } = useApp();
   const G="#1a8a3c";
   const KREC="aryes-recepciones";
-  const [recepciones,setRecepciones]=useState(()=>LS.get(KREC,[]));
+  const [recepciones,setRecepciones]=useState([]);
   const [vista,setVista]=useState('lista');
   const [etiquetaPallet,setEtiquetaPallet]=useState(null);
   const [pedidoSel,setPedidoSel]=useState(null);
@@ -141,7 +141,7 @@ function RecepcionTab(){
     };
     const updRec=[rec,...recepciones];
     setRecepciones(updRec);
-    LS.set(KREC,updRec);
+    // recepciones: Supabase is source of truth
 
     // ── Atomic DB write via create_recepcion RPC ─────────────────────────────
     // One Postgres transaction: stock increments + movements + lotes + recepcion + audit.
@@ -163,7 +163,7 @@ function RecepcionTab(){
       setProds(prods);
       setLotes(lotes);
       setRecepciones(recepciones);
-      LS.set(KREC, recepciones);
+      // recepciones: Supabase is source of truth
       const errMsg = rpcErr?.message || '';
       if (errMsg.includes('authentication_required')) {
         setMsg('Sesión expirada. Recargá la página.');

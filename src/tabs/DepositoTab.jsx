@@ -7,8 +7,8 @@ function DepositoTab(){
   const G="#1a8a3c";
   const KDEP="aryes-deposito";
   const ZONAS=[{id:'A',label:'Zona A - Ambiente',color:'#3b82f6'},{id:'F',label:'Zona F - Frio/Freezer',color:'#06b6d4'}];
-  const [config,setConfig]=useState(()=>LS.get(KDEP,{pasillos:8,estantes:4,niveles:3,posiciones:6,zonas:['A','F']}));
-  const [ubicaciones,setUbicaciones]=useState(()=>LS.get('aryes-ubicaciones',[]));
+  const [config,setConfig]=useState({pasillos:8,estantes:4,niveles:3,posiciones:6,zonas:['A','F']});
+  const [ubicaciones,setUbicaciones]=useState([]);
   const [_vista,_setVista]=useState('mapa');
   const [zonaActiva,setZonaActiva]=useState('A');
   const [prodSelec,setProdSelec]=useState('');
@@ -26,7 +26,7 @@ function DepositoTab(){
     if(!prodId){setMsg('Selecciona un producto');return;}
     const upd=ubicaciones.filter(u=>u.id!==ubId);
     upd.push({id:ubId,productoId:prodId,asignado:new Date().toISOString()});
-    setUbicaciones(upd);LS.set('aryes-ubicaciones',upd);
+    setUbicaciones(upd);
     setProdSelec('');setUbSelec(null);
     setMsg('Producto asignado a '+ubId);
     setTimeout(()=>setMsg(''),3000);
@@ -34,7 +34,7 @@ function DepositoTab(){
 
   const desasignar=(ubId)=>{
     const upd=ubicaciones.filter(u=>u.id!==ubId);
-    setUbicaciones(upd);LS.set('aryes-ubicaciones',upd);
+    setUbicaciones(upd);
     setMsg('Ubicacion liberada');
     setTimeout(()=>setMsg(''),2000);
   };

@@ -50,7 +50,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>(DEFAULT_SUPPLIERS) // SB overrides on load;
   const [movements, setMovements] = useState<Movement[]>([]) // SB source of truth — loaded in batch-B;
-  const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
+  const [orders,    setOrders]    = useState<Order[]>([]); // SB source of truth — loaded in batch-C
   const [ventas,    setVentas]    = useState<Venta[]>([]) // SB source of truth — loaded in batch-A;
 
   const [cfes,      setCfes]      = useState<Cfe[]>([]) // SB source of truth — loaded in batch-A;
@@ -65,7 +65,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [devoluciones, setDevoluciones] = useState<Devolucion[]>([]) // SB source of truth — loaded in batch-B;
   const [conteos,      setConteos]      = useState<Conteo[]>([]) // SB source of truth — loaded in batch-B;
   const [rutas,        setRutas]        = useState<Ruta[]>([]) // SB source of truth — loaded in batch-B;
-  const [plans,     setPlans]     = useState<Plans>(() => LS.get('aryes7-plans',     {}));
+  const [plans,     setPlans]     = useState<Plans>({}); // SB source of truth — loaded in batch-C
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
   // ── Async / UI state ───────────────────────────────────────────────────────
@@ -80,8 +80,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   });
 
   // ── Persist to localStorage on every change ────────────────────────────────
-  useEffect(() => LS.set('aryes6-orders',    orders),    [orders]);
-  useEffect(() => LS.set('aryes7-plans',     plans),     [plans]);
+  // orders: Supabase is source of truth — no LS cache needed
+  // plans: Supabase is source of truth — no LS cache needed
   // ventas: sync bidireccional LS + Supabase
   // ── Cargar clientes desde Supabase al arrancar ───────────────────────────
   useEffect(() => {
@@ -111,7 +111,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
           portal_activo: c.portal_activo !== false,
         }));
         setClientes(mapped);
-        LS.set('aryes-clients', mapped);
+        // clientes: Supabase is source of truth
         console.debug('[AppContext] clientes desde Supabase:', mapped.length);
       })
       .catch(e => console.warn('[AppContext] clientes fetch:', e));
@@ -183,7 +183,6 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
             org_id:           v.org_id || '',
           }));
           setVentas(mapped);
-          LS.set('aryes-ventas', mapped);
           console.debug('[AppContext] ventas desde Supabase:', mapped.length);
         } catch(mapErr) {
           console.warn('[AppContext] ventas map error:', mapErr);
@@ -479,13 +478,13 @@ const describeAction = (action: string, detail: string): string => {
         const sbOrders = await db.get<Record<string, any>[]>('orders', 'order=ordered_at.desc&limit=500');
         if (sbOrders?.length > 0) {
           const mapped = sbOrders.map(o => ({ id:o.id, productId:o.product_id, productName:o.product_name, supplierId:o.supplier_id, supplierName:o.supplier_name, qty:Number(o.qty), unit:o.unit, status:o.status, orderedAt:o.ordered_at, expectedArrival:o.expected_arrival, totalCost:o.total_cost, leadBreakdown:o.lead_breakdown||{} }));
-          setOrders(mapped); LS.set('aryes6-orders', mapped);
+          setOrders(mapped);
         }
         const sbPlans = await db.get<Record<string, any>[]>('plans');
         if (sbPlans?.length > 0) {
           const plansMap: Record<string, unknown> = {};
           sbPlans.forEach(p => { plansMap[p.product_id] = { ...(p.data||{}), coverageMonths:Number(p.coverage_months)||2 }; });
-          setPlans(plansMap as unknown as Plans); LS.set('aryes7-plans', plansMap);
+          setPlans(plansMap as unknown as Plans);
         }
         // Cargar permissions del rol del usuario
         if (session?.role) {
