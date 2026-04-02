@@ -11,7 +11,7 @@ const DepositoTab = React.lazy(() => import('./tabs/DepositoTab.jsx'));
 const RecepcionTab = React.lazy(() => import('./tabs/RecepcionTab.jsx'));
 const RutasTab = React.lazy(() => import('./tabs/RutasTab.jsx'));
 const InformesTab = React.lazy(() => import('./tabs/InformesTab.jsx'));
-const PortalAdminTab = lazy(() => import('./tabs/PortalAdminTab.jsx'));
+const PortalAdminTab = React.lazy(() => import('./tabs/PortalAdminTab.jsx'));
 const LotesTab = React.lazy(() => import('./tabs/LotesTab.jsx'));
 const MovimientosTab = React.lazy(() => import('./tabs/MovimientosTab.jsx'));
 const ConteoTab = React.lazy(() => import('./tabs/ConteoTab.jsx'));
