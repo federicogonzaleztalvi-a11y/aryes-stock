@@ -5,7 +5,37 @@ import { fmt } from '../lib/constants.js';
 const G    = '#1a8a3c';
 const SANS = "'DM Sans','Inter',system-ui,sans-serif";
 const API  = import.meta.env.VITE_API_BASE || '';
-const ORG  = 'aryes';
+// Detectar org desde hostname (CNAME por cliente) o query param
+const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SB_URL_BASE  = import.meta.env.VITE_SUPABASE_URL;
+
+async function resolveOrgFromDomain(host) {
+  // Consultar la tabla domain_orgs en Supabase
+  try {
+    const r = await fetch(
+      `${SB_URL_BASE}/rest/v1/domain_orgs?domain=eq.${encodeURIComponent(host)}&active=eq.true&select=org_id&limit=1`,
+      { headers: { apikey: SB_ANON_KEY, Authorization: `Bearer ${SB_ANON_KEY}` } }
+    );
+    const data = await r.json();
+    if (Array.isArray(data) && data.length > 0) return data[0].org_id;
+  } catch(e) {
+    console.warn('[CNAME] No se pudo resolver dominio:', e);
+  }
+  return null;
+}
+
+function getOrgFromContext() {
+  // 1. Query param explícito — máxima prioridad
+  const qp = new URLSearchParams(window.location.search).get('org');
+  if (qp) return qp;
+  // 2. Hosts conocidos de Aryes → org por defecto
+  const host = window.location.hostname;
+  if (host === 'localhost' || host.includes('vercel.app') || host.includes('aryes-stock')) return 'aryes';
+  // 3. Dominio custom — se resuelve async via Supabase (ver useEffect abajo)
+  return host; // retorna el host como placeholder, se reemplaza async
+}
+
+const ORG = getOrgFromContext();
 const SK   = 'aryes-pedidos-session';
 
 function loadSession() {

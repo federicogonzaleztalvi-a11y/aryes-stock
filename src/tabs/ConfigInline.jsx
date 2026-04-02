@@ -4,6 +4,85 @@ import RolesTab from './config/RolesTab.jsx';
 import { db } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 
+// ── Panel de dominio CNAME ───────────────────────────────────────────────
+function DominioCNAMEPanel({ orgId }) {
+  const [dominios, setDominios] = React.useState([]);
+  const [nuevo, setNuevo] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [msg, setMsg] = React.useState('');
+  const SB = import.meta.env.VITE_SUPABASE_URL;
+  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const cargar = React.useCallback(async () => {
+    try {
+      const r = await fetch(`${SB}/rest/v1/domain_orgs?org_id=eq.${orgId}&select=id,domain,active,created_at&order=created_at.desc`,
+        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
+      const data = await r.json();
+      setDominios(Array.isArray(data) ? data : []);
+    } catch(e) { console.error(e); }
+  }, [orgId]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const agregar = async () => {
+    if (!nuevo.trim()) return;
+    setSaving(true);
+    try {
+      await fetch(`${SB}/rest/v1/domain_orgs`, {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ domain: nuevo.trim().toLowerCase(), org_id: orgId, active: true }),
+      });
+      setNuevo('');
+      setMsg('Dominio registrado. Contactá a Aryes para activarlo en Vercel.');
+      setTimeout(() => setMsg(''), 5000);
+      await cargar();
+    } catch(e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{display:"grid",gap:12}}>
+      {msg && <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#166534",fontWeight:600}}>{msg}</div>}
+      <div>
+        <div style={{fontSize:12,fontWeight:600,color:"#374151",marginBottom:8}}>Tus dominios registrados</div>
+        {dominios.length === 0 ? (
+          <div style={{fontSize:13,color:"#9a9a98",fontStyle:"italic"}}>Ningún dominio registrado todavía.</div>
+        ) : (
+          <div style={{display:"grid",gap:6}}>
+            {dominios.map(d => (
+              <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#f9f9f7",border:"1px solid #e5e5e0",borderRadius:8,padding:"10px 14px"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"#1a1a18",fontFamily:"monospace"}}>{d.domain}</div>
+                  <div style={{fontSize:11,color:"#9a9a98",marginTop:2}}>{d.active ? "✓ Activo" : "⏳ Pendiente activación"}</div>
+                </div>
+                <span style={{fontSize:11,background:d.active?"#d1fae5":"#fef3c7",color:d.active?"#065f46":"#92400e",borderRadius:20,padding:"2px 10px",fontWeight:600}}>
+                  {d.active ? "Activo" : "Pendiente"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <input
+          value={nuevo}
+          onChange={e => setNuevo(e.target.value)}
+          placeholder="pedidos.tuempresa.com"
+          style={{flex:1,border:"1px solid #e5e5e0",borderRadius:8,padding:"10px 14px",fontSize:13,fontFamily:"monospace",outline:"none"}}
+          onKeyDown={e => e.key === 'Enter' && agregar()}
+        />
+        <button
+          onClick={agregar}
+          disabled={saving || !nuevo.trim()}
+          style={{background:"#1a8a3c",color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontSize:13,fontWeight:700,cursor:saving?"default":"pointer",opacity:saving?0.6:1}}>
+          {saving ? "Guardando..." : "Registrar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ConfigInline({
   session,
   suppliers, setSuppliers,
@@ -77,7 +156,7 @@ export default function ConfigInline({
         <div>
           {/* Sub-tab bar */}
           <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:600,marginBottom:24}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"}].map(st=>(
+            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
@@ -300,6 +379,28 @@ export default function ConfigInline({
           )}
 
           {/* ── INTEGRACIONES ─────────────────────────────────────────────── */}
+          {settingsTab==="dominio" && (
+            <div style={{display:"grid",gap:20,maxWidth:600}}>
+              <div>
+                <h3 style={{fontSize:16,fontWeight:600,margin:"0 0 6px"}}>Dominio personalizado</h3>
+                <p style={{fontSize:13,color:"#666",margin:0}}>
+                  Configurá un dominio propio para tu portal B2B. Tus clientes accederán desde <strong>pedidos.tuempresa.com</strong> en vez de aryes-stock.vercel.app.
+                </p>
+              </div>
+              <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"14px 16px"}}>
+                <div style={{fontSize:12,fontWeight:700,color:"#166534",marginBottom:8}}>Cómo configurarlo</div>
+                <div style={{fontSize:12,color:"#166534",display:"grid",gap:6}}>
+                  <div>1. En tu proveedor de DNS, creá un registro <strong>CNAME</strong></div>
+                  <div style={{fontFamily:"monospace",background:"#dcfce7",padding:"6px 10px",borderRadius:4,fontSize:11}}>
+                    pedidos.tuempresa.com → cname.vercel-dns.com
+                  </div>
+                  <div>2. Registrá el dominio acá abajo</div>
+                  <div>3. Contactá a Aryes para activarlo en Vercel (tarda ~5 minutos)</div>
+                </div>
+              </div>
+              <DominioCNAMEPanel orgId={brandCfg?.orgId || 'aryes'} />
+            </div>
+          )}
           {settingsTab==="integraciones" && (
             <div style={{maxWidth:600}}>
               <p style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:13,color:'#6a6a68',marginBottom:20,lineHeight:1.6}}>
