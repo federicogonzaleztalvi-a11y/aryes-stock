@@ -90,6 +90,53 @@ function KPIsTab(){
           )}
         </div>
       </div>
+      {/* ── KPIs Operativos ─────────────────────────────────── */}
+      <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:24}}>
+        <h3 style={{fontSize:14,fontWeight:700,color:"#1a1a1a",margin:"0 0 16px"}}>KPIs operativos</h3>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+          {(()=>{
+            // Ventas del periodo
+            const totalV=ventasP.length;
+            const entregadas=ventasP.filter(v=>v.estado==="entregada").length;
+            const canceladas=ventasP.filter(v=>v.estado==="cancelada").length;
+            const tasaCierre=totalV>0?Math.round(entregadas/totalV*100):0;
+
+            // Tiempo promedio de ciclo (pendiente → entregada) en horas
+            const ciclos=ventasP.filter(v=>v.estado==="entregada"&&v.createdAt&&v.estado_log?.length>0).map(v=>{
+              const entregadoEv=v.estado_log?.find(e=>e.estado==="entregada");
+              if(!entregadoEv) return null;
+              return (new Date(entregadoEv.ts)-new Date(v.createdAt))/3600000;
+            }).filter(Boolean);
+            const avgCiclo=ciclos.length>0?Math.round(ciclos.reduce((s,c)=>s+c,0)/ciclos.length):null;
+
+            // Items promedio por venta
+            const itemsXVenta=totalV>0?Math.round(ventasP.reduce((s,v)=>(s+(v.items||[]).length),0)/totalV*10)/10:0;
+
+            // Rutas completadas
+            const rutasTotal=rutas.length;
+            const rutasComp=rutas.filter(r=>r.completada||r.estado==="completada").length;
+
+            // Recepciones del periodo
+            const movEntradas=movs.filter(m=>["in","recepcion","scanner_in"].includes(m.type)).length;
+
+            return [
+              {icon:"✅",label:"Tasa de cierre",value:tasaCierre+"%",sub:entregadas+" entregadas · "+canceladas+" canceladas",color:tasaCierre>=80?G:tasaCierre>=60?"#f59e0b":"#dc2626"},
+              {icon:"⏱",label:"Ciclo promedio",value:avgCiclo?avgCiclo+"h":"—",sub:ciclos.length+" ventas con ciclo completo",color:avgCiclo&&avgCiclo<=24?G:"#f59e0b"},
+              {icon:"📋",label:"Ítems / venta",value:itemsXVenta,sub:"promedio de líneas por orden",color:G},
+              {icon:"🗺",label:"Rutas completadas",value:rutasComp+"/"+rutasTotal,sub:entregasOk+" entregas efectivas",color:efectividad>=90?G:efectividad>=70?"#f59e0b":"#dc2626"},
+              {icon:"📥",label:"Recepciones",value:movEntradas,sub:"entradas de stock en el período",color:G},
+              {icon:"💵",label:"Ticket promedio",value:"$"+(totalV>0?(totalVentas/totalV).toLocaleString("es-UY",{maximumFractionDigits:0}):"0"),sub:"por venta en el período",color:G},
+            ].map((k,i)=>(
+              <div key={i} style={{background:"#f9f9f7",borderRadius:10,padding:"14px 16px"}}>
+                <div style={{fontSize:20,marginBottom:6}}>{k.icon}</div>
+                <div style={{fontSize:11,fontWeight:600,color:"#888",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{k.label}</div>
+                <div style={{fontSize:22,fontWeight:800,color:k.color,marginBottom:2}}>{k.value}</div>
+                <div style={{fontSize:11,color:"#9a9a98"}}>{k.sub}</div>
+              </div>
+            ));
+          })()}
+        </div>
+      </div>
     </section>
   );
 }
