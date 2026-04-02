@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
 const ProductForm=({product,suppliers,onSave,onClose})=>{
-  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:22,history:[]};
+  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:22,imagen_url:"",history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -58,6 +58,15 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
           </Sel>
         </Field>
       </div>
+      <Field label="Foto del producto (URL)">
+        <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+          <Inp value={f.imagen_url||""} onChange={e=>set("imagen_url",e.target.value)} placeholder="https://... URL de la imagen"/>
+          {f.imagen_url&&(
+            <img src={f.imagen_url} alt="preview" onError={e=>e.target.style.display="none"}
+              style={{width:56,height:56,objectFit:"cover",borderRadius:8,border:`1px solid ${T.border}`,flexShrink:0}}/>
+          )}
+        </div>
+      </Field>
       <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>
       {r!==null&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
