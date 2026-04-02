@@ -1,127 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
+import { db, SB_URL, SKEY, getOrgId, fmt, LS} from '../lib/constants.js';
 import { useRole } from '../hooks/useRole.ts';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 
-// ── Haversine distance (km) between two lat/lng points ────────────────────
-import GeneradorRuta from '../components/GeneradorRuta.jsx';
-
-function haversine(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 +
-            Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-            Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-// ── Nearest-Neighbor greedy TSP with time-window respect ─────────────────
-// Returns a reordered copy of `entregas` minimizing total distance,
-// while respecting horarioDesde/horarioHasta windows per stop.
-//
-// Algorithm:
-//   1. Nearest-neighbor greedy ordering (distance-optimal)
-//   2. Post-process: for each stop with a time window, check if the
-//      estimated arrival (assuming 10 min/stop average) falls within it.
-//      If not, find the earliest slot in the sequence that would work
-//      and move the stop there. A stop with no window is never moved.
-function nearestNeighborTSP(entregas, clientes) {
-  const toMins = (t) => {
-    if (!t) return null;
-    const [h, m] = t.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  const withCoords = entregas.map(e => {
-    const cli = clientes.find(c => c.id === e.clienteId);
-    return {
-      ...e,
-      lat: cli?.lat ?? null,
-      lng: cli?.lng ?? null,
-      winFrom: toMins(e.horarioDesde || cli?.horarioDesde),
-      winTo:   toMins(e.horarioHasta || cli?.horarioHasta),
-    };
-  });
-
-  const geocoded   = withCoords.filter(e => e.lat !== null && e.lng !== null);
-  const ungeocoded = withCoords.filter(e => e.lat === null || e.lng === null);
-
-  if (geocoded.length <= 1) {
-    const clean = e => { const {lat:_l,lng:_g,winFrom:_f,winTo:_t,...rest}=e; return rest; };
-    return [...withCoords.map(clean)];
-  }
-
-  // Phase 1: nearest-neighbor greedy
-  const visited = new Array(geocoded.length).fill(false);
-  const ordered = [];
-  let current = 0;
-  visited[0] = true;
-  ordered.push(geocoded[0]);
-
-  for (let step = 1; step < geocoded.length; step++) {
-    let nearest = -1, minDist = Infinity;
-    for (let j = 0; j < geocoded.length; j++) {
-      if (visited[j]) continue;
-      const d = haversine(geocoded[current].lat, geocoded[current].lng, geocoded[j].lat, geocoded[j].lng);
-      if (d < minDist) { minDist = d; nearest = j; }
-    }
-    visited[nearest] = true;
-    ordered.push(geocoded[nearest]);
-    current = nearest;
-  }
-
-  // Phase 2: respect time windows
-  // Assume route starts now, ~10 min between stops (rough estimate for UY urban)
-  const MINS_PER_STOP = 10;
-  const startMins = new Date().getHours() * 60 + new Date().getMinutes();
-
-  for (let i = 0; i < ordered.length; i++) {
-    const stop = ordered[i];
-    if (stop.winFrom === null && stop.winTo === null) continue; // no window, skip
-
-    const arrivalMins = startMins + i * MINS_PER_STOP;
-    const tooEarly = stop.winFrom !== null && arrivalMins < stop.winFrom;
-    const tooLate  = stop.winTo   !== null && arrivalMins > stop.winTo;
-
-    if (!tooEarly && !tooLate) continue; // window OK
-
-    // Find the earliest position j >= i where arrival is within window
-    let bestPos = i; // keep in place if no better slot found
-    for (let j = i; j < ordered.length; j++) {
-      const arr = startMins + j * MINS_PER_STOP;
-      const ok = (stop.winFrom === null || arr >= stop.winFrom) &&
-                 (stop.winTo   === null || arr <= stop.winTo);
-      if (ok) { bestPos = j; break; }
-    }
-
-    if (bestPos !== i) {
-      // Move stop from i to bestPos
-      ordered.splice(i, 1);
-      ordered.splice(bestPos, 0, stop);
-    }
-  }
-
-  const clean = e => { const {lat:_l,lng:_g,winFrom:_f,winTo:_t,...rest}=e; return rest; };
-  return [...ordered.map(clean), ...ungeocoded.map(clean)];
-}
-
-// ── Nominatim geocoder (OpenStreetMap, free, no API key) ─────────────────
-async function geocodeAddress(direccion, ciudad) {
-  const q = [direccion, ciudad, 'Uruguay'].filter(Boolean).join(', ');
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'AryesStock/1.0' } });
-  const data = await res.json();
-  if (data?.length > 0) return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
-  return null;
-}
 
 function RutasTab(){
   const { clientes, setClientes, rutas, setRutas, setHasPendingSync, cfes, cobros, setCobros } = useApp();
   const { isAdmin } = useRole();
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const { confirm, ConfirmDialog } = useConfirm();
 
   // ── ETA: posiciones en tiempo real desde aryes_tracking ──────────────────
@@ -226,7 +114,7 @@ function RutasTab(){
   // Modo B: empresa sin zonas — ruta libre optimizada
   const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const [zonasConfig, setZonasConfig] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem('aryes-zonas-config') || '[]'); } catch { return []; }
+    try { return LS.get('aryes-zonas-config', []); } catch { return []; }
   });
   const [showZonasConfig, setShowZonasConfig] = React.useState(false);
   const [zonaForm, setZonaForm] = React.useState({ nombre:'', dias:[], color:'#3b82f6' });
@@ -237,7 +125,7 @@ function RutasTab(){
 
   const saveZonas = (z) => {
     setZonasConfig(z);
-    localStorage.setItem('aryes-zonas-config', JSON.stringify(z));
+    LS.set('aryes-zonas-config', z);
   };
 
   // Zonas que corresponden hoy
@@ -741,8 +629,7 @@ function RutasTab(){
 
   // ── COBRANZA EN RUTA VIEW ─────────────────────────────────────────────────
   if(vista==="cobranza"&&ruta){
-    const fmtUSD = n => 'US$ ' + Number(n).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
-
+    
     // Calcular saldo por cliente de la ruta
     const clientesRuta = ruta.entregas.map(e => {
       const cli = clientes.find(c => c.id === e.clienteId);
@@ -791,9 +678,9 @@ function RutasTab(){
         {/* Resumen del día */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
           {[
-            {l:"Total a cobrar", v:fmtUSD(totalARuta),    c:"#f59e0b"},
-            {l:"Cobrado hoy",    v:fmtUSD(totalCobrado),  c:G},
-            {l:"Pendiente",      v:fmtUSD(totalRestante),  c:totalRestante>0?"#dc2626":G},
+            {l:"Total a cobrar", v:fmt.currencyCompact(totalARuta),    c:"#f59e0b"},
+            {l:"Cobrado hoy",    v:fmt.currencyCompact(totalCobrado),  c:G},
+            {l:"Pendiente",      v:fmt.currencyCompact(totalRestante),  c:totalRestante>0?"#dc2626":G},
           ].map(kpi=>(
             <div key={kpi.l} style={{background:"#fff",borderRadius:10,padding:"12px 16px",
               boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
@@ -830,7 +717,7 @@ function RutasTab(){
                       {cli.facturas.length} factura{cli.facturas.length!==1?"s":""}
                       {cli.cobradoHoy>0&&(
                         <span style={{marginLeft:8,color:G,fontWeight:700}}>
-                          ✓ Cobrado hoy: {fmtUSD(cli.cobradoHoy)}
+                          ✓ Cobrado hoy: {fmt.currencyCompact(cli.cobradoHoy)}
                         </span>
                       )}
                     </div>
@@ -838,7 +725,7 @@ function RutasTab(){
                   <div style={{textAlign:"right"}}>
                     <div style={{fontSize:18,fontWeight:800,
                       color:cli.cobradoHoy>=cli.saldoTotal?G:"#f59e0b"}}>
-                      {fmtUSD(cli.saldoTotal)}
+                      {fmt.currencyCompact(cli.saldoTotal)}
                     </div>
                     <div style={{fontSize:11,color:"#9ca3af"}}>saldo pendiente</div>
                   </div>
@@ -863,7 +750,7 @@ function RutasTab(){
                     <div key={f.id} style={{display:"flex",justifyContent:"space-between",
                       fontSize:12,color:"#6b7280",padding:"3px 0"}}>
                       <span>{f.numero} · {f.fecha}</span>
-                      <span style={{fontWeight:600,color:"#374151"}}>{fmtUSD(f.saldoPendiente||0)}</span>
+                      <span style={{fontWeight:600,color:"#374151"}}>{fmt.currencyCompact(f.saldoPendiente||0)}</span>
                     </div>
                   ))}
                 </div>
@@ -952,20 +839,20 @@ function RutasTab(){
                 navigator.clipboard?.writeText(url).then(()=>setMsg('📱 Link copiado! Mandáselo al repartidor')).catch(()=>window.open(url,'_blank'));
               }}
               style={{padding:"7px 14px",background:"#1a1a18",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>
-              📱 Vista conductor
+              Vista conductor
             </button>
             <button onClick={optimizarRuta} disabled={optimizando||ruta.entregas.length<2}
               style={{padding:"7px 14px",background:optimizando?"#9ca3af":G,color:"#fff",
                       border:"none",borderRadius:8,cursor:optimizando?"not-allowed":"pointer",
                       fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>
-              {optimizando?"⏳ Optimizando...":"🗺 Optimizar ruta"}
+              {optimizando?"Optimizando...":"Optimizar ruta"}
             </button>
             {ruta.entregas.filter(e=>e.estado!=="entregado").length>0&&(
               <button onClick={abrirRutaCompleta}
-                style={{padding:"7px 14px",background:"#3a7d1e",color:"#fff",border:"none",
+                style={{padding:"7px 14px",background:"#1a8a3c",color:"#fff",border:"none",
                         borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,
                         display:"flex",alignItems:"center",gap:4}}>
-                🗺 Navegar ruta completa
+                Navegar ruta completa
               </button>
             )}
             <button onClick={exportarCSV} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>CSV</button>
@@ -1047,7 +934,7 @@ function RutasTab(){
                 onDrop={ev => { ev.preventDefault(); if (dragIdx !== null) { reordenarEntregas(dragIdx, idx); } setDragIdx(null); setDragOver(null); }}
                 style={{
                   background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fff",
-                  border:"2px solid "+(isOver?"#3a7d1e":isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),
+                  border:"2px solid "+(isOver?"#1a8a3c":isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),
                   borderRadius:10, padding:"12px 16px",
                   opacity: isDragging ? 0.4 : 1,
                   transition: "border-color .15s, opacity .15s",

@@ -2,7 +2,7 @@
 // Used by: FacturacionTab, ItemSearchRow, ItemsTable, ModalFactura, components.jsx
 
 // ─── Tokens ───────────────────────────────────────────────────────────────
-export const G  = '#3a7d1e';
+export const G  = '#1a8a3c';
 export const F  = {
   sans:  "'DM Sans', system-ui, sans-serif",
   serif: "'Playfair Display', Georgia, serif",
@@ -44,10 +44,7 @@ export const today     = () => new Date().toISOString().split('T')[0];
 export const addDays   = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
 export const daysUntil = d => d ? Math.floor((new Date(d).getTime() - Date.now()) / 86400000) : null;
 
-export const fmtMoney = (n, cur='UYU') => {
-  const sym = cur==='UYU'?'$':cur==='USD'?'US$':'€';
-  return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-};
+
 
 export const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}) : '—';
 
@@ -58,3 +55,8 @@ export const agingBucket = dias => {
   if (dias <= 90) return { label: '61-90d',    color: '#dc2626', bg: '#fef2f2', pri: 3 };
   return             { label: '+90d',      color: '#7c3aed', bg: '#f5f3ff', pri: 4 };
 };
+
+export function fmtMoney(n, currency = 'USD') {
+  if (n == null || isNaN(n)) return '-';
+  return new Intl.NumberFormat('es-UY', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+}

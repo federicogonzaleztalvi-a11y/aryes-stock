@@ -12,11 +12,11 @@
  */
 
 import { useState, useMemo } from 'react';
+import { fmt } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 
-const fmtUSD = n => '$' + Number(n || 0).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = d => {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -94,7 +94,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
         <td>${fmtDate(v.fecha || v.creadoEn)}</td>
         <td>${v.clienteNombre || '—'}</td>
         <td style="text-align:center">${v.items?.length || 0}</td>
-        <td style="text-align:right;font-weight:600">${fmtUSD(v.total)}</td>
+        <td style="text-align:right;font-weight:600">${fmt.currencyCompact(v.total)}</td>
         <td style="text-align:center">
           <span style="padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;
             background:${v.estado === 'entregada' ? '#d1fae5' : v.estado === 'cancelada' ? '#fee2e2' : '#fef3c7'};
@@ -110,14 +110,14 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
       <td style="text-align:center;color:#9ca3af">${i + 1}</td>
       <td style="font-weight:500">${p.nombre}</td>
       <td style="text-align:center">${Number(p.cantidad).toLocaleString('es-UY')} ${p.unidad}</td>
-      <td style="text-align:right;font-weight:700;color:${G}">${fmtUSD(p.total)}</td>
+      <td style="text-align:right;font-weight:700;color:${G}">${fmt.currencyCompact(p.total)}</td>
     </tr>
   `).join('');
 
   const filasDeuda = deudores.map(d => `
     <tr>
       <td style="font-weight:500">${d.nombre}</td>
-      <td style="text-align:right;font-weight:700;color:#dc2626">${fmtUSD(d.deuda)}</td>
+      <td style="text-align:right;font-weight:700;color:#dc2626">${fmt.currencyCompact(d.deuda)}</td>
     </tr>
   `).join('');
 
@@ -205,22 +205,22 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
     <div class="kpis">
       <div class="kpi">
         <div class="kpi-label">Total Ventas</div>
-        <div class="kpi-valor">${fmtUSD(totalVentas)}</div>
+        <div class="kpi-valor">${fmt.currencyCompact(totalVentas)}</div>
         <div class="kpi-sub">${nVentas} venta${nVentas !== 1 ? 's' : ''}</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">Ticket Promedio</div>
-        <div class="kpi-valor">${fmtUSD(ticketProm)}</div>
+        <div class="kpi-valor">${fmt.currencyCompact(ticketProm)}</div>
         <div class="kpi-sub">por venta</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">Cobrado</div>
-        <div class="kpi-valor" style="color:#059669">${fmtUSD(totalCobrado)}</div>
+        <div class="kpi-valor" style="color:#059669">${fmt.currencyCompact(totalCobrado)}</div>
         <div class="kpi-sub">${cobros.length} cobro${cobros.length !== 1 ? 's' : ''}</div>
       </div>
       <div class="kpi ${pendiente > 1 ? 'alert' : ''}">
         <div class="kpi-label">Pendiente cobrar</div>
-        <div class="kpi-valor">${fmtUSD(pendiente)}</div>
+        <div class="kpi-valor">${fmt.currencyCompact(pendiente)}</div>
         <div class="kpi-sub">${pendiente > 0 ? deudores.length + ' clientes con deuda' : 'Sin deuda pendiente'}</div>
       </div>
     </div>
@@ -255,7 +255,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
         <tfoot>
           <tr style="font-weight:800;background:#fef2f2">
             <td style="padding:10px 12px;color:#dc2626">TOTAL PENDIENTE</td>
-            <td style="padding:10px 12px;text-align:right;color:#dc2626;font-size:15px">${fmtUSD(deudores.reduce((a, d) => a + d.deuda, 0))}</td>
+            <td style="padding:10px 12px;text-align:right;color:#dc2626;font-size:15px">${fmt.currencyCompact(deudores.reduce((a, d) => a + d.deuda, 0))}</td>
           </tr>
         </tfoot>
       </table>
@@ -378,8 +378,8 @@ export default function ReportePDF() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
           {[
             { label: 'Ventas en el período', valor: nVentas, color: G },
-            { label: 'Total facturado', valor: fmtUSD(totalVentas), color: G },
-            { label: 'Total cobrado', valor: fmtUSD(totalCobrado), color: '#059669' },
+            { label: 'Total facturado', valor: fmt.currencyCompact(totalVentas), color: G },
+            { label: 'Total cobrado', valor: fmt.currencyCompact(totalCobrado), color: '#059669' },
           ].map(kpi => (
             <div key={kpi.label} style={{ background: '#f9fafb', borderRadius: 10,
               padding: '14px 16px', border: '1px solid #f3f4f6' }}>

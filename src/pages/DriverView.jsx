@@ -8,10 +8,10 @@
 // - WhatsApp notification to client
 // - Works fully offline-capable (reads from Supabase directly)
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SB_URL, SKEY } from '../lib/constants.js';
 
-const G   = '#3a7d1e';
+const G   = '#1a8a3c';
 const F   = { sans: "'Inter',system-ui,sans-serif" };
 const SB_ANON = SKEY;
 
@@ -50,6 +50,16 @@ export default function DriverView() {
   const [error,   setError]   = useState('');
   const [saving,  setSaving]  = useState(false);
   const [msg,     setMsg]     = useState('');
+  // ── GPS tracking ─────────────────────────────────────────────────────────
+  const [gpsActive,   setGpsActive]   = useState(false);
+  const [gpsError,    setGpsError]    = useState('');
+  const watchRef = useRef(null);
+
+  // ── Firma digital ─────────────────────────────────────────────────────────
+  const [firmaData,   setFirmaData]   = useState(null); // base64 PNG
+  const [showFirma,   setShowFirma]   = useState(false);
+  const canvasFirmaRef = useRef(null);
+  const isDrawing = useRef(false);
 
   // Active confirmation panel: { idx, mode: 'entregado'|'no_entregado'|'nota' }
   const [panel,   setPanel]   = useState(null);
@@ -78,6 +88,79 @@ export default function DriverView() {
     .catch(() => setError('Error al cargar la ruta. Verificá tu conexión.'))
     .finally(() => setLoading(false));
   }, [rutaId, orgId]);
+
+
+  // ── GPS: iniciar tracking automático ─────────────────────────────────────
+  const iniciarGPS = useCallback(() => {
+    if (!navigator.geolocation) { setGpsError('GPS no disponible en este dispositivo'); return; }
+    setGpsActive(true);
+    setGpsError('');
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        // Guardar en Supabase (fire and forget)
+        const session = (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null'); } catch { return null; } })();
+        const token = session?.access_token || SB_ANON;
+        fetch(`${SB_URL}/rest/v1/driver_locations`, {
+          method: 'POST',
+          headers: { apikey: SB_ANON, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify({ ruta_id: rutaId, org_id: orgId, lat, lng, accuracy: Math.round(accuracy), updated_at: new Date().toISOString() }),
+        }).catch(() => {});
+      },
+      (err) => { console.warn('[GPS]', err.message); },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 }
+    );
+  }, [rutaId, orgId]);
+
+  // ── GPS: limpiar al desmontar ─────────────────────────────────────────────
+  useEffect(() => {
+    return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
+  }, []);
+
+  // ── Firma: dibujo en canvas táctil ────────────────────────────────────────
+  const firmaStart = useCallback((e) => {
+    isDrawing.current = true;
+    const canvas = canvasFirmaRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    e.preventDefault();
+  }, []);
+
+  const firmaMove = useCallback((e) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasFirmaRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    const ctx = canvas.getContext('2d');
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    e.preventDefault();
+  }, []);
+
+  const firmaEnd = useCallback(() => { isDrawing.current = false; }, []);
+
+  const firmaLimpiar = useCallback(() => {
+    const canvas = canvasFirmaRef.current;
+    if (!canvas) return;
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    setFirmaData(null);
+  }, []);
+
+  const firmaCapturar = useCallback(() => {
+    const canvas = canvasFirmaRef.current;
+    if (!canvas) return null;
+    return canvas.toDataURL('image/png');
+  }, []);
 
   // ── Save ruta to Supabase ─────────────────────────────────────────────────
   const saveRuta = async (updatedRuta) => {
@@ -141,6 +224,7 @@ export default function DriverView() {
       hora:         timeNow(),
       notaEntrega:  nota || '',
       fotoEntrega:  foto || '',
+          firmaCliente: firmaCapturar(),
     });
     const updRuta = { ...ruta, entregas: updated };
     setRuta(updRuta);
@@ -265,7 +349,8 @@ export default function DriverView() {
         )}
         {ruta.enRuta && ruta.salidaEn && (
           <div style={{ marginTop: 10, fontSize: 11, opacity: 0.8, textAlign: 'center' }}>
-            🕐 En ruta desde {new Date(ruta.salidaEn).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
+            🛰 {gpsActive ? <span style={{color:'#16a34a',fontSize:11,fontWeight:700}}>GPS activo</span> : <span style={{color:'#9ca3af',fontSize:11}}>GPS inactivo</span>}
+              · 🕐 En ruta desde {new Date(ruta.salidaEn).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
           </div>
         )}
       </div>
@@ -404,6 +489,39 @@ export default function DriverView() {
                           onClick={() => fotoRef.current?.click()}
                           style={{ background: '#f9f9f7', border: '1px dashed #d0d0cc', borderRadius: 8, padding: '10px 16px', fontSize: 13, color: '#6a6a68', cursor: 'pointer', width: '100%' }}>
                           📷 Tomar foto (opcional)
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Firma digital — solo para entrega */}
+                  {panel.mode === 'entregado' && (
+                    <div style={{ marginTop: 8 }}>
+                      {showFirma ? (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                            Firma del cliente
+                          </div>
+                          <canvas
+                            ref={canvasFirmaRef}
+                            width={280} height={120}
+                            onMouseDown={firmaStart} onMouseMove={firmaMove} onMouseUp={firmaEnd}
+                            onTouchStart={firmaStart} onTouchMove={firmaMove} onTouchEnd={firmaEnd}
+                            style={{ border: '1.5px solid #d1d5db', borderRadius: 8, background: '#fff',
+                              touchAction: 'none', width: '100%', display: 'block', cursor: 'crosshair' }}
+                          />
+                          <button onClick={firmaLimpiar}
+                            style={{ marginTop: 4, background: 'none', border: 'none', color: '#9ca3af',
+                              fontSize: 12, cursor: 'pointer', padding: 0 }}>
+                            Limpiar firma
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setShowFirma(true)}
+                          style={{ background: 'none', border: '1px dashed #d1d5db',
+                            borderRadius: 8, padding: '8px 14px', cursor: 'pointer',
+                            fontSize: 12, color: '#6b7280', width: '100%' }}>
+                          ✍️ Agregar firma digital (opcional)
                         </button>
                       )}
                     </div>

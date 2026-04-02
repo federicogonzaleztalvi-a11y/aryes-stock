@@ -93,7 +93,7 @@ function ItemsTable({ items, setItems, moneda }) {
                         title="Click para editar"
                         style={{ padding:'6px 4px', cursor:'text', fontFamily:F.mono,
                           textAlign:'right', color:'#3a3a38' }}>
-                        {fmtMoney(it.precio, moneda)}
+                        {fmt.currency(it.precio, moneda)}
                         <span style={{ color:'#d1d5db', fontSize:10, marginLeft:2 }}>✎</span>
                       </div>
                   }
@@ -112,7 +112,7 @@ function ItemsTable({ items, setItems, moneda }) {
                 {/* Total */}
                 <td style={{ padding:'8px 12px', textAlign:'right', width:110 }}>
                   <span style={{ fontFamily:F.serif, fontSize:15, color:G }}>
-                    {fmtMoney(lineTotal, moneda)}
+                    {fmt.currency(lineTotal, moneda)}
                   </span>
                 </td>
 

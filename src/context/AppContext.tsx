@@ -11,6 +11,15 @@ import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Venta, Cfe, Cobro, Cliente, Lote, Devolucion, Conteo, Ruta,
               PriceLista, PriceListItem, Transfer, PurchaseInvoice, PurchaseInvoiceItem, AuditLog } from '../types.js';
 
+
+// ─── Supabase row shapes (internal to AppContext) ─────────────────────────────
+// These match the DB column names exactly. Mapped to domain types on read.
+type DbClientRow    = { id: string; name: string; type: string; phone: string; email: string; address: string; ciudad: string; cond_pago: string; limite_credito: number; notes: string; activo: boolean; lista_id: string | null; lat: number | null; lng: number | null; org_id: string; };
+type DbSupplierRow  = { id: string; name: string; flag: string; color: string; times: Record<string,number>; company: string; contact: string; email: string; phone: string; country: string; city: string; currency: string; payment_terms: string; payment_method: string; min_order: number; discount: number; rating: number; active: boolean; notes: string; org_id: string; };
+type DbVentaRow     = { id: string; nro_venta: string; cliente_id: string; cliente_nombre: string; cliente_telefono: string; fecha: string; estado: string; items: unknown[]; total: number; descuento: number; notas: string; estado_log: unknown[]; creado_en: string; updated_at: string; tiene_devolucion: boolean; moneda: string; org_id: string; };
+type DbProductRow   = { uuid: string; nombre: string; id: string; };
+type DbStockRow     = { product_uuid: string; [key: string]: unknown; };
+
 // ─── Default suppliers (self-contained, no App.jsx dep) ──────────────────────
 const DEFAULT_SUPPLIERS = [
   { id:'arg', name:'Argentina / Brasil', flag:'🇦🇷', color:'#2980b9', times:{preparation:2,customs:1,freight:4,warehouse:1}, company:'', contact:'', email:'', phone:'', country:'Argentina', city:'Buenos Aires', currency:'USD', paymentTerms:'30', paymentMethod:'', minOrder:'', discount:'0', rating:4, active:true, notes:'' },
@@ -37,40 +46,25 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
 }) {
 
   // ── Core data ──────────────────────────────────────────────────────────────
-  const [products,  setProducts]  = useState<Product[]>(() => LS.get('aryes6-products',  []));
+  const [products,  setProducts]  = useState<Product[]>([]) // SB source of truth — loaded in sync effect;
 
-  // Auto-enriquecer uuids desde Supabase si faltan (una sola vez al arrancar)
-  useEffect(() => {
-    const prods = LS.get('aryes6-products', []);
-    if (prods.length > 0 && prods.filter((p: any) => p.uuid).length === 0) {
-      fetch('/api/catalogo?org=aryes')
-        .then(r => r.json())
-        .then(d => {
-          const uuidByName: Record<string, string> = {};
-          (d.items || []).forEach((p: any) => { uuidByName[p.nombre] = p.id; });
-          const enriched = prods.map((p: any) => ({ ...p, uuid: uuidByName[p.name] || p.uuid }));
-          setProducts(enriched);
-          console.log('[AppContext] UUIDs sincronizados:', enriched.filter((p: any) => p.uuid).length);
-        })
-        .catch(() => {});
-    }
-  }, []);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(() => LS.get('aryes6-suppliers', DEFAULT_SUPPLIERS));
-  const [movements, setMovements] = useState<Movement[]>(() => LS.get('aryes8-movements', []));
+  const [suppliers, setSuppliers] = useState<Supplier[]>(DEFAULT_SUPPLIERS) // SB overrides on load;
+  const [movements, setMovements] = useState<Movement[]>([]) // SB source of truth — loaded in batch-B;
   const [orders,    setOrders]    = useState<Order[]>(() => LS.get('aryes6-orders',    []));
-  const [ventas,    setVentas]    = useState<Venta[]>(() => LS.get('aryes-ventas',     []));
-  const [cfes,      setCfes]      = useState<Cfe[]>(() => LS.get('aryes-cfe',          []));
-  const [auditLogs,         setAuditLogs]         = useState<AuditLog[]>(() => LS.get('aryes-audit-log-v2', []));
-  const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>(() => LS.get('aryes-purchase-invoices', []));
-  const [transfers,     setTransfers]     = useState<Transfer[]>(() => LS.get('aryes-transfers-v2', []));
-  const [priceListas,   setPriceListas]   = useState<PriceLista[]>(() => LS.get('aryes-listas-precio-v2', []));
-  const [priceListItems, setPriceListItems] = useState<PriceListItem[]>(() => LS.get('aryes-listas-precio-items', []));
-  const [cobros,    setCobros]    = useState<Cobro[]>(() => LS.get('aryes-cobros',       []));
-  const [clientes,  setClientes]  = useState<Cliente[]>(() => LS.get('aryes-clients',     []));
-  const [lotes,     setLotes]     = useState<Lote[]>(() => LS.get('aryes-lots',          []));
-  const [devoluciones, setDevoluciones] = useState<Devolucion[]>(() => LS.get('aryes-devoluciones', []));
-  const [conteos,      setConteos]      = useState<Conteo[]>(() => LS.get('aryes-conteos',        []));
-  const [rutas,        setRutas]        = useState<Ruta[]>(() => LS.get('aryes-rutas',           []));
+  const [ventas,    setVentas]    = useState<Venta[]>([]) // SB source of truth — loaded in batch-A;
+
+  const [cfes,      setCfes]      = useState<Cfe[]>([]) // SB source of truth — loaded in batch-A;
+  const [auditLogs,         setAuditLogs]         = useState<AuditLog[]>([]) // SB source of truth — loaded in batch-C;
+  const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]) // SB source of truth — loaded in batch-C;
+  const [transfers,     setTransfers]     = useState<Transfer[]>([]) // SB source of truth — loaded in batch-C;
+  const [priceListas,   setPriceListas]   = useState<PriceLista[]>([]) // SB source of truth — loaded in batch-C;
+  const [priceListItems, setPriceListItems] = useState<PriceListItem[]>([]) // SB source of truth — loaded in batch-C;
+  const [cobros,    setCobros]    = useState<Cobro[]>([]) // SB source of truth — loaded in batch-A;
+  const [clientes,  setClientes]  = useState<Cliente[]>([]) // SB source of truth — loaded in batch-A;
+  const [lotes,     setLotes]     = useState<Lote[]>([]) // SB source of truth — loaded in batch-B;
+  const [devoluciones, setDevoluciones] = useState<Devolucion[]>([]) // SB source of truth — loaded in batch-B;
+  const [conteos,      setConteos]      = useState<Conteo[]>([]) // SB source of truth — loaded in batch-B;
+  const [rutas,        setRutas]        = useState<Ruta[]>([]) // SB source of truth — loaded in batch-B;
   const [plans,     setPlans]     = useState<Plans>(() => LS.get('aryes7-plans',     {}));
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
@@ -81,29 +75,121 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
   const [syncToast,      setSyncToast]      = useState<SyncToast | null>(null);
   const [emailCfg,       setEmailCfg]       = useState<EmailCfg>({ serviceId:'', templateId:'', publicKey:'', toEmail:'', enabled:false });
   const [brandCfg,       setBrandCfg]       = useState(() => {
-    try { return JSON.parse(localStorage.getItem('aryes-brand') || 'null') || { name:'', logoUrl:'', color:'#3a7d1e' }; }
-    catch { return { name:'', logoUrl:'', color:'#3a7d1e' }; }
+    try { return JSON.parse(localStorage.getItem('aryes-brand') || 'null') || { name:'', logoUrl:'', color:'#1a8a3c' }; }
+    catch { return { name:'', logoUrl:'', color:'#1a8a3c' }; }
   });
 
   // ── Persist to localStorage on every change ────────────────────────────────
-  useEffect(() => LS.set('aryes6-products',  products),  [products]);
-  useEffect(() => LS.set('aryes6-suppliers', suppliers), [suppliers]);
   useEffect(() => LS.set('aryes6-orders',    orders),    [orders]);
   useEffect(() => LS.set('aryes7-plans',     plans),     [plans]);
-  useEffect(() => LS.set('aryes8-movements', movements), [movements]);
-  useEffect(() => LS.set('aryes-ventas',     ventas),    [ventas]);
-  useEffect(() => LS.set('aryes-cfe',         cfes),      [cfes]);
-  useEffect(() => LS.set('aryes-audit-log-v2', auditLogs.slice(0, 500)), [auditLogs]);
-  useEffect(() => LS.set('aryes-purchase-invoices', purchaseInvoices), [purchaseInvoices]);
-  useEffect(() => LS.set('aryes-transfers-v2', transfers), [transfers]);
-  useEffect(() => LS.set('aryes-listas-precio-v2',    priceListas),    [priceListas]);
-  useEffect(() => LS.set('aryes-listas-precio-items', priceListItems), [priceListItems]);
-  useEffect(() => LS.set('aryes-cobros',      cobros),    [cobros]);
-  useEffect(() => LS.set('aryes-clients',     clientes),  [clientes]);
-  useEffect(() => LS.set('aryes-lots',         lotes),     [lotes]);
-  useEffect(() => LS.set('aryes-devoluciones', devoluciones), [devoluciones]);
-  useEffect(() => LS.set('aryes-conteos',       conteos),      [conteos]);
-  useEffect(() => LS.set('aryes-rutas',          rutas),        [rutas]);
+  // ventas: sync bidireccional LS + Supabase
+  // ── Cargar clientes desde Supabase al arrancar ───────────────────────────
+  useEffect(() => {
+    if (!SB_URL || !SKEY) return;
+    fetch(`${SB_URL}/rest/v1/clients?org_id=eq.${getOrgId()}&order=name.asc&limit=1000`, {
+      headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' }
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: DbClientRow[]) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        const mapped = rows.map((c) => ({
+          id:            c.id,
+          nombre:        c.name || '',
+          tipo:          c.type || '',
+          telefono:      c.phone || '',
+          email:         c.email || '',
+          direccion:     c.address || '',
+          ciudad:        c.ciudad || '',
+          condPago:      c.cond_pago || '',
+          limiteCredito: Number(c.limite_credito) || 0,
+          notas:         c.notes || '',
+          activo:        c.activo !== false,
+          lista_id:      c.lista_id || null,
+          lat:           c.lat || null,
+          lng:           c.lng || null,
+          org_id:        c.org_id || '',
+        }));
+        setClientes(mapped);
+        LS.set('aryes-clients', mapped);
+        console.debug('[AppContext] clientes desde Supabase:', mapped.length);
+      })
+      .catch(e => console.warn('[AppContext] clientes fetch:', e));
+  }, []);
+
+  // ── Cargar suppliers desde Supabase al arrancar ───────────────────────────
+  useEffect(() => {
+    if (!SB_URL || !SKEY) return;
+    fetch(`${SB_URL}/rest/v1/suppliers?org_id=eq.${getOrgId()}&order=name.asc&limit=500`, {
+      headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' }
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: DbSupplierRow[]) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        const mapped = rows.map((s) => ({
+          id:             s.id,
+          name:           s.name || '',
+          flag:           s.flag || '',
+          color:          s.color || '',
+          times:          s.times || {},
+          company:        s.company || '',
+          contact:        s.contact || '',
+          email:          s.email || '',
+          phone:          s.phone || '',
+          country:        s.country || '',
+          city:           s.city || '',
+          currency:       s.currency || 'USD',
+          paymentTerms:   s.payment_terms || '',
+          paymentMethod:  s.payment_method || '',
+          minOrder:       Number(s.min_order) || 0,
+          discount:       Number(s.discount) || 0,
+          rating:         Number(s.rating) || 0,
+          active:         s.active !== false,
+          notes:          s.notes || '',
+          org_id:         s.org_id || '',
+        }));
+        setSuppliers(mapped);
+        console.debug('[AppContext] suppliers desde Supabase:', mapped.length);
+      })
+      .catch(e => console.warn('[AppContext] suppliers fetch:', e));
+  }, []);
+  // ── Cargar ventas desde Supabase al arrancar ──────────────────────────────
+  useEffect(() => {
+    if (!SB_URL || !SKEY) return;
+    fetch(`${SB_URL}/rest/v1/ventas?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`, {
+      headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' }
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: DbVentaRow[]) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        try {
+          const mapped = rows.map((v) => ({
+            id:               v.id,
+            nroVenta:         v.nro_venta || '',
+            clienteId:        v.cliente_id || '',
+            clienteNombre:    v.cliente_nombre || '',
+            clienteTelefono:  v.cliente_telefono || '',
+            fecha:            v.fecha || (v.creado_en ? v.creado_en.split('T')[0] : ''),
+            estado:           v.estado || 'pendiente',
+            items:            Array.isArray(v.items) ? v.items : [],
+            total:            Number(v.total) || 0,
+            descuento:        Number(v.descuento) || 0,
+            notas:            v.notas || '',
+            estadoLog:        Array.isArray(v.estado_log) ? v.estado_log : [],
+            creadoEn:         v.creado_en || '',
+            updatedAt:        v.updated_at || '',
+            tieneDevolucion:  Boolean(v.tiene_devolucion),
+            moneda:           v.moneda || 'USD',
+            org_id:           v.org_id || '',
+          }));
+          setVentas(mapped);
+          LS.set('aryes-ventas', mapped);
+          console.debug('[AppContext] ventas desde Supabase:', mapped.length);
+        } catch(mapErr) {
+          console.warn('[AppContext] ventas map error:', mapErr);
+        }
+      })
+      .catch(e => console.warn('[AppContext] ventas fetch error:', e));
+  }, []);
   useEffect(() => LS.set('aryes9-notified',  notified),  [notified]);
 
   // ── JWT auto-refresh 5 min before expiry ───────────────────────────────────
@@ -210,6 +296,12 @@ const describeAction = (action: string, detail: string): string => {
             lat: r.lat ? Number(r.lat) : null,
             lng: r.lng ? Number(r.lng) : null,
             geocodedAt: r.geocoded_at || null,
+            razonSocial: r.razon_social || '',
+            celular: r.celular || '',
+            pais: r.pais || 'Uruguay',
+            modoEntrega: ['envio','retira','express'].includes(r.modo_entrega) ? r.modo_entrega : (r.modo_entrega ? 'otro' : 'envio'),
+            modoEntregaCustom: ['envio','retira','express'].includes(r.modo_entrega) ? '' : (r.modo_entrega || ''),
+            notasEntrega: r.notas_entrega || '',
             notas: r.notas||'', creado: r.created_at||'',
           }));
           setClientes(mappedClientes);
@@ -240,7 +332,7 @@ const describeAction = (action: string, detail: string): string => {
 
       // ── Batch B: operations data ─────────────────────────────────────────
       const [sbMovs, sbLotes, sbRutas, sbDevs, sbConteos] = await Promise.all([
-        db.get<Record<string, any>[]>('stock_movements?order=timestamp.desc&limit=2000'),
+        db.get<Record<string, any>[]>('stock_movements?order=created_at.desc&limit=2000'),
         db.get<Record<string, any>[]>('lotes?order=fecha_venc.asc.nullslast&limit=2000'),
         db.get<Record<string, any>[]>('rutas?order=creado_en.desc&limit=200'),
         db.get<Record<string, any>[]>('devoluciones?order=creado_en.desc&limit=500'),
@@ -302,8 +394,8 @@ const describeAction = (action: string, detail: string): string => {
         db.get<Record<string, any>[]>('audit_log?order=timestamp.desc&limit=500'),
         db.get<Record<string, any>[]>('purchase_invoices?order=creado_en.desc&limit=300'),
         db.get<Record<string, any>[]>('transfers?order=creado_en.desc&limit=200'),
-        db.get<Record<string, any>[]>('price_lists?order=id.asc'),
-        db.get<Record<string, any>[]>('price_list_items?order=lista_id.asc'),
+        fetch(`${SB_URL}/rest/v1/price_lists?order=creado_en.desc&org_id=eq.${getOrgId()}`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
+        fetch(`${SB_URL}/rest/v1/price_list_items?order=updated_at.desc`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
         db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500'),
       ]);
 
@@ -374,12 +466,12 @@ const describeAction = (action: string, detail: string): string => {
         const prods = await db.get<Record<string, any>[]>('products', 'order=id.asc&limit=1000');
         if (prods?.length > 0) {
           const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
-          LS.set('aryes6-products', mapped); setProducts(mapped);
+          setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', 'order=name.asc');
         if (sups?.length > 0) {
-          const mapped = sups.map(s => ({ id:s.id, name:s.name, flag:s.flag||'', color:s.color||'#3a7d1e', times:s.times||{preparation:2,customs:1,freight:4,warehouse:1}, company:s.company||'', contact:s.contact||'', email:s.email||'', phone:s.phone||'', country:s.country||'', city:s.city||'', currency:s.currency||'USD', paymentTerms:s.payment_terms||'30', paymentMethod:s.payment_method||'', minOrder:s.min_order||'', discount:s.discount||'0', rating:s.rating||3, active:s.active!==false, notes:s.notes||'' }));
-          LS.set('aryes6-suppliers', mapped); setSuppliers(mapped);
+          const mapped = sups.map(s => ({ id:s.id, name:s.name, flag:s.flag||'', color:s.color||'#1a8a3c', times:s.times||{preparation:2,customs:1,freight:4,warehouse:1}, company:s.company||'', contact:s.contact||'', email:s.email||'', phone:s.phone||'', country:s.country||'', city:s.city||'', currency:s.currency||'USD', paymentTerms:s.payment_terms||'30', paymentMethod:s.payment_method||'', minOrder:s.min_order||'', discount:s.discount||'0', rating:s.rating||3, active:s.active!==false, notes:s.notes||'' }));
+          setSuppliers(mapped);
         }
         const usrs = await db.get<Record<string, any>[]>('users', 'order=id.asc');
         if (usrs?.length > 0) LS.set('aryes-users', usrs.map(u => ({ username:u.username, name:u.name, role:u.role, active:u.active })));
@@ -393,6 +485,18 @@ const describeAction = (action: string, detail: string): string => {
           const plansMap: Record<string, unknown> = {};
           sbPlans.forEach(p => { plansMap[p.product_id] = { ...(p.data||{}), coverageMonths:Number(p.coverage_months)||2 }; });
           setPlans(plansMap as unknown as Plans); LS.set('aryes7-plans', plansMap);
+        }
+        // Cargar permissions del rol del usuario
+        if (session?.role) {
+          const orgId = getOrgId();
+          const roleId = (session as any).roleId;
+          const roleQuery = roleId
+            ? `id=eq.${roleId}&org_id=eq.${orgId}&limit=1`
+            : `org_id=eq.${orgId}&nombre=ilike.${encodeURIComponent(session.role)}&limit=1`;
+          const roleRows = await db.get('roles', roleQuery);
+          if (roleRows?.[0]?.permissions && onSessionUpdate) {
+            onSessionUpdate({ ...session, permissions: roleRows[0].permissions } as any);
+          }
         }
         setDbReady(true); setSyncStatus('ok'); setTimeout(() => setSyncStatus(''), 3000);
       } catch (e) {
@@ -420,7 +524,7 @@ const describeAction = (action: string, detail: string): string => {
           return local;
         });
         if (hasChanges) {
-          setProducts(merged); LS.set('aryes6-products', merged);
+          setProducts(merged);
           setSyncToast({ msg: 'Datos actualizados desde otro dispositivo', type: 'info' });
           setTimeout(() => setSyncToast(null), 4000);
         }
@@ -453,7 +557,7 @@ const describeAction = (action: string, detail: string): string => {
             supplierId:row.supplier_id||'', name:row.name||row.nombre||'', brand:row.brand||'',
             category:row.category||'', precioVenta:Number(row.precio_venta)||0,
             dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
-          return [p as any, ...ps];
+          return [p, ...ps];
         }
         if (eventType === 'UPDATE') {
           return ps.map(p => p.id === row.uuid
@@ -478,7 +582,7 @@ const describeAction = (action: string, detail: string): string => {
             descuento:row.descuento||0, estado:row.estado||'pendiente',
             notas:row.notas||'', fechaEntrega:row.fecha_entrega||null, creadoEn:row.creado_en,
             tieneDevolucion:false, estadoLog:row.estado_log||[] };
-          return [v as any, ...vs];
+          return [v, ...vs];
         }
         if (eventType === 'UPDATE') {
           return vs.map(v => v.id === row.id
@@ -496,7 +600,7 @@ const describeAction = (action: string, detail: string): string => {
       setRutas(rs => {
         if (eventType === 'INSERT') {
           if (rs.find(r => r.id === row.id)) return rs;
-          return [row as any, ...rs];
+          return [row, ...rs];
         }
         if (eventType === 'UPDATE') {
           // For rutas, the key field is entregas (delivery statuses)
@@ -516,7 +620,7 @@ const describeAction = (action: string, detail: string): string => {
       setClientes(cs => {
         if (eventType === 'INSERT') {
           if (cs.find(c => c.id === row.id)) return cs;
-          return [row as any, ...cs];
+          return [row, ...cs];
         }
         if (eventType === 'UPDATE') {
           return cs.map(c => c.id === row.id ? { ...c, ...row } : c);
@@ -584,7 +688,7 @@ const describeAction = (action: string, detail: string): string => {
     // Both writes are critical — stock and order status must persist to DB.
     // On failure: optimistic UI stays (data is in localStorage) but we surface
     // a visible error so the operator knows to check connectivity.
-    const notifyWriteError = (op: string, err: any) => {
+    const notifyWriteError = (op: string, err: unknown) => {
       console.warn(`[markDelivered] ${op} failed:`, err?.message || err);
       setHasPendingSync(true);
       setSyncToast({ msg: `Error al guardar entrega en servidor. El cambio está guardado localmente — se sincronizará al reconectar.`, type: 'error' });
@@ -676,29 +780,76 @@ const describeAction = (action: string, detail: string): string => {
     db.del('products', { uuid: id }).catch(() => setProducts(snap));
   };
 
-  const applyExcel = async (matches: Array<{ product: Product; newStock: number }>): Promise<void> => {
-    const excelProds = products.map(p => { const m = matches.find((x) => x.product.id === p.id); return m ? { ...p, stock: m.newStock } : p; });
-    setProducts(excelProds);
-    const results = await Promise.allSettled(
-      matches.map(m => db.patchWithLock(
-        'products',
-        { stock:m.newStock, updated_at:new Date().toISOString() },
-        `uuid=eq.${m.product.id}`,
-        'stock',
-        m.product.stock
-      ))
-    );
-    const failed = results.filter(r => r.status === 'rejected');
-    if (failed.length > 0) {
-      console.warn(`[applyExcel] ${failed.length}/${matches.length} writes failed:`,
-        failed.map(r => r.reason?.message).join(', '));
-      setHasPendingSync(true);
-      setSyncToast({
-        msg: `${failed.length} producto(s) no se pudieron sincronizar. Guardados localmente — se sincronizarán al reconectar.`,
-        type: 'error',
-      });
-      setTimeout(() => setSyncToast(null), 8000);
+  const applyExcel = async (matches: Array<any>): Promise<void> => {
+    const toCreate = matches.filter((m: any) => m.action === 'create' && !m.existing);
+    const toUpdate = matches.filter((m: any) => m.action === 'update' && m.existing);
+
+    // ── Crear productos nuevos ────────────────────────────────────────────────
+    const created: any[] = [];
+    for (const item of toCreate) {
+      const newProd = {
+        id:        crypto.randomUUID(),
+        uuid:      crypto.randomUUID(),
+        name:      item.name,
+        barcode:   item.code || '',
+        stock:     item.stock || 0,
+        minStock:  0,
+        unit:      item.unit || 'u',
+        unitCost:  item.cost || 0,
+        salePrice: item.price || 0,
+        category:  item.category || '',
+        supplierId:'',
+        orgId:     getOrgId(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      created.push(newProd);
     }
+
+    if (created.length > 0) {
+      setProducts(prev => [...created, ...prev]);
+      await Promise.allSettled(
+        created.map(p => db.upsert('products', {
+          uuid: p.uuid, name: p.name, barcode: p.barcode,
+          stock: p.stock, min_stock: p.minStock, unit: p.unit,
+          unit_cost: p.unitCost, sale_price: p.salePrice,
+          category: p.category, supplier_id: p.supplierId,
+          org_id: getOrgId(), created_at: p.createdAt, updated_at: p.updatedAt,
+        }, 'uuid'))
+      );
+    }
+
+    // ── Actualizar stock de existentes ────────────────────────────────────────
+    if (toUpdate.length > 0) {
+      const updatedProds = products.map(p => {
+        const m = toUpdate.find((x: any) => x.existing?.id === p.id);
+        return m ? { ...p, stock: m.stock } : p;
+      });
+      setProducts(prev => {
+        const newIds = new Set(created.map(c => c.id));
+        return [...prev.filter(p => !newIds.has(p.id)), ...created,
+          ...prev.filter(p => !newIds.has(p.id)).map(p => {
+            const m = toUpdate.find((x: any) => x.existing?.id === p.id);
+            return m ? { ...p, stock: m.stock } : p;
+          })
+        ];
+      });
+      await Promise.allSettled(
+        toUpdate.map((m: any) => db.patchWithLock(
+          'products',
+          { stock: m.stock, updated_at: new Date().toISOString() },
+          `uuid=eq.${m.existing.id}`,
+          'stock',
+          m.existing.stock
+        ))
+      );
+    }
+
+    setSyncToast({
+      msg: `Importación completa: ${created.length} creados, ${toUpdate.length} actualizados.`,
+      type: 'info',
+    });
+    setTimeout(() => setSyncToast(null), 5000);
   };
 
   const sendAlertEmail = (alertProducts: Product[], cfg: EmailCfg): void => {
@@ -710,6 +861,28 @@ const describeAction = (action: string, detail: string): string => {
   };
 
   // ── Context value ─────────────────────────────────────────────────────────
+
+  // ── Dynamic Reorder Point ─────────────────────────────────────────────────
+  const calcReorderPoints = async (): Promise<any[]> => {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/rpc/calc_reorder_points`, {
+        method: 'POST',
+        headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`,
+                   'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ p_org_id: getOrgId() }),
+      });
+      if (!r.ok) return [];
+      const rows = await r.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        setProducts((ps) => ps.map((p) => {
+          const row = rows.find((rr: DbStockRow) => rr.product_uuid === p.uuid || rr.product_uuid === p.id);
+          return row ? { ...p, minStock: Number(row.new_min_stock) || p.minStock } : p;
+        }));
+      }
+      return rows || [];
+    } catch(e) { console.warn('[calcReorderPoints]', e); return []; }
+  };
+
   const value: AppContextValue = {
     // Data
     products, setProducts,
@@ -743,10 +916,14 @@ const describeAction = (action: string, detail: string): string => {
     addMov: addMov as AppContextValue['addMov'], savePlan: savePlan as unknown as AppContextValue['savePlan'], markDelivered, confirmOrder: confirmOrder as unknown as AppContextValue['confirmOrder'],
     deleteSupplier, deleteProduct, applyExcel,
     sendAlertEmail, dbWriteWithRetry,
+    // Dynamic reorder
+
+  calcReorderPoints,
     // Auth
     handleLogout: () => onLogout?.(),
     session,
   };
+
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

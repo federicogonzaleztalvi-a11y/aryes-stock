@@ -1,3 +1,4 @@
+import { LS } from '../lib/constants.js';
 import React from 'react';
 
 // ── QuickStats ────────────────────────────────────────────────────────────────
@@ -16,7 +17,7 @@ function QuickStats({ critN = 0, orders = [] }) {
   // Overdue debt total — read from localStorage
   const overdueDebt = React.useMemo(() => {
     try {
-      const cfes = JSON.parse(localStorage.getItem('aryes-cfe') || '[]');
+      const cfes = LS.get('aryes-cfe', []);
       return cfes
         .filter(f =>
           ['emitida', 'cobrado_parcial'].includes(f.status) &&

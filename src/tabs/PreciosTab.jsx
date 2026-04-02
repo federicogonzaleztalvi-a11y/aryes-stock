@@ -1,10 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
+import { db, SB_URL, SKEY, getOrgId, fmt} from '../lib/constants.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const round2  = n => Math.round(Number(n) * 100) / 100;
-const fmtUSD  = n => '$' + Number(n || 0).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const margen  = (costo, venta) => costo > 0 && venta > 0 ? ((venta - costo) / costo * 100).toFixed(1) : '—';
 const calcDes = (base, desc) => Math.round(Number(base || 0) * (1 - Number(desc || 0) / 100));
 
@@ -14,7 +13,7 @@ const DEFAULT_LISTAS = [
   { id: 'C', nombre: 'Lista C - Minorista', descuento: 0,  color: '#f59e0b', activa: true },
 ];
 
-const G   = '#3a7d1e';
+const G   = '#1a8a3c';
 const inp = { padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
 
 // ── Vista: Precios base (precio_venta por producto) ────────────────────────
@@ -204,7 +203,7 @@ function VistaBase({ prods, setProducts }) {
                     {p.category || 'General'}
                   </td>
                   <td style={{ padding: '8px 14px', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                    {costo > 0 ? fmtUSD(costo) : <span style={{ color: '#d1d5db' }}>—</span>}
+                    {costo > 0 ? fmt.currencyCompact(costo) : <span style={{ color: '#d1d5db' }}>—</span>}
                   </td>
                   <td style={{ padding: '8px 14px', whiteSpace: 'nowrap' }}>
                     <span style={{ color: margenActual === '—' ? '#d1d5db' : G, fontWeight: 600 }}>
@@ -217,14 +216,14 @@ function VistaBase({ prods, setProducts }) {
                     )}
                   </td>
                   <td style={{ padding: '8px 14px', fontWeight: 700, color: G, whiteSpace: 'nowrap' }}>
-                    {actual > 0 ? fmtUSD(actual) : <span style={{ color: '#fbbf24', fontWeight: 600 }}>Sin precio</span>}
+                    {actual > 0 ? fmt.currencyCompact(actual) : <span style={{ color: '#fbbf24', fontWeight: 600 }}>Sin precio</span>}
                   </td>
                   <td style={{ padding: '8px 14px' }}>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      placeholder={actual > 0 ? fmtUSD(actual) : 'Ingresar precio'}
+                      placeholder={actual > 0 ? fmt.currencyCompact(actual) : 'Ingresar precio'}
                       value={nuevo !== undefined ? nuevo : ''}
                       onChange={e => setEdit(p.id, e.target.value)}
                       style={{
@@ -409,13 +408,13 @@ function VistaListas({ prods, priceListas, setPriceListas, priceListItems, setPr
               return (
                 <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
                   <td style={{ padding: '9px 14px', fontWeight: 500 }}>{p.name}</td>
-                  <td style={{ padding: '9px 14px', color: '#6b7280' }}>{fmtUSD(base)}</td>
+                  <td style={{ padding: '9px 14px', color: '#6b7280' }}>{fmt.currencyCompact(base)}</td>
                   <td style={{ padding: '9px 14px', color: lista?.color, fontWeight: 600 }}>-{lista?.descuento ?? 0}%</td>
                   <td style={{ padding: '9px 14px', fontWeight: 700, color: hasCustom ? lista?.color : G }}>
-                    {fmtUSD(final)}{hasCustom && <span style={{ fontSize: 10, color: lista?.color, marginLeft: 4 }}>custom</span>}
+                    {fmt.currencyCompact(final)}{hasCustom && <span style={{ fontSize: 10, color: lista?.color, marginLeft: 4 }}>custom</span>}
                   </td>
                   <td style={{ padding: '9px 14px' }}>
-                    <input type="number" placeholder={`Auto: ${fmtUSD(calcDes(base, lista?.descuento ?? 0))}`}
+                    <input type="number" placeholder={`Auto: ${fmt.currencyCompact(calcDes(base, lista?.descuento ?? 0))}`}
                       value={hasCustom ? custom : ''}
                       onChange={e => setPrecioCustom(p.id, listaActiva, e.target.value || 0)}
                       style={{ ...inp, width: 110, fontSize: 12 }} />

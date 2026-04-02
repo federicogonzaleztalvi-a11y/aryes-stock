@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { db, LS } from '../lib/constants.js';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 const T = {
@@ -144,7 +144,7 @@ function StepBrand({ data, setData, onBack, onNext, onSkip }) {
       <Field label="Color principal">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <input type="color" value={data.color} onChange={e => setData(d => ({ ...d, color: e.target.value }))} style={{ width: 44, height: 44, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 0 }} />
-          <input style={{ ...inp, width: 120 }} value={data.color} onChange={e => setData(d => ({ ...d, color: e.target.value }))} placeholder="#3a7d1e" />
+          <input style={{ ...inp, width: 120 }} value={data.color} onChange={e => setData(d => ({ ...d, color: e.target.value }))} placeholder="#1a8a3c" />
           <span style={{ fontSize: 12, color: T.textSm }}>← Se aplica al sidebar</span>
         </div>
       </Field>
@@ -288,7 +288,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
 
   // Accumulated state per step
   const [company, setCompany] = useState({ name: '', country: '', city: '', email: '' });
-  const [brand, setBrand] = useState({ name: '', logoUrl: '', color: '#3a7d1e' });
+  const [brand, setBrand] = useState({ name: '', logoUrl: '', color: '#1a8a3c' });
   const [supplier, setSupplier] = useState({ name: '', flag: 'AR', currency: 'USD', company: '', email: '' });
   const [product, setProduct] = useState({ name: '', stock: '0', unit: 'kg', unitCost: '0', supplierId: '' });
   const [user, setUser] = useState({ name: '', email: '', password: '', role: 'operador' });

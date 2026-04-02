@@ -111,7 +111,7 @@ function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
                 display:'flex', gap:20, marginBottom:12, alignItems:'center' }}>
                 {cli.rut && <span style={{ fontFamily:F.mono, fontSize:11, color:'#6a6a68' }}>RUT {cli.rut}</span>}
                 {cond && <span style={{ fontFamily:F.sans, fontSize:11, fontWeight:600, color:G }}>✓ {cond.label}</span>}
-                {cli.limiteCredito && <span style={{ fontFamily:F.sans, fontSize:11, color:'#6a6a68' }}>Límite: {fmtMoney(cli.limiteCredito)}</span>}
+                {cli.limiteCredito && <span style={{ fontFamily:F.sans, fontSize:11, color:'#6a6a68' }}>Límite: {fmt.currency(cli.limiteCredito)}</span>}
                 {cli.emailFacturacion && <span style={{ fontFamily:F.sans, fontSize:11, color:'#6a6a68' }}>📧 {cli.emailFacturacion}</span>}
               </div>
             );
@@ -132,9 +132,9 @@ function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
                   fontSize:13, resize:'vertical', outline:'none' }} />
             </div>
             <div style={{ display:'grid', gap:5, alignContent:'start' }}>
-              {[['Subtotal', fmtMoney(subtotal,moneda)],
-                ['IVA total', fmtMoney(ivaTotal,moneda)],
-                descuento>0 ? ['Descuento', `-${fmtMoney(descMonto,moneda)}`] : null,
+              {[['Subtotal', fmt.currency(subtotal,moneda)],
+                ['IVA total', fmt.currency(ivaTotal,moneda)],
+                descuento>0 ? ['Descuento', `-${fmt.currency(descMonto,moneda)}`] : null,
               ].filter(Boolean).map(([l,v])=>(
                 <div key={l} style={{ display:'flex', justifyContent:'space-between',
                   fontFamily:F.sans, fontSize:12, color:'#6a6a68' }}>
@@ -144,7 +144,7 @@ function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
               <div style={{ borderTop:'2px solid #1a1a18', paddingTop:8,
                 display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontFamily:F.sans, fontSize:14, fontWeight:700 }}>TOTAL</span>
-                <span style={{ fontFamily:F.serif, fontSize:22, color:G }}>{fmtMoney(total,moneda)}</span>
+                <span style={{ fontFamily:F.serif, fontSize:22, color:G }}>{fmt.currency(total,moneda)}</span>
               </div>
               <div style={{ display:'flex', gap:6, alignItems:'center', marginTop:2 }}>
                 <Lbl>Desc %</Lbl>
@@ -161,7 +161,7 @@ function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
         <div style={{ padding:'12px 24px 18px', borderTop:'1px solid #f0f0ec',
           display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
           <div style={{ fontFamily:F.sans, fontSize:12, color:'#9a9a98' }}>
-            {items.length} línea{items.length!==1?'s':''} · {fmtMoney(total,moneda)}
+            {items.length} línea{items.length!==1?'s':''} · {fmt.currency(total,moneda)}
           </div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={()=>onSave({tipo,moneda,fecha,fechaVenc,clienteId,clienteNombre,clienteRut,items,notas,descuento,subtotal,ivaTotal,total,status:'borrador'})}

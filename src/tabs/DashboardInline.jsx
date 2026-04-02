@@ -1,3 +1,5 @@
+import ReorderPointWidget from '../components/ReorderPointWidget.jsx';
+import { fmt } from '../lib/constants.js';
 import React from 'react';
 import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 import { useApp } from '../context/AppContext.tsx';
@@ -10,9 +12,7 @@ const F = {
   mono:  "'DM Mono','Fira Code',monospace",
 };
 
-const fmtUSD  = n => n>=1000?`USD ${(n/1000).toFixed(1)}k`:`USD ${n.toFixed(0)}`;
-const fmtMoney= (n,c='UYU')=>`${c==='UYU'?'$':c==='USD'?'US$':'€'} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 
 
 function Sparkline({ data=[], color=T.green, height=32, width=80 }) {
@@ -33,22 +33,45 @@ function Sparkline({ data=[], color=T.green, height=32, width=80 }) {
   );
 }
 
-function KpiCard({ label, value, sub, accent=T.border, danger=false, warn=false, click, spark, sparkColor }) {
+function KpiCard({ label, value, sub, accent=T.border, danger=false, warn=false, click, spark, sparkColor, icon }) {
+  const valNum = Number(String(value).replace(/[^0-9.-]/g,'')) || 0;
+  const isRed  = danger && valNum > 0;
+  const isAmber= warn   && valNum > 0;
+  const valColor = isRed ? '#dc2626' : isAmber ? '#d97706' : '#1a1a18';
+  const [hov, setHov] = React.useState(false);
+
   return (
     <div onClick={click}
-      style={{ background:T.card, padding:'18px 20px', borderTop:`3px solid ${accent}`,
-        cursor:click?'pointer':'default', transition:'background .12s' }}
-      onMouseEnter={e=>{if(click)e.currentTarget.style.background='#f6faf4';}}
-      onMouseLeave={e=>{if(click)e.currentTarget.style.background=T.card;}}>
-      <div style={{ fontFamily:F.sans, fontSize:10, fontWeight:700, letterSpacing:'0.12em',
-        textTransform:'uppercase', color:'#9a9a98', marginBottom:6 }}>{label}</div>
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      className="kpi-card"
+      style={{
+        background: '#ffffff',
+        padding: '20px 22px',
+        borderRadius: 16,
+        cursor: click ? 'pointer' : 'default',
+        boxShadow: hov && click
+          ? '0 4px 24px rgba(0,0,0,.10)'
+          : '0 2px 12px rgba(0,0,0,.06)',
+        border: '1px solid #f0ede8',
+        transition: 'box-shadow 0.18s, transform 0.18s',
+        transform: hov && click ? 'translateY(-1px)' : 'none',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+      {/* Accent line top */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+        background: isRed ? '#dc2626' : isAmber ? '#d97706' : accent !== T.border ? accent : '#1a8a3c',
+        borderRadius: '16px 16px 0 0',
+        opacity: (isRed || isAmber || accent !== T.border) ? 1 : 0,
+      }}/>
+      <div style={{ fontFamily:F.sans, fontSize:11, fontWeight:500, color:'#9a9a98', marginBottom:8, letterSpacing:'0.01em' }}>{label}</div>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
-        <div style={{ fontFamily:F.serif, fontSize:32, fontWeight:400, lineHeight:1,
-          color: danger&&Number(String(value).replace(/\D/g,''))>0?'#dc2626':
-                 warn&&Number(String(value).replace(/\D/g,''))>0?'#d97706':'#1a1a18' }}>{value}</div>
-        {spark && <Sparkline data={spark} color={sparkColor||accent||T.green} height={30} width={70}/>}
+        <div style={{ fontFamily:F.serif, fontSize:30, fontWeight:500, lineHeight:1, color: valColor }}>{value}</div>
+        {spark && <Sparkline data={spark} color={sparkColor||accent||T.green} height={28} width={64}/>}
       </div>
-      {sub && <div style={{ fontFamily:F.sans, fontSize:11, color:'#9a9a98', marginTop:4 }}>{sub}</div>}
+      {sub && <div style={{ fontFamily:F.sans, fontSize:11, color:'#9a9a98', marginTop:6 }}>{sub}</div>}
     </div>
   );
 }
@@ -56,8 +79,8 @@ function KpiCard({ label, value, sub, accent=T.border, danger=false, warn=false,
 function SectionHeader({ title, action, actionLabel }) {
   return (
     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-      <div style={{ fontFamily:F.sans, fontSize:10, fontWeight:700, letterSpacing:'0.12em',
-        textTransform:'uppercase', color:'#9a9a98' }}>{title}</div>
+      <div style={{ fontFamily:F.sans, fontSize:11, fontWeight:600, letterSpacing:'0.01em',
+        textTransform:'none', color:'#b0aca6' }}>{title}</div>
       {action && <button onClick={action} style={{ background:'none', border:'none', cursor:'pointer',
         fontFamily:F.sans, fontSize:11, fontWeight:600, color:T.green, padding:0 }}>{actionLabel} →</button>}
     </div>
@@ -139,7 +162,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       const raw = atob((publicKey + '='.repeat((4 - publicKey.length % 4) % 4)).replace(/-/g,'+').replace(/_/g,'/'));
       const key = Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-      const orgId = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.orgId||'aryes'; } catch { return 'aryes'; } })();
+      const orgId = getOrgId();
       await fetch('/api/push?action=subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub.toJSON(), orgId, role:'admin' }) });
       setPushState('subscribed');
     } catch { setPushState('prompt'); }
@@ -422,28 +445,39 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   return (
     <div className="au" style={{display:'grid',gap:24,fontFamily:F.sans}}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400&family=Playfair+Display:wght@400;500&display=swap"/>
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0);    }
+        }
+        @keyframes pulseDot {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%       { transform: scale(1.4); opacity: .6; }
+        }
+        .kpi-card { animation: fadeUp 0.35s ease both; }
+        .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+        .kpi-card:nth-child(2) { animation-delay: 0.10s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.20s; }
+      `}</style>
 
       {/* ── WhatsApp resumen diario ─────────────────────────────────── */}
+
+      {/* ── Setup Progress Checklist — full width banner ── */}
+      <SetupChecklist products={products} setTab={setTab} />
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>
         <div>
-          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-            <span style={{fontFamily:F.sans,fontSize:11,color:'#9a9a98'}}>Inicio</span>
-            <span style={{color:'#c8c8c4',fontSize:11}}>/</span>
-            <span style={{fontFamily:F.sans,fontSize:11,fontWeight:600,color:T.green}}>Dashboard</span>
-          </div>
-          <h1 style={{fontFamily:F.serif,fontSize:36,fontWeight:400,color:'#1a1a18',
+
+          <h1 style={{fontFamily:F.serif,fontSize:28,fontWeight:500,color:'#1a1a18',
             margin:0,letterSpacing:'-.02em',lineHeight:1}}>
             {today.toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long'})}
           </h1>
           <div style={{fontFamily:F.sans,fontSize:13,color:'#6a6a68',marginTop:4}}>
-            Buenos días, {session?.name?.split(' ')[0]||session?.email?.split('@')[0]||'Admin'} 👋
+            Buenos días, {session?.name?.split(' ')[0]||session?.email?.split('@')[0]||'Admin'}
           </div>
         </div>
-
-      {/* ── Setup Progress Checklist ── */}
-      <SetupChecklist products={products} setTab={setTab} />
 
       {critN>0&&(
           <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,
@@ -463,21 +497,17 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       <div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:0}}>
           <SectionHeader title="Operaciones" />
-          <button onClick={generarResumenWA}
-            style={{background:'#25D366',color:'#fff',border:'none',borderRadius:8,padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
-            📲 Resumen del día
-          </button>
+
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,
-          background:'#e2e2de',borderRadius:12,overflow:'hidden'}}>
-          <KpiCard label="Capital en stock" value={fmtUSD(stockValue)}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
+          <KpiCard label="Capital en stock" value={fmt.currencyCompact(stockValue)}
             sub="Valor total del inventario" accent={T.green}/>
           <KpiCard label="Cobertura < 14d" value={critCov}
             sub={critCov>0?`productos con riesgo`:'Todo con cobertura OK'}
             accent={critCov>0?'#d97706':'#e2e2de'} warn={critCov>0}
             click={critCov>0?()=>setTab('inventory'):null}/>
           <KpiCard label="En tránsito" value={pending.length}
-            sub={pending.length>0?`${fmtUSD(transitVal)} comprometido`:'Sin pedidos activos'}
+            sub={pending.length>0?`${fmt.currencyCompact(transitVal)} comprometido`:'Sin pedidos activos'}
             accent={pending.length>0?'#6366f1':'#e2e2de'}
             click={pending.length>0?()=>setTab('orders'):null}/>
           <KpiCard label="Requieren acción" value={orderNow+orderSoon}
@@ -491,13 +521,12 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       {/* ── KPI Row 2: Financiero ─────────────────────────────────── */}
       <div>
         <SectionHeader title="Financiero" action={()=>setTab('facturacion')} actionLabel="Ver facturación"/>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,
-          background:'#e2e2de',borderRadius:12,overflow:'hidden'}}>
-          <KpiCard label="Facturado este mes" value={facMes>0?fmtMoney(facMes):'—'}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
+          <KpiCard label="Facturado este mes" value={facMes>0?fmt.currency(facMes):'—'}
             sub={`${cfes.filter(f=>{const d=new Date(f.createdAt||f.fecha);return d.getMonth()===today.getMonth()}).length} CFEs emitidos`}
             accent={T.green} spark={facSpark} sparkColor={T.green}
             click={()=>setTab('facturacion')}/>
-          <KpiCard label="Deuda total" value={deudaTotal>0?fmtMoney(deudaTotal):'—'}
+          <KpiCard label="Deuda total" value={deudaTotal>0?fmt.currency(deudaTotal):'—'}
             sub={`${deudores.length} clientes con saldo`}
             accent={deudaTotal>0?'#dc2626':'#e2e2de'} danger={deudaTotal>0}
             click={deudaTotal>0?()=>setTab('facturacion'):null}/>
@@ -505,7 +534,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             sub="sin cobrar" accent={vencidasN>0?'#dc2626':'#e2e2de'} danger={vencidasN>0}
             click={vencidasN>0?()=>setTab('facturacion'):null}/>
           <KpiCard label="Cobros este mes"
-            value={fmtMoney(cobros.filter(c=>{const d=new Date(c.fecha);return d.getMonth()===today.getMonth()&&d.getFullYear()===today.getFullYear();}).reduce((s,c)=>s+c.monto,0))}
+            value={fmt.currency(cobros.filter(c=>{const d=new Date(c.fecha);return d.getMonth()===today.getMonth()&&d.getFullYear()===today.getFullYear();}).reduce((s,c)=>s+c.monto,0))}
             sub={`${cobros.filter(c=>{const d=new Date(c.fecha);return d.getMonth()===today.getMonth();}).length} cobros registrados`}
             accent={T.green} click={()=>setTab('facturacion')}/>
         </div>
@@ -646,7 +675,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
         <div>
           <SectionHeader title="Acciones requeridas" action={()=>setTab('inventory')} actionLabel="Ver inventario"/>
           {alerts.length>0?(
-            <div style={{display:'grid',gap:1,background:'#e2e2de',borderRadius:10,overflow:'hidden'}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
               {alerts.slice(0,6).map(({id,name,stock, _unit,sup,alert})=>{
                 const ropDate=new Date(); ropDate.setDate(ropDate.getDate()+alert.daysToROP);
                 return(
@@ -664,7 +693,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                     <AlertPill level={alert.level}/>
                     <div style={{textAlign:'right',minWidth:80}}>
                       <div style={{fontFamily:F.sans,fontSize:10,fontWeight:700,letterSpacing:'0.1em',
-                        textTransform:'uppercase',color:'#9a9a98',marginBottom:3}}>
+                        textTransform:'none',color:'#9a9a98',marginBottom:3}}>
                         {alert.level==='order_now'?'Pedir':'Antes del'}
                       </div>
                       <div style={{fontFamily:F.serif,fontSize:14,fontWeight:500,
@@ -723,7 +752,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                       )}
                     </div>
                     <div style={{fontFamily:F.serif,fontSize:15,color:'#dc2626',flexShrink:0,marginLeft:8}}>
-                      {fmtMoney(d.deuda)}
+                      {fmt.currency(d.deuda)}
                     </div>
                   </div>
                 ))}
@@ -797,7 +826,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
               <div style={{borderTop:'1px solid #f0f0ec',marginTop:8,paddingTop:8,display:'flex',justifyContent:'space-between'}}>
                 <span style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98'}}>Este mes</span>
                 <span style={{fontFamily:F.sans,fontSize:12,fontWeight:700,color:T.green}}>
-                  {fmtMoney(ventasPorMes[5]?.total || 0)}
+                  {fmt.currency(ventasPorMes[5]?.total || 0)}
                 </span>
               </div>
             </div>
@@ -855,7 +884,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                     </div>
                   </div>
                   <span style={{fontFamily:F.sans,fontSize:12,fontWeight:700,color:T.green,flexShrink:0}}>
-                    {fmtMoney(c.total)}
+                    {fmt.currency(c.total)}
                   </span>
                 </div>
               ))}
@@ -879,30 +908,43 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
               const pend=orders.filter(o=>o.supplierId===sup.id&&o.status==='pending').length;
               const supVal=prods.reduce((s,p)=>s+(p.stock||0)*(p.unitCost||0),0);
               return(
-                <div key={sup.id} style={{background:'#fff',padding:'14px 16px'}}>
+                <div key={sup.id} style={{background:'#fff',padding:'16px 18px',borderRadius:14,boxShadow:'0 2px 10px rgba(0,0,0,.05)',border:'1px solid #f0ede8'}}>
                   <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
                     <div>
                       <div style={{fontFamily:F.sans,fontSize:10,fontWeight:700,letterSpacing:'0.1em',
                         textTransform:'uppercase',color:sup.color,marginBottom:2}}>
                         [{sup.flag}] {sup.name}
                       </div>
-                      <div style={{fontFamily:F.serif,fontSize:20,fontWeight:400,color:'#1a1a18'}}>
-                        {prods.length} prod.
+                      <div style={{fontFamily:F.serif,fontSize:22,fontWeight:500,color:'#1a1a18',lineHeight:1}}>
+                        {prods.length}
+                        <span style={{fontFamily:F.sans,fontSize:12,fontWeight:400,color:'#9a9a98',marginLeft:4}}>prod.</span>
                       </div>
                     </div>
                     <div style={{textAlign:'right'}}>
                       <div style={{fontFamily:F.sans,fontSize:11,fontWeight:600,color:'#1a1a18'}}>
-                        {fmtUSD(supVal)}
+                        {fmt.currencyCompact(supVal)}
                       </div>
                       <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>
                         Lead {totalLead(sup)}d
                       </div>
                     </div>
                   </div>
-                  <div style={{display:'flex',gap:2,height:3,borderRadius:2,overflow:'hidden',marginBottom:6}}>
-                    {Object.values(sup.times).map((v,i)=>(
-                      <div key={i} style={{flex:v||.1,background:tfCols[i],opacity:.7}}/>
-                    ))}
+                  <div style={{marginBottom:8}}>
+                    <div style={{display:'flex',gap:2,height:6,borderRadius:4,overflow:'hidden',marginBottom:3}}>
+                      {Object.values(sup.times).map((v,i)=>(
+                        <div key={i} style={{flex:v||.1,background:tfCols[i],borderRadius:2}}/>
+                      ))}
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98'}}>
+                        {['Prep','Aduana','Flete','Dep'].map((l,i)=>(
+                          <span key={i} style={{marginRight:6}}>
+                            <span style={{display:'inline-block',width:6,height:6,borderRadius:'50%',background:tfCols[i],marginRight:2,verticalAlign:'middle'}}/>
+                            {l}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                     {now>0&&<span style={{fontFamily:F.sans,fontSize:11,color:'#dc2626',fontWeight:700}}>⚡ {now} ya</span>}
@@ -1057,7 +1099,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                       <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>{p.stock} {p.unit}</div>
                     </div>
                     <div style={{fontFamily:F.sans,fontSize:12,fontWeight:600,color:'#d97706',flexShrink:0}}>
-                      {fmtUSD((p.stock||0)*(p.unitCost||0))}
+                      {fmt.currencyCompact((p.stock||0)*(p.unitCost||0))}
                     </div>
                   </div>
                 ))}

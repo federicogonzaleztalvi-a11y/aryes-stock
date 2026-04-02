@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 
 function AuditTab(){
   const { auditLogs: logs } = useApp();
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const [filtroUser,setFiltroUser]=useState("todos");
   const [filtroTipo,setFiltroTipo]=useState("todos");
   const [busq,setBusq]=useState("");

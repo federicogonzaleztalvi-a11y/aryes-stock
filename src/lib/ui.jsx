@@ -18,7 +18,7 @@ export const T = {
   textMd:   "#3a3a38",
   textSm:   "#6a6a68",
   textXs:   "#9a9a98",
-  green:    "#3a7d1e",
+  green:    "#1a8a3c",
   greenBg:  "#f0f7ec",
   greenBd:  "#b8d9a8",
   amber:    "#d97706",
@@ -89,7 +89,7 @@ export const fmtShort = d => d ? new Date(d).toLocaleDateString("es-UY",{day:"2-
 
 // ── Atoms ────────────────────────────────────────────────────────────────────
 export const Cap = ({children,style:sx}) => (
-  <span style={{fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase",color:T.textSm,...sx}}>{children}</span>
+  <span style={{fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.04em",textTransform:"none",color:T.textSm,...sx}}>{children}</span>
 );
 
 export const AlertPill = ({level}) => {
@@ -154,7 +154,7 @@ export const Btn = ({onClick,children,variant="primary",small,full,disabled}) =>
   }[variant] || {bg:T.green, cl:"#fff", bd:T.green};
   return (
     <button onClick={onClick} disabled={disabled}
-      style={{background:v.bg,color:v.cl,border:`1px solid ${v.bd}`,fontFamily:T.sans,fontSize:small?11:12,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",padding:small?"6px 12px":"10px 22px",cursor:disabled?"default":"pointer",display:"inline-flex",alignItems:"center",gap:6,justifyContent:"center",width:full?"100%":"auto",opacity:disabled?.4:1,borderRadius:4,transition:"opacity .15s"}}>
+      style={{background:v.bg,color:v.cl,border:`1px solid ${v.bd}`,fontFamily:T.sans,fontSize:small?11:12,fontWeight:600,letterSpacing:"0.01em",textTransform:"none",padding:small?"6px 12px":"10px 22px",cursor:disabled?"default":"pointer",display:"inline-flex",alignItems:"center",gap:6,justifyContent:"center",width:full?"100%":"auto",opacity:disabled?.4:1,borderRadius:4,transition:"opacity .15s"}}>
       {children}
     </button>
   );
@@ -210,7 +210,7 @@ export function ComingSoon({ title, description, icon = '🔧' }) {
       <h2 style={{ fontFamily: 'Playfair Display,serif', fontSize: 28, color: '#1a1a18', margin: '0 0 12px' }}>
         {title}
       </h2>
-      <div style={{ display: 'inline-block', background: '#f0f9f0', color: '#3a7d1e', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', padding: '4px 12px', borderRadius: 20, marginBottom: 20 }}>
+      <div style={{ display: 'inline-block', background: '#f0f9f0', color: '#1a8a3c', fontSize: 11, fontWeight: 700, letterSpacing: '0.01em', textTransform: 'none', padding: '4px 12px', borderRadius: 20, marginBottom: 20 }}>
         Próximamente
       </div>
       {description && (

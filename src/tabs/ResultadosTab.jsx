@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
+import { fmt } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-const G    = '#3a7d1e';
+const G    = '#1a8a3c';
 const RED  = '#dc2626';
 const AMB  = '#d97706';
 const F    = { sans:"'DM Sans','Inter',system-ui,sans-serif", serif:"'Playfair Display',Georgia,serif" };
 
 const fmtM = (n, cur='UYU') => {
   const sym = cur==='USD'?'US$':cur==='EUR'?'€':'$';
-  return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+  return `${sym} ${fmt.int(n||0)}`;
 };
 const fmtPct = n => `${Number(n||0).toFixed(1)}%`;
 

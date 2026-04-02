@@ -2,10 +2,11 @@
 // MercadoLibre-style: shows exactly where each order is in the pipeline
 
 import React from 'react';
+import { fmt } from '../lib/constants.js';
 import { downloadCSV } from '../lib/ui.jsx';
 import { T, Cap, Btn, fmtDate, fmtShort } from '../lib/ui.jsx';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 const PHASES = [
   { key: 'preparation', label: 'Preparacion', icon: '📦', color: '#3b82f6' },
   { key: 'customs',     label: 'Aduana',      icon: '🛃', color: '#8b5cf6' },
@@ -101,7 +102,6 @@ function PedidosInline({ orders, getSup, markDelivered, setTab }) {
 
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:12 }}>
         <div>
-          <Cap style={{ color:T.green }}>Transito internacional</Cap>
           <h1 style={{ fontFamily:T.serif, fontSize:40, fontWeight:500, color:T.text, marginTop:4, letterSpacing:'-.02em' }}>
             Pedidos a proveedores
           </h1>
@@ -122,7 +122,7 @@ function PedidosInline({ orders, getSup, markDelivered, setTab }) {
           { l:'Con atraso',  v:late.length,       c:'#dc2626' },
           { l:'Recibidos',   v:delivered.length,  c:G },
         ].map(s=>(
-          <div key={s.l} style={{ background:'#fff', borderRadius:10, padding:'14px 18px', boxShadow:'0 1px 4px rgba(0,0,0,.06)', borderLeft:`3px solid ${s.c}` }}>
+          <div key={s.l} style={{ background:'#fff', borderRadius:10, padding:'14px 18px', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
             <div style={{ fontSize:11, color:'#888', textTransform:'uppercase', letterSpacing:.5, marginBottom:4 }}>{s.l}</div>
             <div style={{ fontSize:24, fontWeight:800, color:s.c }}>{s.v}</div>
           </div>
@@ -183,7 +183,7 @@ function PedidosInline({ orders, getSup, markDelivered, setTab }) {
                   </div>
                   <div style={{ textAlign:'right', flexShrink:0 }}>
                     <div style={{ fontSize:13, fontWeight:700, color:'#1a1a18', marginBottom:2 }}>
-                      USD {Number(o.totalCost||0).toLocaleString('es-UY')}
+                      USD {fmt.int(o.totalCost||0)}
                     </div>
                     <div style={{ fontSize:11, fontWeight:700, color:isLate?'#dc2626':isSoon?'#d97706':G }}>
                       {o.status==='delivered'?'Recibido':

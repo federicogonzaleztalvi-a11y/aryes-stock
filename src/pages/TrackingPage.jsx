@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SB_URL, SKEY } from '../lib/constants.js';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 const F = { sans: "'Inter',system-ui,sans-serif" };
 
 const STATUS = {
@@ -63,7 +63,20 @@ export default function TrackingPage() {
         etaMins = Math.max(0, (aheadPend + 1) * minsPorParada - elapsed);
       }
 
-      setData({ entrega, ruta, aheadPend, etaMins });
+
+      // Cargar ubicación GPS del repartidor
+      let lat = null, lng = null;
+      try {
+        const gpsRes = await fetch(
+          `${SB_URL}/rest/v1/driver_locations?ruta_id=eq.${rutaId}&org_id=eq.${orgId}&limit=1&order=updated_at.desc`,
+          { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }
+        );
+        if (gpsRes.ok) {
+          const gpsData = await gpsRes.json();
+          if (gpsData?.[0]) { lat = gpsData[0].lat; lng = gpsData[0].lng; }
+        }
+      } catch {}
+      setData({ entrega, ruta, aheadPend, etaMins, driverLat: lat, driverLng: lng });
       setLastUpd(new Date());
     } catch {
       if (!silent) setError('Error al cargar. Verifica tu conexion.');
@@ -287,6 +300,23 @@ export default function TrackingPage() {
         </div>
 
       </div>
+    
+      {/* ── Mapa GPS del repartidor ── */}
+      {data?.driverLat && data?.driverLng && (
+        <div style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+          <div style={{ fontSize: 11, color: '#6b7280', padding: '6px 12px', background: '#f9fafb',
+            borderBottom: '1px solid #f3f4f6', fontWeight: 600 }}>
+            📍 Ubicación del repartidor (actualiza cada 60s)
+          </div>
+          <iframe
+            title="Mapa repartidor"
+            width="100%" height="220"
+            style={{ border: 'none', display: 'block' }}
+            src={`https://maps.google.com/maps?q=${data.driverLat},${data.driverLng}&z=15&output=embed`}
+            loading="lazy"
+          />
+        </div>
+      )}
     </div>
   );
 }

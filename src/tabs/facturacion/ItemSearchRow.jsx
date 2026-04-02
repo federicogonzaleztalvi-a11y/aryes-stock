@@ -121,7 +121,7 @@ function ItemSearchRow({ productos, onAdd }) {
                     </span>
                     {(p.salePrice||p.unitCost) > 0 && (
                       <span style={{ fontFamily:F.mono, fontSize:13, fontWeight:700, color:G }}>
-                        {fmtMoney(p.salePrice||p.unitCost)}
+                        {fmt.currency(p.salePrice||p.unitCost)}
                       </span>
                     )}
                   </div>

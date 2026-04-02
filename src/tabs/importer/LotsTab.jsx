@@ -53,7 +53,7 @@ const LotsTab=({products,session})=>{
           <div style={{fontSize:11,letterSpacing:'.1em',color:'#9a9a98',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Control de calidad</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:500,color:'#1a1a18',margin:0}}>Lotes y Vencimientos</h1>
         </div>
-        {canEdit&&<button onClick={()=>{setEditing('new');setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');}} style={{padding:'9px 18px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Registrar lote</button>}
+        {canEdit&&<button onClick={()=>{setEditing('new');setForm({lotNumber:'',quantity:'',expiryDate:'',notes:''});setSelProd('');}} style={{padding:'9px 18px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Registrar lote</button>}
       </div>
       {(expired>0||expiring>0)&&<div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>
         {expired>0&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 18px',display:'flex',gap:10,alignItems:'center'}}><span style={{fontSize:20}}>🚨</span><div><div style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>{expired} lote{expired>1?'s':''} vencido{expired>1?'s':''}</div><div style={{fontSize:11,color:'#9a9a98'}}>Revisar y dar de baja</div></div></div>}
@@ -64,7 +64,7 @@ const LotsTab=({products,session})=>{
           <button key={v} onClick={()=>setFilter(v)} style={{padding:'7px 14px',background:filter===v?'#1a1a18':'#f0f0ec',color:filter===v?'#fff':'#6a6a68',border:'none',borderRadius:20,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>{l}{c>0&&' ('+c+')'}</button>
         ))}
       </div>
-      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#3a7d1e':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
+      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#1a8a3c':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
       {editing&&(
         <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:24,marginBottom:20}}>
           <h3 style={{fontSize:15,fontWeight:600,margin:'0 0 16px'}}>{editing==='new'?'Nuevo lote':'Editar lote'}</h3>
@@ -85,7 +85,7 @@ const LotsTab=({products,session})=>{
             ))}
           </div>
           <div style={{display:'flex',gap:10}}>
-            <button onClick={save} style={{padding:'9px 20px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
+            <button onClick={save} style={{padding:'9px 20px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
             <button onClick={()=>setEditing(null)} style={{padding:'9px 20px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancelar</button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { LS } from '../lib/constants.js';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // ── SmartToasts ──────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function SmartToasts({ critN = 0, orders: _orders = [] }) {
 
     // Overdue invoices — read from localStorage
     try {
-      const cfes = JSON.parse(localStorage.getItem('aryes-cfe') || '[]');
+      const cfes = LS.get('aryes-cfe', []);
       const overdueCount = cfes.filter(f =>
         ['emitida', 'cobrado_parcial'].includes(f.status) &&
         f.fechaVenc &&

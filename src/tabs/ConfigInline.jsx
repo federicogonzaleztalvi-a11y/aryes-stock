@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import UsersTab from './UsersTab.jsx';
+import RolesTab from './config/RolesTab.jsx';
 import { db } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 
@@ -16,7 +17,7 @@ export default function ConfigInline({
   const [localBrand, setLocalBrand] = useState({
     name:       brandCfg.name       || '',
     logoUrl:    brandCfg.logoUrl    || '',
-    color:      brandCfg.color      || '#3a7d1e',
+    color:      brandCfg.color      || '#1a8a3c',
     ownerPhone: brandCfg.ownerPhone || '',
     rut:        brandCfg.rut        || '',
     direccion:  brandCfg.direccion  || '',
@@ -31,7 +32,7 @@ export default function ConfigInline({
     setLocalBrand({
       name:       brandCfg.name       || '',
       logoUrl:    brandCfg.logoUrl    || '',
-      color:      brandCfg.color      || '#3a7d1e',
+      color:      brandCfg.color      || '#1a8a3c',
       ownerPhone: brandCfg.ownerPhone || '',
       rut:        brandCfg.rut        || '',
       direccion:  brandCfg.direccion  || '',
@@ -76,7 +77,7 @@ export default function ConfigInline({
         <div>
           {/* Sub-tab bar */}
           <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:600,marginBottom:24}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"marca",l:"Marca y empresa"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Tiempos de flete"},{id:"email",l:"Notificaciones email"},{id:"integraciones",l:"Integraciones"}].map(st=>(
+            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
@@ -88,6 +89,10 @@ export default function ConfigInline({
           {/* ── USUARIOS ─────────────────────────────────────────────────── */}
           {settingsTab==="usuarios" && (
             <UsersTab session={session} />
+          )}
+
+          {settingsTab==="roles" && (
+            <RolesTab session={session} />
           )}
 
           {/* ── MARCA ─────────────────────────────────────────────────────── */}
@@ -130,16 +135,16 @@ export default function ConfigInline({
                   <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Color principal</label>
                   <div style={{display:'flex',gap:10,alignItems:'center'}}>
                     <input type='color'
-                      value={localBrand.color||'#3a7d1e'}
+                      value={localBrand.color||'#1a8a3c'}
                       onChange={e=>setLocalBrand(b=>({...b,color:e.target.value}))}
                       style={{width:48,height:36,padding:2,border:'1px solid #e2e2de',borderRadius:6,cursor:'pointer'}}
                     />
                     <input
-                      value={localBrand.color||'#3a7d1e'}
+                      value={localBrand.color||'#1a8a3c'}
                       onChange={e=>setLocalBrand(b=>({...b,color:e.target.value}))}
                       style={{...inp2,width:120}}
                     />
-                    <div style={{padding:'6px 14px',borderRadius:6,background:localBrand.color||'#3a7d1e',color:'#fff',fontSize:12,fontWeight:600}}>
+                    <div style={{padding:'6px 14px',borderRadius:6,background:localBrand.color||'#1a8a3c',color:'#fff',fontSize:12,fontWeight:600}}>
                       Vista previa
                     </div>
                   </div>
@@ -203,10 +208,10 @@ export default function ConfigInline({
 
                 <div style={{paddingTop:8,borderTop:'1px solid #e2e2de',display:'flex',alignItems:'center',gap:12}}>
                   <button onClick={saveBrand} disabled={brandSaving}
-                    style={{padding:'9px 24px',background:brandSaving?'#9ca3af':(localBrand.color||'#3a7d1e'),color:'#fff',border:'none',borderRadius:8,cursor:brandSaving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
+                    style={{padding:'9px 24px',background:brandSaving?'#9ca3af':(localBrand.color||'#1a8a3c'),color:'#fff',border:'none',borderRadius:8,cursor:brandSaving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
                     {brandSaving?'Guardando…':'Guardar marca'}
                   </button>
-                  {brandSaved && <span style={{color:'#3a7d1e',fontSize:13,fontWeight:600}}>✓ Guardado</span>}
+                  {brandSaved && <span style={{color:'#1a8a3c',fontSize:13,fontWeight:600}}>✓ Guardado</span>}
                 </div>
               </div>
             </div>
@@ -277,7 +282,7 @@ export default function ConfigInline({
                   {id:'sicfe',name:'Sicfe',desc:'Más de 11.000 clientes en Uruguay. Integración vía API REST.',logo:'🔒'}
                 ].map(p=>(
                   <div key={p.id} style={{border:'1.5px solid #e2e2de',borderRadius:10,padding:'16px 18px',display:'flex',alignItems:'center',gap:14,cursor:'pointer',transition:'border-color .15s'}}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor='#3a7d1e'}
+                    onMouseEnter={e=>e.currentTarget.style.borderColor='#1a8a3c'}
                     onMouseLeave={e=>e.currentTarget.style.borderColor='#e2e2de'}>
                     <span style={{fontSize:28}}>{p.logo}</span>
                     <div style={{flex:1}}>
@@ -288,7 +293,7 @@ export default function ConfigInline({
                   </div>
                 ))}
                 <div style={{background:'#f9f9f7',borderRadius:8,padding:'12px 16px',fontFamily:'DM Sans,Inter,sans-serif',fontSize:12,color:'#6a6a68'}}>
-                  ¿Tenés contrato con otro proveedor habilitado por DGI? <span style={{color:'#3a7d1e',fontWeight:600,cursor:'pointer'}}>Contactanos →</span>
+                  ¿Tenés contrato con otro proveedor habilitado por DGI? <span style={{color:'#1a8a3c',fontWeight:600,cursor:'pointer'}}>Contactanos →</span>
                 </div>
               </div>
             </div>

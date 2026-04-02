@@ -1,7 +1,7 @@
 import React from 'react';
 import { T } from '../lib/ui.jsx';
 
-function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setTab, handleLogout }) {
+function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setTab, handleLogout, onResumenWA }) {
   const ref = React.useRef(null);
 
   React.useEffect(() => {
@@ -73,6 +73,18 @@ function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setT
           >
             🛍  Ver catálogo público
           </button>
+          <div style={{ borderTop:`1px solid ${T.border}`, margin:'4px 0' }} />
+          {onResumenWA && (
+            <button
+              onClick={() => { setUserMenuOpen(false); onResumenWA(); }}
+              style={{ width:'100%', textAlign:'left', padding:'10px 16px', background:'none',
+                border:'none', fontFamily:T.sans, fontSize:13, color:T.textMd, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:8 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Resumen del día
+            </button>
+          )}
           <div style={{ borderTop:`1px solid ${T.border}`, margin:'4px 0' }} />
           <button
             onClick={() => { setUserMenuOpen(false); handleLogout(); }}

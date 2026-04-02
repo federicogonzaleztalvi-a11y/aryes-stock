@@ -4,7 +4,7 @@ import { LS } from '../lib/constants.js';
 
 function DepositoTab(){
   const { products: prods , lotes} = useApp();
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const KDEP="aryes-deposito";
   const ZONAS=[{id:'A',label:'Zona A - Ambiente',color:'#3b82f6'},{id:'F',label:'Zona F - Frio/Freezer',color:'#06b6d4'}];
   const [config,setConfig]=useState(()=>LS.get(KDEP,{pasillos:8,estantes:4,niveles:3,posiciones:6,zonas:['A','F']}));
@@ -88,8 +88,8 @@ function DepositoTab(){
   });
   const [pickingList,setPickingList]=useState([]);
   const [showPicking,setShowPicking]=useState(()=>{
-    const pending=JSON.parse(localStorage.getItem('aryes-picking-pendiente-check')||'false');
-    localStorage.removeItem('aryes-picking-pendiente-check');
+    const pending=LS.get('aryes-picking-pendiente-check', false);
+    LS.remove('aryes-picking-pendiente-check');
     return pending||LS.get('aryes-picking-pendiente',[]).length>0;
   });
 

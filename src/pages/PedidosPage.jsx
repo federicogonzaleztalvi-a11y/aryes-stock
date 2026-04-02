@@ -1,26 +1,84 @@
-// →→ PedidosPage → Portal de pedidos B2B con autenticación OTP por teléfono →→
+// ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { fmt } from '../lib/constants.js';
 
-const G           = '#3a7d1e';
-const API         = import.meta.env.VITE_API_BASE || '';
-const ORG         = 'aryes';
-const SESSION_KEY = 'aryes-pedidos-session';
-
-const fmtUSD = n => 'US$ ' + Number(n).toLocaleString('es-UY', {
-  minimumFractionDigits: 2, maximumFractionDigits: 2,
-});
+const G    = '#1a8a3c';
+const SANS = "'DM Sans','Inter',system-ui,sans-serif";
+const API  = import.meta.env.VITE_API_BASE || '';
+const ORG  = 'aryes';
+const SK   = 'aryes-pedidos-session';
 
 function loadSession() {
   try {
-    const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    const s = JSON.parse(localStorage.getItem(SK) || 'null');
     if (!s?.expiresAt) return null;
-    if (new Date(s.expiresAt) < new Date()) { localStorage.removeItem(SESSION_KEY); return null; }
+    if (new Date(s.expiresAt) < new Date()) { localStorage.removeItem(SK); return null; }
     return s;
   } catch { return null; }
 }
-function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function saveSession(s) { localStorage.setItem(SK, JSON.stringify(s)); }
 
-// →→ LoginStep →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
+const PAISES = [
+  { code: 'UY', label: 'UY', prefix: '598', flag: '🇺🇾' },
+  { code: 'AR', label: 'AR', prefix: '54',  flag: '🇦🇷' },
+  { code: 'CL', label: 'CL', prefix: '56',  flag: '🇨🇱' },
+  { code: 'BR', label: 'BR', prefix: '55',  flag: '🇧🇷' },
+  { code: 'CO', label: 'CO', prefix: '57',  flag: '🇨🇴' },
+  { code: 'MX', label: 'MX', prefix: '52',  flag: '🇲🇽' },
+  { code: 'PE', label: 'PE', prefix: '51',  flag: '🇵🇪' },
+  { code: 'PY', label: 'PY', prefix: '595', flag: '🇵🇾' },
+  { code: 'BO', label: 'BO', prefix: '591', flag: '🇧🇴' },
+  { code: 'EC', label: 'EC', prefix: '593', flag: '🇪🇨' },
+];
+
+function PhoneInput({ value, onChange, placeholder = '9X XXX XXX', style = {} }) {
+  const [pais,   setPais]   = useState('UY');
+  const [numero, setNumero] = useState('');
+  const selected = PAISES.find(p => p.code === pais) || PAISES[0];
+
+  const handleChange = (num) => {
+    setNumero(num);
+    const clean = num.replace(/\D/g, '');
+    onChange(clean ? `+${selected.prefix}${clean}` : '');
+  };
+
+  const handlePais = (code) => {
+    setPais(code);
+    const found = PAISES.find(p => p.code === code) || PAISES[0];
+    const clean = numero.replace(/\D/g, '');
+    onChange(clean ? `+${found.prefix}${clean}` : '');
+  };
+
+  return (
+    <div style={{ display: 'flex', border: '1px solid #e0e0d8', borderRadius: 8,
+      overflow: 'hidden', background: '#fafaf7', ...style }}>
+      <select value={pais} onChange={e => handlePais(e.target.value)}
+        style={{ border: 'none', background: 'transparent', padding: '9px 6px 9px 10px',
+          fontSize: 13, fontFamily: SANS, color: '#1a1a18', cursor: 'pointer',
+          outline: 'none', borderRight: '1px solid #e0e0d8', flexShrink: 0 }}>
+        {PAISES.map(p => (
+          <option key={p.code} value={p.code}>{p.flag} +{p.prefix}</option>
+        ))}
+      </select>
+      <input type="tel" value={numero} onChange={e => handleChange(e.target.value)}
+        placeholder={placeholder}
+        style={{ flex: 1, border: 'none', background: 'transparent',
+          padding: '9px 12px', fontSize: 13, fontFamily: SANS,
+          color: '#1a1a18', outline: 'none', minWidth: 0 }} />
+    </div>
+  );
+}
+
+const Icon = {
+  cart:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.96 1.61h9.72a2 2 0 001.95-1.56L23 6H6"/></svg>,
+  history: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  search:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  logo:    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
+  check:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
+  repeat:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>,
+};
+
+// ── Login ─────────────────────────────────────────────────────────────────────
 function LoginStep({ onLogin }) {
   const [tel,     setTel]     = useState('');
   const [code,    setCode]    = useState('');
@@ -31,400 +89,223 @@ function LoginStep({ onLogin }) {
   const [err,     setErr]     = useState('');
 
   const sendOTP = async () => {
-    if (!tel.trim()) { setErr('Ingresá tu número de WhatsApp'); return; }
+    if (!tel.trim()) { setErr('Ingresa tu numero de WhatsApp'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/otp-send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tel: tel.trim(), org: ORG }),
+        body: JSON.stringify({ tel: tel.replace(/\D/g,''), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Error al enviar el código'); return; }
+      if (!r.ok) { setErr(d.error || 'Error al enviar el codigo'); return; }
       setNombre(d.clienteNombre || '');
       if (d._devMode && d.code) setDevCode(d.code);
       setStep('code');
-    } catch { setErr('Error de conexión.'); }
+    } catch { setErr('Error de conexion.'); }
     finally { setLoading(false); }
   };
 
   const verifyOTP = async () => {
-    if (!code.trim()) { setErr('Ingresá el código recibido'); return; }
+    if (!code.trim()) { setErr('Ingresa el codigo recibido'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/otp-verify`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tel: tel.trim(), code: code.trim(), org: ORG }),
+        body: JSON.stringify({ tel: tel.replace(/\D/g,''), code: code.trim(), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Código incorrecto'); return; }
+      if (!r.ok) { setErr(d.error || 'Codigo incorrecto'); return; }
       saveSession(d.session); onLogin(d.session);
-    } catch { setErr('Error de conexión.'); }
+    } catch { setErr('Error de conexion.'); }
     finally { setLoading(false); }
   };
 
-  const inp = { width: '100%', padding: '14px 16px', border: '2px solid #e5e7eb',
-    borderRadius: 12, fontSize: 16, fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box', transition: 'border-color .15s' };
+  return (
+    <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: '100%', maxWidth: 380 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ width: 48, height: 48, background: G, borderRadius: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+            {Icon.logo}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>
+            Portal de pedidos
+          </div>
+          <div style={{ fontSize: 13, color: '#9a9a92' }}>
+            {step === 'tel' ? 'Ingresa tu numero para recibir un codigo' : `Enviamos un codigo a ${tel}`}
+          </div>
+        </div>
+
+        <div style={{ maxWidth: 340, margin: '0 auto', width: '100%' }}>
+          {err && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
+              padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#dc2626' }}>
+              {err}
+            </div>
+          )}
+
+          {step === 'tel' ? (
+            <>
+              <div style={{ marginBottom: 8, fontSize: 12, color: '#9a9a92', letterSpacing: '0.1px' }}>
+                Numero de WhatsApp
+              </div>
+              <PhoneInput value={tel} onChange={setTel} placeholder="9X XXX XXX"
+                style={{ marginBottom: 16 }} />
+              <button onClick={sendOTP} disabled={loading} style={{
+                width: '100%', padding: '11px 0', background: loading ? '#b0b0a8' : G,
+                color: '#fff', border: 'none', borderRadius: 50, fontSize: 14,
+                fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: SANS,
+                letterSpacing: '0.1px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: 8,
+              }}>
+                {loading ? 'Enviando...' : (
+                  <>
+                    Enviar codigo
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                      <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              {nombre && (
+                <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '9px 14px',
+                  marginBottom: 16, fontSize: 13, color: G, fontWeight: 500,
+                  display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {Icon.check} Hola, {nombre.split(' ')[0]}
+                </div>
+              )}
+              {devCode && (
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
+                  padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#92400e' }}>
+                  Dev - codigo: <strong style={{ fontSize: 18, letterSpacing: 4 }}>{devCode}</strong>
+                </div>
+              )}
+              <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#6a6a68' }}>
+                Codigo de 4 digitos
+              </div>
+              <input type="text" inputMode="numeric" placeholder="0000"
+                value={code}
+                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onKeyDown={e => e.key === 'Enter' && verifyOTP()} autoFocus
+                style={{ width: '100%', padding: '12px', border: '1px solid #e0e0d8',
+                  borderRadius: 10, fontSize: 28, fontFamily: 'monospace', fontWeight: 700,
+                  textAlign: 'center', letterSpacing: 12, marginBottom: 16,
+                  boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
+              <button onClick={verifyOTP} disabled={loading} style={{
+                width: '100%', padding: '11px 0', background: loading ? '#b0b0a8' : G,
+                color: '#fff', border: 'none', borderRadius: 50, fontSize: 14,
+                fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
+                fontFamily: SANS, marginBottom: 10, letterSpacing: '0.1px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+                {loading ? 'Verificando...' : (
+                  <>
+                    Ingresar
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                      <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  </>
+                )}
+              </button>
+              <button onClick={() => { setStep('tel'); setCode(''); setErr(''); setDevCode(''); }}
+                style={{ width: '100%', padding: '9px 0', background: 'transparent',
+                  border: 'none', borderRadius: 50, fontSize: 13,
+                  color: '#9a9a92', cursor: 'pointer', fontFamily: SANS,
+                  textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                Cambiar numero
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Product Card ──────────────────────────────────────────────────────────────
+function ProductCard({ item, qty, onAdd, onRemove }) {
+  const [imgErr, setImgErr] = useState(false);
+  const hasImg = item.imagen_url && !imgErr;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: '40px 36px',
-        maxWidth: 400, width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 40, marginBottom: 8 }}>📊¿</div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 26,
-            fontWeight: 700, color: '#1a1a1a', marginBottom: 6 }}>Aryes</div>
-          <div style={{ fontSize: 13, color: '#6b7280' }}>Portal de pedidos para clientes</div>
+    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
+      overflow: 'hidden', display: 'flex', flexDirection: 'column',
+      transition: 'border-color .15s' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#c8c8c0'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = '#efefeb'}>
+      <div style={{ height: 140, background: hasImg ? '#f8f8f5' : '#f4f4f0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {hasImg
+          ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
+              style={{ maxHeight: 110, maxWidth: '80%', objectFit: 'contain' }} />
+          : <div style={{ textAlign: 'center' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 8, background: G + '18',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 6px', fontSize: 13, fontWeight: 700, color: G }}>
+                {(item.marca || item.categoria || '?').slice(0, 2).toUpperCase()}
+              </div>
+              {item.marca && <div style={{ fontSize: 9, color: '#b0b0a8', fontWeight: 600, letterSpacing: .4 }}>{item.marca.toUpperCase()}</div>}
+            </div>
+        }
+      </div>
+      <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ fontSize: 9, color: '#a0a098', letterSpacing: .3 }}>{item.categoria}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3, flex: 1 }}>
+          {item.nombre}
         </div>
-        {err && <div style={{ background: '#fef2f2', border: '1px solid #fecaca',
-          borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-          fontSize: 13, color: '#dc2626', fontWeight: 600 }}>{err}</div>}
-        {step === 'tel' ? (
-          <>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151',
-              textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 8 }}>
-              Tu número de WhatsApp
-            </label>
-            <input type="tel" placeholder="+598 9X XXX XXX" value={tel}
-              onChange={e => setTel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendOTP()} style={inp}
-              onFocus={e => e.target.style.borderColor = G}
-              onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: '8px 0 20px' }}>
-              Ingresá el número que registraste con Aryes.
-            </p>
-            <button onClick={sendOTP} disabled={loading}
-              style={{ width: '100%', padding: '14px 0', background: loading ? '#9ca3af' : G,
-                color: '#fff', border: 'none', borderRadius: 12, fontSize: 15,
-                fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? 'Enviando...' : 'Enviar código →'}
-            </button>
-          </>
+        <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
+          {item.precio > 0 ? fmt.currencyCompact(item.precio) : <span style={{ fontSize: 12, color: '#a0a098' }}>Consultar</span>}
+          {item.precio > 0 && <span style={{ fontSize: 10, color: '#a0a098', fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+        </div>
+        {qty > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <button onClick={() => onRemove(item)} style={{
+              width: 30, height: 30, border: `1.5px solid ${G}`, borderRadius: 8,
+              background: '#fff', color: G, fontSize: 16, cursor: 'pointer', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+            }}>-</button>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18', flex: 1, textAlign: 'center' }}>{qty}</span>
+            <button onClick={() => onAdd(item)} style={{
+              width: 30, height: 30, background: G, border: 'none', borderRadius: 8,
+              color: '#fff', fontSize: 16, cursor: 'pointer', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+            }}>+</button>
+          </div>
         ) : (
-          <>
-            {nombre && <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0',
-              borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-              fontSize: 14, color: G, fontWeight: 600 }}>
-              ¡Hola, {nombre.split(' ')[0]}! 📊
-            </div>}
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151',
-              textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 8 }}>
-              Código de acceso
-            </label>
-            {devCode && <div style={{ background: '#fffbeb', border: '1px solid #fde68a',
-              borderRadius: 8, padding: '8px 12px', marginBottom: 12,
-              fontSize: 12, color: '#92400e' }}>
-              📊§ Modo dev → tu código:{' '}
-              <strong style={{ fontSize: 18, letterSpacing: 4 }}>{devCode}</strong>
-            </div>}
-            <input type="text" inputMode="numeric" placeholder="1234"
-              value={code} onChange={e => setCode(e.target.value.replace(/\D/g,'').slice(0,4))}
-              onKeyDown={e => e.key === 'Enter' && verifyOTP()} autoFocus
-              style={{ ...inp, fontSize: 28, textAlign: 'center', letterSpacing: 12, fontWeight: 700 }}
-              onFocus={e => e.target.style.borderColor = G}
-              onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: '8px 0 20px' }}>
-              Código de 4 dígitos. Válido por 10 minutos.
-            </p>
-            <button onClick={verifyOTP} disabled={loading}
-              style={{ width: '100%', padding: '14px 0', background: loading ? '#9ca3af' : G,
-                color: '#fff', border: 'none', borderRadius: 12, fontSize: 15,
-                fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', marginBottom: 12 }}>
-              {loading ? 'Verificando...' : 'Ingresar al catálogo →'}
-            </button>
-            <button onClick={() => { setStep('tel'); setCode(''); setErr(''); setDevCode(''); }}
-              style={{ width: '100%', padding: '10px 0', background: '#f9fafb',
-                border: '1px solid #e5e7eb', borderRadius: 12, fontSize: 13,
-                color: '#6b7280', cursor: 'pointer' }}>
-              → Cambiar número
-            </button>
-          </>
+          <button onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
+            marginTop: 4, padding: '7px 0',
+            background: item.precio > 0 ? G : '#f0f0ec',
+            color: item.precio > 0 ? '#fff' : '#b0b0a8',
+            border: 'none', borderRadius: 8, cursor: item.precio > 0 ? 'pointer' : 'not-allowed',
+            fontSize: 12, fontWeight: 600, fontFamily: SANS,
+          }}>
+            {item.precio > 0 ? '+ Agregar' : 'Sin precio'}
+          </button>
         )}
       </div>
     </div>
   );
 }
 
-// →→ ProductCard →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-function ProductCard({ item, qty, onAdd, onRemove }) {
-  return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0ec',
-      boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '10px 14px 0' }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#6b7280',
-          textTransform: 'uppercase', letterSpacing: .5,
-          background: '#f3f4f6', padding: '2px 8px', borderRadius: 20 }}>
-          {item.categoria}
-        </span>
-      </div>
-      <div style={{ padding: '8px 14px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a', marginBottom: 2 }}>{item.nombre}</div>
-        {item.marca && <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 8 }}>{item.marca}</div>}
-        <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>
-          {item.unidad}
-          {(item.available_stock ?? item.stock) > 0 && (item.available_stock ?? item.stock) <= 10 && (
-            <span style={{ marginLeft: 8, color: '#d97706', fontWeight: 700 }}>
-              ⚠️ últimas {item.available_stock ?? item.stock} uds.
-            </span>
-          )}
-        </div>
-        <div style={{ marginTop: 'auto' }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: G, marginBottom: 10 }}>
-            {item.precio > 0 ? fmtUSD(item.precio)
-              : <span style={{ color: '#9ca3af', fontSize: 13 }}>Consultar</span>}
-          </div>
-          {qty > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => onRemove(item)}
-                style={{ width: 32, height: 32, border: `1px solid ${G}`, borderRadius: 8,
-                  background: '#fff', color: G, fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>→</button>
-              <span style={{ fontSize: 16, fontWeight: 700, color: '#1a1a1a',
-                minWidth: 24, textAlign: 'center' }}>{qty}</span>
-              <button onClick={() => onAdd(item)}
-                style={{ width: 32, height: 32, background: G, border: 'none', borderRadius: 8,
-                  color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}>+</button>
-            </div>
-          ) : (
-            <button onClick={() => onAdd(item)} disabled={item.precio === 0}
-              style={{ width: '100%', padding: '8px 0',
-                background: item.precio > 0 ? G : '#e5e7eb',
-                color: item.precio > 0 ? '#fff' : '#9ca3af', border: 'none',
-                borderRadius: 8, cursor: item.precio > 0 ? 'pointer' : 'not-allowed',
-                fontSize: 13, fontWeight: 700 }}>
-              {item.precio > 0 ? '+ Agregar' : 'Sin precio'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// →→ HistorialPanel →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-function HistorialPanel({ orders, loading, onReordenar }) {
-  if (loading) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 20px',
-      textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
-      Cargando tus pedidos...
-    </div>
-  );
-  if (!orders.length) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 20px', textAlign: 'center' }}>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
-        Todavía no tenés pedidos
-      </div>
-      <p style={{ fontSize: 13, color: '#9ca3af' }}>Tus pedidos confirmados aparecerán acá.</p>
-    </div>
-  );
-  const BADGE = {
-    pendiente:  { label: 'Pendiente',      icon: '⏳', bg: '#fffbeb', color: '#d97706' },
-    importada:  { label: 'Confirmado',     icon: '✅', bg: '#f0fdf4', color: '#16a34a' },
-    confirmada: { label: 'Confirmado',     icon: '✅', bg: '#f0fdf4', color: '#16a34a' },
-    preparada:  { label: 'En preparacion', icon: '📦', bg: '#eff6ff', color: '#3b82f6' },
-    en_ruta:    { label: 'En camino',      icon: '🚚', bg: '#f5f3ff', color: '#7c3aed' },
-    entregada:  { label: 'Entregado',      icon: '🎉', bg: '#f0fdf4', color: '#16a34a' },
-    cancelada:  { label: 'Cancelado',      icon: '❌', bg: '#fef2f2', color: '#dc2626' },
-  };
-  return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
-      <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 16 }}>
-        {orders.length} pedido{orders.length !== 1 ? 's' : ''}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {orders.map(order => {
-          const badge  = BADGE[order.venta_estado] || BADGE[order.estado] || BADGE.pendiente;
-          const items  = Array.isArray(order.items) ? order.items : [];
-          const fecha  = new Date(order.creado_en).toLocaleDateString('es-UY', {
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit',
-          });
-          return (
-            <div key={order.id} style={{ background: '#fff', borderRadius: 12,
-              border: '1px solid #f0f0ec', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-              overflow: 'hidden' }}>
-              <div style={{ padding: '14px 18px', display: 'flex',
-                alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, color: '#9ca3af' }}>{fecha}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px',
-                      borderRadius: 20, background: badge.bg, color: badge.color }}>
-                      {badge.icon} {badge.label}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>
-                    {items.length} producto{items.length !== 1 ? 's' : ''}
-                    {order.notas && <span style={{ marginLeft: 8, color: '#d97706' }}>
-                      · 📊 {order.notas.slice(0, 40)}
-                    </span>}
-                  </div>
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: G }}>{fmtUSD(order.total)}</div>
-                {(order.venta_estado === 'entregada' || order.estado === 'importada') && onSolicitarDev && (
-                  <button onClick={() => onSolicitarDev(order)}
-                    style={{ padding: '8px 14px', background: '#fff', color: '#dc2626',
-                      border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer',
-                      fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    Devolver
-                  </button>
-                )}
-                <button onClick={() => onReordenar(order)}
-                  style={{ padding: '8px 16px', background: G, color: '#fff', border: 'none',
-                    borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                    whiteSpace: 'nowrap' }}>
-                  �🔄 Repetir pedido
-                </button>
-              </div>
-              <div style={{ padding: '0 18px 14px', borderTop: '1px solid #f3f4f6' }}>
-                {items.map((it, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between',
-                    fontSize: 12, color: '#6b7280', padding: '4px 0',
-                    borderBottom: idx < items.length - 1 ? '1px solid #f9fafb' : 'none' }}>
-                    <span>{it.cantidad || it.qty || 1} Í {it.nombre || it.descripcion}</span>
-                    <span>{fmtUSD(it.subtotal || 0)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// →→ CartPanel →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-function CartPanel({ carrito, items, session, onClose, onConfirm }) {
-  const [notas,   setNotas]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [done,    setDone]    = useState(false);
-
-  const lineas = Object.entries(carrito)
-    .filter(([, qty]) => qty > 0)
-    .map(([id, qty]) => ({ item: items.find(i => i.id === id), qty }))
-    .filter(l => l.item);
-
-  const total = lineas.reduce((s, l) => s + l.item.precio * l.qty, 0);
-
-  const confirmar = async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(`${window.location.origin}/api/pedido`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.token}`,
-        },
-        body: JSON.stringify({
-          org: ORG, clienteId: session.clienteId,
-          clienteNombre: session.nombre, clienteTelefono: session.tel,
-          items: lineas.map(l => ({
-            productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
-            cantidad: l.qty, precioUnit: l.item.precio, subtotal: l.item.precio * l.qty,
-          })),
-          total, notas,
-          idempotencyKey: `${session.tel}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-        }),
-      });
-      if (r.ok) { setDone(true); onConfirm(); }
-      else { const d = await r.json(); alert(d.error || 'Error'); }
-    } catch { alert('Error de conexión'); }
-    finally { setLoading(false); }
-  };
-
-  if (done) return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: 40,
-        maxWidth: 360, width: '100%', textAlign: 'center' }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>→</div>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22,
-          fontWeight: 700, marginBottom: 8 }}>¡Pedido enviado!</div>
-        <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-          Tu pedido fue recibido. Te avisamos cuando esté confirmado.
-        </p>
-        <button onClick={onClose}
-          style={{ padding: '12px 32px', background: G, color: '#fff', border: 'none',
-            borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
-          Ver más productos
-        </button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999 }}
-      onClick={onClose}>
-      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0,
-        width: Math.min(420, window.innerWidth), background: '#fff',
-        boxShadow: '-4px 0 24px rgba(0,0,0,.12)', display: 'flex',
-        flexDirection: 'column', overflow: 'hidden' }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 700 }}>
-            Tu pedido ({lineas.length} producto{lineas.length !== 1 ? 's' : ''})
-          </div>
-          <button onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#6b7280' }}>Í</button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
-          {lineas.map(({ item, qty }) => (
-            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #f9fafb' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{item.nombre}</div>
-                <div style={{ fontSize: 12, color: '#6b7280' }}>{qty} Í {fmtUSD(item.precio)}</div>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: G }}>{fmtUSD(item.precio * qty)}</div>
-            </div>
-          ))}
-          <div style={{ marginTop: 16 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#374151',
-              textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 6 }}>
-              Notas del pedido
-            </label>
-            <textarea value={notas} onChange={e => setNotas(e.target.value)}
-              placeholder="Ej: entregar antes del mediodía..." rows={3}
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb',
-                borderRadius: 8, fontSize: 13, fontFamily: 'inherit', resize: 'vertical',
-                boxSizing: 'border-box' }} />
-          </div>
-        </div>
-        <div style={{ padding: '16px 24px', borderTop: '2px solid #f3f4f6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-            <span style={{ fontSize: 16, fontWeight: 700 }}>Total</span>
-            <span style={{ fontSize: 22, fontWeight: 800, color: G }}>{fmtUSD(total)}</span>
-          </div>
-          <button onClick={confirmar} disabled={loading || lineas.length === 0}
-            style={{ width: '100%', padding: '14px 0',
-              background: loading || lineas.length === 0 ? '#9ca3af' : G,
-              color: '#fff', border: 'none', borderRadius: 12, fontSize: 15,
-              fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Enviando pedido...' : '→ Confirmar pedido'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// →→ Main →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-
-// →→ HistorialPedidos →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-function HistorialPedidos({ session }) {
+// ── Historial ─────────────────────────────────────────────────────────────────
+function HistorialPedidos({ session, onReordenar }) {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expand,  setExpand]  = useState(null);
 
-  const ESTADOS = {
-    pendiente:  { label: 'Pendiente',  color: '#f59e0b', bg: '#fffbeb' },
-    confirmada: { label: 'Confirmado', color: '#3b82f6', bg: '#eff6ff' },
-    preparada:  { label: 'Preparando', color: '#8b5cf6', bg: '#f5f3ff' },
+  const EST = {
+    pendiente:  { label: 'Pendiente',  color: '#d97706', bg: '#fffbeb' },
+    importada:  { label: 'Confirmado', color: '#1a8a3c', bg: '#f0fdf4' },
+    confirmada: { label: 'Confirmado', color: '#1a8a3c', bg: '#f0fdf4' },
+    preparada:  { label: 'Preparando', color: '#7c3aed', bg: '#f5f3ff' },
     en_ruta:    { label: 'En camino',  color: '#f97316', bg: '#fff7ed' },
-    entregada:  { label: 'Entregado',  color: '#3a7d1e', bg: '#f0fdf4' },
+    entregada:  { label: 'Entregado',  color: '#1a8a3c', bg: '#f0fdf4' },
     cancelada:  { label: 'Cancelado',  color: '#ef4444', bg: '#fef2f2' },
   };
 
@@ -440,66 +321,66 @@ function HistorialPedidos({ session }) {
   }, [session]);
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af', fontSize: 14 }}>
+    <div style={{ textAlign: 'center', padding: 48, color: '#9a9a92', fontSize: 14 }}>
       Cargando historial...
     </div>
   );
 
   if (!pedidos.length) return (
-    <div style={{ textAlign: 'center', padding: 40 }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-      <div style={{ fontSize: 15, color: '#6b7280', fontWeight: 600 }}>Sin pedidos aún</div>
-      <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 6 }}>Tus pedidos aparecerán acá</div>
+    <div style={{ textAlign: 'center', padding: 60 }}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>Sin pedidos aun</div>
+      <div style={{ fontSize: 13, color: '#9a9a92' }}>Tus pedidos confirmados apareceran aca</div>
     </div>
   );
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {pedidos.map(p => {
-        const est = ESTADOS[p.estado] || ESTADOS.pendiente;
+        const est   = EST[p.estado] || EST.pendiente;
         const isExp = expand === p.id;
+        const fecha = new Date(p.creado_en).toLocaleDateString('es-UY', {
+          day: '2-digit', month: 'short', year: 'numeric',
+        });
         return (
           <div key={p.id} onClick={() => setExpand(isExp ? null : p.id)}
-            style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #e5e7eb',
-              overflow: 'hidden', cursor: 'pointer',
-              boxShadow: isExp ? '0 2px 12px rgba(0,0,0,.08)' : 'none' }}>
-            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a' }}>
-                  {new Date(p.creado_en).toLocaleDateString('es-UY', { day:'2-digit', month:'short', year:'numeric' })}
-                </div>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+            style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
+              overflow: 'hidden', cursor: 'pointer' }}>
+            <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', marginBottom: 3 }}>{fecha}</div>
+                <div style={{ fontSize: 11, color: '#9a9a92' }}>
                   {Array.isArray(p.items) ? p.items.length : 0} producto{p.items?.length !== 1 ? 's' : ''}
-                  {p.notas ? ' · 📝 nota' : ''}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: G }}>{fmtUSD(p.total)}</div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: est.color,
+                <div style={{ fontSize: 16, fontWeight: 700, color: G }}>{fmt.currencyCompact(p.total)}</div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: est.color,
                   background: est.bg, padding: '2px 8px', borderRadius: 20, marginTop: 4, display: 'inline-block' }}>
                   {est.label}
                 </span>
               </div>
-              <span style={{ color: '#9ca3af', fontSize: 12 }}>{isExp ? '▲' : '▼'}</span>
+              <div style={{ color: '#c0c0b8', fontSize: 11 }}>{isExp ? '▲' : '▼'}</div>
             </div>
             {isExp && (
-              <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f3f4f6' }}>
-                <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+              <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f5f5f0' }}>
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {(p.items || []).map((it, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
-                      fontSize: 13, padding: '4px 0',
-                      borderBottom: i < p.items.length - 1 ? '1px solid #f9fafb' : 'none' }}>
-                      <span style={{ color: '#374151' }}>{it.cantidad} × {it.nombre} <span style={{ color: '#9ca3af' }}>({it.unidad})</span></span>
-                      <span style={{ fontWeight: 600, color: G }}>{fmtUSD(it.subtotal)}</span>
+                      fontSize: 12, padding: '6px 0', color: '#4a4a42',
+                      borderBottom: i < p.items.length - 1 ? '1px solid #f5f5f0' : 'none' }}>
+                      <span>{it.cantidad} x {it.nombre}</span>
+                      <span style={{ fontWeight: 600, color: G }}>{fmt.currencyCompact(it.subtotal)}</span>
                     </div>
                   ))}
                 </div>
-                {p.notas && (
-                  <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280',
-                    background: '#fffbeb', padding: '8px 10px', borderRadius: 8 }}>
-                    📝 {p.notas}
-                  </div>
-                )}
+                <button onClick={e => { e.stopPropagation(); onReordenar(p); }} style={{
+                  marginTop: 12, width: '100%', padding: '9px 0',
+                  background: '#f0fdf4', color: G, border: '1px solid #bbf7d0',
+                  borderRadius: 9, cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                  fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                  {Icon.repeat} Repetir pedido
+                </button>
               </div>
             )}
           </div>
@@ -509,25 +390,273 @@ function HistorialPedidos({ session }) {
   );
 }
 
+// ── Cart Drawer ───────────────────────────────────────────────────────────────
+function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
+  const [notas,   setNotas]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done,    setDone]    = useState(false);
+
+  const lineas = Object.entries(carrito)
+    .filter(([, qty]) => qty > 0)
+    .map(([id, qty]) => ({ item: items.find(i => i.id === id), qty }))
+    .filter(l => l.item);
+
+  const lineasConCalc = lineas.map(({ item, qty }) => {
+    const ivaRate = item.iva_rate !== undefined && item.iva_rate !== null ? Number(item.iva_rate) : 22;
+    const descPct = item.descGlobal || 0;
+    const precioConDto = descPct > 0 ? item.precio * (1 - descPct / 100) : item.precio;
+    const netoLinea = precioConDto * qty;
+    const ivaLinea = netoLinea * (ivaRate / 100);
+    return { item, qty, ivaRate, descPct, precioConDto, netoLinea, ivaLinea };
+  });
+  const subtotalNeto = lineasConCalc.reduce((s, l) => s + l.netoLinea, 0);
+  const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
+  const total = subtotalNeto + ivaTotal;
+
+  const confirmar = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${window.location.origin}/api/pedido`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.token}` },
+        body: JSON.stringify({
+          org: ORG, clienteId: session.clienteId,
+          clienteNombre: session.nombre, clienteTelefono: session.tel,
+          items: lineas.map(l => ({
+            productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
+            cantidad: l.qty, precioUnit: l.item.precio, subtotal: l.item.precio * l.qty,
+          })),
+          total, notas,
+          idempotencyKey: `${session.tel}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        }),
+      });
+      if (r.ok) { setDone(true); onConfirm(); }
+      else { const d = await r.json(); alert(d.error || 'Error'); }
+    } catch { alert('Error de conexion'); }
+    finally { setLoading(false); }
+  };
+
+  const pedidoRef = Math.random().toString(36).slice(2,8).toUpperCase();
+  const fechaHoy  = new Date().toLocaleDateString('es-UY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  if (done) return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 999,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480,
+        maxHeight: '90vh', overflowY: 'auto', fontFamily: SANS, position: 'relative' }}
+        onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: 12, right: 12, zIndex: 10,
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'rgba(255,255,255,.25)', border: 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', color: 'white',
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+
+        {/* Encabezado remito */}
+        <div style={{ background: G, padding: '24px 24px 20px', color: '#fff', borderRadius: '20px 20px 0 0', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'rgba(255,255,255,.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Pedido confirmado</div>
+              <div style={{ fontSize: 12, opacity: .8 }}>Ref. #{pedidoRef}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: .8 }}>
+            <span>{session?.nombre}</span>
+            <span>{fechaHoy}</span>
+          </div>
+        </div>
+
+        {/* Detalle de productos */}
+        <div style={{ padding: '16px 24px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#9a9a92', letterSpacing: .5, marginBottom: 10 }}>
+            DETALLE DEL PEDIDO
+          </div>
+          {lineasConCalc.map(({ item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between',
+              padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, paddingRight: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
+                <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 2 }}>
+                  {qty} × {fmt.currencyCompact(item.precio)}
+                  {descPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descPct}%</span>}
+                  <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>
+                {fmt.currencyCompact(netoLinea)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Totales */}
+        <div style={{ padding: '0 24px 16px' }}>
+          <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '12px 16px',
+            display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12, color: '#9a9a92' }}>Subtotal neto</span>
+              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(subtotalNeto)}</span>
+            </div>
+            {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
+              const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
+              return (
+                <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 12, color: '#9a9a92' }}>IVA {rate}%</span>
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(ivaDeRate)}</span>
+                </div>
+              );
+            })}
+            <div style={{ borderTop: '1px solid #e8e8e0', paddingTop: 8, marginTop: 2,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: G }}>{fmt.currencyCompact(total)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Nota */}
+        {notas && (
+          <div style={{ padding: '0 24px 16px' }}>
+            <div style={{ background: '#fffbeb', borderRadius: 8, padding: '10px 14px',
+              fontSize: 12, color: '#92400e' }}>
+              Nota: {notas}
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div style={{ padding: '0 24px 32px' }}>
+          <p style={{ fontSize: 12, color: '#9a9a92', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
+            Tu distribuidor recibio el pedido. Te avisamos cuando este confirmado.
+          </p>
+          <button onClick={onClose} style={{
+            width: '100%', padding: '12px 0', background: G, color: '#fff', border: 'none',
+            borderRadius: 50, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            Ver mas productos
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 999 }}
+      onClick={onClose}>
+      <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0,
+        width: Math.min(400, window.innerWidth), background: '#fff',
+        display: 'flex', flexDirection: 'column', fontFamily: SANS }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid #f0ede8',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18' }}>Tu pedido</div>
+            <div style={{ fontSize: 12, color: '#9a9a92', marginTop: 2 }}>
+              {lineas.length} producto{lineas.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: '#f4f4f0', border: 'none',
+            borderRadius: 8, width: 32, height: 32, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6a6a68',
+            fontSize: 18 }}>x</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+          {lineasConCalc.map(({ item, qty, ivaRate, descPct, precioConDto, netoLinea }) => (
+            <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, paddingRight: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
+                  <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span>{qty} x {fmt.currencyCompact(item.precio)}</span>
+                    {descPct > 0 && <span style={{ color: '#dc2626' }}>-{descPct}%</span>}
+                    <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  {descPct > 0 && (
+                    <div style={{ fontSize: 11, color: '#b0b0a8', textDecoration: 'line-through' }}>
+                      {fmt.currencyCompact(item.precio * qty)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 13, fontWeight: 700, color: G }}>
+                    {fmt.currencyCompact(netoLinea)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Notas del pedido</div>
+            <textarea value={notas} onChange={e => setNotas(e.target.value)}
+              placeholder="Ej: entregar antes del mediodia..."
+              rows={3} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
+                borderRadius: 8, fontSize: 13, fontFamily: SANS, resize: 'none',
+                boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
+          </div>
+        </div>
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12, color: '#9a9a92' }}>Subtotal neto</span>
+              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(subtotalNeto)}</span>
+            </div>
+            {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
+              const ivaRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
+              return (
+                <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 12, color: '#9a9a92' }}>IVA {rate}%</span>
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(ivaRate)}</span>
+                </div>
+              );
+            })}
+            <div style={{ borderTop: '0.5px solid #e8e8e0', paddingTop: 8,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: G }}>{fmt.currencyCompact(total)}</span>
+            </div>
+          </div>
+          <button onClick={confirmar} disabled={loading || lineas.length === 0} style={{
+            width: '100%', padding: '13px 0',
+            background: loading || lineas.length === 0 ? '#c8c8c0' : G,
+            color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
+            fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: SANS,
+          }}>
+            {loading ? 'Enviando...' : 'Confirmar pedido'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Pagina principal ──────────────────────────────────────────────────────────
 export default function PedidosPage() {
-  const [session,   setSession]   = useState(() => loadSession());
-  const [vista,     setVista]     = useState('catalogo');
-  const [items,     setItems]     = useState([]);
-  const [cats,      setCats]      = useState([]);
-  const [catFil,    setCatFil]    = useState('Todos');
-  const [busq,      setBusq]      = useState('');
-  const [carrito,   setCarrito]   = useState({});
-  const [tabPortal,  setTabPortal]  = useState('catalogo');
-  const [showCart,  setShowCart]  = useState(false);
-  const [loading,   setLoading]   = useState(false);
-  const [historial, setHistorial] = useState([]);
-  const [devModal,  setDevModal]  = useState(null); // order para devolver
-  const [devItems,  setDevItems]  = useState([]);   // items con cantDevolver
-  const [devMotivo, setDevMotivo] = useState('');
-  const [devNotas,  setDevNotas]  = useState('');
-  const [devLoading, setDevLoading] = useState(false);
-  const [devMsg,    setDevMsg]    = useState('');
-  const [histLoad,  setHistLoad]  = useState(false);
+  const [session,  setSession]  = useState(() => loadSession());
+  const [vista,    setVista]    = useState('catalogo');
+  const [items,    setItems]    = useState([]);
+  const [cats,     setCats]     = useState([]);
+  const [brandNombre, setBrandNombre] = useState('');
+  const [catFil,   setCatFil]   = useState('Todos');
+  const [busq,     setBusq]     = useState('');
+  const [carrito,  setCarrito]  = useState({});
+  const [showCart, setShowCart] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [ddOpen,   setDdOpen]   = useState(false);
+  const NAV_MAX = 10;
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
 
@@ -535,39 +664,25 @@ export default function PedidosPage() {
     if (!ses?.clienteId) return;
     setLoading(true);
     try {
-      const r = await fetch(
-        `${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`
-      );
+      const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`);
       const d = await r.json();
-      if (d.items) { setItems(d.items.filter(i => i.precio > 0)); setCats(['Todos', ...(d.categorias || [])]); }
-    } catch {/* silent */}
+      if (d.items) {
+        const prods = d.items.filter(i => i.precio > 0);
+        setItems(prods);
+        setCats(['Todos', ...(d.categorias || [])]);
+        if (d.brandCfg?.nombre) setBrandNombre(d.brandCfg.nombre);
+      }
+    } catch {}
     finally { setLoading(false); }
   }, []);
 
-  const loadHistorial = useCallback(async (ses) => {
-    if (!ses?.tel) return;
-    setHistLoad(true);
-    try {
-      const tel = ses.tel.replace(/\D/g, '');
-      const r = await fetch(
-        `${window.location.origin}/api/historial?tel=${encodeURIComponent(tel)}&org=${ORG}`
-      );
-      const d = await r.json();
-      if (Array.isArray(d.orders)) setHistorial(d.orders);
-    } catch {/* silent */}
-    finally { setHistLoad(false); }
-  }, []);
-
   useEffect(() => { if (session) loadCatalogo(session); }, [session, loadCatalogo]);
-  useEffect(() => {
-    if (session && vista === 'historial') loadHistorial(session);
-  }, [session, vista, loadHistorial]);
 
   const filtered = useMemo(() => items.filter(i => {
-    const matchCat  = catFil === 'Todos' || i.categoria === catFil;
-    const matchBusq = !busq || i.nombre.toLowerCase().includes(busq.toLowerCase())
+    const mCat = catFil === 'Todos' || i.categoria === catFil;
+    const mQ   = !busq || i.nombre.toLowerCase().includes(busq.toLowerCase())
       || (i.marca || '').toLowerCase().includes(busq.toLowerCase());
-    return matchCat && matchBusq;
+    return mCat && mQ;
   }), [items, catFil, busq]);
 
   const addItem    = item => setCarrito(c => ({ ...c, [item.id]: (c[item.id] || 0) + 1 }));
@@ -577,126 +692,178 @@ export default function PedidosPage() {
     return { ...c, [item.id]: q };
   });
 
-  const confirmarDevolucion = async () => {
-    const itemsADev = devItems.filter(it => Number(it.cantDevolver) > 0);
-    if (!itemsADev.length) { setDevMsg('Selecciona al menos un producto'); return; }
-    if (!devMotivo)        { setDevMsg('Indica el motivo'); return; }
-    setDevLoading(true);
-    try {
-      const r = await fetch('/api/devolucion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ventaId:       devModal.venta_id || devModal.id,
-          clienteNombre: devModal.cliente_nombre || session?.nombre || '',
-          clienteTel:    (session?.tel||'').replace(/[^0-9]/g,''),
-          motivo:        devMotivo, notas: devNotas,
-          items:         itemsADev, org: ORG,
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok) { setDevMsg(d.error || 'Error al enviar'); setDevLoading(false); return; }
-      setDevModal(null); setDevMotivo(''); setDevNotas(''); setDevItems([]);
-      alert('Solicitud enviada. Te contactaremos para coordinar la devolución.');
-    } catch { setDevMsg('Error de conexión'); }
-    setDevLoading(false);
-  };
-
   const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
-    setSession(null); setItems([]); setCarrito({}); setHistorial([]);
+    localStorage.removeItem(SK);
+    setSession(null); setItems([]); setCarrito({});
   };
 
   if (!session) return <LoginStep onLogin={ses => setSession(ses)} />;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+    <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS }}>
 
-      {/* →→ Header →→ */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb',
-        position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+      <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
+        position: 'sticky', top: 0, zIndex: 100 }} onClick={() => setDdOpen(false)}>
 
-        {/* Top bar */}
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '14px 20px',
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20,
-            fontWeight: 700, color: G, marginRight: 'auto' }}>📊¿ Aryes</div>
-          <div style={{ fontSize: 13, color: '#6b7280' }}>
-            Hola, <strong>{session.nombre.split(' ')[0]}</strong>
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 24px',
+          height: 66, display: 'flex', alignItems: 'center', gap: 16,
+          borderBottom: '0.5px solid #f0f0ec' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+            <div style={{ width: 28, height: 28, background: G, borderRadius: 7,
+              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {Icon.logo}
+            </div>
+            {brandNombre && (
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', whiteSpace: 'nowrap' }}>
+                {brandNombre}
+              </span>
+            )}
           </div>
-          <button onClick={() => totalItems > 0 && setShowCart(true)}
-            style={{ padding: '8px 16px', background: totalItems > 0 ? G : '#e5e7eb',
-              color: totalItems > 0 ? '#fff' : '#9ca3af', border: 'none',
-              borderRadius: 20, cursor: totalItems > 0 ? 'pointer' : 'default',
-              fontSize: 13, fontWeight: 700 }}>
-            📊 {totalItems > 0
-              ? `${totalItems} producto${totalItems !== 1 ? 's' : ''}`
-              : 'Carrito vacío'}
+          {vista === 'catalogo' ? (
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '0 16px' }}>
+              <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
+                <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#a0a098' }}>{Icon.search}</div>
+                <input value={busq} onChange={e => setBusq(e.target.value)}
+                  placeholder="Buscar producto o marca..."
+                  style={{ width: '100%', padding: '9px 16px 9px 36px',
+                    border: '1.5px solid #e0e0d8', borderRadius: 28, fontSize: 13,
+                    fontFamily: SANS, boxSizing: 'border-box', outline: 'none',
+                    background: '#f7f7f4', color: '#1a1a18' }}
+                  onFocus={e => e.target.style.borderColor = G}
+                  onBlur={e => e.target.style.borderColor = '#e0e0d8'} />
+              </div>
+            </div>
+          ) : <div style={{ flex: 1 }} />}
+          <button onClick={() => totalItems > 0 && setShowCart(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px',
+            borderRadius: 24, border: 'none', cursor: 'pointer',
+            background: totalItems > 0 ? G : '#f0f0ec',
+            color: totalItems > 0 ? '#fff' : '#9a9a92',
+            fontFamily: SANS, fontSize: 13, fontWeight: 500, flexShrink: 0,
+          }}>
+            {Icon.cart}
+            {totalItems > 0 ? `${totalItems} item${totalItems !== 1 ? 's' : ''}` : 'Carrito'}
           </button>
-          <button onClick={logout}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#9ca3af' }}>
-            Salir
-          </button>
+          <div style={{ position: 'relative', flexShrink: 0 }}
+            onMouseEnter={e => { const d = e.currentTarget.querySelector('.udd'); if(d) d.style.display='block'; }}
+            onMouseLeave={e => { const d = e.currentTarget.querySelector('.udd'); if(d) d.style.display='none'; }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '6px 8px', borderRadius: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f0fdf4',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 600, color: G, flexShrink: 0, border: '1.5px solid #bbf7d0' }}>
+                {session.nombre?.slice(0,1).toUpperCase()}
+              </div>
+              <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
+                {session.nombre?.split(' ')[0]}
+              </span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div className="udd" style={{ display: 'none', position: 'absolute', right: 0, top: '100%',
+              background: '#fff', border: '0.5px solid #e0e0d8', borderRadius: 10,
+              padding: '6px 0', minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: 300 }}>
+              <div style={{ padding: '8px 16px 6px', fontSize: 11, color: '#9a9a92', letterSpacing: .3 }}>
+                {session.nombre}
+              </div>
+              <div style={{ borderTop: '0.5px solid #f0f0ec', margin: '4px 0' }} />
+              <button onClick={() => setVista('historial')} style={{
+                display: 'flex', alignItems: 'center', gap: 9, width: '100%',
+                padding: '9px 16px', border: 'none', background: 'transparent',
+                fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='#f7f7f4'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                {Icon.history} Mis pedidos
+              </button>
+              <button onClick={logout} style={{
+                display: 'flex', alignItems: 'center', gap: 9, width: '100%',
+                padding: '9px 16px', border: 'none', background: 'transparent',
+                fontSize: 13, color: '#dc2626', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='#fef2f2'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Cerrar sesion
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 20px',
-          display: 'flex', gap: 4, borderBottom: '1px solid #f3f4f6' }}>
-          {[{id:'catalogo',label:'📊 Catálogo'},{id:'historial',label:'📊 Mis pedidos'}].map(tab => (
-            <button key={tab.id} onClick={() => setVista(tab.id)}
-              style={{ padding: '10px 18px', border: 'none', cursor: 'pointer',
-                fontSize: 13, fontWeight: 700, background: 'transparent',
-                color: vista === tab.id ? G : '#6b7280',
-                borderBottom: vista === tab.id ? `2px solid ${G}` : '2px solid transparent',
-                marginBottom: -1 }}>
-              {tab.label}
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          height: 44, position: 'relative' }} onClick={e => e.stopPropagation()}>
+          {vista === 'catalogo' && cats.slice(0, NAV_MAX).map(cat => (
+            <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
+              padding: '0 16px', height: 44, border: 'none', background: 'transparent',
+              fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS,
+              fontWeight: catFil === cat ? 500 : 400,
+              color: catFil === cat ? G : '#5a5a52',
+              borderBottom: catFil === cat ? `2px solid ${G}` : '2px solid transparent',
+              cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>
+              {cat}
             </button>
           ))}
-        </div>
+          {vista === 'catalogo' && cats.length > NAV_MAX && (
+            <div style={{ position: 'relative' }}
+              onMouseEnter={() => setDdOpen(true)}
+              onMouseLeave={() => setDdOpen(false)}>
+              <button style={{
+                padding: '0 16px', height: 44, border: 'none', background: 'transparent',
+                fontSize: 14, letterSpacing: '0.1px', cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', gap: 4,
+                color: ddOpen ? G : '#5a5a52',
+                borderBottom: cats.slice(NAV_MAX).includes(catFil) ? `2px solid ${G}` : '2px solid transparent',
+                fontWeight: cats.slice(NAV_MAX).includes(catFil) ? 500 : 400,
+              }}>
+                {cats.slice(NAV_MAX).includes(catFil) ? catFil : 'Mas'}
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ transform: ddOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              {ddOpen && (
+                <div style={{ position: 'absolute', top: 44, left: 0, background: '#fff',
+                  border: '0.5px solid #e0e0d8', borderRadius: 10, padding: '6px 0',
+                  minWidth: 200, boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: 200 }}>
+                  {cats.slice(NAV_MAX).map(cat => (
+                    <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
+                      display: 'block', width: '100%', padding: '8px 16px', border: 'none',
+                      background: catFil === cat ? '#f0fdf4' : 'transparent',
+                      fontSize: 13, color: catFil === cat ? G : '#3a3a32',
+                      textAlign: 'left', cursor: 'pointer', fontFamily: SANS,
+                      fontWeight: catFil === cat ? 500 : 400,
+                    }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Buscador → solo en catálogo */}
-        {vista === 'catalogo' && (
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '10px 20px 14px',
-            display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input placeholder="Buscar producto o marca..." value={busq}
-              onChange={e => setBusq(e.target.value)}
-              style={{ flex: 1, minWidth: 200, padding: '8px 14px',
-                border: '1px solid #e5e7eb', borderRadius: 20,
-                fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {cats.map(c => (
-                <button key={c} onClick={() => setCatFil(c)}
-                  style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid',
-                    borderColor: catFil === c ? G : '#e5e7eb',
-                    background: catFil === c ? G : '#fff',
-                    color: catFil === c ? '#fff' : '#374151',
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  {c}
-                </button>
+        </div>
+      </header>
+
+      {vista === 'catalogo' && (
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} style={{ background: '#fff', borderRadius: 14, height: 240, border: '1px solid #efefeb', opacity: 0.5 }} />
               ))}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* →→ Catálogo →→ */}
-      {vista === 'catalogo' && (
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 14 }}>
-              Cargando catálogo...
-            </div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af', fontSize: 14 }}>
-              {items.length === 0 ? 'No hay productos disponibles.' : 'Sin resultados.'}
+            <div style={{ textAlign: 'center', padding: 60, color: '#a0a098' }}>
+              <p style={{ fontSize: 14 }}>{items.length === 0 ? 'No hay productos disponibles' : `Sin resultados para "${busq}"`}</p>
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: '#a0a098', marginBottom: 14 }}>
                 {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
               </div>
-              <div style={{ display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
                 {filtered.map(item => (
                   <ProductCard key={item.id} item={item}
                     qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} />
@@ -707,71 +874,41 @@ export default function PedidosPage() {
         </div>
       )}
 
-      {/* →→ Historial →→ */}
       {vista === 'historial' && (
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px' }}>
-          <HistorialPedidos session={session} />
+        <div style={{ maxWidth: 700, margin: '0 auto', padding: '20px 24px 60px' }}>
+          <HistorialPedidos session={session} onReordenar={order => {
+            const nc = {};
+            (order.items || []).forEach(it => {
+              const id = it.id || it.productId;
+              if (id) nc[id] = it.cantidad || 1;
+            });
+            setCarrito(nc);
+            setVista('catalogo');
+            setTimeout(() => setShowCart(true), 200);
+          }} />
         </div>
       )}
 
-      {/* →→ Cart →→ */}
-      {/* →→ Modal devolucion →→ */}
-      {devModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:1000,
-          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'#fff', borderRadius:16, padding:24, maxWidth:480, width:'100%',
-            maxHeight:'90vh', overflowY:'auto' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-              <div style={{ fontSize:16, fontWeight:800, color:'#1a1a18' }}>Solicitar devolucion</div>
-              <button onClick={()=>setDevModal(null)}
-                style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#9a9a98' }}>x</button>
-            </div>
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#6a6a68', marginBottom:8, textTransform:'uppercase', letterSpacing:.5 }}>
-                Que productos queres devolver?
-              </div>
-              {devItems.map((it, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'1px solid #f3f4f6' }}>
-                  <div style={{ flex:1, fontSize:13 }}>{it.nombre || it.name}</div>
-                  <div style={{ fontSize:11, color:'#9a9a98' }}>max. {it.cantidad || it.qty}</div>
-                  <input type="number" min={0} max={it.cantidad || it.qty}
-                    value={it.cantDevolver || 0}
-                    onChange={e => {
-                      const val = Math.min(Number(e.target.value), it.cantidad || it.qty || 0);
-                      setDevItems(prev => prev.map((x,j) => j===i ? {...x, cantDevolver: val} : x));
-                    }}
-                    style={{ width:60, padding:'4px 8px', border:'1px solid #e2e2de', borderRadius:6, fontSize:13, textAlign:'center' }}
-                  />
-                </div>
-              ))}
-            </div>
-            <div style={{ marginBottom:12 }}>
-              <select value={devMotivo} onChange={e=>setDevMotivo(e.target.value)}
-                style={{ width:'100%', padding:'8px 12px', border:'1px solid #e2e2de', borderRadius:8, fontSize:13 }}>
-                <option value="">Motivo de la devolucion...</option>
-                {['Producto danado','Error en el pedido','Producto vencido','Exceso de stock','Otro'].map(m=>(
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <textarea value={devNotas} onChange={e=>setDevNotas(e.target.value)}
-              placeholder="Descripcion adicional (opcional)..." rows={2}
-              style={{ width:'100%', boxSizing:'border-box', padding:'8px 12px', border:'1px solid #e2e2de',
-                borderRadius:8, fontSize:13, resize:'none', marginBottom:12 }}
-            />
-            {devMsg && <div style={{ color:'#dc2626', fontSize:12, marginBottom:10 }}>{devMsg}</div>}
-            <button onClick={confirmarDevolucion} disabled={devLoading}
-              style={{ width:'100%', background:'#dc2626', color:'#fff', border:'none',
-                borderRadius:10, padding:'12px', fontSize:14, fontWeight:700,
-                cursor: devLoading ? 'default':'pointer', opacity: devLoading ? 0.6:1 }}>
-              {devLoading ? 'Enviando...' : 'Enviar solicitud'}
-            </button>
-          </div>
+      {totalItems > 0 && !showCart && (
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 200 }}>
+          <button onClick={() => setShowCart(true)} style={{
+            background: G, color: '#fff', border: 'none', borderRadius: '50%',
+            width: 52, height: 52, cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(26,138,60,.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+          }}>
+            {Icon.cart}
+            <span style={{ position: 'absolute', top: -3, right: -3, background: '#dc2626',
+              color: '#fff', borderRadius: '50%', width: 18, height: 18,
+              fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {totalItems}
+            </span>
+          </button>
         </div>
       )}
 
       {showCart && (
-        <CartPanel carrito={carrito} items={items} session={session}
+        <CartDrawer carrito={carrito} items={items} session={session}
           onClose={() => setShowCart(false)}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />
       )}

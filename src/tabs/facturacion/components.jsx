@@ -38,11 +38,10 @@ export const Sel = ({ children, style={}, ...p }) =>
   </select>;
 
 export const KpiCard = ({ label, value, sub, accent='#e2e2de', danger=false, onClick }) =>
-  <div onClick={onClick} style={{background:'#fff',border:`1px solid ${accent}`,borderRadius:10,
-    padding:'14px 18px',cursor:onClick?'pointer':'default',
-    borderLeft:`4px solid ${danger?'#dc2626':accent}`}}>
+  <div onClick={onClick} style={{background:'#fff',border:'1px solid #eeebe5',borderRadius:10,
+    padding:'14px 18px',cursor:onClick?'pointer':'default'}}>
     <div style={{fontFamily:F.sans,fontSize:11,color:'#9a9a98',fontWeight:600,letterSpacing:'.06em',
-      textTransform:'uppercase',marginBottom:6}}>{label}</div>
+      textTransform:'none',marginBottom:4}}>{label}</div>
     <div style={{fontFamily:F.serif,fontSize:24,fontWeight:500,color:danger?'#dc2626':'#1a1a1a',
       lineHeight:1}}>{value}</div>
     {sub&&<div style={{fontFamily:F.sans,fontSize:11,color:'#9a9a98',marginTop:4}}>{sub}</div>}

@@ -3,7 +3,7 @@ import { SB_URL } from '../../lib/constants.js';
 import { SB_KEY } from './catalog-data.js';
 
 const LoginScreen=({onLogin})=>{
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const [em,setEm]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
   const submit=async()=>{
     if(!em||!pw){setErr("Ingresa email y contrasena");return;}
@@ -13,7 +13,7 @@ const LoginScreen=({onLogin})=>{
       const d=await r.json();
       if(!r.ok||!d.access_token){setErr(d.msg||d.error_description||"Credenciales incorrectas");setBusy(false);return;}
       const m=d.user.user_metadata||{};
-      onLogin({id:d.user.id,email:d.user.email,role:m.role||"vendedor",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",access_token:d.access_token,refresh_token:d.refresh_token,expires_in:d.expires_in||3600});
+      onLogin({id:d.user.id,email:d.user.email,role:m.role||"admin",username:m.username||em.split("@")[0],nombre:m.nombre||"Usuario",orgId:m.org_id||"aryes",access_token:d.access_token,refresh_token:d.refresh_token,expires_in:d.expires_in||3600});
     }catch {setErr("Error de conexion");}
     setBusy(false);
   };

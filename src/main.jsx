@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ReactDOM from 'react-dom/client'
 import AryesApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
-import { SB_URL, SKEY as SB_KEY } from './lib/constants.js';
+import { SB_URL, SKEY as SB_KEY, getOrgId} from './lib/constants.js';
 import { useErrorReporting } from './hooks/useErrorReporting.ts';
 import { setSentryUser, Sentry } from './lib/sentry.js';
 // sentry.js se auto-inicializa al importarse
@@ -83,7 +83,7 @@ function LoginScreen({ onLogin }) {
       const users = await userR.json();
       const role = users?.[0]?.role || 'operador';
       const name = users?.[0]?.name || email.split('@')[0];
-      const orgId = users?.[0]?.org_id || 'aryes';
+      const orgId = users?.[0]?.org_id || getOrgId();
       const expiresIn = (data.expires_in || 3600) * 1000;
       const session = { ...data, email, role, name, orgId, expiresAt: Date.now() + expiresIn };
       localStorage.setItem('aryes-session', JSON.stringify(session));
@@ -117,12 +117,12 @@ function LoginScreen({ onLogin }) {
           </div>
           {err && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{err}</p>}
           <button onClick={handle} disabled={loading}
-            style={{ background: '#3a7d1e', color: '#fff', border: '1px solid #3a7d1e', fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.4 : 1, borderRadius: 4 }}>
+            style={{ background: '#1a8a3c', color: '#fff', border: '1px solid #1a8a3c', fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.4 : 1, borderRadius: 4 }}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
             ¿No tenés cuenta?{' '}
-            <a href="/register" style={{ color: '#3a7d1e', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
+            <a href="/register" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
           </p>
         </div>
       </div>
@@ -189,7 +189,7 @@ function Root() {
   // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
   if (session && orgStatus === null) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid #3a7d1e', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ width: 32, height: 32, border: '3px solid #1a8a3c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
   );

@@ -40,6 +40,14 @@ export const getAuthHeaders = (extra = {}) => {
   };
 };
 
+
+// ─── getSession — single source of truth para la sesión ──────────────────────
+export const getSession = () => {
+  try { return JSON.parse(localStorage.getItem('aryes-session') || 'null'); }
+  catch { return null; }
+};
+
+// ─── getOrgId — lee org desde sesión (default: 'aryes') ──────────────────────
 // ─── getOrgId — reads org from session (defaults to 'aryes') ─────────────────
 export const getOrgId = () => {
   try {
@@ -192,6 +200,44 @@ export const db = {
       }
     }
   },
+};
+
+
+// ─── fmt — formateo de números centralizado ───────────────────────────────────
+// Single source of truth para todos los formatos de números en la UI.
+// Usar siempre estas funciones — nunca toLocaleString/toFixed directo.
+export const fmt = {
+  // Moneda con símbolo — $1.234 / US$1.234
+  currency: (n, currency = 'UYU') => {
+    const num = Number(n || 0);
+    const sym = currency === 'UYU' ? '$' : currency === 'USD' ? 'US$' : currency === 'EUR' ? '€' : currency;
+    return `${sym} ${num.toLocaleString('es-UY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  },
+
+  // Moneda compacta — $1.2k / US$34k
+  currencyCompact: (n, currency = 'UYU') => {
+    const num = Number(n || 0);
+    const sym = currency === 'UYU' ? '$' : currency === 'USD' ? 'US$' : '€';
+    if (num >= 1_000_000) return `${sym} ${(num / 1_000_000).toFixed(1)}M`;
+    if (num >= 1_000)     return `${sym} ${(num / 1_000).toFixed(1)}k`;
+    return `${sym} ${num.toFixed(0)}`;
+  },
+
+  // Porcentaje — 12.3%
+  percent: (n, decimals = 1) => `${Number(n || 0).toFixed(decimals)}%`,
+
+  // Cantidad con unidad — 3.5 kg / 120 uds
+  qty: (n, unit = '', decimals = 1) => {
+    const num = Number(n || 0);
+    const str = Number.isInteger(num) ? num.toString() : num.toFixed(decimals);
+    return unit ? `${str} ${unit}` : str;
+  },
+
+  // Número entero con separador de miles — 1.234
+  int: (n) => Math.round(Number(n || 0)).toLocaleString('es-UY'),
+
+  // Decimal con n lugares — 1.23
+  decimal: (n, places = 2) => Number(n || 0).toFixed(places),
 };
 
 // ─── Alert severity config ────────────────────────────────────────────────────

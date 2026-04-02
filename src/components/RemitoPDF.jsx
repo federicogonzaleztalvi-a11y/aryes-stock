@@ -4,13 +4,8 @@
 // Usage: <RemitoPDF venta={venta} brandCfg={brandCfg} onClose={fn} />
 
 import { useEffect, useRef } from 'react';
+import { fmt } from '../lib/constants.js';
 
-function fmtMoney(v, moneda = 'USD') {
-  const n = Number(v) || 0;
-  return moneda === 'UYU'
-    ? '$' + n.toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : 'U$S ' + n.toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 function fmtFecha(iso) {
   if (!iso) return '—';
@@ -66,7 +61,7 @@ export default function RemitoPDF({ venta, brandCfg, onClose }) {
   const descuento = venta.descuento || 0;
   const descMonto = subtotal * (descuento / 100);
   const total    = venta.total || (subtotal - descMonto);
-  const G        = brandCfg?.color || '#3a7d1e';
+  const G        = brandCfg?.color || '#1a8a3c';
 
   return (
     <div style={{
@@ -175,8 +170,8 @@ export default function RemitoPDF({ venta, brandCfg, onClose }) {
                   <td style={{ padding: '8px 10px', fontSize: 13, fontWeight: 500 }}>{it.nombre || it.productoNombre || '—'}</td>
                   <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: 13 }}>{Number(it.cantidad)}</td>
                   <td style={{ padding: '8px 10px', fontSize: 12, color: '#666' }}>{it.unidad || ''}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: 13 }}>{fmtMoney(it.precioUnit, moneda)}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{fmtMoney(lineTotal, moneda)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: 13 }}>{fmt.currency(it.precioUnit, moneda)}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{fmt.currency(lineTotal, moneda)}</td>
                 </tr>
               );
             })}
@@ -188,17 +183,17 @@ export default function RemitoPDF({ venta, brandCfg, onClose }) {
           <div style={{ width: 260 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 13, borderBottom: '1px solid #eee' }}>
               <span style={{ color: '#666' }}>Subtotal</span>
-              <span>{fmtMoney(subtotal, moneda)}</span>
+              <span>{fmt.currency(subtotal, moneda)}</span>
             </div>
             {descuento > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 13, borderBottom: '1px solid #eee', color: '#d97706' }}>
                 <span>Descuento ({descuento}%)</span>
-                <span>-{fmtMoney(descMonto, moneda)}</span>
+                <span>-{fmt.currency(descMonto, moneda)}</span>
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 16, fontWeight: 800, color: G }}>
               <span>TOTAL</span>
-              <span>{fmtMoney(total, moneda)}</span>
+              <span>{fmt.currency(total, moneda)}</span>
             </div>
           </div>
         </div>

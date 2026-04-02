@@ -1,6 +1,7 @@
+import BackButton from '../components/BackButton.jsx';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, SKEY, getAuthHeaders } from '../lib/constants.js';
+import { db, SB_URL, SKEY, getAuthHeaders, fmt} from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import RemitoPDF from '../components/RemitoPDF.jsx';
@@ -48,8 +49,8 @@ function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
           cfes, setCfes, cobros, setCobros, brandCfg } = useApp();
-  const G="#3a7d1e";
-  const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#3a7d1e',cancelada:'#ef4444'};
+  const G="#1a8a3c";
+  const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#1a8a3c',cancelada:'#ef4444'};
 
   // clientes now reactive from AppContext → no focus refresh needed
 
@@ -64,6 +65,7 @@ function VentasTab(){
   const [showFacturar,setShowFacturar]=useState(false);
   const [facturarVenta,setFacturarVenta]=useState(null);
   const [remitoVenta,setRemitoVenta]=useState(null);
+  const [monedaVenta,setMonedaVenta]=useState('USD');
 
   // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
   const handleSaveCobroRapido = (cobro) => {
@@ -140,9 +142,8 @@ function VentasTab(){
   const costoTotal=(items)=>items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.costoUnit||0),0);
   // eslint-disable-next-line no-unused-vars
   const margenPct=(venta,costo)=>venta>0?((venta-costo)/venta*100):0;
-  const fmtPct=(n)=>n.toFixed(1)+'%';
-  const fmtUSD=(n)=>'$'+Number(n).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2});
-
+  const fmtPct=(n)=>fmt.percent(n);
+  
   const waLink=(tel,msg)=>`https://wa.me/${(tel||'').replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
   const waMensaje=(nombre,tipo,det)=>`Hola ${nombre||''}! ${tipo==='entrega'?`Confirmamos que ${det}.`:`Su pedido ha sido actualizado: ${det}.`} Gracias por su confianza.`;
 
@@ -458,7 +459,7 @@ function VentasTab(){
   if(vista==='form')return(
     <section style={{padding:'28px 36px',maxWidth:900,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:24}}>
-        <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>→</button>
+        <BackButton onBack={() => { setVista('lista'); setForm(emptyForm); }} parent="Ventas" current="Nueva orden" />
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>Nueva orden de venta</h2>
       </div>
       <MsgBanner/>
@@ -492,6 +493,15 @@ function VentasTab(){
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Fecha</label>
             <input type='date' style={inp} value={form.fecha} onChange={e=>setForm(f=>({...f,fecha:e.target.value}))}/>
           </div>
+              {/* MONEDA */}
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:1}}>MONEDA</label>
+                <select value={monedaVenta} onChange={e=>setMonedaVenta(e.target.value)}
+                  style={{display:'block',marginTop:4,padding:'8px 12px',border:'1.5px solid #d1d5db',borderRadius:8,fontSize:14,color:'#111827',background:'#fff',width:'100%'}}>
+                  <option value="USD">USD — Dólar</option>
+                  <option value="UYU">UYU — Peso uruguayo</option>
+                </select>
+              </div>
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Descuento %</label>
             <input type='number' style={inp} value={form.descuento} onChange={e=>setForm(f=>({...f,descuento:e.target.value}))} min='0' max='100'/>
@@ -539,7 +549,7 @@ function VentasTab(){
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
-                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmtUSD(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmtUSD(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#3a7d1e':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
+                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#1a8a3c':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString('es-UY')}</td>
                     <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
                   </tr>
@@ -580,7 +590,7 @@ function VentasTab(){
     return(
       <section style={{padding:'28px 36px',maxWidth:800,margin:'0 auto'}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20}}>
-          <button onClick={()=>setVista('lista')} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666'}}>→</button>
+          <BackButton onBack={() => setVista('lista')} parent="Ventas" current={ventaSel?.nroVenta || 'Detalle'} />
           <div style={{flex:1}}>
             <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>
               {v.nroVenta} → {v.clienteNombre}
@@ -596,7 +606,7 @@ function VentasTab(){
           {v.estado==='confirmada'&&<button onClick={()=>cambiarEstado(v.id,'preparada')} style={{padding:'7px 16px',background:'#8b5cf6',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar preparada</button>}
           {(v.estado==='preparada'||v.estado==='confirmada')&&<button onClick={()=>cambiarEstado(v.id,'entregada')} style={{padding:'7px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar entregada</button>}
           {v.estado!=='cancelada'&&v.estado!=='entregada'&&<button onClick={()=>cambiarEstado(v.id,'cancelada')} style={{padding:'7px 16px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>Cancelar (restaura stock)</button>}
-          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #3a7d1e',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#3a7d1e'}}>📊° Cobrar</button>}
+          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #1a8a3c',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#1a8a3c'}}>📊° Cobrar</button>}
           {v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>📊 Facturar</button>}
           {(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setRemitoVenta(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#374151'}}>📄 Remito</button>}
         </div>
@@ -667,7 +677,7 @@ function VentasTab(){
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <div>
           <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Órdenes de Venta</h2>
-          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestión de ventas a clientes → remitos y estado de entrega</p>
+          <p style={{fontSize:12,color:'#888',margin:'4px 0 0'}}>Gestión de ventas a clientes — remitos y estado de entrega</p>
         </div>
         <button onClick={()=>{setForm(emptyForm);setVista('form');}} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nueva venta</button>
       </div>

@@ -204,14 +204,14 @@ function FacturacionTab({ products=[] }) {
       {/* ── KPIs ───────────────────────────────────────────────────── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:1,
         background:'#e2e2de', borderRadius:12, overflow:'hidden', marginBottom:24 }}>
-        <KpiCard label="Deuda total" value={totalDeuda>0?fmtMoney(totalDeuda):'—'}
+        <KpiCard label="Deuda total" value={totalDeuda>0?fmt.currency(totalDeuda):'—'}
           sub={`${deudores.length} clientes con saldo`} accent={totalDeuda>0?'#dc2626':'#e2e2de'} danger />
         <KpiCard label="Facturas vencidas" value={vencidasHoy.length}
           sub="sin cobrar" accent={vencidasHoy.length>0?'#dc2626':'#e2e2de'} danger
           onClick={()=>{setVista('informes');}} />
         <KpiCard label="Vencen esta semana" value={venceEsta.length}
           sub="próximos 7 días" accent={venceEsta.length>0?'#d97706':'#e2e2de'} />
-        <KpiCard label="Emitido total" value={totalEmitido>0?fmtMoney(totalEmitido):'—'}
+        <KpiCard label="Emitido total" value={totalEmitido>0?fmt.currency(totalEmitido):'—'}
           sub={`${cfes.filter(c=>c.status==='cobrada').length} cobradas`} accent={G} />
       </div>
 
@@ -317,7 +317,7 @@ function FacturacionTab({ products=[] }) {
                         : fmtDateShort(c.fechaVenc)) : '—'}
                     </div>
                     <div style={{ display:'flex', alignItems:'center', fontFamily:F.serif,
-                      fontSize:16, color:G }}>{fmtMoney(c.total,c.moneda)}</div>
+                      fontSize:16, color:G }}>{fmt.currency(c.total,c.moneda)}</div>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                       <Pill status={c.status} />
                       {c.status!=='anulada'&&c.status!=='cobrada' && (
@@ -372,7 +372,7 @@ function FacturacionTab({ products=[] }) {
                   ['RUT', clienteDetalle.rut||'—'],
                   ['Cond. pago', COND_PAGO.find(c=>c.value===clienteDetalle.condPago)?.label||'—'],
                   ['Límite crédito', clienteDetalle.limiteCredito
-                    ? fmtMoney(clienteDetalle.limiteCredito) : 'Sin límite'],
+                    ? fmt.currency(clienteDetalle.limiteCredito) : 'Sin límite'],
                 ].map(([l,v])=>(
                   <div key={l}>
                     <Lbl>{l}</Lbl>
@@ -393,11 +393,11 @@ function FacturacionTab({ products=[] }) {
                 return (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:1,
                     background:'#e2e2de', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
-                    <KpiCard label="Saldo deudor" value={deudaCliente>0?fmtMoney(deudaCliente):'—'}
+                    <KpiCard label="Saldo deudor" value={deudaCliente>0?fmt.currency(deudaCliente):'—'}
                       accent={deudaCliente>0?'#dc2626':G} danger={deudaCliente>0} />
                     <KpiCard label="Facturas vencidas" value={vencidasCli.length}
                       accent={vencidasCli.length>0?'#dc2626':'#e2e2de'} danger={vencidasCli.length>0} />
-                    <KpiCard label="Total cobrado" value={cobradoCli>0?fmtMoney(cobradoCli):'—'}
+                    <KpiCard label="Total cobrado" value={cobradoCli>0?fmt.currency(cobradoCli):'—'}
                       sub={`${cobrosCliente.length} cobros registrados`} accent={G} />
                     <KpiCard label="CFEs totales" value={cfesCliente.length}
                       sub={`${cfesCliente.filter(c=>c.status==='cobrada').length} cobradas`} />
@@ -455,13 +455,13 @@ function FacturacionTab({ products=[] }) {
                         }
                       </div>
                       <div style={{ fontFamily:F.mono, color:'#dc2626', fontWeight:m._tipo==='cfe'?700:400 }}>
-                        {m._tipo==='cfe' ? fmtMoney(m.total,m.moneda) : ''}
+                        {m._tipo==='cfe' ? fmt.currency(m.total,m.moneda) : ''}
                       </div>
                       <div style={{ fontFamily:F.mono, color:G, fontWeight:m._tipo==='cobro'?700:400 }}>
-                        {m._tipo==='cobro' ? fmtMoney(m.monto) : ''}
+                        {m._tipo==='cobro' ? fmt.currency(m.monto) : ''}
                       </div>
                       <div style={{ fontFamily:F.mono, fontSize:12, color:m._saldoAcum>0?'#dc2626':G, fontWeight:700 }}>
-                        {fmtMoney(Math.abs(m._saldoAcum))}
+                        {fmt.currency(Math.abs(m._saldoAcum))}
                       </div>
                       <div>{m._tipo==='cfe'&&<Pill status={m.status}/>}</div>
                     </div>
@@ -527,7 +527,7 @@ function FacturacionTab({ products=[] }) {
                         dep. {fmtDateShort(c.fechaCheque)}</span>}
                     </div>
                     <div style={{ fontFamily:F.serif, fontSize:18, color:G, fontWeight:400 }}>
-                      {fmtMoney(c.monto)}
+                      {fmt.currency(c.monto)}
                     </div>
                     <div style={{ fontFamily:F.sans, fontSize:11, color:'#9a9a98' }}>
                       {c.facturasAplicar?.length>0 ? `${c.facturasAplicar.length} fact.` : '—'}
@@ -572,7 +572,7 @@ function FacturacionTab({ products=[] }) {
                         color:colors[label], marginBottom:6, textTransform:'uppercase',
                         letterSpacing:'0.08em' }}>{label}</div>
                       <div style={{ fontFamily:F.serif, fontSize:22, color:'#1a1a18' }}>
-                        {val>0?fmtMoney(val):'—'}
+                        {val>0?fmt.currency(val):'—'}
                       </div>
                       <div style={{ height:4, background:'#f0f0ec', borderRadius:2, marginTop:8 }}>
                         <div style={{ height:'100%', background:colors[label], borderRadius:2,
@@ -592,7 +592,7 @@ function FacturacionTab({ products=[] }) {
               display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div style={{ fontFamily:F.serif, fontSize:22, color:'#1a1a18' }}>Listado de deudores</div>
               <div style={{ fontFamily:F.sans, fontSize:13, color:'#9a9a98' }}>
-                {deudores.length} clientes · {fmtMoney(totalDeuda)} total
+                {deudores.length} clientes · {fmt.currency(totalDeuda)} total
               </div>
             </div>
             {deudores.length===0 ? (
@@ -628,7 +628,7 @@ function FacturacionTab({ products=[] }) {
                       </div>
                       <div style={{ color:'#6a6a68' }}>{d.facturas.length}</div>
                       <div style={{ fontFamily:F.serif, fontSize:17, color:'#dc2626', fontWeight:400 }}>
-                        {fmtMoney(d.totalDeuda)}
+                        {fmt.currency(d.totalDeuda)}
                       </div>
                       <div style={{ fontFamily:F.sans, fontSize:12,
                         color:d.diasMaxVenc>0?'#dc2626':'#16a34a', fontWeight:d.diasMaxVenc>0?700:400 }}>
@@ -667,7 +667,7 @@ function FacturacionTab({ products=[] }) {
                   ⚠ Facturas vencidas ({vencidasHoy.length})
                 </div>
                 <div style={{ fontFamily:F.sans, fontSize:13, color:'#dc2626', fontWeight:600 }}>
-                  {fmtMoney(vencidasHoy.reduce((s,c)=>s+(c.saldoPendiente||c.total||0),0))} pendiente
+                  {fmt.currency(vencidasHoy.reduce((s,c)=>s+(c.saldoPendiente||c.total||0),0))} pendiente
                 </div>
               </div>
               {vencidasHoy.map((c,i)=>(
@@ -685,7 +685,7 @@ function FacturacionTab({ products=[] }) {
                       {c.clienteNombre}
                     </button>
                   </div>
-                  <div style={{ fontFamily:F.mono, color:G }}>{fmtMoney(c.saldoPendiente||c.total,c.moneda)}</div>
+                  <div style={{ fontFamily:F.mono, color:G }}>{fmt.currency(c.saldoPendiente||c.total,c.moneda)}</div>
                   <div style={{ color:'#dc2626', fontWeight:700, fontSize:12 }}>
                     Vencida hace {Math.abs(daysUntil(c.fechaVenc))} días
                   </div>

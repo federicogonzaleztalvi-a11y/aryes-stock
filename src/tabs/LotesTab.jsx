@@ -7,7 +7,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 function LotesTab(){
   const { products: prods, lotes, setLotes, ventas } = useApp();
   const { isAdmin } = useRole();
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const { confirm, ConfirmDialog } = useConfirm();
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
   const [form,setForm]=useState(emptyForm);
@@ -116,7 +116,7 @@ function LotesTab(){
         <button onClick={()=>{setVista('lista');setEditId(null);setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>←</button>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:26,color:'#1a1a1a',margin:0}}>{editId?'Editar lote':'Registrar lote'}</h2>
       </div>
-      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+      {msg&&<div style={{background:'#f0fdf4',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         <div style={{gridColumn:'1/-1'}}>
           <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Producto *</label>
@@ -157,7 +157,7 @@ function LotesTab(){
         </div>
         <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Registrar lote</button>
       </div>
-      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
+      {msg&&<div style={{background:'#f0fdf4',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
         {[

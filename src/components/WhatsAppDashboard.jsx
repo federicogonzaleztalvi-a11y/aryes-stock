@@ -8,12 +8,12 @@
  * El número de destino se configura en Config → Marca y empresa.
  */
 import { useMemo, useState } from 'react';
+import { fmt } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 const WA = '#25d366';
 
-const fmtUSD = n =>
   '$' + Number(n || 0).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function isHoy(fechaStr) {
@@ -125,19 +125,19 @@ export default function WhatsAppDashboard() {
 
     // Ventas
     lines.push('💰 *VENTAS*');
-    lines.push(`Hoy: *${fmtUSD(m.totalHoy)}* (${m.ventasHoy} venta${m.ventasHoy !== 1 ? 's' : ''})`);
-    lines.push(`Mes: *${fmtUSD(m.totalMes)}* (${m.ventasMes} venta${m.ventasMes !== 1 ? 's' : ''})`);
+    lines.push(`Hoy: *${fmt.currencyCompact(m.totalHoy)}* (${m.ventasHoy} venta${m.ventasHoy !== 1 ? 's' : ''})`);
+    lines.push(`Mes: *${fmt.currencyCompact(m.totalMes)}* (${m.ventasMes} venta${m.ventasMes !== 1 ? 's' : ''})`);
     lines.push('');
 
     // Cobros
     lines.push('💳 *COBROS*');
     if (m.cobrosHoy > 0) {
-      lines.push(`Hoy: *${fmtUSD(m.totalCobros)}* (${m.cobrosHoy} cobro${m.cobrosHoy !== 1 ? 's' : ''})`);
+      lines.push(`Hoy: *${fmt.currencyCompact(m.totalCobros)}* (${m.cobrosHoy} cobro${m.cobrosHoy !== 1 ? 's' : ''})`);
     } else {
       lines.push('Hoy: sin cobros');
     }
     if (m.pendienteCobrar > 0) {
-      lines.push(`⚠️ Pendiente cobrar: *${fmtUSD(m.pendienteCobrar)}*`);
+      lines.push(`⚠️ Pendiente cobrar: *${fmt.currencyCompact(m.pendienteCobrar)}*`);
     }
     lines.push('');
 
@@ -245,8 +245,8 @@ export default function WhatsAppDashboard() {
         {/* KPIs rápidos */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 18 }}>
           {[
-            { icon: '💰', label: 'Ventas hoy',    valor: fmtUSD(m.totalHoy),      sub: `${m.ventasHoy} ventas`,          color: G },
-            { icon: '💳', label: 'Cobrado hoy',   valor: fmtUSD(m.totalCobros),   sub: `${m.cobrosHoy} cobros`,          color: '#059669' },
+            { icon: '💰', label: 'Ventas hoy',    valor: fmt.currencyCompact(m.totalHoy),      sub: `${m.ventasHoy} ventas`,          color: G },
+            { icon: '💳', label: 'Cobrado hoy',   valor: fmt.currencyCompact(m.totalCobros),   sub: `${m.cobrosHoy} cobros`,          color: '#059669' },
             { icon: '📦', label: 'Stock crítico', valor: m.stockCritico + m.sinStock, sub: `${m.sinStock} sin stock`,     color: m.stockCritico + m.sinStock > 0 ? '#dc2626' : G },
             { icon: '⏰', label: 'Lotes urgentes',valor: m.lotesUrgentes,          sub: `${m.lotesVencidos} vencidos`,    color: m.lotesVencidos > 0 ? '#dc2626' : m.lotesUrgentes > 0 ? '#d97706' : G },
           ].map(kpi => (

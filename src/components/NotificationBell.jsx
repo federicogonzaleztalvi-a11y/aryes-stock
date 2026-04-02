@@ -1,3 +1,4 @@
+import { LS } from '../lib/constants.js';
 import React, { useState, useEffect, useRef } from 'react';
 
 // ── NotificationBell ─────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ function buildAlerts(critN, orders) {
 
   // 3. Overdue invoices (from localStorage)
   try {
-    const cfes = JSON.parse(localStorage.getItem('aryes-cfe') || '[]');
+    const cfes = LS.get('aryes-cfe', []);
     const overdueCFEs = cfes.filter(f =>
       ['emitida', 'cobrado_parcial'].includes(f.status) &&
       f.fechaVenc &&
@@ -68,7 +69,7 @@ function buildAlerts(critN, orders) {
 
   // 4. Pending setup (brand not configured)
   try {
-    const brand = JSON.parse(localStorage.getItem('aryes-brand') || 'null');
+    const brand = LS.get('aryes-brand', null);
     if (!brand?.name) {
       alerts.push({
         id: 'setup-brand',
@@ -128,7 +129,10 @@ function NotificationBell({ critN = 0, orders = [], setTab }) {
         onMouseEnter={e => { if (!open) e.currentTarget.style.background = '#eaeae6'; }}
         onMouseLeave={e => { if (!open) e.currentTarget.style.background = '#f5f5f3'; }}
       >
-        <span style={{ fontSize: 15, lineHeight: 1 }}>🔔</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
 
         {/* Badge */}
         {count > 0 && (
@@ -236,7 +240,7 @@ function NotificationBell({ critN = 0, orders = [], setTab }) {
                         style={{
                           background: 'none', border: 'none', padding: 0,
                           cursor: 'pointer', fontFamily: F.sans,
-                          fontSize: 11, fontWeight: 700, color: '#3a7d1e',
+                          fontSize: 11, fontWeight: 700, color: '#1a8a3c',
                         }}
                       >
                         {alert.action.label} →

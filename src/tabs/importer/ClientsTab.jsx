@@ -44,7 +44,7 @@ const ClientsTab=({products,session})=>{
 
   if(detail) return(
     <div style={{padding:'32px 40px',maxWidth:800}}>
-      <button onClick={()=>setDetail(null)} style={{background:'none',border:'none',fontSize:13,color:'#3a7d1e',cursor:'pointer',fontFamily:'inherit',marginBottom:20,display:'flex',alignItems:'center',gap:6}}>← Volver a clientes</button>
+      <button onClick={()=>setDetail(null)} style={{background:'none',border:'none',fontSize:13,color:'#1a8a3c',cursor:'pointer',fontFamily:'inherit',marginBottom:20,display:'flex',alignItems:'center',gap:6}}>← Volver a clientes</button>
       <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:28,marginBottom:20}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
           <div>
@@ -87,7 +87,7 @@ const ClientsTab=({products,session})=>{
           <div style={{fontSize:11,letterSpacing:'.1em',color:'#9a9a98',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Cartera comercial</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:500,color:'#1a1a18',margin:0}}>Clientes</h1>
         </div>
-        {canEdit&&<button onClick={startNew} style={{padding:'9px 18px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Nuevo cliente</button>}
+        {canEdit&&<button onClick={startNew} style={{padding:'9px 18px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Nuevo cliente</button>}
       </div>
 
       {/* Summary cards */}
@@ -102,12 +102,12 @@ const ClientsTab=({products,session})=>{
         })}
         <div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'12px 18px',minWidth:120,flex:1}}>
           <div style={{fontSize:18,marginBottom:4}}>👥</div>
-          <div style={{fontSize:20,fontWeight:700,color:'#3a7d1e'}}>{clients.length}</div>
+          <div style={{fontSize:20,fontWeight:700,color:'#1a8a3c'}}>{clients.length}</div>
           <div style={{fontSize:11,color:'#9a9a98'}}>Total clientes</div>
         </div>
       </div>
 
-      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#3a7d1e':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
+      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#1a8a3c':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
 
       {/* Edit form */}
       {editing&&(
@@ -156,7 +156,7 @@ const ClientsTab=({products,session})=>{
                 {products.sort((a,b)=>a.name.localeCompare(b.name)).map(p=>(
                   <label key={p.id} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 8px',cursor:'pointer',borderRadius:6,fontSize:13,':hover':{background:'#f0f0ec'}}}>
                     <input type="checkbox" checked={(form.products||[]).includes(p.id)}
-                      onChange={()=>toggleProduct(p.id)} style={{accentColor:'#3a7d1e'}}/>
+                      onChange={()=>toggleProduct(p.id)} style={{accentColor:'#1a8a3c'}}/>
                     <span style={{color:'#3a3a38'}}>{p.name}</span>
                     <span style={{color:'#9a9a98',fontSize:11}}>{p.brand}</span>
                   </label>
@@ -166,7 +166,7 @@ const ClientsTab=({products,session})=>{
             </div>
           </div>
           <div style={{display:'flex',gap:10}}>
-            <button onClick={save} style={{padding:'9px 20px',background:'#3a7d1e',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
+            <button onClick={save} style={{padding:'9px 20px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
             <button onClick={()=>setEditing(null)} style={{padding:'9px 20px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancelar</button>
           </div>
         </div>
@@ -188,7 +188,7 @@ const ClientsTab=({products,session})=>{
               </div>
               {c.contact&&<div style={{fontSize:12,color:'#6a6a68',marginBottom:2}}>👤 {c.contact}</div>}
               {c.phone&&<div style={{fontSize:12,color:'#6a6a68',marginBottom:2}}>📞 {c.phone}</div>}
-              {c.products?.length>0&&<div style={{fontSize:11,color:'#3a7d1e',marginTop:8,fontWeight:600}}>{c.products.length} productos asignados</div>}
+              {c.products?.length>0&&<div style={{fontSize:11,color:'#1a8a3c',marginTop:8,fontWeight:600}}>{c.products.length} productos asignados</div>}
               {c.notes&&<div style={{fontSize:11,color:'#9a9a98',marginTop:6,borderTop:'1px solid #f0f0ec',paddingTop:6}}>{c.notes.substring(0,80)}{c.notes.length>80?'...':''}</div>}
             </div>
           ))}

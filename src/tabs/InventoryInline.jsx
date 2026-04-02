@@ -17,14 +17,7 @@ export default function InventoryInline({setModal, setEditProd}) {
     {ConfirmDialog}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                  <span style={{fontFamily:T.sans,fontSize:11,color:T.textXs}}>Inicio</span>
-                  <span style={{color:T.textXs,fontSize:11}}>/</span>
-                  <span style={{fontFamily:T.sans,fontSize:11,fontWeight:600,color:T.green}}>Inventario</span>
-                </div>
-                <h1 style={{fontFamily:T.serif,fontSize:38,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em"}}>Inventario</h1>
-              </div>
+              <h1 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em"}}>Inventario</h1>
               <div style={{display:"flex",gap:10}}>
                 <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
                 <Btn variant="ghost" onClick={()=>{
@@ -49,6 +42,15 @@ export default function InventoryInline({setModal, setEditProd}) {
                   {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/día","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"11px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap",background:T.muted}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
+                  {enriched.length === 0 && (
+                    <tr><td colSpan={11} style={{padding:"60px 20px",textAlign:"center"}}>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c8c4bc" strokeWidth="1.5" strokeLinecap="round"><path d="M20 7l-8-4-8 4v10l8 4 8-4V7z"/><path d="M12 3v18M4 7l8 4 8-4"/></svg>
+                        <div style={{fontFamily:"Inter,sans-serif",fontSize:15,fontWeight:600,color:"#5a5a58"}}>No hay productos cargados</div>
+                        <div style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#9a9a98"}}>Importá tu catálogo o agregá productos uno por uno</div>
+                      </div>
+                    </td></tr>
+                  )}
                   {enriched.map((p,i)=>(
                     <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.card:T.cardWarm,transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background=T.hover}

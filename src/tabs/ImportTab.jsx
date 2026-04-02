@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LS } from '../lib/constants.js';
 
 function ImportTab(){
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const KPROD="aryes6-products";
   const [prods,setProds]=useState(()=>LS.get(KPROD,[]));
   const [preview,setPreview]=useState([]);

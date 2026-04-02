@@ -14,7 +14,7 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
     ? facturas.map(f =>
         `<tr>
           <td style="padding:4px 8px;font-size:12px;border-bottom:1px solid #f0f0ec">${f.numero} (${f.tipo||''})</td>
-          <td style="padding:4px 8px;font-size:12px;text-align:right;border-bottom:1px solid #f0f0ec">${fmtMoney(f.total, f.moneda)}</td>
+          <td style="padding:4px 8px;font-size:12px;text-align:right;border-bottom:1px solid #f0f0ec">${fmt.currency(f.total, f.moneda)}</td>
         </tr>`
       ).join('')
     : '<tr><td colspan="2" style="padding:4px 8px;font-size:12px;color:#888">Cobro a cuenta</td></tr>';
@@ -61,7 +61,7 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
     <hr class="divider">` : ''}
     <div class="row" style="margin-top:8px">
       <span style="font-size:16px;font-weight:700">TOTAL COBRADO</span>
-      <span class="total">${fmtMoney(cobro.monto)}</span>
+      <span class="total">${fmt.currency(cobro.monto)}</span>
     </div>
     ${cobro.notas ? `<p style="font-size:12px;color:#6b7280;margin-top:12px">Notas: ${cobro.notas}</p>` : ''}
     <p class="footer">Documento no fiscal · Comprobante interno de cobro<br>${new Date().toLocaleString('es-UY')}</p>
@@ -99,7 +99,7 @@ function ReciboModal({ cobro, cliente, facturas, empresa, onClose }) {
       'Comprobantes:',
       facturasList,
       '',
-      `*Total cobrado: ${fmtMoney(cobro.monto)}*`,
+      `*Total cobrado: ${fmt.currency(cobro.monto)}*`,
       cobro.notas ? `Notas: ${cobro.notas}` : '',
     ].filter(Boolean).join('\n');
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
@@ -129,7 +129,7 @@ function ReciboModal({ cobro, cliente, facturas, empresa, onClose }) {
           <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
             <span style={{ fontSize:13, color:'#374151' }}>{cliente?.nombre || cobro.clienteNombre}</span>
             <span style={{ fontFamily:F.mono, fontSize:22, fontWeight:800, color:G }}>
-              {fmtMoney(cobro.monto)}
+              {fmt.currency(cobro.monto)}
             </span>
           </div>
           <div style={{ fontSize:12, color:'#6b7280' }}>
@@ -291,7 +291,7 @@ export default function ModalCobro({ clientes, cfes, onSave, onClose, prefillCli
             <span style={{ fontSize:12, color:'#6b7280' }}>Saldo deudor total</span>
             <span style={{ fontFamily:F.mono, fontSize:16, fontWeight:700,
               color: saldoTotal > 0 ? '#dc2626' : G }}>
-              {fmtMoney(saldoTotal)}
+              {fmt.currency(saldoTotal)}
             </span>
           </div>
         )}
@@ -332,11 +332,11 @@ export default function ModalCobro({ clientes, cfes, onSave, onClose, prefillCli
                     <div style={{ textAlign:'right', flexShrink:0 }}>
                       <div style={{ fontFamily:F.mono, fontSize:13, fontWeight:700,
                         color: checked ? G : '#374151' }}>
-                        {fmtMoney(cfe.saldoPendiente || cfe.total, cfe.moneda)}
+                        {fmt.currency(cfe.saldoPendiente || cfe.total, cfe.moneda)}
                       </div>
                       {cfe.saldoPendiente < cfe.total && (
                         <div style={{ fontSize:10, color:'#9ca3af' }}>
-                          de {fmtMoney(cfe.total, cfe.moneda)}
+                          de {fmt.currency(cfe.total, cfe.moneda)}
                         </div>
                       )}
                     </div>
@@ -347,7 +347,7 @@ export default function ModalCobro({ clientes, cfes, onSave, onClose, prefillCli
             {selFacturas.length > 0 && (
               <div style={{ display:'flex', justifyContent:'flex-end', fontSize:12,
                 color:G, fontWeight:700, padding:'6px 2px' }}>
-                Seleccionado: {fmtMoney(totalSeleccionado)}
+                Seleccionado: {fmt.currency(totalSeleccionado)}
               </div>
             )}
           </div>

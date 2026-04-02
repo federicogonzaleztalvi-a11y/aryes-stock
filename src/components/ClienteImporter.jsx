@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { db, getOrgId } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 
 function parseCSV(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -74,20 +74,52 @@ export default function ClienteImporter({ onClose, onImported }) {
   const [result,   setResult]   = useState(null); // { imported, skipped }
   const [step,     setStep]     = useState('upload'); // upload | preview | done
 
-  const handleFile = (e) => {
-    const f = e.target.files[0];
+  const readXlsx = async (file) => {
+    if (!window.XLSX) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const wb = window.XLSX.read(e.target.result, { type: 'binary' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          res(window.XLSX.utils.sheet_to_csv(ws));
+        } catch (err) { rej(err); }
+      };
+      reader.onerror = rej;
+      reader.readAsBinaryString(file);
+    });
+  };
+
+  const handleFile = async (e) => {
+    const f = e.target.files?.[0] || e;
     if (!f) return;
     setFile(f);
     setError('');
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const { rows, error: parseErr } = parseCSV(ev.target.result);
+    setLoading(true);
+    try {
+      let text = '';
+      if (f.name?.toLowerCase().endsWith('.xlsx') || f.name?.toLowerCase().endsWith('.xls')) {
+        text = await readXlsx(f);
+      } else {
+        text = await f.text();
+      }
+      const { rows, error: parseErr } = parseCSV(text);
       if (parseErr) { setError(parseErr); return; }
       if (rows.length === 0) { setError('No se encontraron filas con datos válidos'); return; }
       setPreview(rows);
       setStep('preview');
-    };
-    reader.readAsText(f, 'UTF-8');
+    } catch (err) {
+      setError('Error al leer el archivo: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleImport = async () => {
@@ -175,14 +207,14 @@ export default function ClienteImporter({ onClose, onImported }) {
                 padding: '40px 24px', textAlign: 'center', cursor: 'pointer',
                 background: '#fafafa', transition: 'border-color .2s' }}
                 onDragOver={e => e.preventDefault()}
-                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { const fakeEvt = { target: { files: [f] } }; handleFile(fakeEvt); } }}>
-                <input type="file" accept=".csv,.txt" style={{ display: 'none' }} onChange={handleFile} />
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}>
+                <input type="file" accept=".csv,.xlsx,.xls,.txt" style={{ display: 'none' }} onChange={handleFile} />
                 <div style={{ fontSize: 40, marginBottom: 12 }}>📄</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>
                   Arrastrá tu CSV acá o hacé click para seleccionar
                 </div>
                 <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6 }}>
-                  Formatos: .csv · Separadores: coma, punto y coma, tab
+                  Formatos: .xlsx · .csv · .txt — Separadores auto-detectados
                 </div>
               </label>
 
@@ -193,8 +225,30 @@ export default function ClienteImporter({ onClose, onImported }) {
                 </div>
               )}
 
+              {/* Plantilla descargable */}
+              <div style={{ marginTop: 16, padding: '12px 16px', background: '#f0fdf4',
+                borderRadius: 8, border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: G, marginBottom: 4 }}>
+                  ¿No tenés el archivo en el formato correcto?
+                </div>
+                <div style={{ fontSize: 11, color: '#6a6a68', marginBottom: 8 }}>
+                  Descargá la plantilla y completala con tus clientes.
+                </div>
+                <button onClick={() => {
+                  const csv = 'nombre;telefono;tipo;ciudad;email;rut;direccion\nPanadería Sol;099123456;Panadería;Montevideo;sol@mail.com;21234560001;Av. 18 de Julio 1234\nHeladería Norte;098765432;Heladería;Colonia;;;';
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url;
+                  a.download = 'plantilla-clientes-aryes.csv'; a.click();
+                }}
+                  style={{ background: G, color: '#fff', border: 'none', borderRadius: 6,
+                    padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  Descargar plantilla CSV
+                </button>
+              </div>
+
               {/* Formato esperado */}
-              <div style={{ marginTop: 24, padding: '16px 20px', background: '#f9fafb',
+              <div style={{ marginTop: 16, padding: '16px 20px', background: '#f9fafb',
                 borderRadius: 10, border: '1px solid #f3f4f6' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#6b7280',
                   textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>

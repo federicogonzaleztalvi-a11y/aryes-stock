@@ -110,7 +110,7 @@ function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_produ
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
                   <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`}}>
                     {["Proveedor","Prep.","Aduana","Flete","Depósito","Total","Moneda","Pago","Mín.","Dto.","Calif."].map(h=>(
-                      <th key={h} style={{padding:"9px 12px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>
+                      <th key={h} style={{padding:"9px 12px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:600,letterSpacing:"0.03em",textTransform:"none",color:T.textSm,whiteSpace:"nowrap"}}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>

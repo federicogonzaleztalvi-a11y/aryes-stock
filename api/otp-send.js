@@ -8,6 +8,7 @@ const SB_ANON    = process.env.SUPABASE_ANON_KEY;
 const IB_API_KEY  = process.env.INFOBIP_API_KEY;
 const IB_BASE_URL = process.env.INFOBIP_BASE_URL;
 const IB_SENDER   = process.env.INFOBIP_SENDER;
+const IB_CHANNEL  = process.env.INFOBIP_CHANNEL;
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -107,6 +108,24 @@ export default async function handler(req, res) {
   if (!clients?.length) {
     return res.status(404).json({ error: 'Número no registrado. Contactá a Aryes para activar tu acceso.' });
   }
+
+  // Rate limit: bloquear si ya existe un OTP activo en los últimos 60 segundos
+  const since = new Date(Date.now() - 60000).toISOString();
+  const recentRes = await fetch(
+    `${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&used=eq.false&expires_at=gte.${new Date().toISOString()}&created_at=gte.${encodeURIComponent(since)}&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+  );
+  const recent = await recentRes.json();
+  if (recent?.length) {
+    return res.status(429).json({ error: 'Ya enviamos un código. Esperá 1 minuto antes de pedir otro.' });
+  }
+
+  // Invalidar OTPs anteriores del mismo tel antes de generar uno nuevo
+  await fetch(`${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&used=eq.false`, {
+    method: 'PATCH',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ used: true }),
+  });
 
   const code     = String(Math.floor(1000 + Math.random() * 9000));
   const codeHash = await sha256(code + telClean);

@@ -342,7 +342,7 @@ function ClientesTab(){
                    accent: crmMetrics.diasDesdeUltima > 30 ? '#dc2626' : crmMetrics.diasDesdeUltima > 14 ? '#d97706' : G},
                 ].map(k => (
                   <div key={k.l} style={{background:'#fff',padding:'14px 16px'}}>
-                    <div style={{fontSize:10,fontWeight:600,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{k.l}</div>
+                    <div style={{fontSize:10,fontWeight:600,color:'#999',marginBottom:4}}>{k.l}</div>
                     <div style={{fontSize:18,fontWeight:700,color:k.accent||'#1a1a1a'}}>{k.v}</div>
                   </div>
                 ))}
@@ -441,12 +441,19 @@ function ClientesTab(){
     </section>
   );
   return(
-    <>{ConfirmDialog}<section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
+    <>{ConfirmDialog}
+      {showImporter && (
+        <ClienteImporter
+          onClose={() => setShowImporter(false)}
+          onImported={() => setShowImporter(false)}
+        />
+      )}
+      <section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Clientes <span style={{fontSize:16,color:'#888',fontWeight:400}}>({filtered.length})</span></h2>
         {isAdmin&&<div style={{display:'flex',gap:8}}>
         <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>
-        <button onClick={()=>setShowImporter(true)} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>📥 Importar CSV</button>
+        <button onClick={()=>setShowImporter(true)} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>↑ Importar clientes</button>
       </div>}
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
@@ -481,9 +488,12 @@ function ClientesTab(){
       <div style={{marginTop:24,background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
         <button onClick={()=>setAgingOpen(o=>!o)}
           style={{width:'100%',display:'flex',alignItems:'center',gap:10,background:'none',border:'none',cursor:'pointer',padding:0,textAlign:'left'}}>
-          <span style={{fontSize:16}}>📊</span>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:500,color:'#1a1a1a',flex:1}}>
-            Aging de deuda — {agingData.clientesConDeuda} clientes · US$ {agingData.totalDeuda.toFixed(2)}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a8a3c" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span style={{fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,color:'#1a1a18',flex:1}}>
+            Aging de deuda
+            {agingData.totalDeuda > 0 && <span style={{marginLeft:8,fontSize:12,color:'#dc2626',fontWeight:700}}>US$ {agingData.totalDeuda.toFixed(0)}</span>}
+            {agingData.totalDeuda === 0 && <span style={{marginLeft:8,fontSize:12,color:'#1a8a3c',fontWeight:500}}>Sin deuda</span>}
+            {agingData.clientesConDeuda > 0 && <span style={{marginLeft:8,fontSize:11,color:'#9a9a98'}}>{agingData.clientesConDeuda} clientes</span>}
           </span>
           <span style={{fontSize:11,color:'#9ca3af'}}>{agingOpen?'▲':'▼'}</span>
         </button>
@@ -505,7 +515,7 @@ function ClientesTab(){
                   const total = rows.reduce((a,r)=>a+r.monto,0);
                   return(
                     <div key={key} style={{background:bg,borderRadius:10,padding:'14px 16px'}}>
-                      <div style={{fontSize:11,fontWeight:700,color,textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{label}</div>
+                      <div style={{fontSize:11,fontWeight:700,color,marginBottom:4}}>{label}</div>
                       <div style={{fontSize:22,fontWeight:800,color}}>US$ {total.toFixed(0)}</div>
                       <div style={{fontSize:11,color:'#6b7280',marginTop:2}}>{rows.length} cliente{rows.length!==1?'s':''}</div>
                       {rows.length>0&&(

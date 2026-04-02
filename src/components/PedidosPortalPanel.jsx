@@ -1,16 +1,11 @@
-// PedidosPortalPanel — Muestra pedidos del portal B2B pendientes de importar
-// Se usa en VentasTab. El admin ve los pedidos entrantes y los importa con un click.
+// PedidosPortalPanel — Auto-importa pedidos del portal B2B al llegar
+// Cada pedido nuevo se convierte automáticamente en venta pendiente
+// El panel muestra un historial de lo importado recientemente
 
-import { useState, useEffect, useCallback } from 'react';
-import { getOrgId } from '../lib/constants.js';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { fmt } from '../lib/constants.js';
 
-const G = '#3a7d1e';
-const SB_URL = import.meta.env.VITE_SUPABASE_URL;
-const SKEY   = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-function fmtUSD(n) {
-  return 'US$ ' + Number(n).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+const G = '#1a8a3c';
 
 function fmtTs(ts) {
   if (!ts) return '';
@@ -24,132 +19,139 @@ function fmtTs(ts) {
 }
 
 export default function PedidosPortalPanel({ onImportar }) {
-  const [orders,  setOrders]  = useState([]);
-  const [open,    setOpen]    = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [expand,  setExpand]  = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [lastImported, setLastImported] = useState([]);  // historial reciente
+  const [toast, setToast] = useState(null);
+  const processedIds = useRef(new Set());
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const fetchAndAutoImport = useCallback(async () => {
+    if (importing) return;
     try {
       const r = await fetch('/api/pedido?action=pendientes&org=aryes');
       const d = await r.json();
-      if (d.ok && Array.isArray(d.pedidos)) setOrders(d.pedidos);
-    } catch {/* silent */}
-    finally { setLoading(false); }
-  }, []);
+      if (!d.ok || !Array.isArray(d.pedidos) || d.pedidos.length === 0) return;
+
+      // Filtrar solo los que no procesamos aún en esta sesión
+      const nuevos = d.pedidos.filter(o => !processedIds.current.has(o.id));
+      if (nuevos.length === 0) return;
+
+      setImporting(true);
+
+      for (const order of nuevos) {
+        processedIds.current.add(order.id);
+        try {
+          await onImportar(order);
+          setLastImported(prev => [{
+            id: order.id,
+            cliente: order.cliente_nombre,
+            total: order.total,
+            items: Array.isArray(order.items) ? order.items.length : 0,
+            ts: new Date().toISOString(),
+          }, ...prev].slice(0, 5));
+        } catch (err) {
+          console.error('[AutoImport] Error importando pedido:', order.id, err);
+        }
+      }
+
+      if (nuevos.length === 1) {
+        showToast(`Pedido de ${nuevos[0].cliente_nombre} importado automáticamente`);
+      } else {
+        showToast(`${nuevos.length} pedidos importados automáticamente`);
+      }
+
+    } catch (err) {
+      console.error('[AutoImport] Error fetching pedidos:', err);
+    } finally {
+      setImporting(false);
+    }
+  }, [importing, onImportar]);
 
   useEffect(() => {
-    fetchOrders();
-    const iv = setInterval(fetchOrders, 30_000);
+    // Primera carga inmediata
+    fetchAndAutoImport();
+    // Polling cada 30 segundos
+    const iv = setInterval(fetchAndAutoImport, 30_000);
     return () => clearInterval(iv);
-  }, [fetchOrders]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (orders.length === 0 && !loading) return null;
+  // No renderizar nada visible si no hay historial ni actividad
+  if (lastImported.length === 0 && !importing && !toast) return null;
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: `2px solid ${G}`,
-      marginBottom: 20, overflow: 'hidden',
-      boxShadow: orders.length > 0 ? '0 2px 12px rgba(58,125,30,.12)' : 'none' }}>
-      {/* Header */}
-      <div onClick={() => setOpen(o => !o)}
-        style={{ padding: '14px 20px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', cursor: 'pointer',
-          background: orders.length > 0 ? '#f0fdf4' : '#f9fafb' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>🛒</span>
-          <div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: G }}>
-              Pedidos del portal
-            </span>
-            {orders.length > 0 && (
-              <span style={{ marginLeft: 8, background: G, color: '#fff',
-                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>
-                {orders.length} nuevo{orders.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={e => { e.stopPropagation(); fetchOrders(); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 12, color: '#6b7280' }}>
-            {loading ? '...' : '↻ actualizar'}
-          </button>
-          <span style={{ color: '#6b7280', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
-        </div>
-      </div>
-
-      {open && (
-        <div style={{ padding: '0 20px 16px' }}>
-          {orders.length === 0 ? (
-            <div style={{ padding: '20px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-              No hay pedidos pendientes de importar
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-              {orders.map(order => {
-                const isExpanded = expand === order.id;
-                return (
-                  <div key={order.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10,
-                    overflow: 'hidden' }}>
-                    {/* Order header */}
-                    <div style={{ padding: '12px 16px', display: 'flex',
-                      alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                      cursor: 'pointer', background: isExpanded ? '#f9fafb' : '#fff' }}
-                      onClick={() => setExpand(isExpanded ? null : order.id)}>
-                      <div style={{ flex: 1, minWidth: 180 }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a1a' }}>
-                          {order.cliente_nombre}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#6b7280' }}>
-                          {order.cliente_tel && `📱 ${order.cliente_tel} · `}
-                          {fmtTs(order.creado_en)}
-                          {order.notas && <span style={{ marginLeft: 6, color: '#d97706' }}>📝 nota</span>}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: G }}>
-                          {fmtUSD(order.total)}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                          {Array.isArray(order.items) ? order.items.length : 0} producto{(Array.isArray(order.items) ? order.items.length : 0) !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); onImportar(order);
-                        setOrders(prev => prev.filter(o => o.id !== order.id)); }}
-                        style={{ padding: '8px 16px', background: G, color: '#fff',
-                          border: 'none', borderRadius: 8, cursor: 'pointer',
-                          fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        ✓ Importar
-                      </button>
-                    </div>
-                    {/* Expanded detail */}
-                    {isExpanded && (
-                      <div style={{ padding: '12px 16px', background: '#fafafa',
-                        borderTop: '1px solid #f3f4f6' }}>
-                        {Array.isArray(order.items) && order.items.map((it, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
-                            fontSize: 13, padding: '4px 0', borderBottom: i < order.items.length-1 ? '1px solid #f3f4f6' : 'none' }}>
-                            <span>{it.cantidad} × {it.nombre} <span style={{ color: '#9ca3af' }}>({it.unidad})</span></span>
-                            <span style={{ fontWeight: 600, color: G }}>{fmtUSD(it.subtotal)}</span>
-                          </div>
-                        ))}
-                        {order.notas && (
-                          <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280',
-                            background: '#fffbeb', padding: '6px 10px', borderRadius: 6 }}>
-                            📝 {order.notas}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+    <>
+      {/* Toast de confirmación */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 20, right: 20, zIndex: 9999,
+          background: '#f0fdf4', border: '1px solid #bbf7d0',
+          borderRadius: 10, padding: '12px 18px',
+          boxShadow: '0 4px 16px rgba(0,0,0,.10)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600,
+          color: G, animation: 'fadeUp .25s ease both', maxWidth: 360,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          {toast.msg}
         </div>
       )}
-    </div>
+
+      {/* Indicador de procesando */}
+      {importing && (
+        <div style={{
+          background: '#f0fdf4', border: `1px solid #bbf7d0`,
+          borderRadius: 10, padding: '10px 16px', marginBottom: 12,
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'Inter,sans-serif', fontSize: 13, color: G,
+        }}>
+          <div style={{ width: 12, height: 12, borderRadius: '50%',
+            border: `2px solid ${G}`, borderTopColor: 'transparent',
+            animation: 'spin 0.8s linear infinite' }}/>
+          Importando pedidos del portal...
+        </div>
+      )}
+
+      {/* Historial reciente — últimos 5 importados */}
+      {lastImported.length > 0 && (
+        <div style={{
+          background: '#fff', borderRadius: 12,
+          border: `1.5px solid #e8f5e0`,
+          marginBottom: 20, overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '10px 16px',
+            background: '#f6fbf4',
+            borderBottom: '1px solid #e8f5e0',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, fontWeight: 600, color: G }}>
+              Importados automáticamente
+            </span>
+          </div>
+          {lastImported.map(imp => (
+            <div key={imp.id} style={{
+              padding: '9px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderBottom: '1px solid #f0ede8',
+              fontFamily: 'Inter,sans-serif',
+            }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{imp.cliente}</span>
+                <span style={{ fontSize: 11, color: '#9a9a98', marginLeft: 8 }}>{fmtTs(imp.ts)}</span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: G }}>{fmt.currencyCompact(imp.total)}</span>
+                <span style={{ fontSize: 11, color: '#9a9a98', marginLeft: 6 }}>{imp.items} prod.</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }

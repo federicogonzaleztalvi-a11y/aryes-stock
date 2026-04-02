@@ -77,7 +77,7 @@ const PriceHistoryTab=({products,session})=>{
       ):(
         // Detail view for specific product
         <div>
-          {selProduct&&<div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'12px 16px',marginBottom:16,fontSize:13,color:'#3a7d1e',fontWeight:600}}>
+          {selProduct&&<div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'12px 16px',marginBottom:16,fontSize:13,color:'#1a8a3c',fontWeight:600}}>
             {products.find(p=>p.id===selProduct)?.name}
           </div>}
           {sorted.length===0

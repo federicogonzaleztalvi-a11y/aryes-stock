@@ -1,3 +1,4 @@
+import { LS } from '../lib/constants.js';
 import { useState } from 'react';
 import ReportePDF from '../components/ReportePDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
@@ -21,11 +22,11 @@ function InformesTab(){
   const exportClientes=()=>{const h=["Nombre","Tipo","Ciudad","Telefono","Email"];const rows=clientes.map(c=>[c.nombre||"",c.tipo||"",c.ciudad||"",c.telefono||"",c.email||""]);downloadCSV(toCSV(h,rows),"clientes.csv");};
   const exportEntregas=()=>{const h=["Vehiculo","Zona","Dia","Cliente","Estado","Hora"];const rows=rutas.flatMap(r=>(r.entregas||[]).map(e=>[r.vehiculo||"",r.zona||"",r.dia||"",e.clienteNombre||"",e.estado||"",e.hora||""]));downloadCSV(toCSV(h,rows),"entregas.csv");};
   const imprimirRemito=(venta)=>{
-    const emp=localStorage.getItem("aryes-empresa")||"Stock";
+    const emp=LS.get("aryes-empresa", "Stock");
     const its=venta.items||[];
     const rows=its.map(it=>"<tr><td>"+it.nombre+"</td><td>"+it.cantidad+" "+it.unidad+"</td><td>$"+Number(it.precioUnit).toLocaleString("es-UY")+"</td><td>$"+Number(it.cantidad*it.precioUnit).toLocaleString("es-UY")+"</td></tr>").join("");
     const desc=Number(venta.descuento)>0?"<p style=\"text-align:right;color:#92400e\">Descuento "+venta.descuento+"%</p>":"";
-    const html="<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Remito "+venta.nroVenta+"</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1a1a1a;}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #3a7d1e;padding-bottom:16px;margin-bottom:24px;}.emp{font-size:22px;font-weight:700;color:#3a7d1e;}table{width:100%;border-collapse:collapse;margin:16px 0;}th{background:#3a7d1e;color:#fff;padding:9px;text-align:left;font-size:13px;}td{padding:8px 9px;border-bottom:1px solid #eee;font-size:13px;}.tot{text-align:right;font-size:18px;font-weight:700;color:#3a7d1e;margin-top:8px;}.ftr{margin-top:40px;border-top:1px solid #eee;padding-top:12px;font-size:11px;color:#aaa;text-align:center;}</style></head><body><div class='hdr'><div><div class='emp'>"+emp+"</div></div><div style='text-align:right'><b>REMITO "+venta.nroVenta+"</b><br>"+venta.fecha+"<br><span style='font-size:11px;padding:2px 8px;background:#f0fdf4;border-radius:4px;color:#3a7d1e;font-weight:700'>"+(venta.estado||"").toUpperCase()+"</span></div></div><p><b>Cliente:</b> "+venta.clienteNombre+"</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>"+rows+"</tbody></table>"+desc+"<div class='tot'>TOTAL: $"+Number(venta.total||0).toLocaleString("es-UY")+"</div><div class='ftr'>"+emp+" · "+new Date().toLocaleDateString("es-UY")+"</div><script>window.onload=function(){window.print();}<" + "/script></body></html>";
+    const html="<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Remito "+venta.nroVenta+"</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1a1a1a;}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #1a8a3c;padding-bottom:16px;margin-bottom:24px;}.emp{font-size:22px;font-weight:700;color:#1a8a3c;}table{width:100%;border-collapse:collapse;margin:16px 0;}th{background:#1a8a3c;color:#fff;padding:9px;text-align:left;font-size:13px;}td{padding:8px 9px;border-bottom:1px solid #eee;font-size:13px;}.tot{text-align:right;font-size:18px;font-weight:700;color:#1a8a3c;margin-top:8px;}.ftr{margin-top:40px;border-top:1px solid #eee;padding-top:12px;font-size:11px;color:#aaa;text-align:center;}</style></head><body><div class='hdr'><div><div class='emp'>"+emp+"</div></div><div style='text-align:right'><b>REMITO "+venta.nroVenta+"</b><br>"+venta.fecha+"<br><span style='font-size:11px;padding:2px 8px;background:#f0fdf4;border-radius:4px;color:#1a8a3c;font-weight:700'>"+(venta.estado||"").toUpperCase()+"</span></div></div><p><b>Cliente:</b> "+venta.clienteNombre+"</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>"+rows+"</tbody></table>"+desc+"<div class='tot'>TOTAL: $"+Number(venta.total||0).toLocaleString("es-UY")+"</div><div class='ftr'>"+emp+" · "+new Date().toLocaleDateString("es-UY")+"</div><script>window.onload=function(){window.print();}<" + "/script></body></html>";
     const w=window.open("","_blank","noopener,noreferrer");if(w){w.document.write(html);w.document.close();}
   };
   const stockCritico=prods.filter(p=>Number(p.stock||0)<=Number(p.rop||5)&&Number(p.stock||0)>0).length;
@@ -36,10 +37,10 @@ function InformesTab(){
   const entregasTotal=rutas.flatMap(r=>r.entregas||[]).length;
   const entregasOk=rutas.flatMap(r=>r.entregas||[]).filter(e=>e.estado==="entregado").length;
   const BTN=({label,icon,onClick})=>(
-    <button onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#fff",border:"2px solid #3a7d1e",borderRadius:10,cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left",marginBottom:8}}>
+    <button onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#fff",border:"2px solid #1a8a3c",borderRadius:10,cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left",marginBottom:8}}>
       <span style={{fontSize:20}}>{icon}</span>
       <div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:"#1a1a1a"}}>{label}</div><div style={{fontSize:11,color:"#888"}}>Exportar CSV</div></div>
-      <span style={{fontSize:16,color:"#3a7d1e"}}>&#8659;</span>
+      <span style={{fontSize:16,color:"#1a8a3c"}}>&#8659;</span>
     </button>
   );
   return(
@@ -48,9 +49,9 @@ function InformesTab(){
         <div><h2 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#1a1a1a",margin:0}}>Informes</h2>
         <p style={{fontSize:12,color:"#888",margin:"4px 0 0"}}>Reportes y exportacion de datos</p></div>
         <div style={{display:"flex",gap:6}}>{["semana","mes","trimestre"].map(p=>(
-          <button key={p} onClick={()=>setPeriodo(p)} style={{padding:"6px 14px",borderRadius:20,border:"2px solid "+(periodo===p?"#3a7d1e":"#e5e7eb"),background:periodo===p?"#3a7d1e":"#fff",color:periodo===p?"#fff":"#666",fontWeight:600,fontSize:12,cursor:"pointer"}}>
+          <button key={p} onClick={()=>setPeriodo(p)} style={{padding:"6px 14px",borderRadius:20,border:"2px solid "+(periodo===p?"#1a8a3c":"#e5e7eb"),background:periodo===p?"#1a8a3c":"#fff",color:periodo===p?"#fff":"#666",fontWeight:600,fontSize:12,cursor:"pointer"}}>
             {p==="semana"?"7 dias":p==="mes"?"30 dias":"90 dias"}</button>))}</div></div>
-      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#3a7d1e",fontSize:13,fontWeight:600}}>{msg}</div>}
+      {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:"#1a8a3c",fontSize:13,fontWeight:600}}>{msg}</div>}
 
       {/* ── Reporte PDF ── */}
       <div style={{marginBottom:28}}>
@@ -59,11 +60,11 @@ function InformesTab(){
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:28}}>
         <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",border:"2px solid "+(stockCritico>0?"#ef4444":"transparent")}}>
           <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Total productos</div>
-          <div style={{fontSize:26,fontWeight:800,color:stockCritico>0?"#ef4444":"#3a7d1e"}}>{prods.length}</div>
+          <div style={{fontSize:26,fontWeight:800,color:stockCritico>0?"#ef4444":"#1a8a3c"}}>{prods.length}</div>
           <div style={{fontSize:11,color:"#888",marginTop:3}}>{stockCritico} criticos · {sinStock} sin stock</div></div>
         <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Ventas periodo</div>
-          <div style={{fontSize:26,fontWeight:800,color:"#3a7d1e"}}>{ventasP.length}</div>
+          <div style={{fontSize:26,fontWeight:800,color:"#1a8a3c"}}>{ventasP.length}</div>
           <div style={{fontSize:11,color:"#888",marginTop:3}}>${totalVentasMes.toLocaleString("es-UY")} facturado</div></div>
         <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",border:"2px solid "+(vencidosCount>0?"#ef4444":"transparent")}}>
           <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Lotes por vencer</div>
@@ -71,7 +72,7 @@ function InformesTab(){
           <div style={{fontSize:11,color:"#888",marginTop:3}}>{vencidosCount} ya vencidos</div></div>
         <div style={{background:"#fff",borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Entregas</div>
-          <div style={{fontSize:26,fontWeight:800,color:"#3a7d1e"}}>{entregasOk}/{entregasTotal}</div>
+          <div style={{fontSize:26,fontWeight:800,color:"#1a8a3c"}}>{entregasOk}/{entregasTotal}</div>
           <div style={{fontSize:11,color:"#888",marginTop:3}}>{entregasTotal>0?Math.round(entregasOk/entregasTotal*100):0}% efectividad</div></div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
@@ -91,18 +92,18 @@ function InformesTab(){
             {ventas.slice(0,12).map((v,i)=>(
               <div key={v.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700,color:"#3a7d1e"}}>{v.nroVenta}</div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1a8a3c"}}>{v.nroVenta}</div>
                   <div style={{fontSize:11,color:"#666"}}>{v.clienteNombre} · {v.fecha}</div>
                 </div>
                 <div style={{fontWeight:700,fontSize:13}}>${Number(v.total||0).toLocaleString("es-UY")}</div>
-                <button onClick={()=>imprimirRemito(v)} style={{padding:"5px 12px",background:"#3a7d1e",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:700}}>
+                <button onClick={()=>imprimirRemito(v)} style={{padding:"5px 12px",background:"#1a8a3c",color:"#fff",border:"none",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:700}}>
                   Imprimir</button>
               </div>))}
             {ventas.length>12&&<div style={{padding:"8px 14px",fontSize:12,color:"#888",textAlign:"center"}}>...y {ventas.length-12} mas</div>}
           </div>)}
           <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",margin:"20px 0 12px"}}>Stock critico</h3>
           {prods.filter(p=>Number(p.stock||0)<=(p.rop||5)).length===0?(
-            <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:16,fontSize:13,color:"#3a7d1e",textAlign:"center"}}>Todo el stock esta OK ✓</div>
+            <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:16,fontSize:13,color:"#1a8a3c",textAlign:"center"}}>Todo el stock esta OK ✓</div>
           ):(
             <div style={{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
               {prods.filter(p=>Number(p.stock||0)<=(p.rop||5)).slice(0,8).map((p,i)=>(

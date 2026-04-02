@@ -29,8 +29,8 @@ const generateOrderPDF = (order, suppliers, products) => {
   <title>Orden de Compra ${orderNum}</title>
   <style>
     body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a18; margin: 0; padding: 40px; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #3a7d1e; padding-bottom: 24px; }
-    .logo-area h1 { font-size: 28px; color: #3a7d1e; margin: 0 0 4px; font-weight: 700; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #1a8a3c; padding-bottom: 24px; }
+    .logo-area h1 { font-size: 28px; color: #1a8a3c; margin: 0 0 4px; font-weight: 700; }
     .logo-area p { color: #6a6a68; margin: 0; font-size: 13px; }
     .oc-info { text-align: right; }
     .oc-info .num { font-size: 22px; font-weight: 700; color: #1a1a18; }
@@ -62,7 +62,7 @@ const generateOrderPDF = (order, suppliers, products) => {
     </div>
     <div class="oc-info">
       <div class="num">Orden de Compra</div>
-      <div class="num" style="color:#3a7d1e">${orderNum}</div>
+      <div class="num" style="color:#1a8a3c">${orderNum}</div>
       <div class="date">Fecha: ${today}</div>
     </div>
   </div>
@@ -96,7 +96,7 @@ const generateOrderPDF = (order, suppliers, products) => {
         ${rows}
         <tr class="total-row">
           <td colspan="3" style="text-align:right;padding:14px 12px;font-weight:700">TOTAL ESTIMADO</td>
-          <td style="text-align:right;padding:14px 12px;font-weight:700;color:#3a7d1e">$ ${total.toFixed(2)} ${sup.currency || 'USD'}</td>
+          <td style="text-align:right;padding:14px 12px;font-weight:700;color:#1a8a3c">$ ${total.toFixed(2)} ${sup.currency || 'USD'}</td>
         </tr>
       </tbody>
     </table>
@@ -130,7 +130,7 @@ const generateOrderPDF = (order, suppliers, products) => {
 };
 
 // ── Dashboard Charts Components ─────────────────────────────────────────
-const MiniBar=({value,max,color='#3a7d1e'})=>{
+const MiniBar=({value,max,color='#1a8a3c'})=>{
   const pct=max>0?Math.min(100,Math.round(value/max*100)):0;
   return <div style={{width:'100%',height:6,background:'#f0f0ec',borderRadius:3,overflow:'hidden'}}>
     <div style={{width:pct+'%',height:'100%',background:color,borderRadius:3,transition:'width .3s'}}/>
@@ -218,7 +218,7 @@ const DashboardExtra=({products,suppliers,orders})=>{
                 <span style={{fontSize:12,color:'#3a3a38',fontWeight:500,flex:1,marginRight:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{i+1}. {p.name}</span>
                 <span style={{fontSize:12,color:'#6a6a68',flexShrink:0}}>$ {val.toFixed(0)}</span>
               </div>
-              <MiniBar value={val} max={maxVal} color={i<3?'#3a7d1e':'#b8d9a8'}/>
+              <MiniBar value={val} max={maxVal} color={i<3?'#1a8a3c':'#b8d9a8'}/>
             </div>;
           })}
         </div>

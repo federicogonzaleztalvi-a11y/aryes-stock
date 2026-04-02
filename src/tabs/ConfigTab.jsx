@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { LS, db } from '../lib/constants.js';
 
 function ConfigTab(){
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
     useEffect(()=>{
     (async()=>{
@@ -14,17 +14,17 @@ function ConfigTab(){
       
     })();
   },[]);
-  const [waTpl,setWaTpl]=useState(()=>localStorage.getItem('aryes-wa-template')||'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!');
-  const [stockMin,setStockMin]=useState(()=>localStorage.getItem('aryes-stock-min-default')||'5');
-  const [empresa,setEmpresa]=useState(()=>localStorage.getItem('aryes-empresa')||'');
+  const [waTpl,setWaTpl]=useState(()=>LS.get('aryes-wa-template', 'Hola {cliente}! Les informamos que {detalle}. Gracias por elegirnos!'));
+  const [stockMin,setStockMin]=useState(()=>LS.get('aryes-stock-min-default', '5'));
+  const [empresa,setEmpresa]=useState(()=>LS.get('aryes-empresa', ''));
   const [msg,setMsg]=useState('');
   const inp={padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box'};
 
   const save=async ()=>{
     try{ await db.upsert('app_config',[{key:'emailcfg',value:emailCfg,updated_at:new Date().toISOString()}]); LS.remove('aryes9-emailcfg'); }catch(e){ console.warn('[Aryes] emailcfg save err',e); }
-    localStorage.setItem('aryes-wa-template',waTpl);
-    localStorage.setItem('aryes-stock-min-default',stockMin);
-    localStorage.setItem('aryes-empresa',empresa);
+    LS.set('aryes-wa-template',waTpl);
+    LS.set('aryes-stock-min-default',stockMin);
+    LS.set('aryes-empresa',empresa);
     setMsg('Configuracion guardada');
     setTimeout(()=>setMsg(''),3000);
   };
@@ -83,7 +83,7 @@ function ConfigTab(){
         <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>🔒 Usuarios del sistema</h3>
         <div style={{display:'grid',gap:8}}>
           {[
-            {rol:'admin',user:'admin',pass:'',color:'#3a7d1e'},
+            {rol:'admin',user:'admin',pass:'',color:'#1a8a3c'},
             {rol:'operador',user:'operador',pass:'stock123',color:'#3b82f6'},
             {rol:'vendedor',user:'vendedor',pass:'ventas123',color:'#8b5cf6'},
           ].map(u=>(

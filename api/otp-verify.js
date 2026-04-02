@@ -12,6 +12,13 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+function safeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
+}
+
 async function sha256(text) {
   const buf  = new TextEncoder().encode(text);
   const hash = await crypto.subtle.digest('SHA-256', buf);
@@ -44,7 +51,7 @@ export default async function handler(req, res) {
   const otp = otps[0];
 
   // 2. Verificar hash
-  if (otp.code_hash !== codeHash) {
+  if (!safeEqual(otp.code_hash, codeHash)) {
     const newAttempts = (otp.failed_attempts || 0) + 1;
     await fetch(`${SB_URL}/rest/v1/otp_sessions?id=eq.${otp.id}`, {
       method: 'PATCH',
@@ -56,14 +63,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: `Código incorrecto. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}.` });
   }
 
-  // 3. Marcar OTP como usado
-  await fetch(`${SB_URL}/rest/v1/otp_sessions?id=eq.${otp.id}`, {
-    method: 'PATCH',
-    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ used: true }),
-  });
-
-  // 4. Buscar cliente — MISMO código que otp-send.js (que funciona)
+  // 3. Buscar cliente — MISMO código que otp-send.js (que funciona)
   const cliRes = await fetch(
     `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(telClean.slice(-8))},phone.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
@@ -81,6 +81,13 @@ export default async function handler(req, res) {
     method: 'POST',
     headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({ token: sessionToken, cliente_id: cliente.id, tel: telClean, org_id: org, expires_at: expiresAt }),
+  });
+
+  // 4. Marcar OTP como usado (solo si la sesión se guardó correctamente)
+  await fetch(`${SB_URL}/rest/v1/otp_sessions?id=eq.${otp.id}`, {
+    method: 'PATCH',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ used: true }),
   });
 
   return res.status(200).json({

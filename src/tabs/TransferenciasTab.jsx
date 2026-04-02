@@ -4,7 +4,7 @@ import { LS, db } from '../lib/constants.js';
 
 function TransferenciasTab(){
   const { products: prods, transfers, setTransfers } = useApp();
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const [deposito]=useState(()=>LS.get("aryes-deposito",{}));
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
   const [msg,setMsg]=useState("");
@@ -113,7 +113,7 @@ function TransferenciasTab(){
         </div>
       )}
 
-      <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial</h3>
+      <div style={{fontSize:11,fontWeight:600,color:"#b0aca6",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12,marginTop:8}}>Historial</div>
       {transfers.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay transferencias registradas</div>):(
         <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>

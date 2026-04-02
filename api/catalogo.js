@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   try {
     // ââ 1. Load products ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     const prodQuery = [
-      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock',
+      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion',
       `org_id=eq.${org}`,
             'order=category.asc,name.asc',
       'limit=500',

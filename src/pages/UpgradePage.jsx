@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 
-const G = '#3a7d1e';
+const G = '#1a8a3c';
 const F = { sans: "'Inter',system-ui,sans-serif" };
 
 const PLANS = [

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LS } from '../lib/constants.js';
 
 function PackingTab(){
-  const G="#3a7d1e";
+  const G="#1a8a3c";
   const [ventas]=useState(()=>LS.get("aryes-ventas",[]));
   const [packings,setPackings]=useState(()=>LS.get("aryes-packings",[]));
   const [sel,setSel]=useState(null);
@@ -49,13 +49,13 @@ function PackingTab(){
           const key=it.productoId||it.nombre;
           const v=validados[key];
           return(
-            <div key={key} onClick={()=>toggleValidar(key)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:8,marginBottom:8,cursor:"pointer",background:v?.validado?"#f0fdf4":"#f9fafb",border:"2px solid "+(v?.validado?"#3a7d1e":"#e5e7eb"),transition:"all .15s"}}>
-              <div style={{width:24,height:24,borderRadius:"50%",background:v?.validado?"#3a7d1e":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,flexShrink:0}}>{v?.validado?"✓":""}</div>
+            <div key={key} onClick={()=>toggleValidar(key)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:8,marginBottom:8,cursor:"pointer",background:v?.validado?"#f0fdf4":"#f9fafb",border:"2px solid "+(v?.validado?"#1a8a3c":"#e5e7eb"),transition:"all .15s"}}>
+              <div style={{width:24,height:24,borderRadius:"50%",background:v?.validado?"#1a8a3c":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,flexShrink:0}}>{v?.validado?"✓":""}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600,color:"#1a1a1a"}}>{it.nombre}</div>
                 <div style={{fontSize:12,color:"#888"}}>{it.cantidad} {it.unidad}</div>
               </div>
-              <span style={{fontSize:12,fontWeight:700,color:v?.validado?"#3a7d1e":"#9ca3af"}}>{v?.validado?"VALIDADO":"Tocar para validar"}</span>
+              <span style={{fontSize:12,fontWeight:700,color:v?.validado?"#1a8a3c":"#9ca3af"}}>{v?.validado?"VALIDADO":"Tocar para validar"}</span>
             </div>
           );
         })}
@@ -70,12 +70,12 @@ function PackingTab(){
           </div>
         </div>
       </div>
-      <div style={{background:todosValidados?"#f0fdf4":"#f9fafb",border:"2px solid "+(todosValidados?"#3a7d1e":"#e5e7eb"),borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:13,color:todosValidados?"#3a7d1e":"#9ca3af",fontWeight:600,textAlign:"center"}}>
+      <div style={{background:todosValidados?"#f0fdf4":"#f9fafb",border:"2px solid "+(todosValidados?"#1a8a3c":"#e5e7eb"),borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:13,color:todosValidados?"#1a8a3c":"#9ca3af",fontWeight:600,textAlign:"center"}}>
         {todosValidados?"✓ Todos los items validados — listo para confirmar":"Validá todos los items para habilitar la confirmacion"}
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
         <button onClick={()=>setSel(null)} style={{padding:"10px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Cancelar</button>
-        <button onClick={confirmarPacking} disabled={!todosValidados} style={{padding:"10px 28px",background:todosValidados?"#3a7d1e":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todosValidados?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar packing</button>
+        <button onClick={confirmarPacking} disabled={!todosValidados} style={{padding:"10px 28px",background:todosValidados?"#1a8a3c":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todosValidados?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar packing</button>
       </div>
     </section>
   );
