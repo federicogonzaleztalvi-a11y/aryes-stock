@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     if (clienteId) {
       // Get the client's lista_id
       const cliRes = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${clienteId}&select=id,lista_id&limit=1`,
+        `${SB_URL}/rest/v1/clients?id=eq.${clienteId}&select=id,lista_id,horario_desde,horario_hasta,portal_activo&limit=1`,
         { headers }
       );
       if (cliRes.ok) {
@@ -157,6 +157,9 @@ export default async function handler(req, res) {
       clienteId: clienteId || null,
       hasLista: !!listaId,
       descGlobal,
+      horarioDesde: cliData?.[0]?.horario_desde || null,
+      horarioHasta: cliData?.[0]?.horario_hasta || null,
+      portalActivo: cliData?.[0]?.portal_activo !== false,
     });
 
   } catch (err) {

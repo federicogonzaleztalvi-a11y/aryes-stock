@@ -715,6 +715,7 @@ export default function PedidosPage() {
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
+  const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');
   const [busq,     setBusq]     = useState('');
   const [carrito,  setCarrito]  = useState({});
@@ -736,6 +737,7 @@ export default function PedidosPage() {
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
         if (d.brandCfg?.nombre) setBrandNombre(d.brandCfg.nombre);
+        if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
       }
     } catch {}
     finally { setLoading(false); }
@@ -911,6 +913,11 @@ export default function PedidosPage() {
         </div>
       </header>
 
+      {horarioInfo && (
+        <div style={{ background:'#fffbeb', borderBottom:'1px solid #fde68a', padding:'6px 24px', textAlign:'center', fontSize:12, color:'#92400e' }}>
+          ⏰ Horario de recepción: <strong>{horarioInfo.desde||'?'} – {horarioInfo.hasta||'?'}</strong>
+        </div>
+      )}
       {vista === 'catalogo' && (
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
           {loading ? (
