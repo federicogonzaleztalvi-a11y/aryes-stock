@@ -97,6 +97,7 @@ const NAV_ROLES = {
   admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','scanner','config','conteo','devoluciones','packing','precios','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
   vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes'],
+  contador: ['dashboard','facturacion','movimientos','resultados','informes','clientes','compras'],
 };
 
 const NAV_GROUPS = [

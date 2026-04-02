@@ -189,6 +189,9 @@ function DominioCNAMEPanel({ orgId }) {
   );
 }
 
+// Role-based access
+import { useRole } from '../hooks/useRole.ts';
+
 export default function ConfigInline({
   session,
   suppliers, setSuppliers,
@@ -198,6 +201,7 @@ export default function ConfigInline({
   totalLead, tfCols,
   brandCfg={}, setBrandCfg
 }) {
+  const { isAdmin } = useRole();
   // ── Brand config state — top level, no IIFE ──────────────────────────────
   const [localBrand, setLocalBrand] = useState({
     name:       brandCfg.name       || '',

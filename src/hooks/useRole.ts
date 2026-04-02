@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext.tsx';
 export type PermLevel = 'none' | 'view' | 'edit' | 'full';
 
 export interface RoleFlags {
+  isContador:  boolean;
   role:        string;
   isAdmin:     boolean;
   isOperador:  boolean;
@@ -38,6 +39,11 @@ const LEGACY_PERMS: Record<string, Record<string, PermLevel>> = {
     clientes: 'edit', facturacion: 'none', precios: 'view', deposito: 'none',
     resultados: 'view', config: 'none',
   },
+  contador: {
+    inventario: 'none', ventas: 'none', rutas: 'none', compras: 'view',
+    clientes: 'view', facturacion: 'view', precios: 'none', deposito: 'none',
+    resultados: 'view', config: 'none', movimientos: 'view', informes: 'view',
+  },
 };
 
 const LEVEL_RANK: Record<PermLevel, number> = { none: 0, view: 1, edit: 2, full: 3 };
@@ -59,6 +65,7 @@ export function useRole(): RoleFlags {
   return {
     role,
     isAdmin:    role === 'admin',
+    isContador: role === 'contador',
     isOperador: role === 'operador',
     isVendedor: role === 'vendedor',
     canWrite:   role === 'admin' || role === 'operador',
