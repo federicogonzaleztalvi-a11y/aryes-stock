@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
 const ProductForm=({product,suppliers,onSave,onClose})=>{
-  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,history:[]};
+  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:22,history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -44,6 +44,18 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
         <Field label="Costo unitario (USD)">
           <Inp type="number" step="0.01" value={f.unitCost} onChange={e=>set("unitCost",+e.target.value)}/>
           {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):''}</div>}
+        </Field>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <Field label="Precio de venta (USD)">
+          <Inp type="number" step="0.01" value={f.precioVenta||f.precio_venta||0} onChange={e=>set("precioVenta",+e.target.value)}/>
+        </Field>
+        <Field label="IVA" hint="Tasa de impuesto al valor agregado">
+          <Sel value={f.iva_rate||22} onChange={e=>set("iva_rate",+e.target.value)}>
+            <option value={0}>0% — Exento</option>
+            <option value={10}>10% — Tasa reducida</option>
+            <option value={22}>22% — Tasa general</option>
+          </Sel>
         </Field>
       </div>
       <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>

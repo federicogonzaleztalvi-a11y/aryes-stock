@@ -748,6 +748,7 @@ const describeAction = (action: string, detail: string): string => {
       brand: (f.brand || '') as string,
       history: (f.history || []) as unknown[],
       precio_venta: Number(f.precioVenta) || 0,
+      iva_rate: Number(f.iva_rate) ?? 22,
       updated_at: now,
     };
     // Optimistic update
