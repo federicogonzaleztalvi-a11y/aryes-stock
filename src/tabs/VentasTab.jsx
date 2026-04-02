@@ -5,6 +5,7 @@ import { db, SB_URL, SKEY, getAuthHeaders, fmt} from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import RemitoPDF from '../components/RemitoPDF.jsx';
+import EtiquetasPDF from '../components/EtiquetasPDF.jsx';
 import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
 import { sendPush } from '../hooks/usePushNotifications';
 
@@ -65,6 +66,7 @@ function VentasTab(){
   const [showFacturar,setShowFacturar]=useState(false);
   const [facturarVenta,setFacturarVenta]=useState(null);
   const [remitoVenta,setRemitoVenta]=useState(null);
+  const [etiquetaDespacho,setEtiquetaDespacho]=useState(null);
   const [monedaVenta,setMonedaVenta]=useState('USD');
 
   // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
@@ -789,6 +791,7 @@ function VentasTab(){
         </div>
       )}
     {remitoVenta&&<RemitoPDF venta={remitoVenta} brandCfg={brandCfg} onClose={()=>setRemitoVenta(null)}/>}
+      {etiquetaDespacho&&<EtiquetasPDF tipo="despacho" data={etiquetaDespacho} brandCfg={brandCfg} onClose={()=>setEtiquetaDespacho(null)}/>}
     {showFacturar&&facturarVenta&&<ModalFactura
       clientes={clientes}
       productos={products}

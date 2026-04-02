@@ -38,6 +38,7 @@ import NotificationBell from './components/NotificationBell.jsx';
 import QuickStats from './components/QuickStats.jsx';
 import SmartToasts from './components/SmartToasts.jsx';
 import ProductForm from './components/ProductForm.jsx';
+import EtiquetasPDF from './components/EtiquetasPDF.jsx';
 import OrderModal from './components/OrderModal.jsx';
 import ExcelModal from './components/ExcelModal.jsx';
 import CameraScanner from './components/CameraScanner.jsx';
@@ -804,6 +805,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   const [appMsg,         setAppMsg]         = useState('');
   const showMsg = (text) => { setAppMsg(text); setTimeout(() => setAppMsg(''), 4000); };
   const [editProd,       setEditProd]       = useState(null);
+  const [etiquetaProd,   setEtiquetaProd]   = useState(null);
   const [editSup,        setEditSup]        = useState(null);
   const [viewSup,        setViewSup]        = useState(null);
 
@@ -1033,7 +1035,7 @@ Generado desde Aryes Stock.`;
         <SmartToasts critN={critN} orders={orders} />
         {ConfirmDialog}
         {/* →→ MODALS →→ */}
-      {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/></Modal>}
+      {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/>{editProd&&<div style={{padding:'0 16px 16px'}}><button onClick={()=>{setModal(null);setEtiquetaProd(editProd);}} style={{width:'100%',background:'#f5f5f7',border:'1px solid #e0e0dc',borderRadius:8,padding:'10px',fontSize:13,cursor:'pointer',color:'#4a4a48'}}>🏷️ Imprimir etiqueta de producto</button></div>}</Modal>}
       {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={async (qty)=>{
         await confirmOrder(modal.product, qty);
         const sup=getSup(modal.product.supplierId);
@@ -1068,6 +1070,7 @@ Generado desde Aryes Stock.`;
           <Btn onClick={()=>setModal(null)} full>Entendido</Btn>
         </Modal>
       )}
+      {etiquetaProd&&<EtiquetasPDF tipo="producto" data={etiquetaProd} brandCfg={brandCfg} onClose={()=>setEtiquetaProd(null)}/>}
       {modal?.type==="excel"&&<ExcelModal products={products} onApply={applyExcel} onClose={()=>setModal(null)}/>}
       {modal?.type==="supplierForm"&&(
         <Modal title={editSup?"Editar proveedor":"Nuevo proveedor"} sub="Proveedores" onClose={()=>{setModal(null);setEditSup(null);}} wide>

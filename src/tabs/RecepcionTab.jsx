@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import EtiquetasPDF from '../components/EtiquetasPDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import { LS, db, SB_URL, getAuthHeaders } from '../lib/constants.js';
 
@@ -12,6 +13,7 @@ async function callRpc(fnName, params = {}) {
   if (r.ok) return { data: await r.json() };
   const err = await r.json().catch(() => ({}));
   throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
+  return etiquetaPallet ? <EtiquetasPDF tipo="pallet" data={etiquetaPallet} brandCfg={window.__brandCfg||{}} onClose={()=>setEtiquetaPallet(null)}/> : null; // placeholder
 }
 
 function RecepcionTab(){
@@ -20,6 +22,7 @@ function RecepcionTab(){
   const KREC="aryes-recepciones";
   const [recepciones,setRecepciones]=useState(()=>LS.get(KREC,[]));
   const [vista,setVista]=useState('lista');
+  const [etiquetaPallet,setEtiquetaPallet]=useState(null);
   const [pedidoSel,setPedidoSel]=useState(null);
   const [items,setItems]=useState([]);
   const [proveedor,setProveedor]=useState('');
