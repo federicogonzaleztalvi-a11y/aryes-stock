@@ -61,6 +61,20 @@ function DevolucionesTab(){
     setProds(updProds);
     setLotes(updLotes);
 
+    // Ledger inmutable — llamar RPC por cada ítem aprobado
+    const SB=import.meta.env.VITE_SUPABASE_URL;
+    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+    itemsDevueltos.filter(it=>it.inspeccion==='aprobado').forEach(it=>{
+      const prod=prods.find(p=>p.id===it.productoId);
+      if(prod?.uuid){
+        fetch(`${SB}/rest/v1/rpc/stock_devolucion`,{
+          method:'POST',
+          headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json'},
+          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantDevolver),p_org_id:'aryes',p_ref:`devolucion-${form.ventaId||'manual'}`})
+        }).catch(e=>console.warn('[DevolucionesTab] stock_devolucion RPC:',e));
+      }
+    });
+
     if (form.ventaId) {
       setVentas(ventas.map(v => v.id === form.ventaId ? { ...v, tieneDevolucion: true } : v));
     }

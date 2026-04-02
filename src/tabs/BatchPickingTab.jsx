@@ -70,6 +70,21 @@ function BatchPickingTab(){
       }
     });
     setProds(updProds);
+
+    // Ledger inmutable — RPC por cada ítem del batch
+    const SB_B=import.meta.env.VITE_SUPABASE_URL;
+    const KEY_B=import.meta.env.VITE_SUPABASE_ANON_KEY;
+    picking.items.forEach(it=>{
+      const prod=prods.find(p=>(p.nombre||p.name)===it.nombre);
+      if(prod?.uuid&&it.cantTotal>0){
+        fetch(`${SB_B}/rest/v1/rpc/stock_venta`,{
+          method:'POST',
+          headers:{apikey:KEY_B,Authorization:`Bearer ${KEY_B}`,'Content-Type':'application/json'},
+          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:it.cantTotal,p_org_id:'aryes',p_ref:`batch-picking-${picking.id}`})
+        }).catch(e=>console.warn('[BatchPickingTab] stock_venta RPC:',e));
+      }
+    });
+
     const n=picking.ventas.length;
     setPicking(null);setSelIds([]);
     setMsg("Batch completado. Stock descontado para "+n+" ordenes.");

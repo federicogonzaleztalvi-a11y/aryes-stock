@@ -112,6 +112,20 @@ function RecepcionTab(){
     });
     setProds(updProds);
 
+    // Ledger inmutable — RPC por cada ítem recibido
+    const SB_R=import.meta.env.VITE_SUPABASE_URL;
+    const KEY_R=import.meta.env.VITE_SUPABASE_ANON_KEY;
+    items.forEach(it=>{
+      const prod=prods.find(p=>p.id===it.productoId||p.nombre?.toLowerCase()===it.nombre?.toLowerCase()||p.name?.toLowerCase()===it.nombre?.toLowerCase());
+      if(prod?.uuid&&Number(it.cantidadRecibida)>0){
+        fetch(`${SB_R}/rest/v1/rpc/stock_recepcion`,{
+          method:'POST',
+          headers:{apikey:KEY_R,Authorization:`Bearer ${KEY_R}`,'Content-Type':'application/json'},
+          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantidadRecibida),p_org_id:'aryes',p_ref:`recepcion-${pedidoSel?.id||'manual'}`})
+        }).catch(e=>console.warn('[RecepcionTab] stock_recepcion RPC:',e));
+      }
+    });
+
     // ── Optimistic UI: add lotes locally ────────────────────────────────────
     const updLotes=[...lotes];
     items.forEach(it=>{
