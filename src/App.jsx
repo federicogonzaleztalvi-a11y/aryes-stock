@@ -11,6 +11,7 @@ const DepositoTab = React.lazy(() => import('./tabs/DepositoTab.jsx'));
 const RecepcionTab = React.lazy(() => import('./tabs/RecepcionTab.jsx'));
 const RutasTab = React.lazy(() => import('./tabs/RutasTab.jsx'));
 const InformesTab = React.lazy(() => import('./tabs/InformesTab.jsx'));
+const PortalAdminTab = lazy(() => import('./tabs/PortalAdminTab.jsx'));
 const LotesTab = React.lazy(() => import('./tabs/LotesTab.jsx'));
 const MovimientosTab = React.lazy(() => import('./tabs/MovimientosTab.jsx'));
 const ConteoTab = React.lazy(() => import('./tabs/ConteoTab.jsx'));
@@ -978,7 +979,7 @@ Generado desde Aryes Stock.`;
       {/* →→ DASHBOARD →→ */}
         {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols} cfes={cfes} cobros={cobros} confirmOrder={confirmOrder} showMsg={showMsg}/></Suspense></ErrorBoundary>}
 
-        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline setModal={setModal} setEditProd={setEditProd}/></Suspense></ErrorBoundary>}
+        {activeTab==="inventory"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InventoryInline setModal={setModal} setEditProd={setEditProd} setEtiquetaProd={setEtiquetaProd}/></Suspense></ErrorBoundary>}
         {activeTab==="orders"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PedidosInline products={products} setProducts={setProducts} suppliers={suppliers} orders={orders} setOrders={setOrders} addMov={addMov} movements={movements} session={session} modal={modal} setModal={setModal} plans={plans} setPlans={setPlans} savePlan={savePlan} tab={tab} getSup={getSup} markDelivered={markDelivered} setTab={setTab} tfCols={tfCols}/></Suspense></ErrorBoundary>}
 
         {/* →→ SUPPLIERS →→ */}
@@ -998,6 +999,7 @@ Generado desde Aryes Stock.`;
         {activeTab==="recepcion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><RecepcionTab /></Suspense></ErrorBoundary>}
         
         {activeTab==="ventas"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><VentasTab /></Suspense></ErrorBoundary>}
+        {activeTab==="portal"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PortalAdminTab /></Suspense></ErrorBoundary>}
         {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products}/></Suspense></ErrorBoundary>}
         
         {activeTab==="importar"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ImportTab /></Suspense></ErrorBoundary>}

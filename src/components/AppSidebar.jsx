@@ -30,6 +30,7 @@ const Icon = ({ name, size = 15, color = 'currentColor' }) => {
     lotes:         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" fill={color}/>,
     deposito:      <path d="M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3z" fill={color}/>,
     rutas:         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill={color}/>,
+    portal:        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z" fill={color}/>,
     tracking:      <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06z" fill={color}/>,
     kpis:          <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z" fill={color}/>,
     resultados:    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" fill={color}/>,
@@ -67,6 +68,7 @@ const NAV_ALL = [
   { id: 'suppliers',      label: 'Proveedores',       icon: 'suppliers' },
   { id: 'clientes',       label: 'Clientes',          icon: 'clientes' },
   { id: 'ventas',         label: 'Ventas',            icon: 'ventas' },
+  { id: 'portal',         label: 'Portal B2B',        icon: 'portal' },
   { id: 'facturacion',    label: 'Facturación',       icon: 'facturacion' },
   { id: 'movimientos',    label: 'Movimientos',       icon: 'movimientos' },
   { id: 'lotes',          label: 'Lotes/Venc.',       icon: 'lotes' },
@@ -92,7 +94,7 @@ const NAV_ALL = [
 ];
 
 const NAV_ROLES = {
-  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','scanner','config','conteo','devoluciones','packing','precios','transferencias','batch-picking'],
+  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','scanner','config','conteo','devoluciones','packing','precios','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
   vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes'],
 };
@@ -100,7 +102,7 @@ const NAV_ROLES = {
 const NAV_GROUPS = [
   { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers'] },
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
-  { label: 'Comercial',   ids: ['clientes','ventas','facturacion'] },
+  { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion'] },
   { label: 'Análisis',    ids: ['kpis','resultados','informes','demanda','audit'] },
   { label: 'Sistema',     ids: ['importar','config'] },
 ];
