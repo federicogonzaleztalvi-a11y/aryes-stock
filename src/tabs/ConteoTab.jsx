@@ -10,9 +10,31 @@ function ConteoTab(){
   const [cantFisica,setCantFisica]=useState("");
   const [msg,setMsg]=useState("");
   const [vista,setVista]=useState("inicio");
+  const [zonaFiltro,setZonaFiltro]=useState("todas");
+  const [zonas,setZonas]=useState([]);
+
+  // Cargar zonas del depósito
+  useState(()=>{
+    const SB=import.meta.env.VITE_SUPABASE_URL;
+    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+    fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.aryes&active=eq.true&order=orden.asc`,
+      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+      .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
+  });
 
   const iniciarConteo=()=>{
-    const items=prods.map(p=>({id:p.id,nombre:p.nombre||p.name||"",stockSistema:Number(p.stock||0),unidad:p.unidad||p.unit||"u",cantFisica:null,diferencia:null}));
+    // Filtrar por zona si corresponde
+    let prodsFiltrados=prods;
+    if(zonaFiltro!=="todas"){
+      const zona=zonas.find(z=>z.id===Number(zonaFiltro));
+      if(zona?.categorias?.length){
+        prodsFiltrados=prods.filter(p=>{
+          const cat=(p.category||p.categoria||'').toUpperCase();
+          return zona.categorias.some(c=>cat.includes(c.toUpperCase()));
+        });
+      }
+    }
+    const items=prodsFiltrados.map(p=>({id:p.id,nombre:p.nombre||p.name||"",stockSistema:Number(p.stock||0),unidad:p.unidad||p.unit||"u",cantFisica:null,diferencia:null}));
     const c={id:crypto.randomUUID(),fecha:new Date().toISOString().split("T")[0],items,completado:false,creadoEn:new Date().toISOString()};
     setConteoActivo(c);setItemIdx(0);setCantFisica("");setVista("conteo");
   };
@@ -179,7 +201,30 @@ function ConteoTab(){
           <div style={{fontSize:40,marginBottom:12}}>📋</div>
           <div style={{fontSize:16,fontWeight:700,color:"#1a1a1a",marginBottom:8}}>Nuevo conteo</div>
           <div style={{fontSize:13,color:"#888",marginBottom:16}}>Recorre producto por producto confirmando la cantidad fisica en el deposito</div>
-          <button onClick={iniciarConteo} style={{padding:"10px 24px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>Iniciar conteo ({prods.length} productos)</button>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#888",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>
+              Conteo cíclico — elegir zona
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {[{id:"todas",nombre:"Todas las zonas"},...zonas].map(z=>(
+                <button key={z.id} onClick={()=>setZonaFiltro(String(z.id))}
+                  style={{padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,cursor:"pointer",
+                    background:zonaFiltro===String(z.id)?G:"#f5f5f7",
+                    color:zonaFiltro===String(z.id)?"#fff":"#4a4a48",
+                    border:zonaFiltro===String(z.id)?"none":"1px solid #e0e0dc"}}>
+                  {z.nombre}
+                </button>
+              ))}
+            </div>
+            {zonaFiltro!=="todas"&&zonas.find(z=>z.id===Number(zonaFiltro))?.categorias?.length>0&&(
+              <div style={{fontSize:11,color:"#1a8a3c",marginTop:6}}>
+                Categorías: {zonas.find(z=>z.id===Number(zonaFiltro)).categorias.join(", ")}
+              </div>
+            )}
+          </div>
+          <button onClick={iniciarConteo} style={{padding:"10px 24px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14}}>
+            Iniciar conteo {zonaFiltro==="todas"?`(${prods.length} productos)`:`— ${zonas.find(z=>z.id===Number(zonaFiltro))?.nombre||""}`}
+          </button>
         </div>
         <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial de conteos</div>
