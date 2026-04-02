@@ -6,6 +6,84 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
 import ClienteImporter from '../components/ClienteImporter.jsx';
 
+// ── Panel de teléfonos adicionales ───────────────────────────────────────
+function PhonesPanel({ clientId, orgId }) {
+  const [phones, setPhones] = React.useState([]);
+  const [nuevo, setNuevo] = React.useState('');
+  const [label, setLabel] = React.useState('Secundario');
+  const [saving, setSaving] = React.useState(false);
+  const SB = import.meta.env.VITE_SUPABASE_URL;
+  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  const cargar = React.useCallback(async () => {
+    if (!clientId) return;
+    try {
+      const r = await fetch(
+        `${SB}/rest/v1/client_phones?client_id=eq.${clientId}&org_id=eq.${orgId||'aryes'}&active=eq.true&order=created_at.asc`,
+        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
+      );
+      const data = await r.json();
+      setPhones(Array.isArray(data) ? data : []);
+    } catch(e) { console.error(e); }
+  }, [clientId, orgId]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const agregar = async () => {
+    const tel = nuevo.replace(/\D/g,'');
+    if (tel.length < 8) return;
+    setSaving(true);
+    try {
+      await fetch(`${SB}/rest/v1/client_phones`, {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ client_id: clientId, org_id: orgId||'aryes', phone: tel, label }),
+      });
+      setNuevo(''); await cargar();
+    } catch(e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  const eliminar = async (id) => {
+    await fetch(`${SB}/rest/v1/client_phones?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ active: false }),
+    });
+    await cargar();
+  };
+
+  return (
+    <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid #e5e5e0'}}>
+      <div style={{fontSize:12,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>
+        Teléfonos adicionales para el portal B2B
+      </div>
+      {phones.map(p => (
+        <div key={p.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid #f0f0ec',fontSize:13}}>
+          <div>
+            <span style={{fontWeight:600,color:'#1a1a18'}}>{p.phone}</span>
+            <span style={{fontSize:11,color:'#9a9a98',marginLeft:8}}>{p.label}</span>
+          </div>
+          <button onClick={() => eliminar(p.id)} style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:16,padding:'0 4px'}}>×</button>
+        </div>
+      ))}
+      <div style={{display:'flex',gap:6,marginTop:10}}>
+        <input value={nuevo} onChange={e=>setNuevo(e.target.value)} placeholder="Ej: 099123456"
+          style={{flex:1,border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none'}}
+          onKeyDown={e=>e.key==='Enter'&&agregar()}/>
+        <select value={label} onChange={e=>setLabel(e.target.value)}
+          style={{border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 8px',fontSize:12,background:'#fff'}}>
+          <option>Secundario</option><option>Compras</option><option>Dueño</option><option>Administración</option>
+        </select>
+        <button onClick={agregar} disabled={saving||nuevo.length<6}
+          style={{background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
+          + Agregar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ClientesTab(){
   const { clientes: items, setClientes: setItems, ventas, cfes, priceListas } = useApp();
   const { isAdmin } = useRole();
@@ -317,6 +395,11 @@ function ClientesTab(){
           {isAdmin&&<button onClick={()=>del(sel.id)} style={{padding:'8px 18px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:13}}>Eliminar</button>}
           {isAdmin&&<button onClick={()=>edit(sel)} style={{padding:'8px 20px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Editar</button>}
         </div>
+      </div>
+
+      {/* ── Teléfonos adicionales ─────────────────────────────── */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
+        <PhonesPanel clientId={sel.id} orgId={'aryes'} />
       </div>
 
       {/* ── Actividad comercial ───────────────────────────────── */}

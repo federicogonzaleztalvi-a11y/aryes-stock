@@ -100,11 +100,31 @@ export default async function handler(req, res) {
   if (telClean.length < 8) return res.status(400).json({ error: 'Teléfono inválido' });
 
   const key = SB_SVC_KEY || SB_ANON;
+
+  // Buscar en tabla principal de clientes
   const cliRes = await fetch(
     `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(telClean.slice(-8))},phone.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
-  const clients = await cliRes.json();
+  let clients = await cliRes.json();
+
+  // Si no está en el teléfono principal, buscar en teléfonos adicionales (client_phones)
+  if (!clients?.length) {
+    const altRes = await fetch(
+      `${SB_URL}/rest/v1/client_phones?phone=eq.${encodeURIComponent(telClean)}&active=eq.true&select=client_id&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    );
+    const altPhones = await altRes.json();
+    if (altPhones?.length) {
+      const clientId = altPhones[0].client_id;
+      const cliRes2 = await fetch(
+        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clientId)}&select=id,name,lista_id&limit=1`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+      );
+      clients = await cliRes2.json();
+    }
+  }
+
   if (!clients?.length) {
     return res.status(404).json({ error: 'Número no registrado. Contactá a Aryes para activar tu acceso.' });
   }

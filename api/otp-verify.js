@@ -63,12 +63,28 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: `Código incorrecto. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}.` });
   }
 
-  // 3. Buscar cliente — MISMO código que otp-send.js (que funciona)
+  // 3. Buscar cliente — teléfono principal o adicional (client_phones)
   const cliRes = await fetch(
     `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(telClean.slice(-8))},phone.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
-  const clients = await cliRes.json();
+  let clients = await cliRes.json();
+
+  if (!clients?.length) {
+    const altRes = await fetch(
+      `${SB_URL}/rest/v1/client_phones?phone=eq.${encodeURIComponent(telClean)}&active=eq.true&select=client_id&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    );
+    const altPhones = await altRes.json();
+    if (altPhones?.length) {
+      const cliRes2 = await fetch(
+        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(altPhones[0].client_id)}&select=id,name,lista_id&limit=1`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+      );
+      clients = await cliRes2.json();
+    }
+  }
+
   console.log('[otp-verify] clients:', JSON.stringify(clients).slice(0, 100));
   if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
 
