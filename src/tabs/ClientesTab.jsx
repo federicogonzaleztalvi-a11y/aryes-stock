@@ -499,6 +499,24 @@ function ClientesTab(){
           </div>
         ))}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8,borderTop:'1px solid #f3f4f6',paddingTop:16}}>
+          {isAdmin&&(
+            <button onClick={async()=>{
+              const nuevo = !(sel.portal_activo ?? true);
+              const SB = import.meta.env.VITE_SUPABASE_URL;
+              const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+              await fetch(`${SB}/rest/v1/clients?id=eq.${sel.id}`,{
+                method:'PATCH',
+                headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'},
+                body:JSON.stringify({portal_activo:nuevo})
+              });
+              setClients(cs=>cs.map(c=>c.id===sel.id?{...c,portal_activo:nuevo}:c));
+            }}
+            style={{padding:'8px 18px',border:`1px solid ${(sel.portal_activo??true)?'#bbf7d0':'#fde68a'}`,borderRadius:8,
+              background:(sel.portal_activo??true)?'#f0fdf4':'#fffbeb',
+              color:(sel.portal_activo??true)?'#166534':'#92400e',cursor:'pointer',fontSize:13,fontWeight:600}}>
+              {(sel.portal_activo??true)?'🛍 Portal activo':'🔒 Portal inactivo'}
+            </button>
+          )}
           {isAdmin&&<button onClick={()=>del(sel.id)} style={{padding:'8px 18px',border:'1px solid #fecaca',borderRadius:8,background:'#fff',color:'#dc2626',cursor:'pointer',fontSize:13}}>Eliminar</button>}
           {isAdmin&&<button onClick={()=>edit(sel)} style={{padding:'8px 20px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Editar</button>}
         </div>

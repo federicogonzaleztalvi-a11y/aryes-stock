@@ -108,6 +108,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children }: {
           lat:           c.lat || null,
           lng:           c.lng || null,
           org_id:        c.org_id || '',
+          portal_activo: c.portal_activo !== false,
         }));
         setClientes(mapped);
         LS.set('aryes-clients', mapped);
