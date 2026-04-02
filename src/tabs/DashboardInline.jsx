@@ -88,6 +88,16 @@ function SectionHeader({ title, action, actionLabel }) {
 }
 
 function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[], confirmOrder, showMsg}) {
+  // Cargar pedidos a proveedores con ETA
+  const [purchaseOrders, setPurchaseOrders] = React.useState([]);
+  React.useEffect(() => {
+    const SB = import.meta.env.VITE_SUPABASE_URL;
+    const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    fetch(`${SB}/rest/v1/purchase_invoices?status=eq.pendiente&select=id,supplier_id,expected_arrival,total,created_at&order=expected_arrival.asc&limit=50`,
+      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+      .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setPurchaseOrders(d); }).catch(()=>{});
+  }, []);
+
 
   // Pull ventas reactively — avoids adding a prop to the parent call site
   const { ventas = [], clientes = [], brandCfg = {} } = useApp();
@@ -927,6 +937,15 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                       <div style={{fontFamily:F.sans,fontSize:10,color:'#9a9a98',marginTop:1}}>
                         Lead {totalLead(sup)}d
                       </div>
+                      {(()=>{
+                        const po=purchaseOrders.find(o=>o.supplier_id===sup.id);
+                        if(!po?.expected_arrival) return null;
+                        const dias=Math.ceil((new Date(po.expected_arrival)-new Date())/86400000);
+                        const color=dias<=0?'#dc2626':dias<=3?'#d97706':'#1a8a3c';
+                        return <div style={{fontFamily:F.sans,fontSize:10,fontWeight:700,color,marginTop:2}}>
+                          {dias<=0?'⚠ Llegó hoy':dias===1?'📦 Llega mañana':`📦 ETA: ${dias}d`}
+                        </div>;
+                      })()}
                     </div>
                   </div>
                   <div style={{marginBottom:8}}>
