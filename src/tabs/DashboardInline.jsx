@@ -88,6 +88,19 @@ function SectionHeader({ title, action, actionLabel }) {
 }
 
 function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[], confirmOrder, showMsg}) {
+  const exportarReporte = () => {
+    const hoy = new Date().toISOString().split('T')[0];
+    const rows = [['Reporte Aryes Stock — '+hoy],[],['KPI','Valor'],['Total productos',(products||[]).length],['En cero',(products||[]).filter(p=>Number(p.stock)<=0).length],['Bajo minimo',(products||[]).filter(p=>Number(p.stock)>0&&Number(p.stock)<=Number(p.minStock||0)).length],['Capital en stock',(products||[]).reduce((s,p)=>s+(Number(p.stock||0)*Number(p.unitCost||p.precio||0)),0)],[],['Producto','Stock','Min','Costo','PrecioVenta','Valor'],...(products||[]).map(p=>[p.nombre||p.name,p.stock||0,p.minStock||0,p.unitCost||p.precio||0,p.precioVenta||0,(Number(p.stock||0)*Number(p.unitCost||p.precio||0))])];
+    const csv=rows.map(r=>r.map(v=>String(v||'').includes(',')?'"'+String(v||'')+'"':String(v||'')).join(',')).join('\n');
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='reporte-aryes-'+hoy+'.csv';a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  
+
   // Cargar pedidos a proveedores con ETA
   const [purchaseOrders, setPurchaseOrders] = React.useState([]);
   React.useEffect(() => {
@@ -1126,7 +1139,16 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             </div>
           )}
         </div>
-      </div>
+      
+      
+
+      <button onClick={exportarReporte} title="Exportar reporte CSV"
+        style={{position:'fixed',bottom:80,right:20,zIndex:800,width:48,height:48,borderRadius:'50%',
+          background:'#1a8a3c',color:'#fff',border:'none',cursor:'pointer',fontSize:20,
+          boxShadow:'0 4px 12px rgba(0,0,0,.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+        📥
+      </button>
+</div>
     </div>
   );
 }
