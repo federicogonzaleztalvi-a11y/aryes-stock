@@ -149,7 +149,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   const orderNow   = alerts.filter(p=>p.alert.level==='order_now').length;
   const orderSoon  = alerts.filter(p=>p.alert.level==='order_soon').length;
   const pending    = orders.filter(o=>o.status==='pending');
-  const stockValue = products.reduce((s,p)=>s+(p.stock||0)*(p.unitCost||0),0);
+  const stockValue = products.reduce((s,p)=>s+(p.stock||0)*(p.unitCost||p.precio||0),0);
   const transitVal = pending.reduce((s,o)=>s+(+o.totalCost||0),0);
   const critCov    = products.filter(p=>(p.dailyUsage||0)>0&&p.stock>0&&(p.stock/(p.dailyUsage||0.001))<14).length;
 
