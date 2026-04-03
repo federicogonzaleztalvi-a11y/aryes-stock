@@ -397,16 +397,72 @@ export default function ConfigInline({
 
                 <div style={{paddingTop:8,borderTop:'1px solid #e2e2de',display:'flex',alignItems:'center',gap:12}}>
                   
-              <div style={{marginTop:12}}>
-                <label style={{fontSize:12,fontWeight:600,color:"#6a6a68",display:"block",marginBottom:4}}>IVA por defecto (%)</label>
-                <select value={brandCfg.iva_default||22} onChange={e=>setBrandCfg(p=>({...p,iva_default:+e.target.value}))}
-                  style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid #e2e2de",fontSize:13,background:"#fff"}}>
-                  <option value={0}>0% (Exento)</option>
-                  <option value={10}>10%</option>
-                  <option value={22}>22% (Standard)</option>
-                </select>
-                <div style={{fontSize:11,color:"#9a9a98",marginTop:4}}>Se usa como valor por defecto al crear productos nuevos</div>
-              </div>
+              {/* ── Impuesto sobre ventas (multi-país) ────────────────────── */}
+              {(()=>{
+                const TAX_PRESETS={
+                  UY:{name:'IVA',rates:[{v:22,l:'22% (Básica)'},{v:10,l:'10% (Mínima)'},{v:0,l:'0% (Exento)'}],default:22},
+                  AR:{name:'IVA',rates:[{v:21,l:'21% (General)'},{v:10.5,l:'10.5% (Reducida)'},{v:27,l:'27% (Servicios)'},{v:0,l:'0% (Exento)'}],default:21},
+                  CL:{name:'IVA',rates:[{v:19,l:'19% (General)'},{v:0,l:'0% (Exento)'}],default:19},
+                  CO:{name:'IVA',rates:[{v:19,l:'19% (General)'},{v:5,l:'5% (Reducida)'},{v:0,l:'0% (Exento)'}],default:19},
+                  PE:{name:'IGV',rates:[{v:18,l:'18% (General)'},{v:0,l:'0% (Exento)'}],default:18},
+                  MX:{name:'IVA',rates:[{v:16,l:'16% (General)'},{v:0,l:'0% (Exento)'}],default:16},
+                  BR:{name:'ICMS',rates:[{v:18,l:'18% (SP)'},{v:20,l:'20% (RJ)'},{v:17,l:'17% (Otros)'},{v:0,l:'0% (Exento)'}],default:18},
+                  PY:{name:'IVA',rates:[{v:10,l:'10% (General)'},{v:5,l:'5% (Reducida)'},{v:0,l:'0% (Exento)'}],default:10},
+                  EC:{name:'IVA',rates:[{v:15,l:'15% (General)'},{v:0,l:'0% (Exento)'}],default:15},
+                  ES:{name:'IVA',rates:[{v:21,l:'21% (General)'},{v:10,l:'10% (Reducido)'},{v:4,l:'4% (Super reducido)'},{v:0,l:'0% (Exento)'}],default:21},
+                  US:{name:'Sales Tax',rates:[{v:0,l:'0%'},{v:6,l:'6%'},{v:7,l:'7%'},{v:8.25,l:'8.25%'},{v:10,l:'10%'}],default:0},
+                  OTHER:{name:'Impuesto',rates:[{v:0,l:'0%'},{v:5,l:'5%'},{v:10,l:'10%'},{v:15,l:'15%'},{v:20,l:'20%'},{v:22,l:'22%'}],default:0},
+                };
+                const country=brandCfg.tax_country||'UY';
+                const preset=TAX_PRESETS[country]||TAX_PRESETS.OTHER;
+                const taxName=brandCfg.tax_name||preset.name;
+                const taxRate=brandCfg.iva_default!=null?brandCfg.iva_default:preset.default;
+                const isCustomRate=!preset.rates.some(r=>r.v===taxRate);
+                return (
+                  <div style={{marginTop:16,background:"#f9f9f7",borderRadius:10,padding:14,border:"1px solid #e2e2de"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#1a1a18",marginBottom:10}}>Impuesto sobre ventas</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      <div>
+                        <label style={{fontSize:11,fontWeight:600,color:"#6a6a68",display:"block",marginBottom:3}}>País</label>
+                        <select value={country} onChange={e=>{const c=e.target.value;const p=TAX_PRESETS[c]||TAX_PRESETS.OTHER;setBrandCfg(prev=>({...prev,tax_country:c,tax_name:p.name,iva_default:p.default}));}}
+                          style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid #e2e2de",fontSize:12,background:"#fff"}}>
+                          <option value="UY">🇺🇾 Uruguay</option>
+                          <option value="AR">🇦🇷 Argentina</option>
+                          <option value="CL">🇨🇱 Chile</option>
+                          <option value="CO">🇨🇴 Colombia</option>
+                          <option value="PE">🇵🇪 Perú</option>
+                          <option value="MX">🇲🇽 México</option>
+                          <option value="BR">🇧🇷 Brasil</option>
+                          <option value="PY">🇵🇾 Paraguay</option>
+                          <option value="EC">🇪🇨 Ecuador</option>
+                          <option value="ES">🇪🇸 España</option>
+                          <option value="US">🇺🇸 Estados Unidos</option>
+                          <option value="OTHER">Otro</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{fontSize:11,fontWeight:600,color:"#6a6a68",display:"block",marginBottom:3}}>Nombre del impuesto</label>
+                        <input value={taxName} onChange={e=>setBrandCfg(p=>({...p,tax_name:e.target.value}))}
+                          style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid #e2e2de",fontSize:12,background:"#fff"}} placeholder="IVA, IGV, Sales Tax..."/>
+                      </div>
+                    </div>
+                    <div style={{marginTop:10}}>
+                      <label style={{fontSize:11,fontWeight:600,color:"#6a6a68",display:"block",marginBottom:3}}>Tasa por defecto</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <select value={isCustomRate?'custom':taxRate} onChange={e=>{const v=e.target.value;if(v!=='custom')setBrandCfg(p=>({...p,iva_default:+v}));}}
+                          style={{flex:1,padding:"7px 10px",borderRadius:8,border:"1px solid #e2e2de",fontSize:12,background:"#fff"}}>
+                          {preset.rates.map(r=><option key={r.v} value={r.v}>{taxName} {r.l}</option>)}
+                          <option value="custom">Personalizado</option>
+                        </select>
+                        {isCustomRate&&<input type="number" min={0} max={99} step={0.5} value={taxRate} onChange={e=>setBrandCfg(p=>({...p,iva_default:+e.target.value}))}
+                          style={{width:70,padding:"7px 10px",borderRadius:8,border:"1px solid #e2e2de",fontSize:12,background:"#fff",textAlign:"center"}}/>}
+                        {isCustomRate&&<span style={{fontSize:11,color:"#6a6a68"}}>%</span>}
+                      </div>
+                    </div>
+                    <div style={{fontSize:10,color:"#9a9a98",marginTop:6}}>Se usa como valor por defecto al crear productos. Cada producto puede tener su propia tasa.</div>
+                  </div>
+                );
+              })()}
               <button onClick={saveBrand} disabled={brandSaving}
                     style={{padding:'9px 24px',background:brandSaving?'#9ca3af':(localBrand.color||'#1a8a3c'),color:'#fff',border:'none',borderRadius:8,cursor:brandSaving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
                     {brandSaving?'Guardando…':'Guardar marca'}
