@@ -53,6 +53,8 @@ export function useDemo() {
     setDemoIndustry(industryId);
     setDemoMode(true);
 
+    // Clear real session so db.get() won't use it in demo mode
+    try { localStorage.removeItem('aryes-session'); } catch(e) {}
     console.debug('[demo] Activado:', industryId, dataset.org.name);
   }, []);
 
