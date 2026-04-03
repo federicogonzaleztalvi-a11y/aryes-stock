@@ -49,7 +49,7 @@ async function callRpc(fnName, params = {}) {
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
-          cfes, setCfes, cobros, setCobros, brandCfg } = useApp();
+          cfes, setCfes, cobros, setCobros, brandCfg , isDemoMode} = useApp();
   const G="#1a8a3c";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#1a8a3c',cancelada:'#ef4444'};
 
@@ -685,7 +685,7 @@ function VentasTab(){
       </div>
       <MsgBanner/>
       {/* →→ Pedidos del portal B2B →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→ */}
-      <PedidosPortalPanel onImportar={async (order)=>{
+      {!isDemoMode && <PedidosPortalPanel onImportar={async (order)=>{
         // Convert portal order to venta — enrich items with costs from product catalog
         const ventaId  = crypto.randomUUID();
         const nroVenta = await fetchNextNroVenta(ventas);
@@ -731,7 +731,7 @@ function VentasTab(){
           body:JSON.stringify({estado:'importada',venta_id:ventaId}),
         }).catch(()=>{});
         showMsg(`Pedido importado como ${nroVenta}`);
-      }}/>
+      }}/>}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
         {[
           {l:'Total ventas',v:ventas.length,c:'#6b7280'},
