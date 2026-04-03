@@ -151,6 +151,12 @@ function Root() {
   const [session, setSession] = useState(() => readSession());
   const { demoMode, demoIndustry, demoState, activateDemo, exitDemo, demoGuard } = useDemo();
   const [showDemoSelector, setShowDemoSelector] = useState(false);
+
+  // ── effectiveSession: demo fake o real ──
+  const effectiveSession = demoMode ? {
+    email: 'demo@aryes.com', role: 'admin', name: 'Demo', orgId: 'demo',
+    access_token: 'demo-token', expiresAt: Date.now() + 86400000, _demo: true,
+  } : session;
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem(ONBOARDING_KEY); }
     catch { return false; }
@@ -203,16 +209,14 @@ function Root() {
     .catch(() => setOrgStatus('ok')); // si falla el check, dejar pasar (no bloquear por error de red)
   }, [effectiveSession?.orgId, demoMode]);
 
+
+  // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
   // Demo selector
   if (showDemoSelector && !demoMode) {
     return <DemoSelector onSelect={(id) => { activateDemo(id); setShowDemoSelector(false); }} />;
   }
-  const effectiveSession = demoMode ? {
-    email: 'demo@aryes.com', role: 'admin', name: 'Demo', orgId: 'demo',
-    access_token: 'demo-token', expiresAt: Date.now() + 86400000, _demo: true,
-  } : session;
   if (!effectiveSession) return <LoginScreen onLogin={handleLogin} onExplore={() => setShowDemoSelector(true)} />;
-  // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
+
   if (effectiveSession && orgStatus === null) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: '3px solid #1a8a3c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
