@@ -244,7 +244,7 @@ function Root() {
         </Routes>
         {demoMode && (<><DemoBanner industry={demoIndustry} orgName={demoState?.org?.name} onExit={() => { exitDemo(); setSession(null); }} onSignup={() => { window.location.href = '/register'; }} /><DemoToast /></>)}
       </AppProvider>
-      {showOnboarding && (
+      {showOnboarding && !demoMode && (
         <Suspense fallback={null}>
           <OnboardingWizard
             session={session}
