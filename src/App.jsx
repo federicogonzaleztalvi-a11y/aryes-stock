@@ -243,7 +243,7 @@ const Modal=({title,sub,onClose,children,wide})=>(
           {sub&&<Cap style={{color:T.green}}>{sub}</Cap>}
           <h2 style={{fontFamily:T.serif,fontSize:26,fontWeight:500,color:T.text,marginTop:sub?4:0,letterSpacing:"-.01em"}}>{title}</h2>
         </div>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:T.textXs,fontSize:22,lineHeight:1,padding:4,marginTop:2}}>Í</button>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",color:T.textXs,fontSize:22,lineHeight:1,padding:4,marginTop:2}}>✕</button>
       </div>
       <div style={{padding:"22px 28px 28px"}}>{children}</div>
     </div>
