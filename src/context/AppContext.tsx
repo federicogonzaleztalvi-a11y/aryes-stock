@@ -564,7 +564,7 @@ const describeAction = (action: string, detail: string): string => {
   // ── Realtime sync — multi-device (Supabase Realtime) ────────────────────
   // When another device/user changes data in Supabase, these callbacks
   // update local state immediately without requiring a page reload.
-  useRealtime({
+  useRealtime(isDemoMode ? {} : {
     onProductChange: ({ eventType, new: row, old: oldRow }) => {
       if (!row && !oldRow) return;
       setProducts(ps => {
