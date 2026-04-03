@@ -172,7 +172,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   }, []);
   // ── Cargar ventas desde Supabase al arrancar ──────────────────────────────
   useEffect(() => {
-    if (isDemoMode) return;
+    if (isDemoMode || (session as any)?._demo) return;
     if (/*!SB*/!SB_URL || !SKEY) return;
     fetch(`${SB_URL}/rest/v1/ventas?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`, {
       headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' }
