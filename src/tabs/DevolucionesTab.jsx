@@ -90,6 +90,36 @@ function DevolucionesTab(){
       creadoEn: now,
     };
     setDevoluciones([dev, ...devoluciones]);
+    // ── Generar nota de crédito automática ─────────────────────────
+    const totalCredito = itemsDevueltos.reduce((s, it) => s + (Number(it.precio || 0) * Number(it.cantDevolver || 0)), 0);
+    if (totalCredito > 0) {
+      const notaCredito = {
+        id: crypto.randomUUID(),
+        tipo: 'nota_credito',
+        nroDevolucion: dev.nroDevolucion,
+        clienteId: form.clienteId || dev.clienteId,
+        clienteNombre: form.clienteNombre || dev.clienteNombre,
+        monto: totalCredito,
+        motivo: form.motivo,
+        fecha: new Date().toISOString().split('T')[0],
+        items: itemsDevueltos.map(it => ({ nombre: it.nombre, qty: it.cantDevolver, precio: it.precio })),
+        estado: 'emitida',
+        createdAt: new Date().toISOString(),
+      };
+      // Save to cfes (facturas) as negative/credit
+      if (typeof setCfes === 'function') {
+        setCfes(prev => [{ ...notaCredito, saldoPendiente: -totalCredito, numero: 'NC-' + dev.nroDevolucion }, ...prev]);
+      }
+      // Persist to Supabase
+      try {
+        await callRpc('create_nota_credito', { p_data: JSON.stringify(notaCredito) });
+      } catch (ncErr) {
+        console.warn('[DevolucionesTab] nota_credito RPC:', ncErr?.message);
+        // Non-blocking — the local state is already updated
+      }
+      console.debug('[DevolucionesTab] Nota de crédito generada:', notaCredito.id, totalCredito);
+    }
+    
 
     // ── Atomic DB write via create_devolucion RPC ────────────────────────
     const userEmail = (getSession()?.email || 'sistema');

@@ -46,7 +46,14 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
                     <tr><td colSpan={11} style={{padding:"60px 20px",textAlign:"center"}}>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c8c4bc" strokeWidth="1.5" strokeLinecap="round"><path d="M20 7l-8-4-8 4v10l8 4 8-4V7z"/><path d="M12 3v18M4 7l8 4 8-4"/></svg>
-                        <div style={{fontFamily:"Inter,sans-serif",fontSize:15,fontWeight:600,color:"#5a5a58"}}>No hay productos cargados</div>
+                        <div style={{textAlign:"center",padding:"48px 20px"}}>
+                        <div style={{fontSize:48,marginBottom:12}}>📦</div>
+                        <div style={{fontFamily:"Inter,sans-serif",fontSize:17,fontWeight:700,color:"#1a1a18",marginBottom:6}}>Sin productos todavía</div>
+                        <p style={{fontSize:13,color:"#6b7280",marginBottom:16,maxWidth:320,margin:"0 auto 16px"}}>Importá tus productos desde un archivo Excel/CSV o agregalos uno por uno</p>
+                        <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+                          <Btn onClick={()=>{setEditProd(null);setModal({type:"product"});}}>+ Nuevo producto</Btn>
+                        </div>
+                      </div>
                         <div style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#9a9a98"}}>Importá tu catálogo o agregá productos uno por uno</div>
                       </div>
                     </td></tr>

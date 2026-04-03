@@ -12,6 +12,7 @@ const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
 const RegisterPage     = lazy(() => import('./pages/RegisterPage.jsx'));
+const LandingPage      = lazy(() => import('./pages/LandingPage.jsx'));
 const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
 const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
 const TrackingPage     = lazy(() => import('./pages/TrackingPage.jsx'));
@@ -272,6 +273,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           {/* Public client delivery tracking — no auth */}
           <Route path="/tracking" element={<TrackingPage />} />
           {/* Public self-registration */}
+          <Route path="/landing" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/register" element={<RegisterPage />} />
           {/* Upgrade / pricing page */}
           <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
