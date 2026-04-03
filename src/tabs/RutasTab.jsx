@@ -5,6 +5,7 @@ import { db, SB_URL, SKEY, getOrgId, fmt, LS} from '../lib/constants.js';
 import { useRole } from '../hooks/useRole.ts';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 
+import GeneradorRuta from '../components/GeneradorRuta.jsx';
 
 function RutasTab(){
   const { clientes, setClientes, rutas, setRutas, setHasPendingSync, cfes, cobros, setCobros } = useApp();
