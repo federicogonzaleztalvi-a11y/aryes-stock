@@ -92,7 +92,7 @@ function DevolucionesTab(){
     setDevoluciones([dev, ...devoluciones]);
 
     // ── Atomic DB write via create_devolucion RPC ────────────────────────
-    const userEmail = (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.email || 'sistema'; } catch { return 'sistema'; } })();
+    const userEmail = (getSession()?.email || 'sistema');
     try {
       await callRpc('create_devolucion', {
         p_id:             dev.id,

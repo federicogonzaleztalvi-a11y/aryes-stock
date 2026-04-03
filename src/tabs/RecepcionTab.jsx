@@ -160,7 +160,7 @@ function RecepcionTab(){
     // ── Atomic DB write via create_recepcion RPC ─────────────────────────────
     // One Postgres transaction: stock increments + movements + lotes + recepcion + audit.
     // On error: revert all optimistic state updates.
-    const userEmail=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch{return 'sistema';}})();
+    const userEmail=(getSession()?.email || 'sistema');
     try {
       await callRpc('create_recepcion', {
         p_id:         recId,

@@ -84,7 +84,7 @@ function VistaBase({ prods, setProducts }) {
             method: 'PATCH',
             headers: {
               apikey: SKEY,
-              Authorization: `Bearer ${(JSON.parse(localStorage.getItem('aryes-session') || 'null'))?.access_token || SKEY}`,
+              Authorization: `Bearer ${(getSession()?.access_token || SKEY)}`,
               'Content-Type': 'application/json',
               Prefer: 'return=minimal',
             },

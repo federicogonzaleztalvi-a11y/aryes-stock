@@ -70,7 +70,7 @@ export default function DriverView() {
   // ── Load ruta ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!rutaId) { setError('No se especificó una ruta. Usá el link correcto.'); setLoading(false); return; }
-    const session = (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null'); } catch { return null; } })();
+    const session = getSession();
     const token   = session?.access_token || SB_ANON;
 
     fetch(`${SB_URL}/rest/v1/rutas?id=eq.${rutaId}&org_id=eq.${orgId}&limit=1`, {
@@ -99,7 +99,7 @@ export default function DriverView() {
       (pos) => {
         const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         // Guardar en Supabase (fire and forget)
-        const session = (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null'); } catch { return null; } })();
+        const session = getSession();
         const token = session?.access_token || SB_ANON;
         fetch(`${SB_URL}/rest/v1/driver_locations`, {
           method: 'POST',
@@ -165,7 +165,7 @@ export default function DriverView() {
   // ── Save ruta to Supabase ─────────────────────────────────────────────────
   const saveRuta = async (updatedRuta) => {
     setSaving(true);
-    const session = (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null'); } catch { return null; } })();
+    const session = getSession();
     const token   = session?.access_token || SB_ANON;
 
     try {
@@ -208,6 +208,22 @@ export default function DriverView() {
     setRuta(updRuta);
     showMsg('🚀 ¡En ruta! El cliente puede ver tu progreso.');
     await saveRuta(updRuta);
+    // Notificación proactiva: avisar al primer cliente pendiente
+    const primerPendiente = updRuta.entregas.find(e => e.estado === 'pendiente');
+    if (primerPendiente) {
+      const tel = (primerPendiente.telefono || '').replace(/\D/g, '');
+      if (tel) {
+        const nombre = primerPendiente.clienteNombre.split(' ')[0];
+        const eta = (updRuta.entregas.filter(e => e.estado === 'pendiente').indexOf(primerPendiente) + 1) * 12;
+        const trackingUrl = window.location.origin + '/tracking?ruta=' + updRuta.id + '&cliente=' + primerPendiente.clienteId + '&org=' + orgId;
+        const msg = 'Hola ' + nombre + ', nuestro repartidor acaba de salir a entregar. Estimamos llegar en ~' + eta + ' minutos. Seguí tu pedido: ' + trackingUrl + ' 🚚';
+        setTimeout(() => {
+          if (window.confirm('¿Avisar a ' + primerPendiente.clienteNombre + ' que saliste a entregar?')) {
+            window.open('https://wa.me/' + tel + '?text=' + encodeURIComponent(msg), '_blank');
+          }
+        }, 1500);
+      }
+    }
   };
 
   const showMsg = (text, type = 'ok') => {

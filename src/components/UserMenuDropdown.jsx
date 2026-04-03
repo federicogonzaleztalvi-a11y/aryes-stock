@@ -61,7 +61,7 @@ function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setT
           )}
           <button
             onClick={() => {
-              const org = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.orgId||'aryes'; } catch { return 'aryes'; } })();
+              const org = (getSession()?.orgId || 'aryes');
               const url = `${window.location.origin}/catalogo?org=${org}`;
               navigator.clipboard?.writeText(url).catch(()=>{});
               window.open(url, '_blank', 'noopener,noreferrer');

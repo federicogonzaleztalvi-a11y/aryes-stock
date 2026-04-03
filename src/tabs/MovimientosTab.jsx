@@ -51,7 +51,7 @@ function MovimientosTab(){
       });
     }catch { /* non-blocking */ }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (()=>{ try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch { /* non-blocking */ }})(),action:'movimiento',detail:JSON.stringify({tipo:nuevo.tipo,productoId:nuevo.productoId,productoNombre:nuevo.productoNombre,cantidad:nuevo.cantidad})}); }catch { /* non-blocking */ }
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (getSession()?.email || 'unknown'),action:'movimiento',detail:JSON.stringify({tipo:nuevo.tipo,productoId:nuevo.productoId,productoNombre:nuevo.productoNombre,cantidad:nuevo.cantidad})}); }catch { /* non-blocking */ }
 
     setProds(updProds);
     setMsg('Movimiento registrado');

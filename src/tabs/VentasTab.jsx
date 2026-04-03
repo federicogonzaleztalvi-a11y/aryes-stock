@@ -279,7 +279,7 @@ function VentasTab(){
       // If anything fails, Postgres rolls back everything — no partial state.
       // Optimistic UI above gives immediate feedback; on error we revert.
       try {
-        const userEmail = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema'; } catch { return 'sistema'; } })();
+        const userEmail = (getSession()?.email || 'sistema');
         await callRpc('create_venta', {
           p_id:             venta.id,
           p_nro_venta:      venta.nroVenta,
@@ -319,8 +319,8 @@ function VentasTab(){
 
   const cambiarEstado=async(id,nuevoEstado)=>{
     const venta=ventas.find(v=>v.id===id);
-    const userEmail=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch{return 'sistema';}})();
-    const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
+    const userEmail=(getSession()?.email || 'sistema');
+    const sessionToken=(getSession()?.access_token || '');
 
     // Optimistic update
     const ts=new Date().toISOString();
@@ -356,7 +356,7 @@ function VentasTab(){
     const estado=nuevoEstado;
 
     // Web Push — notificar al admin en otros dispositivos (Delivery Hero automatic events)
-    const orgId = (() => { try { return JSON.parse(localStorage.getItem('aryes-session')||'null')?.orgId||'aryes'; } catch { return 'aryes'; } })();
+    const orgId = (getSession()?.orgId || 'aryes');
     if (estado === 'en_ruta') {
       sendPush(orgId, {
         title: 'Venta en camino',
@@ -398,7 +398,7 @@ function VentasTab(){
       setProducts(updProds);
 
       // Atomic DB cancel via RPC
-      const userEmail=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'sistema';}catch{return 'sistema';}})();
+      const userEmail=(getSession()?.email || 'sistema');
       callRpc('cancel_venta',{p_venta_id:id,p_user_email:userEmail})
         .then(()=>{ showMsg('Venta cancelada — stock restaurado','ok'); })
         .catch(e=>{

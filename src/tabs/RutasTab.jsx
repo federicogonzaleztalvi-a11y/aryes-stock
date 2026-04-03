@@ -823,7 +823,112 @@ function RutasTab(){
     );
   }
 
-  // DETALLE VIEW
+  // ANALYTICS VIEW
+  if(vista==="analytics"&&ruta){
+    const allEntregas=ruta.entregas||[];
+    const entregadosA=allEntregas.filter(e=>e.estado==='entregado');
+    const noEntregadosA=allEntregas.filter(e=>e.estado==='no_entregado');
+    const totalA=allEntregas.length;
+    const pctExito=totalA>0?Math.round(entregadosA.length/totalA*100):0;
+    // Tiempo promedio por parada
+    const tiempos=[];
+    const sorted=[...entregadosA].filter(e=>e.hora).sort((a,b)=>a.hora.localeCompare(b.hora));
+    for(let i=1;i<sorted.length;i++){
+      const [h1,m1]=sorted[i-1].hora.split(':').map(Number);
+      const [h2,m2]=sorted[i].hora.split(':').map(Number);
+      const diff=(h2*60+m2)-(h1*60+m1);
+      if(diff>0&&diff<120) tiempos.push(diff);
+    }
+    const avgMin=tiempos.length>0?Math.round(tiempos.reduce((s,t)=>s+t,0)/tiempos.length):0;
+    // On-time (dentro de ventana horaria)
+    const conVentana=entregadosA.filter(e=>e.horarioDesde&&e.horarioHasta&&e.hora);
+    const onTime=conVentana.filter(e=>{
+      const h=e.hora;return h>=e.horarioDesde&&h<=e.horarioHasta;
+    }).length;
+    const pctOnTime=conVentana.length>0?Math.round(onTime/conVentana.length*100):null;
+    // Duración total
+    const salidaMin=ruta.salidaEn?new Date(ruta.salidaEn):null;
+    const ultimaHora=sorted.length>0?sorted[sorted.length-1].hora:null;
+    let durTotal=null;
+    if(salidaMin&&ultimaHora){
+      const [uh,um]=ultimaHora.split(':').map(Number);
+      const salidaMins=salidaMin.getHours()*60+salidaMin.getMinutes();
+      durTotal=(uh*60+um)-salidaMins;
+      if(durTotal<0) durTotal=null;
+    }
+    return(
+      <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+          <button onClick={()=>setVista("detalle")} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#666"}}>←</button>
+          <div style={{flex:1}}>
+            <h2 style={{fontFamily:"Playfair Display,serif",fontSize:22,color:"#1a1a1a",margin:0}}>📊 Performance de la ruta</h2>
+            <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>{ruta.vehiculo} · {ruta.zona}</p>
+          </div>
+        </div>
+        {/* KPIs principales */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:20}}>
+          {[
+            {l:"Éxito",v:pctExito+'%',c:pctExito>=80?G:pctExito>=50?'#f59e0b':'#dc2626',sub:entregadosA.length+'/'+totalA+' entregas'},
+            {l:"Tiempo/parada",v:avgMin>0?avgMin+' min':'—',c:'#3b82f6',sub:tiempos.length+' mediciones'},
+            {l:"On-time",v:pctOnTime!==null?pctOnTime+'%':'—',c:pctOnTime>=80?G:'#f59e0b',sub:conVentana.length>0?onTime+'/'+conVentana.length+' con ventana':'Sin ventanas'},
+            {l:"No entregados",v:noEntregadosA.length+'',c:noEntregadosA.length>0?'#dc2626':'#9ca3af',sub:totalA>0?Math.round(noEntregadosA.length/totalA*100)+'% del total':''},
+            {l:"Duración total",v:durTotal?durTotal<60?durTotal+' min':Math.floor(durTotal/60)+'h '+durTotal%60+'m':'—',c:'#6b7280',sub:ruta.salidaEn?'Salió '+new Date(ruta.salidaEn).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}):'No salió aún'},
+          ].map(kpi=>(
+            <div key={kpi.l} style={{background:"#fff",borderRadius:10,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+              <div style={{fontSize:11,color:"#888",marginBottom:4}}>{kpi.l}</div>
+              <div style={{fontSize:22,fontWeight:800,color:kpi.c}}>{kpi.v}</div>
+              <div style={{fontSize:10,color:"#9ca3af",marginTop:2}}>{kpi.sub}</div>
+            </div>
+          ))}
+        </div>
+        {/* Detalle por parada */}
+        <div style={{background:"#fff",borderRadius:10,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Detalle por parada</div>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+            <thead>
+              <tr style={{borderBottom:'2px solid #e5e7eb'}}>
+                <th style={{textAlign:'left',padding:'8px 6px',color:'#6b7280',fontWeight:600}}>#</th>
+                <th style={{textAlign:'left',padding:'8px 6px',color:'#6b7280',fontWeight:600}}>Cliente</th>
+                <th style={{textAlign:'left',padding:'8px 6px',color:'#6b7280',fontWeight:600}}>Estado</th>
+                <th style={{textAlign:'left',padding:'8px 6px',color:'#6b7280',fontWeight:600}}>Hora</th>
+                <th style={{textAlign:'left',padding:'8px 6px',color:'#6b7280',fontWeight:600}}>Ventana</th>
+                <th style={{textAlign:'left',padding:'8px 6px',color:'#6b7280',fontWeight:600}}>Nota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allEntregas.map((e,i)=>{
+                const done=e.estado==='entregado';
+                const failed=e.estado==='no_entregado';
+                const inWindow=done&&e.horarioDesde&&e.horarioHasta&&e.hora?
+                  (e.hora>=e.horarioDesde&&e.hora<=e.horarioHasta):null;
+                return(
+                  <tr key={i} style={{borderBottom:'1px solid #f3f4f6',background:done?'#f0fdf4':failed?'#fef2f2':'transparent'}}>
+                    <td style={{padding:'8px 6px',fontWeight:700,color:'#9ca3af'}}>{i+1}</td>
+                    <td style={{padding:'8px 6px',fontWeight:600,color:'#1a1a1a'}}>{e.clienteNombre}</td>
+                    <td style={{padding:'8px 6px'}}>
+                      <span style={{padding:'2px 8px',borderRadius:12,fontSize:11,fontWeight:700,
+                        background:done?'#dcfce7':failed?'#fee2e2':'#fef3c7',
+                        color:done?'#16a34a':failed?'#dc2626':'#92400e'}}>
+                        {done?'✓ Entregado':failed?'✕ No entregado':'⏳ Pendiente'}
+                      </span>
+                    </td>
+                    <td style={{padding:'8px 6px',color:'#374151'}}>{e.hora||'—'}</td>
+                    <td style={{padding:'8px 6px',color:'#6b7280',fontSize:11}}>
+                      {e.horarioDesde&&e.horarioHasta?e.horarioDesde+'-'+e.horarioHasta:'—'}
+                      {inWindow!==null&&(inWindow?<span style={{color:'#16a34a',marginLeft:4}}>✓</span>:<span style={{color:'#dc2626',marginLeft:4}}>tarde</span>)}
+                    </td>
+                    <td style={{padding:'8px 6px',color:'#6b7280',fontSize:11,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.notaEntrega||'—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+    // DETALLE VIEW
   if(vista==="detalle"&&ruta){
     return(
       <section style={{padding:"28px 36px",maxWidth:900,margin:"0 auto"}}>
@@ -864,6 +969,7 @@ function RutasTab(){
               💰 Cobranza en ruta
             </button>
             <button onClick={()=>setVista("historial")} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12}}>Historial</button>
+            <button onClick={()=>setVista("analytics")} style={{padding:"7px 14px",background:"#fff",border:"1px solid #e5e7eb",borderRadius:8,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",gap:4}}>📊 Performance</button>
           </div>
         </div>
         {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"8px 14px",marginBottom:12,color:G,fontSize:12,fontWeight:600}}>{msg}</div>}
@@ -908,6 +1014,77 @@ function RutasTab(){
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#f59e0b"}}>{pendientes}</div><div style={{fontSize:11,color:"#888"}}>Pendientes</div></div>
           <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,color:"#1a1a1a"}}>{ruta.entregas.length}</div><div style={{fontSize:11,color:"#888"}}>Total</div></div>
         </div>
+        {/* ── Timeline de la ruta ── */}
+        {ruta.salidaEn&&(()=>{
+          const entregasConHora=ruta.entregas.filter(e=>e.hora);
+          if(entregasConHora.length===0&&!ruta.salidaEn) return null;
+          const salidaTime=new Date(ruta.salidaEn).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
+          const ultimaEntrega=entregasConHora[entregasConHora.length-1];
+          const duracionMin=ultimaEntrega?Math.round((new Date('2000-01-01T'+ultimaEntrega.hora+':00').getTime()-new Date(ruta.salidaEn).getTime()%86400000)/60000):null;
+          return(
+            <div style={{background:"#fff",borderRadius:10,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#1a1a1a",marginBottom:10}}>Timeline de la ruta</div>
+              <div style={{position:'relative',paddingLeft:20}}>
+                <div style={{position:'absolute',left:7,top:4,bottom:4,width:2,background:'#e5e7eb'}}/>
+                {/* Salida */}
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,position:'relative'}}>
+                  <div style={{position:'absolute',left:-16,width:12,height:12,borderRadius:'50%',background:G,border:'2px solid #fff',boxShadow:'0 0 0 2px '+G,zIndex:1}}/>
+                  <span style={{fontSize:12,fontWeight:700,color:G,minWidth:42}}>{salidaTime}</span>
+                  <span style={{fontSize:12,color:'#374151'}}>Salida a entregar</span>
+                </div>
+                {/* Paradas con hora */}
+                {ruta.entregas.map((e,i)=>{
+                  const done=e.estado==='entregado';
+                  const failed=e.estado==='no_entregado';
+                  const dotColor=done?'#16a34a':failed?'#dc2626':'#d1d5db';
+                  return(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,position:'relative'}}>
+                      <div style={{position:'absolute',left:-14,width:8,height:8,borderRadius:'50%',background:dotColor,zIndex:1}}/>
+                      <span style={{fontSize:11,color:done||failed?'#374151':'#9ca3af',minWidth:42,fontWeight:done?600:400}}>{e.hora||'—'}</span>
+                      <span style={{fontSize:12,color:done?'#374151':failed?'#dc2626':'#9ca3af',fontWeight:done?500:400}}>{e.clienteNombre}</span>
+                      {done&&<span style={{fontSize:10,color:'#16a34a',fontWeight:600}}>✓</span>}
+                      {failed&&<span style={{fontSize:10,color:'#dc2626',fontWeight:600}}>✕</span>}
+                    </div>
+                  );
+                })}
+                {/* Duración total */}
+                {duracionMin>0&&(
+                  <div style={{fontSize:11,color:'#6b7280',marginTop:6,paddingLeft:2}}>
+                    Duración total: {duracionMin<60?duracionMin+' min':Math.floor(duracionMin/60)+'h '+duracionMin%60+'min'}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+        {/* ── GPS Live Map ── */}
+        {isAdmin&&(()=>{
+          const driver=posiciones.find(p=>p.ruta_id===ruta.id);
+          if(!driver?.lat||!driver?.lng) return null;
+          const pendientesGps=ruta.entregas.filter(e=>e.estado==='pendiente');
+          const mapsUrl='https://www.google.com/maps/dir/?api=1'
+            +'&origin='+driver.lat+','+driver.lng
+            +(pendientesGps.length>0?'&destination='+(clientes.find(c=>c.id===pendientesGps[pendientesGps.length-1]?.clienteId)?.lat||driver.lat)+','+(clientes.find(c=>c.id===pendientesGps[pendientesGps.length-1]?.clienteId)?.lng||driver.lng):'')
+            +(pendientesGps.length>1?'&waypoints='+pendientesGps.slice(0,-1).map(e=>{const c=clientes.find(cl=>cl.id===e.clienteId);return c?.lat&&c?.lng?c.lat+','+c.lng:null;}).filter(Boolean).join('|'):'')
+            +'&travelmode=driving';
+          const tiempoEnRuta=ruta.salidaEn?Math.round((Date.now()-new Date(ruta.salidaEn).getTime())/60000):null;
+          return(
+            <div style={{background:"#fff",borderRadius:10,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:10,height:10,borderRadius:'50%',background:'#16a34a',animation:'pulseDot 1.8s ease infinite'}}/>
+                  <span style={{fontSize:13,fontWeight:700,color:"#1a1a1a"}}>{driver.usuario||'Repartidor'} en ruta</span>
+                  {driver.velocidad>0&&<span style={{fontSize:11,color:"#6b7280"}}>{Math.round(driver.velocidad)} km/h</span>}
+                  {tiempoEnRuta!==null&&<span style={{fontSize:11,color:"#6b7280"}}>{tiempoEnRuta<60?tiempoEnRuta+'min':Math.floor(tiempoEnRuta/60)+'h '+tiempoEnRuta%60+'min'} en ruta</span>}
+                </div>
+                <button onClick={()=>window.open(mapsUrl,'_blank')}
+                  style={{padding:"6px 14px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:4}}>
+                  📍 Ver en mapa
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         <div style={{background:"#fff",borderRadius:10,padding:14,boxShadow:"0 1px 4px rgba(0,0,0,.06)",marginBottom:16}}>
           <input value={busqCli} onChange={e=>setBusqCli(e.target.value)} placeholder="Buscar cliente para agregar..." style={{...inp,marginBottom:busqCli?8:0}} />
           {busqCli&&clientesFiltrados.map(c=>(
@@ -951,10 +1128,14 @@ function RutasTab(){
                       onMouseUp={e=>e.currentTarget.closest('[draggable]').style.cursor='grab'}
                     >⠿</span>
                   )}
-                  {(!isEntregado&&!isNoEnt)
-                    ? <span style={{fontSize:12,fontWeight:800,color:"#9ca3af",minWidth:20,textAlign:"center",flexShrink:0}}>{idx+1}</span>
-                    : <span style={{fontSize:18,opacity:.7}}>📍</span>
-                  }
+                  <div style={{width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',
+                    justifyContent:'center',fontSize:isEntregado||isNoEnt?14:11,fontWeight:800,flexShrink:0,
+                    background:isEntregado?'#dcfce7':isNoEnt?'#fee2e2':'#f3f4f6',
+                    color:isEntregado?'#16a34a':isNoEnt?'#dc2626':'#6b7280',
+                    border:'2px solid '+(isEntregado?'#16a34a':isNoEnt?'#dc2626':'#d1d5db'),
+                    transition:'all .2s'}}>
+                    {isEntregado?'✓':isNoEnt?'✕':idx+1}
+                  </div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",display:"flex",alignItems:"center",gap:8}}>
                       {e.clienteNombre}
