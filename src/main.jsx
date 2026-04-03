@@ -17,6 +17,12 @@ const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
 const TrackingPage     = lazy(() => import('./pages/TrackingPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
+// ── Demo mode ─────────────────────────────────────────────────────
+import DemoSelector from './demo/DemoSelector.jsx';
+import DemoBanner from './demo/DemoBanner.jsx';
+import DemoToast from './demo/DemoToast.jsx';
+import { useDemo } from './demo/useDemo.js';
+
 function readSession() {
   try {
     const s = JSON.parse(localStorage.getItem('aryes-session') || 'null');
@@ -59,7 +65,7 @@ class RootErrorBoundary extends React.Component {
 }
 
 // ── Login Screen ──────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin, onExplore }) {
   const [email, setEmail] = useState('');
   const [pass, setPass]   = useState('');
   const [err, setErr]     = useState('');
@@ -124,6 +130,15 @@ function LoginScreen({ onLogin }) {
             ¿No tenés cuenta?{' '}
             <a href="/register" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
           </p>
+          {onExplore && (
+            <button onClick={onExplore}
+              style={{ background: 'none', border: '1px solid #e2e2de', borderRadius: 8, padding: '10px 0', width: '100%', fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#1a1a18', cursor: 'pointer', marginTop: 12, transition: 'background .12s' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f9f9f7'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            >
+              Explorar la plataforma →
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -134,6 +149,8 @@ function LoginScreen({ onLogin }) {
 function Root() {
   useErrorReporting(); // captura errores JS globales y promises sin catch
   const [session, setSession] = useState(() => readSession());
+  const { demoMode, demoIndustry, demoState, activateDemo, exitDemo, demoGuard } = useDemo();
+  const [showDemoSelector, setShowDemoSelector] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem(ONBOARDING_KEY); }
     catch { return false; }
@@ -159,12 +176,13 @@ function Root() {
   const [orgStatus, setOrgStatus] = React.useState(null); // null=loading, 'ok', 'expired', 'canceled'
 
   React.useEffect(() => {
-    if (!session?.orgId) return;
+    if (demoMode) { setOrgStatus('ok'); return; }
+    if (!effectiveSession?.orgId) return;
     // Verificar estado de la org en Supabase
     const SB_URL = import.meta.env.VITE_SUPABASE_URL;
     const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.orgId) + '&select=subscription_status,trial_ends_at,active&limit=1', {
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + session.access_token }
+    fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(effectiveSession.orgId) + '&select=subscription_status,trial_ends_at,active&limit=1', {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + effectiveSession.access_token }
     })
     .then(r => r.json())
     .then(orgs => {
@@ -183,11 +201,19 @@ function Root() {
       setOrgStatus('ok'); // default: dejar pasar
     })
     .catch(() => setOrgStatus('ok')); // si falla el check, dejar pasar (no bloquear por error de red)
-  }, [session?.orgId]);
+  }, [effectiveSession?.orgId, demoMode]);
 
-  if (!session) return <LoginScreen onLogin={handleLogin} />;
+  // Demo selector
+  if (showDemoSelector && !demoMode) {
+    return <DemoSelector onSelect={(id) => { activateDemo(id); setShowDemoSelector(false); }} />;
+  }
+  const effectiveSession = demoMode ? {
+    email: 'demo@aryes.com', role: 'admin', name: 'Demo', orgId: 'demo',
+    access_token: 'demo-token', expiresAt: Date.now() + 86400000, _demo: true,
+  } : session;
+  if (!effectiveSession) return <LoginScreen onLogin={handleLogin} onExplore={() => setShowDemoSelector(true)} />;
   // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
-  if (session && orgStatus === null) return (
+  if (effectiveSession && orgStatus === null) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: '3px solid #1a8a3c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
@@ -206,24 +232,13 @@ function Root() {
   );
   return (
     <>
-      <AppProvider session={session} onLogout={handleLogout} onSessionUpdate={setSession}>
+      <AppProvider session={effectiveSession} onLogout={demoMode ? exitDemo : handleLogout} onSessionUpdate={setSession} demoState={demoMode ? demoState : null}>
         <Routes>
-          {/* Redirect bare /app to /app/dashboard */}
           <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
-          {/* Main app — tab is the URL segment */}
-          <Route
-            path="/app/:tab"
-            element={
-              <AryesApp
-                session={session}
-                onLogout={handleLogout}
-                onSessionUpdate={setSession}
-              />
-            }
-          />
-          {/* Catch-all: redirect anything else to /app/dashboard */}
+          <Route path="/app/:tab" element={<AryesApp session={effectiveSession} onLogout={demoMode ? () => { exitDemo(); setSession(null); } : handleLogout} onSessionUpdate={setSession} demoMode={demoMode} demoGuard={demoGuard} />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
+        {demoMode && (<><DemoBanner industry={demoIndustry} orgName={demoState?.org?.name} onExit={() => { exitDemo(); setSession(null); }} onSignup={() => { window.location.href = '/register'; }} /><DemoToast /></>)}
       </AppProvider>
       {showOnboarding && (
         <Suspense fallback={null}>

@@ -768,7 +768,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
 // LOGIN SCREEN
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 
-function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
+function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMode, demoGuard}){
   // →→ State and mutations come from AppContext →→→→→→→→→→→→→→→→→→→→→→→→→→→→
   const {
     products, setProducts,
@@ -835,6 +835,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate}){
   const handleLogout = () => onLogout?.();
 
   const generarResumenWA = () => {
+    if (demoMode && demoGuard) { demoGuard('Creá tu cuenta para enviar resúmenes'); return; }
     const ownerPhone = brandCfg?.ownerPhone;
     if (!ownerPhone) { alert('Configurá tu teléfono en Config → Marca y empresa'); return; }
     const fecha = new Date().toLocaleDateString('es-UY', {weekday:'long',day:'numeric',month:'long'});
@@ -848,6 +849,7 @@ Generado desde Aryes Stock.`;
   // confirmedDeleteProduct removed → InventoryInline now handles its own confirm
 
   const confirmedDeleteSupplier = async (id) => {
+    if (demoMode && demoGuard) { demoGuard('Creá tu cuenta para eliminar proveedores'); return; }
     const hasProducts = products.some(p => p.supplierId === id);
     if (hasProducts) {
       await confirm({
@@ -937,7 +939,7 @@ Generado desde Aryes Stock.`;
           <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
         </div>
       )}
-      {session && dbReady && <div style={{display:"flex",minHeight:"100vh",background:"#f5f5f7"}}>
+      {session && dbReady && <div style={{display:"flex",minHeight:"100vh",background:"#f5f5f7",paddingBottom:demoMode?60:0}}>
       <style>{CSS}</style>
 
       {/* →→ SIDEBAR →→ */}
