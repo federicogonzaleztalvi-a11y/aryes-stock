@@ -3,7 +3,7 @@
 // GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
 
 const SB_URL  = process.env.SUPABASE_URL;
-const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -69,6 +69,9 @@ export default async function handler(req, res) {
 
     // ââ 2. Load client's price list if clienteId provided âââââââââââââââââââ
     let listaId   = null;
+  let horarioDesde = null;
+  let horarioHasta = null;
+  let portalActivo = true;
     let descGlobal = 0;       // % global discount for the list
     let itemMap   = {};       // productUuid â precio especÃ­fico
 
@@ -80,7 +83,10 @@ export default async function handler(req, res) {
       );
       if (cliRes.ok) {
         const cliData = await cliRes.json();
-        if (cliData?.[0]?.lista_id) {
+        horarioDesde = cliData?.[0]?.horario_desde || null;
+          horarioHasta = cliData?.[0]?.horario_hasta || null;
+          portalActivo = cliData?.[0]?.portal_activo !== false;
+          if (cliData?.[0]?.lista_id) {
           listaId = cliData[0].lista_id;
 
           // Get the list's global discount
@@ -157,9 +163,9 @@ export default async function handler(req, res) {
       clienteId: clienteId || null,
       hasLista: !!listaId,
       descGlobal,
-      horarioDesde: cliData?.[0]?.horario_desde || null,
-      horarioHasta: cliData?.[0]?.horario_hasta || null,
-      portalActivo: cliData?.[0]?.portal_activo !== false,
+      horarioDesde,
+      horarioHasta,
+      portalActivo,
     });
 
   } catch (err) {

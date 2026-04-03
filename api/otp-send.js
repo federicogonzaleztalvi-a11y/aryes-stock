@@ -11,7 +11,7 @@ const IB_SENDER   = process.env.INFOBIP_SENDER;
 const IB_CHANNEL  = process.env.INFOBIP_CHANNEL;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://aryes-stock.vercel.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };

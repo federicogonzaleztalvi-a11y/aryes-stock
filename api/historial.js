@@ -8,7 +8,7 @@ const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://aryes-stock.vercel.app',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -22,6 +22,21 @@ async function handler(req, res) {
   if (!SB_URL || !SB_ANON) {
     log.fatal('historial', 'missing env vars', { hasSbUrl: !!SB_URL, hasSbAnon: !!SB_ANON });
     return res.status(503).json({ error: 'Servicio temporalmente no disponible' });
+  }
+
+  // Validate portal session token — prevents unauthorized access to order history
+  const authHeader = req.headers['authorization'] || '';
+  const sessionToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (sessionToken) {
+    // If token provided, validate it
+    const key = SB_ANON;
+    const sessRes = await fetch(
+      `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    );
+    if (!sessRes.ok || !(await sessRes.json())?.length) {
+      return res.status(401).json({ error: 'Sesión inválida' });
+    }
   }
 
   const { tel, org = 'aryes' } = req.query || {};
