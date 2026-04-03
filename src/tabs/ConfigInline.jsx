@@ -396,7 +396,18 @@ export default function ConfigInline({
                 </div>
 
                 <div style={{paddingTop:8,borderTop:'1px solid #e2e2de',display:'flex',alignItems:'center',gap:12}}>
-                  <button onClick={saveBrand} disabled={brandSaving}
+                  
+              <div style={{marginTop:12}}>
+                <label style={{fontSize:12,fontWeight:600,color:"#6a6a68",display:"block",marginBottom:4}}>IVA por defecto (%)</label>
+                <select value={brandCfg.iva_default||22} onChange={e=>setBrandCfg(p=>({...p,iva_default:+e.target.value}))}
+                  style={{width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid #e2e2de",fontSize:13,background:"#fff"}}>
+                  <option value={0}>0% (Exento)</option>
+                  <option value={10}>10%</option>
+                  <option value={22}>22% (Standard)</option>
+                </select>
+                <div style={{fontSize:11,color:"#9a9a98",marginTop:4}}>Se usa como valor por defecto al crear productos nuevos</div>
+              </div>
+              <button onClick={saveBrand} disabled={brandSaving}
                     style={{padding:'9px 24px',background:brandSaving?'#9ca3af':(localBrand.color||'#1a8a3c'),color:'#fff',border:'none',borderRadius:8,cursor:brandSaving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
                     {brandSaving?'Guardando…':'Guardar marca'}
                   </button>
