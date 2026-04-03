@@ -57,7 +57,7 @@ export default function DemoSelector({ onSelect }) {
           </div>
         )}
         <div style={{ textAlign:'center', marginTop:8 }}>
-          <button onClick={() => window.history.back()} style={{ background:'none', border:'none', color:'#86868b', fontSize:12, cursor:'pointer', padding:'6px 12px' }}>← Volver al login</button>
+          <button onClick={() => { window.location.href = '/'; }} style={{ background:'none', border:'none', color:'#86868b', fontSize:12, cursor:'pointer', padding:'6px 12px' }}>← Volver al login</button>
         </div>
       </div>
     </div>

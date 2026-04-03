@@ -242,7 +242,7 @@ function Root() {
           <Route path="/app/:tab" element={<AryesApp session={effectiveSession} onLogout={demoMode ? () => { exitDemo(); setSession(null); } : handleLogout} onSessionUpdate={setSession} demoMode={demoMode} demoGuard={demoGuard} />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
-        {demoMode && (<><DemoBanner industry={demoIndustry} orgName={demoState?.org?.name} onExit={() => { exitDemo(); setSession(null); }} onSignup={() => { window.location.href = '/register'; }} /><DemoToast /></>)}
+        {demoMode && (<><DemoBanner industry={demoIndustry} orgName={demoState?.org?.name} onExit={() => { exitDemo(); setSession(null); window.location.href = '/'; }} onSignup={() => { window.location.href = '/register'; }} /><DemoToast /></>)}
       </AppProvider>
       {showOnboarding && !demoMode && (
         <Suspense fallback={null}>
