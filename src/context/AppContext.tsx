@@ -5,6 +5,7 @@ import React, {
 } from 'react';
 import { LS, db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
 import { useRealtime } from '../hooks/useRealtime.js';
+import { mapDemoProducts, mapDemoClients, mapDemoSuppliers, mapDemoVentas } from './demoMapper.ts';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
@@ -88,10 +89,10 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   // ── Demo mode: cargar datos del dataset ──────────────────────────────────
   useEffect(() => {
     if (!isDemoMode || !demoState) return;
-    const dp = demoState.products.map(p => ({ id:p.sku||p.id, uuid:p.id, nombre:p.name, name:p.name, marca:p.category, brand:p.category, unidad:p.unit||'un', unit:p.unit||'un', barcode:p.sku, stock:p.stock, minStock:p.min_stock, precio:p.cost, precioVenta:p.price, unitCost:p.cost, supplierId:p.supplier_id, imagenUrl:p.imagen_url, descripcion:'', ivaRate:p.iva_rate||22, org_id:'demo', dailyUsage: Math.max(1, Math.round(p.stock * 0.08)) }));
-    const dc = demoState.clients.map(c => ({ id:c.id, nombre:c.name, tipo:c.zone||'', telefono:c.phone, email:'', direccion:c.address, ciudad:'Montevideo', condPago:'cuenta_corriente', limiteCred:c.credit_limit||0, notas:'', activo:true, listaId:c.lista_id||null, lat:null, lng:null, org_id:'demo' }));
-    const ds = demoState.suppliers.map(s => ({ id:s.id, name:s.name, flag:'', color:'#2980b9', times:{preparation:s.lead_time_days,customs:0,freight:0,warehouse:0}, company:s.name, contact:'', email:s.email||'', phone:s.phone||'', country:'Uruguay', city:'Montevideo', currency:'UYU', paymentTerms:'30', paymentMethod:'', minOrder:'', discount:'0', rating:4, active:true, notes:'' }));
-    const dv = demoState.ventas.map(v => ({ id:v.id, nroVenta:v.id.toUpperCase(), clienteId:v.cliente_id, clienteNombre:demoState.clients.find(c=>c.id===v.cliente_id)?.name||'', clienteTelefono:demoState.clients.find(c=>c.id===v.cliente_id)?.phone||'', fecha:v.fecha||new Date().toISOString().split('T')[0], estado:v.estado, items:v.items.map(it=>({productId:it.product_id,nombre:demoState.products.find(p=>p.id===it.product_id)?.name||it.product_id,qty:it.qty,precio:it.price,subtotal:it.qty*it.price})), total:v.total||v.items.reduce((s,it)=>s+it.qty*it.price,0), descuento:0, notas:'', estadoLog:[{estado:v.estado,ts:v.created_at||new Date().toISOString(),user:'demo'}], creadoEn:v.created_at||new Date().toISOString(), updatedAt:v.created_at||new Date().toISOString(), tieneDevolucion:false, moneda:'UYU', org_id:'demo' }));
+    const dp = mapDemoProducts(demoState.products);
+    const dc = mapDemoClients(demoState.clients);
+    const ds = mapDemoSuppliers(demoState.suppliers);
+    const dv = mapDemoVentas(demoState.ventas, demoState.clients, demoState.products);
     setProducts(dp); setClientes(dc); setSuppliers(ds); setVentas(dv);
     setBrandCfg({ name:demoState.org.name, logoUrl:'', color:'#1a8a3c', ownerPhone:demoState.org.ownerPhone||'', horario:demoState.org.horario||'', address:demoState.org.address||'', rut:demoState.org.rut||'' });
     setDbReady(true); setSyncStatus('demo');
@@ -905,7 +906,11 @@ const describeAction = (action: string, detail: string): string => {
     } catch(e) { console.warn('[calcReorderPoints]', e); return []; }
   };
 
-  const value: AppContextValue = {
+  // ═══════════════════════════════════════════════════════════════
+  // MODULE: VALUE ASSEMBLY — single source of truth for consumers
+  // All hooks and components access data through this object via useApp()
+  // ═══════════════════════════════════════════════════════════════
+    const value: AppContextValue = {
     // Data
     products, setProducts,
     ventas, setVentas,
