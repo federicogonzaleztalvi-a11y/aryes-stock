@@ -278,6 +278,7 @@ const describeAction = (action: string, detail: string): string => {
   // A failure in one batch does not affect the others.
   useEffect(() => {
     if (!session) return;
+    if (isDemoMode) return; // skip all Supabase fetches in demo
     (async () => {
 
       // ── Batch A: commercial data (critical for daily ops UI) ──────────────
