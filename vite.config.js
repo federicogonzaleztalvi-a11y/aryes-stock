@@ -8,10 +8,18 @@ export default defineConfig({
     ...(process.env.SENTRY_AUTH_TOKEN ? [sentryVitePlugin({ org: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT, authToken: process.env.SENTRY_AUTH_TOKEN })] : []),
   ],
   build: {
-    // es2022 target: prevents esbuild from transforming const/let declarations
-    // which was causing Temporal Dead Zone (TDZ) errors in production
     sourcemap: true,
     target: 'es2022',
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-router': ['react-router-dom'],
+        },
+      },
+    },
   },
   test: {
     // jsdom needed because ui.jsx imports React (has JSX components alongside
