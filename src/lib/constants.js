@@ -121,7 +121,8 @@ export const db = {
     const query = typeof match === 'string'
       ? match
       : Object.entries(match).map(([k, v]) => `${k}=eq.${v}`).join('&');
-    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+    const orgFilter = query.includes('org_id') ? '' : `&org_id=eq.${getOrgId()}`;
+    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
       method: 'PATCH',
       headers: getAuthHeaders({ 'Prefer': 'return=representation' }),
       body: JSON.stringify(data),
@@ -135,7 +136,8 @@ export const db = {
 
   async del(table, match) {
     const query = Object.entries(match).map(([k, v]) => `${k}=eq.${v}`).join('&');
-    await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+    const orgFilter = `&org_id=eq.${getOrgId()}`;
+    await fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
@@ -176,7 +178,8 @@ export const db = {
   // On conflict (0 rows updated): re-fetches, recalculates delta, retries.
   async patchWithLock(table, data, filter, lockField, lockValue, maxRetries = 3) {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const lockFilter = `${filter}&${lockField}=eq.${lockValue}`;
+      const orgFilter = filter.includes('org_id') ? '' : `&org_id=eq.${getOrgId()}`;
+      const lockFilter = `${filter}&${lockField}=eq.${lockValue}${orgFilter}`;
       const r = await fetch(`${SB_URL}/rest/v1/${table}?${lockFilter}`, {
         method: 'PATCH',
         headers: { ...getAuthHeaders(), 'Prefer': 'return=representation,count=exact' },

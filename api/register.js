@@ -9,7 +9,7 @@ const SB_SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin': process.env.APP_URL || 'https://aryes-stock.vercel.app',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };

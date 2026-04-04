@@ -190,6 +190,6 @@ export default async function handler(req, res) {
 
   } catch(e) {
     console.error('[admin-users] action:', action, 'error:', e.message);
-    return res.status(500).json({ error: 'Error interno', detail: e.message });
+    return res.status(500).json({ error: 'Error interno' });
   }
 }

@@ -1,4 +1,5 @@
 // Public catalog API â no auth required from client side.
+const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 // GET /api/catalogo?org=aryes              â all products (public catalog)
 // GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
 
@@ -6,7 +7,7 @@ const SB_URL  = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };

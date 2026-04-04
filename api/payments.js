@@ -1,4 +1,5 @@
 // api/payments.js — Payment processing (MercadoPago Subscriptions + Stripe future)
+const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 //
 // CURRENT: MercadoPago Suscripciones (pagos recurrentes mensuales)
 //   POST /api/payments              → crear suscripción mensual
@@ -211,7 +212,7 @@ async function mpWebhook(req, res) {
 // ── Router ────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
