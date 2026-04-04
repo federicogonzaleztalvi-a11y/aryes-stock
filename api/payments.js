@@ -13,7 +13,44 @@ import { log } from './_log.js';
 const SB_URL   = process.env.SUPABASE_URL;
 const SB_SVC   = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MP_TOKEN = process.env.MP_ACCESS_TOKEN;
+const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
 const APP_URL  = process.env.APP_URL || 'https://aryes-stock.vercel.app';
+
+
+// ── MercadoPago webhook signature verification ────────────────────
+import crypto from 'crypto';
+
+function verifyMPSignature(req) {
+  if (!MP_WEBHOOK_SECRET) {
+    // If no secret configured, log warning but allow (for development)
+    console.warn('[payments] MP_WEBHOOK_SECRET not configured — skipping signature validation');
+    return true;
+  }
+  const xSignature = req.headers['x-signature'] || '';
+  const xRequestId = req.headers['x-request-id'] || '';
+  const dataId = req.query?.['data.id'] || req.body?.data?.id || '';
+  
+  // Extract ts and v1 from x-signature header
+  const parts = {};
+  xSignature.split(',').forEach(part => {
+    const [key, ...val] = part.split('=');
+    parts[key.trim()] = val.join('=');
+  });
+  
+  const ts = parts.ts;
+  const v1 = parts.v1;
+  if (!ts || !v1) return false;
+  
+  // Build template: id:[data.id];request-id:[x-request-id];ts:[ts];
+  let template = '';
+  if (dataId) template += 'id:' + dataId + ';';
+  if (xRequestId) template += 'request-id:' + xRequestId + ';';
+  template += 'ts:' + ts + ';';
+  
+  // Calculate HMAC SHA256
+  const computed = crypto.createHmac('sha256', MP_WEBHOOK_SECRET).update(template).digest('hex');
+  return computed === v1;
+}
 
 const PLANS = {
   starter: { amount: 79,  title: 'Aryes Stock Starter', currency: 'USD' },
@@ -141,6 +178,12 @@ async function mpSubscription(req, res) {
 // ── MercadoPago: recibir webhook de suscripción ───────────────────
 
 async function mpWebhook(req, res) {
+  // Verify webhook signature
+  if (!verifyMPSignature(req)) {
+    log.warn('payments', 'webhook signature verification FAILED — possible spoofing');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   const topic = req.query?.topic || req.body?.type;
   const id    = req.query?.id    || req.body?.data?.id;
 

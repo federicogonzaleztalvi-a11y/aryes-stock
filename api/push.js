@@ -79,6 +79,20 @@ export default async function handler(req, res) {
 
   // POST /api/push?action=send — send push notification to all org subscribers
   if (action === 'send' && req.method === 'POST') {
+    // Verify caller is authenticated and belongs to target org
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'No autenticado' });
+    const userRes = await fetch(`${SB_URL}/auth/v1/user`, {
+      headers: { apikey: SB_ANON, Authorization: `Bearer ${token}` }
+    });
+    if (!userRes.ok) return res.status(401).json({ error: 'Sesión inválida' });
+    const userData = await userRes.json();
+    const callerOrg = userData?.user_metadata?.org_id;
+    const { orgId } = req.body || {};
+    if (callerOrg && orgId && callerOrg !== orgId) {
+      log.warn('push', 'org mismatch — blocked', { callerOrg, targetOrg: orgId });
+      return res.status(403).json({ error: 'No autorizado para esta organización' });
+    }
     const { orgId, title, body, url, tag, urgent } = req.body || {};
     if (!orgId || !body) return res.status(400).json({ error: 'orgId and body required' });
 
