@@ -46,7 +46,21 @@ async function verifyAdmin(authHeader) {
   const { ok, data: role } = await rpc('get_user_role_by_email', { user_email: userData.email });
   console.log(`[VA] ${userData.email} role:${role}`);
   if (!ok || role !== 'admin') return null;
-  return { id: userData.id, email: userData.email };
+  // Extract org_id from user metadata or public.users table
+  const orgId = userData.user_metadata?.org_id || null;
+  let resolvedOrgId = orgId;
+  if (!resolvedOrgId) {
+    // Fallback: look up org_id from public.users table
+    const orgRes = await fetch(
+      \`\${SB_URL}/rest/v1/users?email=eq.\${encodeURIComponent(userData.email)}&select=org_id&limit=1\`,
+      { headers: { apikey: SERVICE_KEY, Authorization: \`Bearer \${SERVICE_KEY}\`, Accept: 'application/json' } }
+    );
+    if (orgRes.ok) {
+      const orgRows = await orgRes.json();
+      resolvedOrgId = orgRows?.[0]?.org_id || 'aryes';
+    }
+  }
+  return { id: userData.id, email: userData.email, orgId: resolvedOrgId || 'aryes' };
 }
 
 export default async function handler(req, res) {
@@ -70,8 +84,13 @@ export default async function handler(req, res) {
 
     // ── LIST ──────────────────────────────────────────────────────────────────
     if (req.method === 'GET' && action === 'list') {
-      const { ok, data } = await rpc('list_all_users');
-      return res.status(200).json(ok && Array.isArray(data) ? data : []);
+      // Filter users by org_id — each org only sees their own users
+      const usersRes = await fetch(
+        \`\${SB_URL}/rest/v1/users?org_id=eq.\${encodeURIComponent(admin.orgId)}&order=name.asc\`,
+        { headers: { apikey: SERVICE_KEY, Authorization: \`Bearer \${SERVICE_KEY}\`, Accept: 'application/json' } }
+      );
+      const users = usersRes.ok ? await usersRes.json() : [];
+      return res.status(200).json(users);
     }
 
     // ── CREATE ────────────────────────────────────────────────────────────────
@@ -87,7 +106,7 @@ export default async function handler(req, res) {
 
       // Create auth user via SECURITY DEFINER RPC (avoids GoTrue "User not allowed" error)
       const { ok: authOk, data: authData } = await rpc('create_auth_user', {
-        user_email: email, user_password: password, user_name: name, user_role: role,
+        user_email: email, user_password: password, user_name: name, user_role: role, user_org_id: admin.orgId,
       });
 
       if (!authOk) {
@@ -102,7 +121,7 @@ export default async function handler(req, res) {
       // Insert into public.users via SECURITY DEFINER RPC (bypasses RLS + PostgREST cache)
       const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
       const { ok: dbOk, data: dbData } = await rpc('insert_user', {
-        p_username: username, p_name: name, p_email: email, p_role: role,
+        p_username: username, p_name: name, p_email: email, p_role: role, p_org_id: admin.orgId,
       });
 
       if (!dbOk) {
