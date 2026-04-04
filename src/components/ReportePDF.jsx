@@ -269,7 +269,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
 
     <!-- Footer -->
     <div class="footer">
-      <span>${empresa} · Sistema de gestión Aryes Stock</span>
+      <span>${empresa} · Aryes Stock · Sistema de gestión comercial</span>
       <span>Página 1 · ${hoy}</span>
     </div>
   </div>
