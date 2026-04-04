@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRole } from '../hooks/useRole.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { db } from '../lib/constants.js';
