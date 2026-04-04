@@ -956,7 +956,7 @@ Generado desde Aryes Stock.`;
           <UserMenuDropdown session={session} userMenuOpen={userMenuOpen} setUserMenuOpen={setUserMenuOpen} canTab={canTab} setTab={setTab} handleLogout={handleLogout} onResumenWA={generarResumenWA} />
         </div>
 
-        <div style={{padding:"32px 40px",flex:1,minWidth:0}}>
+        <div style={{padding:"32px 40px",flex:1,minWidth:0,paddingBottom:60}}>
 
         {syncToast&&<div style={{position:"fixed",top:20,right:20,zIndex:9999,background:syncToast.type==="info"?"#eff6ff":"#fef3c7",border:"1px solid "+(syncToast.type==="info"?"#bfdbfe":"#fde68a"),borderRadius:8,padding:"12px 18px",boxShadow:"0 4px 16px rgba(0,0,0,.12)",display:"flex",alignItems:"center",gap:10,animation:"fadeUp .25s ease both",maxWidth:360}}>
         <span style={{fontSize:18}}>{syncToast.type==="info"?"📊":"→ ï¸"}</span>
