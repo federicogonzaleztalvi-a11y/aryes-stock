@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import UsersTab from './UsersTab.jsx';
 import RolesTab from './config/RolesTab.jsx';
-import { db } from '../lib/constants.js';
+import { db, getOrgId } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
