@@ -228,7 +228,7 @@ function DepositoTab(){
                 <>
                   <select value={prodSelec} onChange={e=>setProdSelec(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',background:'#fff',flex:1,minWidth:200}}>
                     <option value=''>- Selecciona producto a asignar -</option>
-                    {prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    {prods.sort((a,b)=>(a.nombre||a.name||"").localeCompare(b.nombre||b.name||"")).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name}</option>)}
                   </select>
                   <button onClick={()=>asignar(ubSelec,prodSelec)} style={{padding:'6px 16px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:13,fontWeight:600}}>Asignar</button>
                 </>
@@ -290,7 +290,7 @@ function DepositoTab(){
                 <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Producto</label>
                 <select id='pk-prod' style={{width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
                   <option value=''>- Selecciona -</option>
-                  {prods.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  {prods.sort((a,b)=>(a.nombre||a.name||"").localeCompare(b.nombre||b.name||"")).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name}</option>)}
                 </select>
               </div>
               <div style={{width:100}}>
