@@ -265,11 +265,11 @@ export default function ConfigInline({
 
         <div>
           {/* Sub-tab bar */}
-          <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"}].map(st=>(
+          <div style={{display:"flex",gap:8,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
+            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"},{id:"portal",l:"Portal B2B"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:"0 0 auto",padding:"10px 16px",border:"none",cursor:"pointer",whiteSpace:"nowrap",fontFamily:T.sans,fontSize:12,fontWeight:600,
-                  background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
+                  background:settingsTab===st.id?T.green:"#fff",color:settingsTab===st.id?"#fff":T.textSm,borderRadius:6,border:settingsTab===st.id?"none":"1px solid "+T.border}}>
                 {st.l}
               </button>
             ))}
@@ -558,6 +558,68 @@ export default function ConfigInline({
           {/* ── INTEGRACIONES ─────────────────────────────────────────────── */}
           {settingsTab==="zonas" && (
             <ZonasDeposito orgId={brandCfg?.orgId || 'aryes'} />
+          )}
+          {settingsTab==="portal" && (
+            <div style={{maxWidth:560}}>
+              <h3 style={{fontFamily:'Inter,sans-serif',fontSize:16,fontWeight:600,margin:'0 0 6px'}}>Portal B2B</h3>
+              <p style={{fontFamily:'Inter,sans-serif',fontSize:13,color:'#666',margin:'0 0 20px',lineHeight:1.6}}>
+                Configurá el portal que ven tus clientes. Podés habilitar un catálogo de consulta o un portal completo con carrito de pedidos.
+              </p>
+
+              <div style={{display:'grid',gap:16}}>
+                {/* Toggle: Catálogo público */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Catálogo público</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Tus clientes ven productos y precios sin hacer pedidos</div>
+                  </div>
+                  <label style={{position:'relative',display:'inline-block',width:44,height:24,cursor:'pointer'}}>
+                    <input type="checkbox" checked={brandCfg?.portalCatalogo!==false} onChange={e=>{
+                      const updated = {...(brandCfg||{}), portalCatalogo: e.target.checked};
+                      setBrandCfg(updated);
+                      db.upsert('app_config', {key:'brandcfg',value:updated,org_id:getOrgId()}, 'key,org_id');
+                    }} style={{opacity:0,width:0,height:0}} />
+                    <span style={{position:'absolute',inset:0,background:brandCfg?.portalCatalogo!==false?'#1a8a3c':'#ccc',borderRadius:12,transition:'.2s'}} />
+                    <span style={{position:'absolute',top:2,left:brandCfg?.portalCatalogo!==false?22:2,width:20,height:20,background:'#fff',borderRadius:10,transition:'.2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
+                  </label>
+                </div>
+
+                {/* Toggle: Portal de pedidos */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Portal de pedidos (carrito)</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Tus clientes pueden armar pedidos y enviarlos por WhatsApp</div>
+                  </div>
+                  <label style={{position:'relative',display:'inline-block',width:44,height:24,cursor:'pointer'}}>
+                    <input type="checkbox" checked={brandCfg?.portalPedidos!==false} onChange={e=>{
+                      const updated = {...(brandCfg||{}), portalPedidos: e.target.checked};
+                      setBrandCfg(updated);
+                      db.upsert('app_config', {key:'brandcfg',value:updated,org_id:getOrgId()}, 'key,org_id');
+                    }} style={{opacity:0,width:0,height:0}} />
+                    <span style={{position:'absolute',inset:0,background:brandCfg?.portalPedidos!==false?'#1a8a3c':'#ccc',borderRadius:12,transition:'.2s'}} />
+                    <span style={{position:'absolute',top:2,left:brandCfg?.portalPedidos!==false?22:2,width:20,height:20,background:'#fff',borderRadius:10,transition:'.2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
+                  </label>
+                </div>
+
+                {/* URL del portal */}
+                <div style={{background:'#f7f6f3',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
+                  <div style={{fontFamily:'Inter,sans-serif',fontSize:12,fontWeight:700,color:'#1a1a18',marginBottom:8}}>URL de tu portal</div>
+                  <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                    <code style={{flex:1,fontFamily:'monospace',fontSize:12,color:'#1a8a3c',background:'#fff',padding:'8px 12px',borderRadius:6,border:'1px solid #e8e4de',overflow:'hidden',textOverflow:'ellipsis'}}>
+                      {window.location.origin}/catalogo?org={brandCfg?.orgId||getOrgId()}
+                    </code>
+                    <button onClick={()=>{
+                      const url=window.location.origin+'/catalogo?org='+(brandCfg?.orgId||getOrgId());
+                      navigator.clipboard?.writeText(url);
+                      alert('URL copiada al portapapeles');
+                    }} style={{padding:'8px 14px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                      Copiar
+                    </button>
+                  </div>
+                  <div style={{fontFamily:'Inter,sans-serif',fontSize:11,color:'#9a9a98',marginTop:8}}>Compartí este link con tus clientes por WhatsApp o email</div>
+                </div>
+              </div>
+            </div>
           )}
           {settingsTab==="dominio" && (
             <div style={{display:"grid",gap:20,maxWidth:600}}>
