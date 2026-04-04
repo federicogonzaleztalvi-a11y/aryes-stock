@@ -927,7 +927,7 @@ Generado desde Aryes Stock.`;
           <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
         </div>
       )}
-      {session && dbReady && <div style={{display:"flex",minHeight:"100vh",background:"#f5f5f7",paddingBottom:demoMode?60:0}}>
+      {session && dbReady && <div style={{display:"flex",minHeight:"100vh",background:"#f5f5f7",paddingBottom:0}}>
       <style>{CSS}</style>
 
       {/* →→ SIDEBAR →→ */}
@@ -951,6 +951,7 @@ Generado desde Aryes Stock.`;
           <div style={{flex:1}}/>
           <QuickStats critN={critN} orders={orders} />
           <NotificationBell critN={critN} orders={orders} setTab={setTab} />
+          {demoMode&&<button onClick={()=>window.location.href='/register'} style={{padding:'6px 16px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Empezar gratis</button>}
 
           {/* User pill with dropdown */}
           <UserMenuDropdown session={session} userMenuOpen={userMenuOpen} setUserMenuOpen={setUserMenuOpen} canTab={canTab} setTab={setTab} handleLogout={handleLogout} onResumenWA={generarResumenWA} />
