@@ -1192,7 +1192,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
 
   const G='#1a8a3c';
   const S={
-    btn:{position:'fixed',bottom:28,right:28,zIndex:9999,width:44,height:44,borderRadius:22,background:open?'#ffffff':G,border:open?'1.5px solid #e8e4de':'none',cursor:'pointer',boxShadow:open?'0 2px 8px rgba(0,0,0,.08)':'0 4px 16px rgba(26,138,60,.35)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s cubic-bezier(.34,1.56,.64,1)',flexShrink:0},
+    btn:{position:'fixed',bottom:80,right:28,zIndex:9999,width:44,height:44,borderRadius:22,background:open?'#ffffff':G,border:open?'1.5px solid #e8e4de':'none',cursor:'pointer',boxShadow:open?'0 2px 8px rgba(0,0,0,.08)':'0 4px 16px rgba(26,138,60,.35)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s cubic-bezier(.34,1.56,.64,1)',flexShrink:0},
     panel:{position:'fixed',bottom:84,right:28,zIndex:9998,width:360,height:500,background:'#ffffff',borderRadius:20,boxShadow:'0 12px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #ede9e3'},
     header:{background:'#ffffff',borderBottom:'0.5px solid #e2e2de',padding:'14px 16px',display:'flex',alignItems:'center',gap:11,flexShrink:0},
     msgs:{flex:1,overflowY:'auto',padding:'14px 14px 6px',display:'flex',flexDirection:'column',gap:10,background:'#ffffff'},
