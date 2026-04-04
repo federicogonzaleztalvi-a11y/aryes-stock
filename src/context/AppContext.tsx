@@ -284,10 +284,10 @@ const describeAction = (action: string, detail: string): string => {
 
       // ── Batch A: commercial data (critical for daily ops UI) ──────────────
       const [sbVentas, sbClients, sbCollections, sbInvoices] = await Promise.all([
-        db.get<Record<string, any>[]>('ventas?order=creado_en.desc&limit=500'),
-        db.get<Record<string, any>[]>('clients?order=created_at.asc&limit=2000'),
-        db.get<Record<string, any>[]>('collections?order=created_at.desc&limit=500'),
-        db.get<Record<string, any>[]>('invoices?order=created_at.desc&limit=500'),
+        db.get<Record<string, any>[]>(`ventas?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`),
+        db.get<Record<string, any>[]>(`clients?org_id=eq.${getOrgId()}&order=created_at.asc&limit=2000`),
+        db.get<Record<string, any>[]>(`collections?org_id=eq.${getOrgId()}&order=created_at.desc&limit=500`),
+        db.get<Record<string, any>[]>(`invoices?org_id=eq.${getOrgId()}&order=created_at.desc&limit=500`),
       ]);
 
       try {
@@ -352,11 +352,11 @@ const describeAction = (action: string, detail: string): string => {
 
       // ── Batch B: operations data ─────────────────────────────────────────
       const [sbMovs, sbLotes, sbRutas, sbDevs, sbConteos] = await Promise.all([
-        db.get<Record<string, any>[]>('stock_movements?order=created_at.desc&limit=2000'),
-        db.get<Record<string, any>[]>('lotes?order=fecha_venc.asc.nullslast&limit=2000'),
-        db.get<Record<string, any>[]>('rutas?order=creado_en.desc&limit=200'),
-        db.get<Record<string, any>[]>('devoluciones?order=creado_en.desc&limit=500'),
-        db.get<Record<string, any>[]>('conteos?order=creado_en.desc&limit=200'),
+        db.get<Record<string, any>[]>(`stock_movements?org_id=eq.${getOrgId()}&order=created_at.desc&limit=2000`),
+        db.get<Record<string, any>[]>(`lotes?org_id=eq.${getOrgId()}&order=fecha_venc.asc.nullslast&limit=2000`),
+        db.get<Record<string, any>[]>(`rutas?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=200`),
+        db.get<Record<string, any>[]>(`devoluciones?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`),
+        db.get<Record<string, any>[]>(`conteos?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=200`),
       ]);
 
       try {
@@ -411,12 +411,12 @@ const describeAction = (action: string, detail: string): string => {
 
       // ── Batch C: secondary data (audit, financial, pricing) ──────────────
       const [sbAudit, sbPI, sbTransfers, sbPriceListas, sbPriceItems, sbRecs] = await Promise.all([
-        db.get<Record<string, any>[]>('audit_log?order=timestamp.desc&limit=500'),
-        db.get<Record<string, any>[]>('purchase_invoices?order=creado_en.desc&limit=300'),
-        db.get<Record<string, any>[]>('transfers?order=creado_en.desc&limit=200'),
+        db.get<Record<string, any>[]>(`audit_log?org_id=eq.${getOrgId()}&order=timestamp.desc&limit=500`),
+        db.get<Record<string, any>[]>(`purchase_invoices?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=300`),
+        db.get<Record<string, any>[]>(`transfers?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=200`),
         fetch(`${SB_URL}/rest/v1/price_lists?order=creado_en.desc&org_id=eq.${getOrgId()}`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
-        fetch(`${SB_URL}/rest/v1/price_list_items?order=updated_at.desc`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
-        db.get<Record<string, any>[]>('recepciones?order=creado_en.desc&limit=500'),
+        fetch(`${SB_URL}/rest/v1/price_list_items?org_id=eq.${getOrgId()}&order=updated_at.desc`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
+        db.get<Record<string, any>[]>(`recepciones?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`),
       ]);
 
       try {
