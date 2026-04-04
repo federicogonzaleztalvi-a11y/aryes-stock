@@ -757,7 +757,6 @@ function VentasTab(){
       </div>
       {ventasFiltradas.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
-          <div style={{fontSize:40,marginBottom:12}}>📊</div>
           <div style={{fontSize:48,marginBottom:8}}>{ventas.length===0?'🛒':'🔍'}</div>
           <p style={{fontSize:15,fontWeight:600,color:'#1a1a18',marginBottom:4}}>{ventas.length===0?'Sin ventas todavía':'Sin resultados para este filtro'}</p>
           <p style={{fontSize:13,color:'#6b7280',marginBottom:0}}>{ventas.length===0?'Creá tu primera venta para empezar a operar':'Probá con otro filtro o fecha'}</p>
