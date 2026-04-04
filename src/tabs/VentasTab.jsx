@@ -471,7 +471,7 @@ function VentasTab(){
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Cliente</label>
             <select value={form.clienteId} onChange={e=>{const cl=clientes.find(c=>c.id===e.target.value);setForm(f=>({...f,clienteId:e.target.value,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}} style={inp}>
-              <option value=''>→ Seleccionar cliente →</option>
+              <option value=''>Seleccionar cliente</option>
               {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
             {/* Active price list badge → computed outside JSX */}
@@ -516,7 +516,7 @@ function VentasTab(){
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
               <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
-                <option value=''>→ Producto →</option>
+                <option value=''>Producto</option>
                 {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} → stock: {p.stock} {p.unit||''}</option>)}
               </select>
             </div>
