@@ -258,10 +258,10 @@ const describeAction = (action: string, detail: string): string => {
     if (session?.role !== 'admin') return;
     (async () => {
       try {
-        const rows = await db.get<Array<{value: EmailCfg}>>('app_config?key=eq.emailcfg');
+        const rows = await db.get<Array<{value: EmailCfg}>>(`app_config?key=eq.emailcfg&org_id=eq.${getOrgId()}`);
         if (rows?.[0]?.value) setEmailCfg(rows[0].value);
         LS.remove('aryes9-emailcfg');
-        const brandRows = await db.get<Array<{value: BrandCfg}>>('app_config?key=eq.brandcfg');
+        const brandRows = await db.get<Array<{value: BrandCfg}>>(`app_config?key=eq.brandcfg&org_id=eq.${getOrgId()}`);
         if (brandRows?.[0]?.value) {
           const b = brandRows[0].value;
           setBrandCfg(b);
@@ -483,24 +483,24 @@ const describeAction = (action: string, detail: string): string => {
     setSyncStatus('sync');
     (async () => {
       try {
-        const prods = await db.get<Record<string, any>[]>('products', 'order=id.asc&limit=1000');
+        const prods = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
         if (prods?.length > 0) {
           const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
           setProducts(mapped);
         }
-        const sups = await db.get<Record<string, any>[]>('suppliers', 'order=name.asc');
+        const sups = await db.get<Record<string, any>[]>('suppliers', `org_id=eq.${getOrgId()}&order=name.asc`);
         if (sups?.length > 0) {
           const mapped = sups.map(s => ({ id:s.id, name:s.name, flag:s.flag||'', color:s.color||'#1a8a3c', times:s.times||{preparation:2,customs:1,freight:4,warehouse:1}, company:s.company||'', contact:s.contact||'', email:s.email||'', phone:s.phone||'', country:s.country||'', city:s.city||'', currency:s.currency||'USD', paymentTerms:s.payment_terms||'30', paymentMethod:s.payment_method||'', minOrder:s.min_order||'', discount:s.discount||'0', rating:s.rating||3, active:s.active!==false, notes:s.notes||'' }));
           setSuppliers(mapped);
         }
-        const usrs = await db.get<Record<string, any>[]>('users', 'order=id.asc');
+        const usrs = await db.get<Record<string, any>[]>('users', `org_id=eq.${getOrgId()}&order=id.asc`);
         if (usrs?.length > 0) LS.set('aryes-users', usrs.map(u => ({ username:u.username, name:u.name, role:u.role, active:u.active })));
-        const sbOrders = await db.get<Record<string, any>[]>('orders', 'order=ordered_at.desc&limit=500');
+        const sbOrders = await db.get<Record<string, any>[]>('orders', `org_id=eq.${getOrgId()}&order=ordered_at.desc&limit=500`);
         if (sbOrders?.length > 0) {
           const mapped = sbOrders.map(o => ({ id:o.id, productId:o.product_id, productName:o.product_name, supplierId:o.supplier_id, supplierName:o.supplier_name, qty:Number(o.qty), unit:o.unit, status:o.status, orderedAt:o.ordered_at, expectedArrival:o.expected_arrival, totalCost:o.total_cost, leadBreakdown:o.lead_breakdown||{} }));
           setOrders(mapped);
         }
-        const sbPlans = await db.get<Record<string, any>[]>('plans');
+        const sbPlans = await db.get<Record<string, any>[]>('plans', `org_id=eq.${getOrgId()}`);
         if (sbPlans?.length > 0) {
           const plansMap: Record<string, unknown> = {};
           sbPlans.forEach(p => { plansMap[p.product_id] = { ...(p.data||{}), coverageMonths:Number(p.coverage_months)||2 }; });
@@ -531,7 +531,7 @@ const describeAction = (action: string, detail: string): string => {
     if (!session || !dbReady) return;
     const syncFromServer = async () => {
       try {
-        const serverProds = await db.get<Record<string, any>[]>('products', 'order=id.asc&limit=1000');
+        const serverProds = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
         if (!serverProds?.length) return;
         const serverMap: Record<string, Record<string, any>> = {};
         serverProds.forEach(p => { serverMap[p.uuid] = p; });
