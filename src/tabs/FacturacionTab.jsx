@@ -216,7 +216,8 @@ function FacturacionTab({ products=[] }) {
           <b style={{ color:'#1e40af' }}>Proveedor habilitado DGI no configurado — </b>
           <span style={{ color:'#3b82f6' }}>CFEs guardados localmente. Cuando confirmes UCFE o pymo, se enviarán automáticamente.</span>
         </div>
-        <span style={{ background:'#dbeafe', color:'#2563eb', fontFamily:F.sans, fontSize:11,
+        <span onClick={() => window.location.hash = '/app/config'}
+          style={{ background:'#dbeafe', color:'#2563eb', fontFamily:F.sans, fontSize:11,
           fontWeight:700, padding:'4px 12px', borderRadius:20, cursor:'pointer', whiteSpace:'nowrap' }}>
           Configurar →
         </span>
