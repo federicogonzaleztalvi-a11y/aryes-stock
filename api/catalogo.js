@@ -157,6 +157,31 @@ export default async function handler(req, res) {
       ? 'private, max-age=60'                          // personalized â don't cache in CDN
       : 'public, s-maxage=60, stale-while-revalidate=300' });
 
+    // Load portal config (brandcfg) for this org
+    let portalCfg = { portalCatalogo: true, portalPedidos: true };
+    try {
+      const cfgRes = await fetch(
+        \`\${SB_URL}/rest/v1/app_config?key=eq.brandcfg&org_id=eq.\${org}&limit=1\`,
+        { headers }
+      );
+      if (cfgRes.ok) {
+        const cfgData = await cfgRes.json();
+        if (cfgData?.[0]?.value) {
+          portalCfg = { ...portalCfg, ...cfgData[0].value };
+        }
+      }
+    } catch(e) { /* config load failed — use defaults */ }
+
+    // If catalog is disabled globally, return empty
+    if (portalCfg.portalCatalogo === false) {
+      setHeaders(res);
+      return res.status(200).json({
+        items: [], categorias: [], org,
+        portalDisabled: true,
+        portalCfg,
+      });
+    }
+
     return res.status(200).json({
       items,
       categorias,
@@ -167,6 +192,7 @@ export default async function handler(req, res) {
       horarioDesde,
       horarioHasta,
       portalActivo,
+      portalCfg,
     });
 
   } catch (err) {

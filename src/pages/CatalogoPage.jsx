@@ -337,7 +337,8 @@ export default function CatalogoPage() {
       .then(d => {
         setItems(d.items || []);
         setCats(['Todos', ...(d.categorias || [])]);
-        if (d.brandCfg) setBrandCfg(d.brandCfg);
+        if (d.portalCfg) setBrandCfg(d.portalCfg);
+        if (d.brandCfg) setBrandCfg(prev => ({...prev, ...d.brandCfg}));
       })
       .catch(() => setError('No se pudo cargar el catálogo.'))
       .finally(() => setLoading(false));
@@ -357,6 +358,9 @@ export default function CatalogoPage() {
   }), [items, q, catActiva, marca]);
 
   const totalCarrito = 0;
+  const portalCfg = brandCfg || {};
+  const portalDisabled = portalCfg.portalCatalogo === false;
+  const pedidosEnabled = portalCfg.portalPedidos !== false;
   const whatsapp = brandCfg?.ownerPhone?.replace(/\D/g,'') || '59899000000';
 
   const nombre = brandCfg?.nombre || 'Catálogo';
