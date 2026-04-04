@@ -21,7 +21,7 @@ export default function DemoBanner({ industry, orgName, onExit, onSignup }) {
       bottom: 0, height: 48,
       left: 0,
       right: 0,
-      zIndex: 9999,
+      zIndex: 899,
       background: '#fff',
       borderTop: `2px solid ${color}`,
       padding: '10px 16px',

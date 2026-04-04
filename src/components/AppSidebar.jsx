@@ -195,7 +195,7 @@ export default function AppSidebar({ session, tab, setTab }) {
     <aside style={{
       width: 220, background: S.bg,
       borderRight: `1px solid ${S.border}`,
-      position: 'fixed', top: 0, left: 0, bottom: 48,
+      position: 'fixed', top: 0, left: 0, bottom: 0,
       display: 'flex', flexDirection: 'column',
       fontFamily: S.sans,
     }}>
