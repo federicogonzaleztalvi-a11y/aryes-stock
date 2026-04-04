@@ -52,8 +52,8 @@ export const getSession = () => {
 export const getOrgId = () => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    return session?.orgId || 'aryes';
-  } catch { return 'aryes'; }
+    return session?.orgId || '__no_org__';
+  } catch { return '__no_org__'; }
 };
 
 // ─── LS — localStorage cache ──────────────────────────────────────────────────
