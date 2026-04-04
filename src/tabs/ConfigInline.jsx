@@ -265,10 +265,10 @@ export default function ConfigInline({
 
         <div>
           {/* Sub-tab bar */}
-          <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflow:"hidden",maxWidth:600,marginBottom:24}}>
+          <div style={{display:"flex",gap:1,background:T.border,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
             {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
-                style={{flex:1,padding:"10px 16px",border:"none",cursor:"pointer",fontFamily:T.sans,fontSize:12,fontWeight:600,
+                style={{flex:"0 0 auto",padding:"10px 16px",border:"none",cursor:"pointer",whiteSpace:"nowrap",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:T.card,color:settingsTab===st.id?"#fff":T.textSm}}>
                 {st.l}
               </button>
