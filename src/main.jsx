@@ -16,6 +16,7 @@ const LandingPage      = lazy(() => import('./pages/LandingPage.jsx'));
 const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
 const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
 const TrackingPage     = lazy(() => import('./pages/TrackingPage.jsx'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 // ── Demo mode ─────────────────────────────────────────────────────
@@ -128,6 +129,10 @@ function LoginScreen({ onLogin, onExplore }) {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
+            ¿Olvidaste tu contraseña?{' '}
+            <a href="/reset-password" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>Recuperar</a>
+          </p>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 4 }}>
             ¿No tenés cuenta?{' '}
             <a href="/register" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
           </p>
@@ -287,6 +292,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/landing" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<Suspense fallback={<div/>}><ResetPasswordPage /></Suspense>} />
           {/* Upgrade / pricing page */}
           <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
           {/* Everything else → authenticated app */}
