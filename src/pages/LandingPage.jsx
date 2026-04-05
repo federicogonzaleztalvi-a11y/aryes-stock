@@ -470,48 +470,62 @@ export default function LandingPage() {
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 24px 32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 32, marginBottom: 32 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <footer style={{ borderTop: '1px solid #e8e8e6' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 24px 20px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 40 }}>
+          {/* Left — Logo + description + social */}
+          <div style={{ maxWidth: 320 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <div style={{
-                width: 24, height: 24, borderRadius: 6, background: G,
+                width: 28, height: 28, borderRadius: 7, background: G,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontSize: 12, fontWeight: 500,
+                color: '#fff', fontSize: 14, fontWeight: 500,
               }}>A</div>
-              <span style={{ fontFamily: F.serif, fontSize: 18, color: '#1a1a18' }}>aryes</span>
+              <span style={{ fontFamily: F.serif, fontSize: 20, color: '#1a1a18', letterSpacing: -0.5 }}>ARYES</span>
             </div>
-            <p style={{ fontSize: 13, color: '#9a9a96', marginTop: 4, lineHeight: 1.5 }}>
-              Plataforma para<br />distribuidoras B2B
+            <p style={{ fontSize: 13, color: '#9a9a96', lineHeight: 1.6, margin: '0 0 16px' }}>
+              Plataforma de gestión para distribuidoras B2B.<br />
+              Inventario, ventas, rutas y portal de pedidos.
             </p>
-          </div>
-          <div style={{ display: 'flex', gap: 48 }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 12 }}>Producto</div>
-              <div style={{ fontSize: 13, color: '#9a9a96', lineHeight: 2.2 }}>
-                <div style={{ cursor: 'pointer' }} onClick={() => scrollTo('producto')}>Inventario</div>
-                <div style={{ cursor: 'pointer' }} onClick={() => scrollTo('producto')}>Rutas</div>
-                <div style={{ cursor: 'pointer' }} onClick={() => scrollTo('producto')}>Portal B2B</div>
-                <div style={{ cursor: 'pointer' }} onClick={() => scrollTo('producto')}>Dashboard</div>
-              </div>
+            {/* Social icons */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <a href="https://instagram.com/aryes.stock" target="_blank" rel="noreferrer" style={{ color: '#9a9a96', textDecoration: 'none' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" />
+                  <circle cx="12" cy="12" r="5" />
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+              </a>
+              <a href="https://linkedin.com/company/aryes" target="_blank" rel="noreferrer" style={{ color: '#9a9a96', textDecoration: 'none' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6z" />
+                  <rect x="2" y="9" width="4" height="12" />
+                  <circle cx="4" cy="4" r="2" />
+                </svg>
+              </a>
             </div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 12 }}>Empresa</div>
-              <div style={{ fontSize: 13, color: '#9a9a96', lineHeight: 2.2 }}>
-                <div style={{ cursor: 'pointer' }} onClick={() => scrollTo('precios')}>Precios</div>
-                <a href="https://wa.me/59899123456" target="_blank" rel="noreferrer" style={{ color: '#9a9a96', textDecoration: 'none', display: 'block' }}>Contacto</a>
-                <div style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/demo'}>Demo</div>
-                <div style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>Iniciar sesión</div>
-              </div>
+          </div>
+
+          {/* Right — Contact info */}
+          <div style={{ textAlign: mobile ? 'left' : 'right' }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Contacto</div>
+            <div style={{ fontSize: 14, color: '#6b7280', lineHeight: 2 }}>
+              <div>Montevideo, Uruguay</div>
+              <a href="https://wa.me/59897951154" target="_blank" rel="noreferrer" style={{ color: '#6b7280', textDecoration: 'none', display: 'block' }}>
+                WhatsApp: +598 97 951 154
+              </a>
+              <a href="mailto:contacto@aryes.com.uy" style={{ color: '#6b7280', textDecoration: 'none', display: 'block' }}>
+                contacto@aryes.com.uy
+              </a>
             </div>
           </div>
         </div>
-        <div style={{
-          borderTop: '1px solid #e8e8e6', paddingTop: 20,
-          display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#b0b0ac',
-        }}>
-          <span>Hecho en Latinoamérica</span>
-          <span>© 2026 Aryes</span>
+
+        {/* Bottom bar */}
+        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '16px 24px', borderTop: '1px solid #e8e8e6' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#b0b0ac' }}>
+            <span>© 2026 Aryes</span>
+            <span>Hecho en Latinoamérica</span>
+          </div>
         </div>
       </footer>
     </div>
