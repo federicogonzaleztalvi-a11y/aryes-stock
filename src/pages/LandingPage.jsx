@@ -108,7 +108,14 @@ export default function LandingPage() {
               <span onClick={() => scrollTo('precios')} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
               <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
                 style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer', textDecoration: 'none' }}>Contacto</a>
-              <span onClick={() => window.location.href = '/'} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>
+              <span onClick={() => window.location.href = '/'} style={{
+                fontSize: 13, color: '#4b4b48', cursor: 'pointer', fontWeight: 500,
+                padding: '7px 16px', border: '1px solid #d4d4d0', borderRadius: 8,
+                transition: 'border-color 0.2s, background 0.2s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#b0b0ac'; e.currentTarget.style.background = '#f5f5f3'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#d4d4d0'; e.currentTarget.style.background = 'transparent'; }}
+              >
                 Iniciar sesión
               </span>
             </div>
@@ -131,7 +138,7 @@ export default function LandingPage() {
             <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
               style={{ fontSize: 15, color: '#6b7280', textDecoration: 'none' }}>Contacto</a>
             <span onClick={() => window.location.href = '/'} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Iniciar sesión</span>
-            <button onClick={() => { setMenuOpen(false); window.location.href = '/demo'; }}
+            <button onClick={() => { setMenuOpen(false); window.location.href = '/register'; }}
               style={{ padding: '12px', background: G, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
               Probar 14 días gratis
             </button>
@@ -169,7 +176,7 @@ export default function LandingPage() {
 
         <FadeIn delay={0.3}>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => window.location.href = '/demo'}
+            <button onClick={() => window.location.href = '/register'}
               style={{
                 padding: '14px 32px', background: G, color: '#fff', border: 'none',
                 borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: 'pointer',
@@ -406,7 +413,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <button onClick={() => window.location.href = '/demo'}
+            <button onClick={() => window.location.href = '/register'}
               style={{
                 marginTop: 28, width: '100%', padding: '14px',
                 background: G, color: '#fff', border: 'none', borderRadius: 10,
@@ -433,7 +440,7 @@ export default function LandingPage() {
             Migrar toma menos de un día. 14 días gratis. Sin compromiso.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={() => window.location.href = '/demo'}
+            <button onClick={() => window.location.href = '/register'}
               style={{
                 padding: '14px 32px', background: G, color: '#fff', border: 'none',
                 borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: 'pointer',
