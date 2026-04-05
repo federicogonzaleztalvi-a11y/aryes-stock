@@ -209,41 +209,24 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
-      {/* ── Social proof + Testimonio ────────────────────────────────────── */}
+      {/* ── Social proof ────────────────────────────────────────────────── */}
       <section style={{ maxWidth: 900, margin: '0 auto', padding: '64px 24px' }}>
         <FadeIn>
           <div style={{
             display: 'flex', justifyContent: 'space-around', textAlign: 'center',
-            padding: '28px 0', borderBottom: '1px solid #e8e8e6',
+            padding: '28px 0',
             flexWrap: 'wrap', gap: 24,
           }}>
             {[
               { val: '14 días', sub: 'Gratis para probar' },
               { val: '$0', sub: 'Costo implementación' },
-              { val: '+500', sub: 'Entregas gestionadas' },
+              { val: '24hs', sub: 'Listo para operar' },
             ].map(m => (
               <div key={m.val}>
                 <div style={{ fontSize: 28, fontWeight: 500, color: '#1a1a18', fontFamily: F.serif }}>{m.val}</div>
                 <div style={{ fontSize: 13, color: '#9a9a96', marginTop: 4 }}>{m.sub}</div>
               </div>
             ))}
-          </div>
-        </FadeIn>
-
-        <FadeIn delay={0.1}>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', padding: '28px 0', maxWidth: 600, margin: '0 auto' }}>
-            <div style={{
-              minWidth: 44, height: 44, borderRadius: '50%', background: '#e6f1fb',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 500, fontSize: 15, color: '#185fa5',
-            }}>MR</div>
-            <div>
-              <p style={{ fontSize: 15, color: '#1a1a18', fontStyle: 'italic', margin: '0 0 8px', lineHeight: 1.5 }}>
-                "Pasamos de 3 horas armando rutas en Excel a tenerlas listas en 10 minutos. Los clientes ahora piden solos."
-              </p>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18', margin: 0 }}>Martín R.</p>
-              <p style={{ fontSize: 12, color: '#9a9a96', margin: 0 }}>Distribuidora de alimentos — 250+ SKUs · Ahorro: 15 horas/semana</p>
-            </div>
           </div>
         </FadeIn>
       </section>
@@ -486,45 +469,44 @@ export default function LandingPage() {
               Plataforma de gestión para distribuidoras B2B.<br />
               Inventario, ventas, rutas y portal de pedidos.
             </p>
-            {/* Social icons */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              <a href="https://instagram.com/aryes.stock" target="_blank" rel="noreferrer" style={{ color: '#9a9a96', textDecoration: 'none' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" />
-                  <circle cx="12" cy="12" r="5" />
-                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+            {/* Social icons — official FA SVG paths inline */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <a href="https://instagram.com/aryes.stock" target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block', lineHeight: 0 }}>
+                <svg width="24" height="24" viewBox="0 0 448 512" fill="#8a8a86">
+                  <path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/>
                 </svg>
               </a>
-              <a href="https://linkedin.com/company/aryes" target="_blank" rel="noreferrer" style={{ color: '#9a9a96', textDecoration: 'none' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6z" />
-                  <rect x="2" y="9" width="4" height="12" />
-                  <circle cx="4" cy="4" r="2" />
+              <a href="https://linkedin.com/company/aryes" target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block', lineHeight: 0 }}>
+                <svg width="24" height="24" viewBox="0 0 448 512" fill="#8a8a86">
+                  <path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/>
                 </svg>
               </a>
             </div>
           </div>
 
-          {/* Right — Contact info */}
+          {/* Right — Contact */}
           <div style={{ textAlign: mobile ? 'left' : 'right' }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Contacto</div>
-            <div style={{ fontSize: 14, color: '#6b7280', lineHeight: 2 }}>
-              <div>Montevideo, Uruguay</div>
-              <a href="https://wa.me/59897951154" target="_blank" rel="noreferrer" style={{ color: '#6b7280', textDecoration: 'none', display: 'block' }}>
-                WhatsApp: +598 97 951 154
-              </a>
-              <a href="mailto:contacto@aryes.com.uy" style={{ color: '#6b7280', textDecoration: 'none', display: 'block' }}>
-                contacto@aryes.com.uy
-              </a>
-            </div>
+            <a href="mailto:contacto@aryes.com.uy" style={{ color: '#6b7280', textDecoration: 'none', fontSize: 14, display: 'block', marginBottom: 12 }}>
+              contacto@aryes.com.uy
+            </a>
+            <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 16px', border: '1px solid #e5e5e3', borderRadius: 8,
+                color: '#4b4b48', fontSize: 13, textDecoration: 'none',
+                transition: 'border-color 0.2s',
+              }}>
+              <svg width="16" height="16" viewBox="0 0 448 512" fill="#25D366"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>
+              Escribinos
+            </a>
           </div>
         </div>
 
         {/* Bottom bar */}
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '16px 24px', borderTop: '1px solid #e8e8e6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#b0b0ac' }}>
+          <div style={{ fontSize: 12, color: '#b0b0ac' }}>
             <span>© 2026 Aryes</span>
-            <span>Hecho en Latinoamérica</span>
           </div>
         </div>
       </footer>
