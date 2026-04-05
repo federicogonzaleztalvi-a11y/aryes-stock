@@ -141,4 +141,106 @@ export const demoBebidas = {
     { id: 'z3', name: 'Vinos', temp: '14-16°C', products: ['b20','b21','b22','b23','b24','b25','b26','b38'] },
     { id: 'z4', name: 'Espirituosas e importados', temp: 'Ambiente', products: ['b27','b28','b29','b33','b34','b35','b36','b37','b39','b40'] },
   ],
+
+
+  // ── Generated financial & operational demo data ──────────────────────────
+  // CFEs (facturas), cobros, movements — generated at import time for realistic KPIs
+  get cfes() {
+    const now = new Date();
+    const cfes = [];
+    // Current month ventas → invoices
+    (this.ventas || []).forEach((v, i) => {
+      const d = new Date(now); d.setDate(d.getDate() + (v.date || 0));
+      const venc = new Date(d); venc.setDate(venc.getDate() + 30);
+      const total = v.items.reduce((s, it) => s + it.qty * it.price, 0);
+      const iva = Math.round(total * 0.22);
+      const isPaid = v.pago === 'efectivo' || v.pago === 'transferencia';
+      const isDone = v.estado === 'entregada';
+      cfes.push({
+        id: 'cfe-bebidas-'+i, numero: 'E-'+String(1000+i).padStart(4,'0'),
+        tipo: 'e-Factura', moneda: 'UYU',
+        fecha: d.toISOString().split('T')[0],
+        fecha_venc: venc.toISOString().split('T')[0],
+        cliente_id: v.cliente_id, subtotal: total-iva, iva_total: iva,
+        total, saldo_pendiente: isDone&&isPaid ? 0 : total,
+        status: isDone&&isPaid ? 'cobrada' : isDone ? 'emitida' : 'borrador',
+        items: v.items, created_at: d.toISOString(),
+      });
+    });
+    // Historical invoices (5 months back) for sparkline
+    for (let m=5; m>=1; m--) {
+      const md = new Date(now); md.setMonth(md.getMonth()-m);
+      for (let j=0; j<(8+Math.floor(m*1.5)); j++) {
+        const day = 1+Math.floor(Math.random()*28);
+        const id2 = new Date(md.getFullYear(), md.getMonth(), day);
+        const ci = Math.floor(Math.random()*this.clients.length);
+        const t = 5000+Math.floor(Math.random()*45000);
+        const iv = Math.round(t*0.22);
+        cfes.push({
+          id: 'cfe-bebidas-h'+m+'-'+j, numero: 'E-'+String(800+m*20+j).padStart(4,'0'),
+          tipo: 'e-Factura', moneda: 'UYU',
+          fecha: id2.toISOString().split('T')[0],
+          fecha_venc: new Date(id2.getTime()+30*864e5).toISOString().split('T')[0],
+          cliente_id: this.clients[ci]?.id||'c1', subtotal: t-iv, iva_total: iv,
+          total: t, saldo_pendiente: m>=3 ? 0 : (j%3===0 ? t : 0),
+          status: m>=3 ? 'cobrada' : (j%3===0 ? 'emitida' : 'cobrada'),
+          items: [], created_at: id2.toISOString(),
+        });
+      }
+    }
+    return cfes;
+  },
+
+  get cobros() {
+    const now = new Date();
+    const cobros = [];
+    (this.ventas || []).forEach((v, i) => {
+      if ((v.pago==='efectivo'||v.pago==='transferencia') && v.estado==='entregada') {
+        const d = new Date(now); d.setDate(d.getDate()+(v.date||0));
+        const total = v.items.reduce((s,it)=>s+it.qty*it.price,0);
+        cobros.push({
+          id: 'cob-bebidas-'+i, cliente_id: v.cliente_id,
+          monto: total, metodo: v.pago, fecha: d.toISOString().split('T')[0],
+          notas: '', facturas_aplicar: ['cfe-bebidas-'+i],
+          created_at: d.toISOString(),
+        });
+      }
+    });
+    // Historical cobros
+    for (let m=5; m>=1; m--) {
+      const md = new Date(now); md.setMonth(md.getMonth()-m);
+      for (let j=0; j<6; j++) {
+        const day = 1+Math.floor(Math.random()*28);
+        const id2 = new Date(md.getFullYear(), md.getMonth(), day);
+        cobros.push({
+          id: 'cob-bebidas-h'+m+'-'+j, cliente_id: this.clients[j%this.clients.length]?.id||'c1',
+          monto: 5000+Math.floor(Math.random()*30000),
+          metodo: j%2===0?'transferencia':'efectivo',
+          fecha: id2.toISOString().split('T')[0], notas: '',
+          facturas_aplicar: [], created_at: id2.toISOString(),
+        });
+      }
+    }
+    return cobros;
+  },
+
+  get movements() {
+    const now = new Date();
+    const movs = [];
+    const types = ['delivery','manual_in','order_placed','manual_out'];
+    (this.products || []).slice(0,15).forEach((p,i) => {
+      const d = new Date(now); d.setDate(d.getDate()-Math.floor(Math.random()*14));
+      const tipo = types[i%4];
+      const isOut = tipo==='order_placed'||tipo==='manual_out';
+      movs.push({
+        id: 'mov-bebidas-'+i, tipo,
+        producto_id: p.sku||p.id, producto_nombre: p.name,
+        cantidad: isOut ? -(Math.floor(Math.random()*10)+1) : Math.floor(Math.random()*20)+5,
+        referencia: tipo==='delivery'?'PO-'+(100+i):tipo==='order_placed'?'V-'+(i+1):'',
+        notas: '', fecha: d.toISOString().split('T')[0],
+        timestamp: d.toISOString(),
+      });
+    });
+    return movs;
+  },
 };

@@ -5,7 +5,7 @@ import React, {
 } from 'react';
 import { LS, db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
 import { useRealtime } from '../hooks/useRealtime.js';
-import { mapDemoProducts, mapDemoClients, mapDemoSuppliers, mapDemoVentas } from './demoMapper.ts';
+import { mapDemoProducts, mapDemoClients, mapDemoSuppliers, mapDemoVentas, mapDemoCfes, mapDemoCobros, mapDemoMovements, mapDemoRutas } from './demoMapper.ts';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
 import type { AppContextValue, Product, Supplier, Movement, Order, Plans,
               Session, EmailCfg, BrandCfg, SyncToast, EnrichedProduct, DbProduct,
@@ -44,7 +44,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   onLogout?: () => void;
   onSessionUpdate?: (s: Session) => void;
   children: React.ReactNode;
-  demoState?: { org: any; products: any[]; clients: any[]; suppliers: any[]; ventas: any[]; rutas: any[]; deposit_zones: any[]; industry: string } | null;
+  demoState?: { org: any; products: any[]; clients: any[]; suppliers: any[]; ventas: any[]; rutas: any[]; deposit_zones: any[]; cfes?: any[]; cobros?: any[]; movements?: any[]; industry: string } | null;
 }) {
   const isDemoMode = !!demoState;
 
@@ -94,6 +94,10 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
     const ds = mapDemoSuppliers(demoState.suppliers);
     const dv = mapDemoVentas(demoState.ventas, demoState.clients, demoState.products);
     setProducts(dp); setClientes(dc); setSuppliers(ds); setVentas(dv);
+    if (demoState.cfes) setCfes(mapDemoCfes(demoState.cfes, demoState.clients));
+    if (demoState.cobros) setCobros(mapDemoCobros(demoState.cobros));
+    if (demoState.movements) setMovements(mapDemoMovements(demoState.movements) as unknown as Movement[]);
+    if (demoState.rutas) setRutas(mapDemoRutas(demoState.rutas) as unknown as Ruta[]);
     setBrandCfg({ name:demoState.org.name, logoUrl:'', color:'#1a8a3c', ownerPhone:demoState.org.ownerPhone||'', horario:demoState.org.horario||'', address:demoState.org.address||'', rut:demoState.org.rut||'' });
     setDbReady(true); setSyncStatus('demo');
     console.debug('[AppContext] Demo data loaded:', demoState.industry, dp.length, 'products');

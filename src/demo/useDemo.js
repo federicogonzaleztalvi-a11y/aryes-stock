@@ -89,6 +89,9 @@ export function useDemo() {
       ventas: demoData.ventas,
       rutas: demoData.rutas,
       deposit_zones: demoData.deposit_zones,
+      cfes: demoData.cfes || [],
+      cobros: demoData.cobros || [],
+      movements: demoData.movements || [],
       industry: demoIndustry,
     };
   }, [demoMode, demoData, demoIndustry]);

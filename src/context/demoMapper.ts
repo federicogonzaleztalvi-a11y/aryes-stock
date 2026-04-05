@@ -102,3 +102,69 @@ export function mapDemoVentas(ventas: any[], clients: any[], products: any[]) {
     org_id: 'demo',
   }));
 }
+
+
+export function mapDemoCfes(cfes: any[], clients: any[]) {
+  return cfes.map((f: any) => ({
+    id: f.id,
+    numero: f.numero || '',
+    tipo: f.tipo || 'e-Factura',
+    moneda: f.moneda || 'UYU',
+    fecha: f.fecha || '',
+    fechaVenc: f.fecha_venc || null,
+    clienteId: f.cliente_id || null,
+    clienteNombre: clients.find((c: any) => c.id === f.cliente_id)?.name || '',
+    clienteRut: '',
+    subtotal: f.subtotal || 0,
+    ivaTotal: f.iva_total || 0,
+    descuento: 0,
+    total: f.total || 0,
+    saldoPendiente: f.saldo_pendiente ?? f.total ?? 0,
+    status: f.status || 'emitida',
+    items: f.items || [],
+    notas: '',
+    createdAt: f.created_at || '',
+  }));
+}
+
+export function mapDemoCobros(cobros: any[]) {
+  return cobros.map((c: any) => ({
+    id: c.id,
+    clienteId: c.cliente_id || null,
+    monto: c.monto || 0,
+    metodo: c.metodo || '',
+    fecha: c.fecha || '',
+    fechaCheque: null,
+    notas: c.notas || '',
+    facturasAplicar: c.facturas_aplicar || [],
+    createdAt: c.created_at || '',
+  }));
+}
+
+export function mapDemoMovements(movements: any[]) {
+  return movements.map((m: any) => ({
+    id: m.id,
+    tipo: m.tipo || 'manual_in',
+    productoId: m.producto_id || '',
+    productoNombre: m.producto_nombre || '',
+    cantidad: m.cantidad || 0,
+    referencia: m.referencia || '',
+    notas: m.notas || '',
+    fecha: m.fecha || '',
+    timestamp: m.timestamp || m.fecha || '',
+  }));
+}
+
+export function mapDemoRutas(rutas: any[]) {
+  return rutas.map((r: any) => ({
+    id: r.id,
+    vehiculo: r.vehiculo || '',
+    zona: r.zona || '',
+    dia: r.dia || '',
+    notas: r.notas || '',
+    entregas: r.entregas || [],
+    creadoEn: r.creado_en || new Date().toISOString(),
+    capacidadKg: r.capacidad_kg ? Number(r.capacidad_kg) : undefined,
+    capacidadBultos: r.capacidad_bultos ? Number(r.capacidad_bultos) : undefined,
+  }));
+}

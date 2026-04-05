@@ -125,10 +125,35 @@ export const demoHoreca = {
   // Rutas del día
   rutas: [
     {
-      id: 'r1', name: 'Ruta Centro-Pocitos', driver: 'Carlos Méndez', stops: ['c1', 'c2', 'c14', 'c4', 'c5', 'c11'],
+      id: 'r1', vehiculo: 'Camión Hyundai HD65', zona: 'Centro-Pocitos', dia: 'Martes',
+      capacidad_kg: 500, capacidad_bultos: 60, creado_en: new Date().toISOString(),
+      entregas: [
+        { clienteId: 'c1', clienteNombre: 'Restaurante El Palenque', direccion: 'Bartolomé Mitre 1381', telefono: '099123001', estado: 'entregado', orden: 1, notas: '', hora: '8:30' },
+        { clienteId: 'c2', clienteNombre: 'Bar Arocena', direccion: 'Ciudadela 1180', telefono: '099123002', estado: 'entregado', orden: 2, notas: '', hora: '9:15' },
+        { clienteId: 'c14', clienteNombre: 'Cantina del Puerto', direccion: 'Rambla 25 de Agosto 218', telefono: '099123014', estado: 'en_camino', orden: 3, notas: '', hora: null },
+        { clienteId: 'c4', clienteNombre: 'Pizzería Trouville', direccion: 'José Ellauri 1349', telefono: '099123004', estado: 'pendiente', orden: 4, notas: '', hora: null },
+        { clienteId: 'c5', clienteNombre: 'Café Misterio', direccion: '21 de Setiembre 2895', telefono: '099123005', estado: 'pendiente', orden: 5, notas: '', hora: null },
+        { clienteId: 'c11', clienteNombre: 'Sushi Corner', direccion: 'Av. Brasil 2587', telefono: '099123011', estado: 'pendiente', orden: 6, notas: '', hora: null },
+      ],
     },
     {
-      id: 'r2', name: 'Ruta Costa', driver: 'Martín Pereira', stops: ['c8', 'c7', 'c19'],
+      id: 'r2', vehiculo: 'Renault Master', zona: 'Costa Este', dia: 'Martes',
+      capacidad_kg: 700, capacidad_bultos: 80, creado_en: new Date().toISOString(),
+      entregas: [
+        { clienteId: 'c8', clienteNombre: 'Francis Hotel & Restó', direccion: 'Rambla Rep. de México 6363', telefono: '099123008', estado: 'entregado', orden: 1, notas: '', hora: '8:00' },
+        { clienteId: 'c7', clienteNombre: 'Parador La Huella (Punta)', direccion: 'Ruta 10 Km 161', telefono: '099123007', estado: 'en_camino', orden: 2, notas: '', hora: null },
+        { clienteId: 'c19', clienteNombre: 'Casino Enjoy - Gastronomía', direccion: 'Rambla Williman, Punta del Este', telefono: '099123019', estado: 'pendiente', orden: 3, notas: '', hora: null },
+      ],
+    },
+    {
+      id: 'r3', vehiculo: 'Fiat Ducato', zona: 'Carrasco-Malvín', dia: 'Miércoles',
+      capacidad_kg: 400, capacidad_bultos: 45, creado_en: new Date().toISOString(),
+      entregas: [
+        { clienteId: 'c3', clienteNombre: 'Hotel Palladium - Cocina', direccion: 'Tomás Basáñez 6553', telefono: '099123003', estado: 'pendiente', orden: 1, notas: '', hora: null },
+        { clienteId: 'c6', clienteNombre: 'La Perdiz Restaurante', direccion: 'Av. Rivera 4398', telefono: '099123006', estado: 'pendiente', orden: 2, notas: '', hora: null },
+        { clienteId: 'c18', clienteNombre: 'Heladería Freddo Punta Carretas', direccion: 'Ellauri 553', telefono: '099123018', estado: 'pendiente', orden: 3, notas: '', hora: null },
+        { clienteId: 'c10', clienteNombre: 'Club de Golf del Uruguay', direccion: 'Bvar. Artigas 379', telefono: '099123010', estado: 'pendiente', orden: 4, notas: '', hora: null },
+      ],
     },
   ],
 
@@ -139,4 +164,106 @@ export const demoHoreca = {
     { id: 'z3', name: 'Secos', temp: 'Ambiente', products: ['h15','h16','h17','h18','h19','h20','h21','h34','h35','h36','h37','h38','h39','h40'] },
     { id: 'z4', name: 'Aceites y gourmet', temp: 'Ambiente', products: ['h22','h23','h24','h25'] },
   ],
+
+
+  // ── Generated financial & operational demo data ──────────────────────────
+  // CFEs (facturas), cobros, movements — generated at import time for realistic KPIs
+  get cfes() {
+    const now = new Date();
+    const cfes = [];
+    // Current month ventas → invoices
+    (this.ventas || []).forEach((v, i) => {
+      const d = new Date(now); d.setDate(d.getDate() + (v.date || 0));
+      const venc = new Date(d); venc.setDate(venc.getDate() + 30);
+      const total = v.items.reduce((s, it) => s + it.qty * it.price, 0);
+      const iva = Math.round(total * 0.22);
+      const isPaid = v.pago === 'efectivo' || v.pago === 'transferencia';
+      const isDone = v.estado === 'entregada';
+      cfes.push({
+        id: 'cfe-horeca-'+i, numero: 'E-'+String(1000+i).padStart(4,'0'),
+        tipo: 'e-Factura', moneda: 'UYU',
+        fecha: d.toISOString().split('T')[0],
+        fecha_venc: venc.toISOString().split('T')[0],
+        cliente_id: v.cliente_id, subtotal: total-iva, iva_total: iva,
+        total, saldo_pendiente: isDone&&isPaid ? 0 : total,
+        status: isDone&&isPaid ? 'cobrada' : isDone ? 'emitida' : 'borrador',
+        items: v.items, created_at: d.toISOString(),
+      });
+    });
+    // Historical invoices (5 months back) for sparkline
+    for (let m=5; m>=1; m--) {
+      const md = new Date(now); md.setMonth(md.getMonth()-m);
+      for (let j=0; j<(8+Math.floor(m*1.5)); j++) {
+        const day = 1+Math.floor(Math.random()*28);
+        const id2 = new Date(md.getFullYear(), md.getMonth(), day);
+        const ci = Math.floor(Math.random()*this.clients.length);
+        const t = 5000+Math.floor(Math.random()*45000);
+        const iv = Math.round(t*0.22);
+        cfes.push({
+          id: 'cfe-horeca-h'+m+'-'+j, numero: 'E-'+String(800+m*20+j).padStart(4,'0'),
+          tipo: 'e-Factura', moneda: 'UYU',
+          fecha: id2.toISOString().split('T')[0],
+          fecha_venc: new Date(id2.getTime()+30*864e5).toISOString().split('T')[0],
+          cliente_id: this.clients[ci]?.id||'c1', subtotal: t-iv, iva_total: iv,
+          total: t, saldo_pendiente: m>=3 ? 0 : (j%3===0 ? t : 0),
+          status: m>=3 ? 'cobrada' : (j%3===0 ? 'emitida' : 'cobrada'),
+          items: [], created_at: id2.toISOString(),
+        });
+      }
+    }
+    return cfes;
+  },
+
+  get cobros() {
+    const now = new Date();
+    const cobros = [];
+    (this.ventas || []).forEach((v, i) => {
+      if ((v.pago==='efectivo'||v.pago==='transferencia') && v.estado==='entregada') {
+        const d = new Date(now); d.setDate(d.getDate()+(v.date||0));
+        const total = v.items.reduce((s,it)=>s+it.qty*it.price,0);
+        cobros.push({
+          id: 'cob-horeca-'+i, cliente_id: v.cliente_id,
+          monto: total, metodo: v.pago, fecha: d.toISOString().split('T')[0],
+          notas: '', facturas_aplicar: ['cfe-horeca-'+i],
+          created_at: d.toISOString(),
+        });
+      }
+    });
+    // Historical cobros
+    for (let m=5; m>=1; m--) {
+      const md = new Date(now); md.setMonth(md.getMonth()-m);
+      for (let j=0; j<6; j++) {
+        const day = 1+Math.floor(Math.random()*28);
+        const id2 = new Date(md.getFullYear(), md.getMonth(), day);
+        cobros.push({
+          id: 'cob-horeca-h'+m+'-'+j, cliente_id: this.clients[j%this.clients.length]?.id||'c1',
+          monto: 5000+Math.floor(Math.random()*30000),
+          metodo: j%2===0?'transferencia':'efectivo',
+          fecha: id2.toISOString().split('T')[0], notas: '',
+          facturas_aplicar: [], created_at: id2.toISOString(),
+        });
+      }
+    }
+    return cobros;
+  },
+
+  get movements() {
+    const now = new Date();
+    const movs = [];
+    const types = ['delivery','manual_in','order_placed','manual_out'];
+    (this.products || []).slice(0,15).forEach((p,i) => {
+      const d = new Date(now); d.setDate(d.getDate()-Math.floor(Math.random()*14));
+      const tipo = types[i%4];
+      const isOut = tipo==='order_placed'||tipo==='manual_out';
+      movs.push({
+        id: 'mov-horeca-'+i, tipo,
+        producto_id: p.sku||p.id, producto_nombre: p.name,
+        cantidad: isOut ? -(Math.floor(Math.random()*10)+1) : Math.floor(Math.random()*20)+5,
+        referencia: tipo==='delivery'?'PO-'+(100+i):tipo==='order_placed'?'V-'+(i+1):'',
+        notas: '', fecha: d.toISOString().split('T')[0],
+        timestamp: d.toISOString(),
+      });
+    });
+    return movs;
+  },
 };
