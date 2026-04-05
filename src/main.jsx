@@ -154,6 +154,17 @@ function Root() {
   const [showDemoSelector, setShowDemoSelector] = useState(false);
 
   // ── effectiveSession: demo fake o real ──
+  
+  // Auto-show demo selector if ?demo=true
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === 'true' && !demoMode) {
+      setShowDemoSelector(true);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const effectiveSession = demoMode ? {
     email: 'demo@aryes.com', role: 'admin', name: 'Demo', orgId: 'demo',
     access_token: 'demo-token', expiresAt: Date.now() + 86400000, _demo: true,
@@ -273,12 +284,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           {/* Public client delivery tracking — no auth */}
           <Route path="/tracking" element={<TrackingPage />} />
           {/* Public self-registration */}
+          <Route path="/" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/landing" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/register" element={<RegisterPage />} />
           {/* Upgrade / pricing page */}
           <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
           {/* Everything else → authenticated app */}
-          <Route path="*" element={<Root />} />
+          <Route path="/app/*" element={<Root />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

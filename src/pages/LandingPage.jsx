@@ -108,7 +108,7 @@ export default function LandingPage() {
               <span onClick={() => scrollTo('precios')} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
               <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
                 style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer', textDecoration: 'none' }}>Contacto</a>
-              <span onClick={() => window.location.href = '/'} style={{
+              <span onClick={() => window.location.href = '/app'} style={{
                 fontSize: 13, color: '#4b4b48', cursor: 'pointer', fontWeight: 500,
                 padding: '7px 16px', border: '1px solid #d4d4d0', borderRadius: 8,
                 transition: 'border-color 0.2s, background 0.2s',
@@ -137,7 +137,7 @@ export default function LandingPage() {
             <span onClick={() => scrollTo('precios')} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
             <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
               style={{ fontSize: 15, color: '#6b7280', textDecoration: 'none' }}>Contacto</a>
-            <span onClick={() => window.location.href = '/'} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Iniciar sesión</span>
+            <span onClick={() => window.location.href = '/app'} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Iniciar sesión</span>
             <button onClick={() => { setMenuOpen(false); window.location.href = '/register'; }}
               style={{ padding: '12px', background: G, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
               Probar 14 días gratis
@@ -187,7 +187,7 @@ export default function LandingPage() {
             >
               Probar 14 días gratis
             </button>
-            <button onClick={() => window.location.href = '/demo'}
+            <button onClick={() => window.location.href = '/app?demo=true'}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '14px 28px', background: 'transparent', color: '#6b7280',
