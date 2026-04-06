@@ -129,9 +129,9 @@ function LoginScreen({ onLogin, onExplore }) {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
-            <a href="/reset-password" style={{ color: '#6a6a68', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
+            <a href="/reset-password" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
           </p>
-          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 4 }}>
+          <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
             ¿No tenés cuenta?{' '}
             <a href="/register" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
           </p>
