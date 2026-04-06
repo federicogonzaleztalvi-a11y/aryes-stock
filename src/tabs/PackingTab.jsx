@@ -89,7 +89,7 @@ function PackingTab(){
       </div>
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Ordenes para preparar ({pendPacking.length})</h3>
-      {pendPacking.length===0?(<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:20,fontSize:13,color:G,textAlign:"center"}}>No hay ordenes pendientes de packing</div>):(
+      {pendPacking.length===0?(<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:20,fontSize:13,color:G,textAlign:"center"}}><div style={{fontSize:40,marginBottom:8}}>✅</div>No hay órdenes pendientes de packing<div style={{fontSize:12,marginTop:6}}>Cuando confirmes ventas aparecerán acá para preparar</div></div>):(
         <div style={{display:"grid",gap:10}}>
           {pendPacking.map(v=>(
             <div key={v.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:14}}>

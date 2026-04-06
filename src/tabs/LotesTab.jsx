@@ -180,7 +180,7 @@ function LotesTab(){
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
           <div style={{fontSize:40,marginBottom:12}}>📅</div>
-          <p style={{fontSize:15}}>{lotes.length===0?'No hay lotes registrados todavia':'Sin lotes para ese filtro'}</p>
+          <p style={{fontSize:15}}>{lotes.length===0?'No hay lotes registrados todavía. Los lotes se crean al recibir mercadería.':'Sin lotes para ese filtro'}</p>
           {lotes.length===0&&<button onClick={()=>setVista('form')} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Registrar primer lote</button>}
         </div>
       ):(

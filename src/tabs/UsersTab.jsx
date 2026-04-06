@@ -245,7 +245,7 @@ export default function UsersTab({ session }) {
       ) : users.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 48, background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>👤</div>
-          <p style={{ color: '#6a6a68', fontSize: 14 }}>No hay usuarios cargados aún</p>
+          <p style={{ color: '#6a6a68', fontSize: 14 }}>No hay usuarios cargados aún</p><p style={{ color: '#9a9a98', fontSize: 13 }}>Agregá operadores y vendedores desde el botón de arriba</p>
         </div>
       ) : (
         <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>

@@ -155,7 +155,7 @@ function MovimientosTab(){
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
           <div style={{fontSize:40,marginBottom:12}}>📋</div>
-          <p style={{fontSize:15}}>{movs.length===0?'Todavia no hay movimientos registrados':'Sin movimientos para ese filtro'}</p>
+          <p style={{fontSize:15}}>{movs.length===0?'Todavía no hay movimientos registrados. Se generan automáticamente con cada venta y recepción.':'Sin movimientos para ese filtro'}</p>
           {movs.length===0&&<button onClick={()=>setVista('form')} style={{marginTop:12,background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>Registrar primer movimiento</button>}
         </div>
       ):(

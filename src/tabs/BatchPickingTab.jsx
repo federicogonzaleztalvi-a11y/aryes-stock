@@ -134,7 +134,7 @@ function BatchPickingTab(){
         <div style={{fontSize:14,fontWeight:700,color:"#374151"}}>{selIds.length>0?selIds.length+" ordenes seleccionadas":"Selecciona ordenes para hacer batch"}</div>
         <button onClick={generarBatch} disabled={selIds.length===0} style={{padding:"8px 20px",background:selIds.length>0?"#1a8a3c":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:selIds.length>0?"pointer":"not-allowed",fontWeight:700,fontSize:13}}>Generar batch →</button>
       </div>
-      {pendientes.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay ordenes pendientes</div>):(
+      {pendientes.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay órdenes pendientes de picking</div>):(
         <div style={{display:"grid",gap:8}}>
           {pendientes.map(v=>(
             <div key={v.id} onClick={()=>toggleSel(v.id)} style={{background:selIds.includes(v.id)?"#f0fdf4":"#fff",border:"2px solid "+(selIds.includes(v.id)?"#1a8a3c":"#e5e7eb"),borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .15s"}}>

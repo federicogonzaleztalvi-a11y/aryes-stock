@@ -494,8 +494,8 @@ export default function LandingPage() {
           {/* Right — Contact */}
           <div style={{ textAlign: mobile ? 'left' : 'right' }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Contacto</div>
-            <a href="mailto:contacto@aryes.com.uy" style={{ color: '#6b7280', textDecoration: 'none', fontSize: 14, display: 'block', marginBottom: 12 }}>
-              contacto@aryes.com.uy
+            <a href="mailto:contacto@aryes.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: 14, display: 'block', marginBottom: 12 }}>
+              contacto@aryes.com
             </a>
             <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
               style={{
@@ -514,6 +514,10 @@ export default function LandingPage() {
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '16px 24px', borderTop: '1px solid #e8e8e6' }}>
           <div style={{ fontSize: 12, color: '#b0b0ac' }}>
             <span>© 2026 Aryes</span>
+            <span style={{ margin: '0 8px', color: '#d0d0cc' }}>·</span>
+            <a href="/terms" style={{ color: '#b0b0ac', textDecoration: 'none' }}>Términos</a>
+            <span style={{ margin: '0 8px', color: '#d0d0cc' }}>·</span>
+            <a href="/privacy" style={{ color: '#b0b0ac', textDecoration: 'none' }}>Privacidad</a>
           </div>
         </div>
       </footer>

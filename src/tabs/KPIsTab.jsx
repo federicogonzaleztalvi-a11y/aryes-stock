@@ -76,7 +76,7 @@ function KPIsTab(){
         </div>
         <div style={{background:"#fff",borderRadius:12,padding:20,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <h3 style={{fontSize:14,fontWeight:700,color:"#1a1a1a",margin:"0 0 14px"}}>Ventas por estado</h3>
-          {Object.entries(ventasEst).length===0?<div style={{color:"#888",fontSize:13}}>Sin ventas registradas</div>:(
+          {Object.entries(ventasEst).length===0?<div style={{color:"#888",fontSize:13}}><div style={{fontSize:40,marginBottom:8}}>📈</div>Sin ventas registradas<div style={{fontSize:12,marginTop:6,color:"#9a9a98"}}>Los KPIs se calculan automáticamente con cada venta</div></div>:(
             Object.entries(ventasEst).map(([est,cnt])=>{
               const colors={pendiente:"#f59e0b",confirmada:"#3b82f6",preparada:"#8b5cf6",entregada:G,cancelada:"#6b7280"};
               return(

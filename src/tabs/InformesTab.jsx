@@ -87,7 +87,7 @@ function InformesTab(){
         </div>
         <div>
           <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Imprimir remitos</h3>
-          {ventas.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay ordenes de venta aun</div>):(
+          {ventas.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}><div style={{fontSize:40,marginBottom:8}}>📊</div>No hay órdenes de venta aún<div style={{fontSize:12,marginTop:6,color:"#9a9a98"}}>Creá tu primera venta para ver reportes e informes</div></div>):(
           <div style={{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
             {ventas.slice(0,12).map((v,i)=>(
               <div key={v.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>

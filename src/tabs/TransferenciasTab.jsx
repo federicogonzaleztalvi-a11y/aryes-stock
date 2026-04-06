@@ -114,7 +114,7 @@ function TransferenciasTab(){
       )}
 
       <div style={{fontSize:11,fontWeight:600,color:"#b0aca6",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12,marginTop:8}}>Historial</div>
-      {transfers.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay transferencias registradas</div>):(
+      {transfers.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}><div style={{fontSize:40,marginBottom:8}}>📦</div>No hay transferencias registradas<div style={{fontSize:12,marginTop:6,color:"#9a9a98"}}>Las transferencias se crean cuando movés stock entre depósitos</div></div>):(
         <div style={{background:"#fff",borderRadius:12,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead><tr style={{background:"#f9fafb"}}>{["Fecha","Producto","Cantidad","Origen","Destino","Notas"].map(h=><th key={h} style={{padding:"9px 14px",textAlign:"left",fontWeight:600,color:"#6b7280",fontSize:11,textTransform:"uppercase",letterSpacing:.5}}>{h}</th>)}</tr></thead>
