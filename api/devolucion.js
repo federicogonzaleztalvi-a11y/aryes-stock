@@ -4,6 +4,8 @@ const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 // El cliente ya está autenticado via OTP (teléfono verificado)
 
 import { log } from './_log.js';
+import { setCorsHeaders } from './_cors.js';
+
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -14,8 +16,8 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-export default async function handler(req, res) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+export default async async function handler(req, res) {
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!SB_URL || !SB_ANON) return res.status(503).json({ error: 'Servicio no disponible' });

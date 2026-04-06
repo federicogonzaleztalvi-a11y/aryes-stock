@@ -19,6 +19,8 @@ const APP_URL  = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 
 // ── MercadoPago webhook signature verification ────────────────────
 import crypto from 'crypto';
+import { setCorsHeaders } from './_cors.js';
+
 
 function verifyMPSignature(req) {
   if (!MP_WEBHOOK_SECRET) {
@@ -255,9 +257,7 @@ async function mpWebhook(req, res) {
 // ── Router ────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query?.action || req.body?.action;

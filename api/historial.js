@@ -3,6 +3,8 @@
 // No requiere auth — el teléfono ya fue verificado via OTP en el browser
 
 import { log, withObservability } from './_log.js';
+import { setCorsHeaders } from './_cors.js';
+
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -25,8 +27,8 @@ function _checkRate_his(ip) {
   _rl_his.set(ip, recent);
   return true;
 }
-async function handler(req, res) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+async async function handler(req, res) {
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET')    return res.status(405).json({ error: 'Method not allowed' });
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';

@@ -6,6 +6,8 @@ const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 
 import webpush from 'web-push';
 import { log } from './_log.js';
+import { setCorsHeaders } from './_cors.js';
+
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -22,10 +24,10 @@ const CORS = {
 };
 
 function setCORS(res) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+  await setCorsHeaders(req, res);
 }
 
-export default async function handler(req, res) {
+export default async async function handler(req, res) {
   setCORS(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 

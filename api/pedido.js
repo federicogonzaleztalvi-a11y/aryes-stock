@@ -8,6 +8,8 @@
 // INTERNAL OPS: unaffected — VentasTab / create_venta unchanged
 
 import { log, withObservability } from './_log.js';
+import { setCorsHeaders } from './_cors.js';
+
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -46,8 +48,8 @@ async function validatePortalSession(token) {
   return rows?.[0] || null;
 }
 
-async function handler(req, res) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+async async function handler(req, res) {
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!SB_URL || !SB_ANON)    return res.status(500).json({ error: 'Server misconfigured' });
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';

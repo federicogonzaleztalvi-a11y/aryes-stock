@@ -1,6 +1,8 @@
 // api/otp-send.js — Genera y envía un OTP por WhatsApp o SMS via Infobip
 // Si INFOBIP_API_KEY no está configurado, devuelve el código en la respuesta (modo dev)
 
+import { setCorsHeaders } from './_cors.js';
+
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON    = process.env.SUPABASE_ANON_KEY;
@@ -100,8 +102,8 @@ function _checkRate_otp(ip) {
   _rl_otp.set(ip, recent);
   return true;
 }
-export default async function handler(req, res) {
-  Object.entries(CORS).forEach(([k,v]) => res.setHeader(k,v));
+export default async async function handler(req, res) {
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';

@@ -3,6 +3,8 @@
 // No auth required — this is the public signup flow.
 
 import { log, withObservability } from './_log.js';
+import { setCorsHeaders } from './_cors.js';
+
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,8 +50,8 @@ function checkRateLimit(ip) {
   return true;
 }
 
-async function handler(req, res) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+async async function handler(req, res) {
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   // Rate limit check

@@ -2,6 +2,8 @@
 // All Supabase Auth operations use SECURITY DEFINER RPCs (bypasses GoTrue restrictions)
 // UPDATE/DELETE on public.users use service_role key (bypasses RLS)
 
+import { setCorsHeaders } from './_cors.js';
+
 const SB_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
@@ -69,9 +71,7 @@ export default async function handler(req, res) {
   if (!SERVICE_KEY) {
     console.error('[admin-users] SUPABASE_SERVICE_ROLE_KEY is not set — all requests will fail');
   }
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!SERVICE_KEY) return res.status(500).json({ error: 'Server misconfiguration' });
 

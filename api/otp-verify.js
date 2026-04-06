@@ -1,5 +1,7 @@
 // api/otp-verify.js v4
 
+import { setCorsHeaders } from './_cors.js';
+
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON    = process.env.SUPABASE_ANON_KEY;
@@ -25,8 +27,8 @@ async function sha256(text) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-export default async function handler(req, res) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+export default async async function handler(req, res) {
+  await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
