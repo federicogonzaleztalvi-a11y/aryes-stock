@@ -865,6 +865,9 @@ export default function PedidosPage() {
     return mCat && mQ;
   }), [items, catFil, busq]);
 
+  // Analytics — PedidosPage scope
+  const track = (event, props = {}) => { try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
+
   const addItem    = item => { track('producto_agregado', { producto: item.nombre, precio: item.precio }); setCarrito(c => ({ ...c, [item.id]: (c[item.id] || 0) + 1 })); };
   const removeItem = item => setCarrito(c => {
     const q = (c[item.id] || 0) - 1;
