@@ -1,6 +1,18 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fmt } from '../lib/constants.js';
+import { demoHoreca } from '../demo/demo-horeca.js';
+import { demoBebidas } from '../demo/demo-bebidas.js';
+import { demoLimpieza } from '../demo/demo-limpieza.js';
+import { demoConstruccion } from '../demo/demo-construccion.js';
+
+const DEMO_DATASETS = {
+  horeca:       { data: demoHoreca,       label: 'HORECA',       emoji: '🍽️', desc: 'Restaurantes, hoteles y catering' },
+  bebidas:      { data: demoBebidas,      label: 'Bebidas',      emoji: '🥤', desc: 'Mayorista de bebidas' },
+  limpieza:     { data: demoLimpieza,     label: 'Limpieza',     emoji: '🧹', desc: 'Productos de limpieza' },
+  construccion: { data: demoConstruccion, label: 'Construcción', emoji: '🏗️', desc: 'Materiales de construcción' },
+};
+
 
 const G    = '#1a8a3c';
 const SANS = "'DM Sans','Inter',system-ui,sans-serif";
@@ -108,6 +120,53 @@ const Icon = {
   repeat:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>,
 };
 
+
+// ── Portal Demo Selector ──────────────────────────────────────────────────────
+function PortalDemoSelector({ onSelect }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: '100%', maxWidth: 480 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ width: 48, height: 48, background: G, borderRadius: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', color: '#fff', fontSize: 20 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>
+            Explorá el portal de pedidos
+          </div>
+          <div style={{ fontSize: 13, color: '#9a9a92', lineHeight: 1.5 }}>
+            Elegí una industria para ver cómo tus clientes<br/>van a hacer pedidos en tu plataforma
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {Object.entries(DEMO_DATASETS).map(([key, { label, emoji, desc }]) => (
+            <button key={key} onClick={() => onSelect(key)}
+              style={{
+                background: '#fff', border: '1px solid #efefeb', borderRadius: 14,
+                padding: '20px 16px', cursor: 'pointer', textAlign: 'center',
+                transition: 'border-color .15s, transform .1s', fontFamily: SANS,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = G; e.currentTarget.style.transform = 'scale(1.02)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#efefeb'; e.currentTarget.style.transform = 'scale(1)'; }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 20 }}>
+          <button onClick={() => window.history.back()}
+            style={{ background: 'none', border: 'none', color: '#9a9a92', fontSize: 13,
+              cursor: 'pointer', fontFamily: SANS, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            ← Volver
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Login ─────────────────────────────────────────────────────────────────────
 function LoginStep({ onLogin }) {
   const [tel,     setTel]     = useState('');
@@ -198,6 +257,22 @@ function LoginStep({ onLogin }) {
                     </svg>
                   </>
                 )}
+              </button>
+              <div style={{ position: 'relative', margin: '20px 0 4px', textAlign: 'center' }}>
+                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '0.5px', background: '#e8e8e0' }}/>
+                <span style={{ position: 'relative', background: '#f7f7f4', padding: '0 12px', fontSize: 11, color: '#b0b0a8' }}>o</span>
+              </div>
+              <button onClick={() => window.location.href='/pedidos?demo=true'}
+                style={{
+                  width: '100%', padding: '11px 0', background: 'transparent',
+                  color: '#6a6a68', border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13,
+                  fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}>
+                Explorar catálogo de prueba
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
               </button>
             </>
           ) : (
@@ -464,6 +539,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   };
 
   const confirmar = async () => {
+      // Demo mode — simulate confirmation without API call
+      if (window.location.search.includes('demo=true')) {
+        setDone(true);
+        return;
+      }
+
     setLoading(true);
     try {
       const r = await fetch(`${window.location.origin}/api/pedido`, {
@@ -715,6 +796,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
 
 // ── Pagina principal ──────────────────────────────────────────────────────────
 export default function PedidosPage() {
+  const [portalDemo, setPortalDemo] = useState(null); // null | 'selecting' | dataset key
+  const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
   const [session,  setSession]  = useState(() => loadSession());
   const [vista,    setVista]    = useState('catalogo');
   const [items,    setItems]    = useState([]);
@@ -730,6 +813,29 @@ export default function PedidosPage() {
   const NAV_MAX = 10;
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
+
+  // Detect demo mode from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === 'true' && !portalDemo) setPortalDemo('selecting');
+  }, []);
+
+  // Load demo products when dataset selected
+  useEffect(() => {
+    if (!isPortalDemo) return;
+    const ds = DEMO_DATASETS[portalDemo];
+    if (!ds) return;
+    const prods = ds.data.products.map(p => ({
+      id: p.id, nombre: p.name, precio: p.price, categoria: p.category,
+      unidad: p.unit || 'un', marca: p.brand || p.category,
+      imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22,
+      stock: p.stock || 100,
+    })).filter(p => p.precio > 0);
+    setItems(prods);
+    const categories = ['Todos', ...new Set(prods.map(p => p.categoria).filter(Boolean))];
+    setCats(categories);
+    setBrandNombre(ds.data.org.name);
+  }, [portalDemo, isPortalDemo]);
 
   const loadCatalogo = useCallback(async (ses) => {
     if (!ses?.clienteId) return;
@@ -767,15 +873,37 @@ export default function PedidosPage() {
   });
 
   const logout = () => {
+    if (isPortalDemo) { setPortalDemo(null); setItems([]); setCarrito({}); window.location.href = '/pedidos'; return; }
+
     localStorage.removeItem(SK);
     setSession(null); setItems([]); setCarrito({});
   };
 
-  if (!session) return <LoginStep onLogin={ses => setSession(ses)} />;
+  if (portalDemo === 'selecting') return <PortalDemoSelector onSelect={key => setPortalDemo(key)} />;
+  if (!session && !isPortalDemo) return <LoginStep onLogin={ses => setSession(ses)} />;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS }}>
 
+      {isPortalDemo && (
+        <div style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '8px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, fontFamily: SANS }}>
+          <span style={{ fontSize: 12, color: '#92400e' }}>
+            Estás viendo el catálogo de prueba de <strong>{DEMO_DATASETS[portalDemo]?.label}</strong>
+          </span>
+          <button onClick={() => setPortalDemo('selecting')}
+            style={{ fontSize: 11, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a',
+              borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontWeight: 600, fontFamily: SANS }}>
+            Cambiar industria
+          </button>
+          <a href="/register"
+            style={{ fontSize: 11, color: '#fff', background: G, border: 'none',
+              borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600,
+              fontFamily: SANS, textDecoration: 'none' }}>
+            Crear cuenta gratis
+          </a>
+        </div>
+      )}
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
         position: 'sticky', top: 0, zIndex: 100 }} onClick={() => setDdOpen(false)}>
 
