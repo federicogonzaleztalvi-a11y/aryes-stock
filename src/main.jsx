@@ -17,6 +17,8 @@ const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
 const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
 const TrackingPage     = lazy(() => import('./pages/TrackingPage.jsx'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
+const TermsPage   = lazy(() => import('./pages/TermsPage.jsx'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 // ── Demo mode ─────────────────────────────────────────────────────
@@ -291,6 +293,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/landing" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/terms" element={<Suspense fallback={<div/>}><TermsPage /></Suspense>} />
+          <Route path="/privacy" element={<Suspense fallback={<div/>}><PrivacyPage /></Suspense>} />
           <Route path="/reset-password" element={<Suspense fallback={<div/>}><ResetPasswordPage /></Suspense>} />
           {/* Upgrade / pricing page */}
           <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />

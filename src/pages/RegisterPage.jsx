@@ -161,9 +161,9 @@ export default function RegisterPage() {
           </p>
           <p style={{ fontFamily: F.sans, fontSize: 11, color: '#9a9a98', marginTop: 12 }}>
             Al registrarte aceptás los{' '}
-            <a href="#" style={{ color: '#9a9a98' }}>términos de servicio</a>
+            <a href="/terms" style={{ color: '#9a9a98' }}>términos de servicio</a>
             {' '}y la{' '}
-            <a href="#" style={{ color: '#9a9a98' }}>política de privacidad</a>.
+            <a href="/privacy" style={{ color: '#9a9a98' }}>política de privacidad</a>.
           </p>
         </div>
 
