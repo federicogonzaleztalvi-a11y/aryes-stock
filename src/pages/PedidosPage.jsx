@@ -1,5 +1,5 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fmt } from '../lib/constants.js';
 import { demoHoreca } from '../demo/demo-horeca.js';
 import { demoBebidas } from '../demo/demo-bebidas.js';
