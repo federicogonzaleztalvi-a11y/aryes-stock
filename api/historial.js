@@ -13,10 +13,25 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+
+// ── Rate limiting: max 30 requests per IP per 1 min ──
+const _rl_his = new Map();
+function _checkRate_his(ip) {
+  const now = Date.now();
+  const entry = _rl_his.get(ip) || [];
+  const recent = entry.filter(t => now - t < 60000);
+  if (recent.length >= 30) return false;
+  recent.push(now);
+  _rl_his.set(ip, recent);
+  return true;
+}
 async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET')    return res.status(405).json({ error: 'Method not allowed' });
+  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  if (!_checkRate_his(_ip)) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
+
 
   // Hard fail — nunca usar anon key como fallback de service key
   if (!SB_URL || !SB_ANON) {

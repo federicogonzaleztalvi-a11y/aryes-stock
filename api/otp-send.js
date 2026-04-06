@@ -88,10 +88,25 @@ async function sendViaInfobip(to, code) {
   }
 }
 
+
+// ── Rate limiting: max 5 requests per IP per 10 min ──
+const _rl_otp = new Map();
+function _checkRate_otp(ip) {
+  const now = Date.now();
+  const entry = _rl_otp.get(ip) || [];
+  const recent = entry.filter(t => now - t < 600000);
+  if (recent.length >= 5) return false;
+  recent.push(now);
+  _rl_otp.set(ip, recent);
+  return true;
+}
 export default async function handler(req, res) {
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k,v));
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
+  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  if (!_checkRate_otp(_ip)) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
+
 
   const { tel, org = 'aryes' } = req.body || {};
   if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });

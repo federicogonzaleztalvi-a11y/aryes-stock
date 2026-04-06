@@ -19,6 +19,18 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+
+// ── Rate limiting: max 10 requests per IP per 1 min ──
+const _rl_ped = new Map();
+function _checkRate_ped(ip) {
+  const now = Date.now();
+  const entry = _rl_ped.get(ip) || [];
+  const recent = entry.filter(t => now - t < 60000);
+  if (recent.length >= 10) return false;
+  recent.push(now);
+  _rl_ped.set(ip, recent);
+  return true;
+}
 async function validatePortalSession(token) {
   if (!token) return null;
   const key = SB_SVC || SB_ANON;
@@ -38,6 +50,9 @@ async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!SB_URL || !SB_ANON)    return res.status(500).json({ error: 'Server misconfigured' });
+  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  if (!_checkRate_ped(_ip)) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
+
 
   // ── GET /api/pedido?action=pendientes — lista pedidos B2B pendientes (operador) ──
   if (req.method === 'GET') {

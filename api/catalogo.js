@@ -12,6 +12,18 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+
+// ── Rate limiting: max 60 requests per IP per 1 min ──
+const _rl_cat = new Map();
+function _checkRate_cat(ip) {
+  const now = Date.now();
+  const entry = _rl_cat.get(ip) || [];
+  const recent = entry.filter(t => now - t < 60000);
+  if (recent.length >= 60) return false;
+  recent.push(now);
+  _rl_cat.set(ip, recent);
+  return true;
+}
 function setHeaders(res, extra = {}) {
   Object.entries({ ...CORS, ...extra }).forEach(([k, v]) => res.setHeader(k, v));
 }
@@ -22,6 +34,9 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  if (!_checkRate_cat(_ip)) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
+
   if (!SB_KEY)              return res.status(500).json({ error: 'Server misconfigured' });
 
   const org      = (req.query.org      || 'aryes').replace(/[^a-z0-9_-]/gi, '');
