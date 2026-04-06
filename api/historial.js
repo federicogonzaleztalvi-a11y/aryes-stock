@@ -31,7 +31,7 @@ async function handler(req, res) {
     // If token provided, validate it
     const key = SB_ANON;
     const sessRes = await fetch(
-      `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&limit=1`,
+      `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&revoked=eq.false&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
     );
     if (!sessRes.ok || !(await sessRes.json())?.length) {
