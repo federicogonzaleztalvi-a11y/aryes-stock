@@ -368,12 +368,11 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
           {item.precio > 0 ? fmt.currencyCompact(item.precio) : <span style={{ fontSize: 12, color: '#a0a098' }}>Consultar</span>}
           {item.precio > 0 && <span style={{ fontSize: 10, color: '#a0a098', fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
-        {item.precio > 0 && (
-          <div style={{ fontSize: 10, color: '#b0b0a8', marginTop: 1 }}>
-            {(() => {
-              const iva = item.iva_rate !== undefined && item.iva_rate !== null ? Number(item.iva_rate) : 22;
-              const sinIva = (item.precio / (1 + iva / 100));
-              return iva > 0 ? '
+        {item.precio > 0 && (() => {
+          const iva = item.iva_rate !== undefined && item.iva_rate !== null ? Number(item.iva_rate) : 22;
+          const sinIva = Math.round(item.precio / (1 + iva / 100));
+          return <div style={{ fontSize: 10, color: '#b0b0a8', marginTop: 1 }}>{iva > 0 ? '$' + sinIva.toLocaleString() + ' + IVA ' + iva + '%' : 'Exento de IVA'}</div>;
+        })()}
         {qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <button onClick={() => onRemove(item)} style={{
@@ -414,7 +413,7 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
             border: 'none', borderRadius: 8, cursor: item.precio > 0 ? 'pointer' : 'not-allowed',
             fontSize: 12, fontWeight: 600, fontFamily: SANS,
           }}>
-            {item.precio > 0 ? '+ Agregar' : 'Sin precio'}
+            {item.precio > 0 ? (item.min_order_qty > 1 ? '+ Agregar (min. ' + item.min_order_qty + ')' : '+ Agregar') : 'Sin precio'}
           </button>
         )}
       </div>
@@ -852,7 +851,7 @@ export default function PedidosPage() {
     const prods = ds.data.products.map(p => ({
       id: p.id, nombre: p.name, precio: p.price, categoria: p.category,
       unidad: p.unit || 'un', marca: p.brand || p.category,
-      imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22,
+      imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22, min_order_qty: p.min_order_qty || 1,
       stock: p.stock || 100,
     })).filter(p => p.precio > 0);
     setItems(prods);
@@ -892,10 +891,21 @@ export default function PedidosPage() {
   // Analytics — PedidosPage scope
   const track = (event, props = {}) => { try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
 
-  const addItem    = item => { track('producto_agregado', { producto: item.nombre, precio: item.precio }); setCarrito(c => ({ ...c, [item.id]: (c[item.id] || 0) + 1 })); };
+  const addItem    = item => {
+    track('producto_agregado', { producto: item.nombre, precio: item.precio });
+    setCarrito(c => {
+      const current = c[item.id] || 0;
+      const minQty = item.min_order_qty || 1;
+      // If adding for the first time, set to min qty; otherwise increment by 1
+      const newQty = current === 0 ? minQty : current + 1;
+      return { ...c, [item.id]: newQty };
+    });
+  };
   const removeItem = item => setCarrito(c => {
     const q = (c[item.id] || 0) - 1;
-    if (q <= 0) { const n = { ...c }; delete n[item.id]; return n; }
+    const minQty = item.min_order_qty || 1;
+    // If below min, remove entirely
+    if (q < minQty) { const n = { ...c }; delete n[item.id]; return n; }
     return { ...c, [item.id]: q };
   });
 
