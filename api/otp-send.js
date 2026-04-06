@@ -37,7 +37,7 @@ async function sendViaInfobip(to, code) {
     // WhatsApp via Infobip — mucho más barato que SMS (~10x)
     const url = `${IB_BASE_URL}/whatsapp/1/message/text`;
     const body = {
-      from: IB_SENDER,
+      from: org_sender || IB_SENDER,
       to,
       content: { text: mensaje },
     };
@@ -64,7 +64,7 @@ async function sendViaInfobip(to, code) {
     const body = {
       messages: [{
         destinations: [{ to }],
-        from: IB_SENDER || 'Aryes',
+        from: org_sender || IB_SENDER || 'Aryes',
         text: `Tu código de acceso a Aryes es: ${code}\n\nVálido por 10 minutos. No lo compartas.`,
       }],
     };
@@ -143,6 +143,17 @@ export default async function handler(req, res) {
   if (!clients?.length) {
     return res.status(404).json({ error: 'Número no registrado. Contactá a Aryes para activar tu acceso.' });
   }
+
+  // Multi-tenant: get org-specific WhatsApp sender if configured
+  let org_sender = IB_SENDER;
+  try {
+    const orgRes = await fetch(
+      `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=whatsapp_sender&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    );
+    const orgs = await orgRes.json();
+    if (orgs?.[0]?.whatsapp_sender) org_sender = orgs[0].whatsapp_sender;
+  } catch(e) { console.warn('[otp-send] Could not fetch org sender:', e.message); }
 
   // Rate limit: bloquear si ya existe un OTP activo en los últimos 60 segundos
   const since = new Date(Date.now() - 60000).toISOString();
