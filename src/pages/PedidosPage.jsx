@@ -415,7 +415,7 @@ function HistorialPedidos({ session, onReordenar }) {
   };
 
   useEffect(() => {
-    if (!session?.token) return;
+    if (!session?.token || session?.token === 'demo-token') return;
     fetch(`${API}/api/pedido?action=historial`, {
       headers: { Authorization: `Bearer ${session.token}` }
     })
@@ -526,7 +526,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
     if (!session?.clienteId) return;
     const SB = import.meta.env.VITE_SUPABASE_URL;
     const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    fetch(`${SB}/rest/v1/client_addresses?client_id=eq.${session.clienteId}&active=eq.true&order=created_at.asc`,
+    fetch(`${SB}/rest/v1/client_addresses?client_id=eq.${session?.clienteId || 'none'}&active=eq.true&order=created_at.asc`,
       { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data) && data.length > 0) { setAddresses(data); setSelectedAddress(data[0].id); } })
@@ -603,7 +603,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: .8 }}>
-            <span>{session?.nombre}</span>
+            <span>{session?.nombre || 'Cliente Demo'}</span>
             <span>{fechaHoy}</span>
           </div>
         </div>
@@ -880,6 +880,15 @@ export default function PedidosPage() {
   };
 
   if (portalDemo === 'selecting') return <PortalDemoSelector onSelect={key => setPortalDemo(key)} />;
+
+  // Demo mode: create a fake session so the catalog renders without null errors
+  const effectiveSession = isPortalDemo ? {
+    nombre: 'Cliente Demo',
+    clienteId: 'demo-client',
+    token: 'demo-token',
+    tel: '099000000',
+    org: 'demo',
+  } : session;
   if (!session && !isPortalDemo) return <LoginStep onLogin={ses => setSession(ses)} />;
 
   return (
@@ -953,10 +962,10 @@ export default function PedidosPage() {
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f0fdf4',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 600, color: G, flexShrink: 0, border: '1.5px solid #bbf7d0' }}>
-                {session.nombre?.slice(0,1).toUpperCase()}
+                {effectiveSession?.nombre?.slice(0,1).toUpperCase()}
               </div>
               <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
-                {session.nombre?.split(' ')[0]}
+                {effectiveSession?.nombre?.split(' ')[0]}
               </span>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
@@ -964,7 +973,7 @@ export default function PedidosPage() {
               background: '#fff', border: '0.5px solid #e0e0d8', borderRadius: 10,
               padding: '6px 0', minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: 300 }}>
               <div style={{ padding: '8px 16px 6px', fontSize: 11, color: '#9a9a92', letterSpacing: .3 }}>
-                {session.nombre}
+                {effectiveSession?.nombre}
               </div>
               <div style={{ borderTop: '0.5px solid #f0f0ec', margin: '4px 0' }} />
               <button onClick={() => setVista('historial')} style={{
