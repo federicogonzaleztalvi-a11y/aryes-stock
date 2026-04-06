@@ -266,7 +266,7 @@ export default function ConfigInline({
         <div>
           {/* Sub-tab bar */}
           <div style={{display:"flex",gap:8,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"},{id:"portal",l:"Portal B2B"}].map(st=>(
+            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"},{id:"portal",l:"Portal B2B"},{id:"datos",l:"Datos"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:"0 0 auto",padding:"10px 16px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:"#fff",color:settingsTab===st.id?"#fff":T.textSm,borderRadius:6,border:settingsTab===st.id?"none":"1px solid "+T.border}}>
@@ -618,6 +618,63 @@ export default function ConfigInline({
                   </div>
                   <div style={{fontFamily:'Inter,sans-serif',fontSize:11,color:'#9a9a98',marginTop:8}}>Compartí este link con tus clientes por WhatsApp o email</div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {settingsTab==="datos" && (
+            <div>
+              <h3 style={{fontSize:15,fontWeight:700,marginBottom:4}}>Exportar datos</h3>
+              <p style={{fontSize:13,color:'#6a6a68',marginBottom:16}}>Descargá todos los datos de tu organización en formato CSV. Incluye productos, clientes, ventas, facturas, cobros, rutas y más.</p>
+              <button
+                id="exportar-datos"
+                onClick={async()=>{
+                  const btn=document.getElementById('exportar-datos');
+                  btn.textContent='Exportando...';btn.disabled=true;
+                  try{
+                    const SB=import.meta.env.VITE_SUPABASE_URL;
+                    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+                    const token=JSON.parse(localStorage.getItem('sb-mrotnqybqvmvlexncvno-auth-token')||'{}')?.access_token;
+                    const h={apikey:KEY,Authorization:'Bearer '+(token||KEY),Accept:'application/json'};
+                    const tables=['products','clients','suppliers','ventas','invoices','collections','orders','rutas','stock_movements','recepciones','devoluciones','lotes','price_lists','price_list_items','conteos'];
+                    const results={};
+                    for(const t of tables){
+                      const r=await fetch(SB+'/rest/v1/'+t+'?limit=10000',{headers:h});
+                      if(r.ok){const d=await r.json();results[t]=d;}
+                    }
+                    const toCsv=(arr)=>{
+                      if(!arr||!arr.length)return'';
+                      const cols=Object.keys(arr[0]);
+                      const header=cols.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',');
+                      const rows=arr.map(row=>cols.map(c=>{const v=row[c];return'"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(','));
+                      return header+'\n'+rows.join('\n');
+                    };
+                    let allContent='';
+                    for(const[name,data]of Object.entries(results)){
+                      if(data&&data.length){
+                        const csv=toCsv(data);
+                        allContent+='\n\n===== '+name.toUpperCase()+' ('+data.length+' registros) =====\n'+csv;
+                      }
+                    }
+                    if(!allContent){btn.textContent='Sin datos para exportar';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},2000);return;}
+                    const blob=new Blob([allContent],{type:'text/csv;charset=utf-8;'});
+                    const url=URL.createObjectURL(blob);
+                    const a=document.createElement('a');
+                    a.href=url;a.download='aryes-export-'+new Date().toISOString().slice(0,10)+'.csv';
+                    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+                    btn.textContent='Descarga lista ✓';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},3000);
+                  }catch(e){
+                    console.error('Export error:',e);
+                    btn.textContent='Error al exportar';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},3000);
+                  }
+                }}
+                style={{padding:'10px 24px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:13,fontWeight:600,cursor:'pointer'}}
+              >Exportar todos mis datos</button>
+              <p style={{fontSize:11,color:'#9a9a98',marginTop:12}}>El archivo incluye todos tus datos en formato CSV. Podés abrirlo en Excel, Google Sheets o cualquier herramienta de análisis.</p>
+
+              <div style={{marginTop:32,paddingTop:20,borderTop:'1px solid #e2e2de'}}>
+                <h3 style={{fontSize:15,fontWeight:700,marginBottom:4,color:'#dc2626'}}>Eliminar cuenta</h3>
+                <p style={{fontSize:13,color:'#6a6a68',marginBottom:12}}>Si querés eliminar tu cuenta y todos tus datos, escribinos a contacto@aryes.com. Tus datos se eliminan de forma permanente en un plazo de 30 días.</p>
               </div>
             </div>
           )}
