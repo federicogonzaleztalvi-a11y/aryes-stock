@@ -805,7 +805,6 @@ function TrialBanner({ session }) {
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 
 function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMode, demoGuard}){
-  console.log("[AryesApp] FUNCTION CALLED — demoMode:", demoMode);
 
   // →→ State and mutations come from AppContext →→→→→→→→→→→→→→→→→→→→→→→→→→→→
   const {
