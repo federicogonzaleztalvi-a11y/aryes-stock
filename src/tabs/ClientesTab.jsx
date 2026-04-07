@@ -293,6 +293,35 @@ function ClientesTab(){
     .sort((a, b) => (b.margenPct || 0) - (a.margenPct || 0));
   }, [items, ventas]);
 
+  // ── Client scoring — Arcor TOKIN style (frecuencia x volumen x margen x recencia) ──
+  const clientScores = useMemo(() => {
+    var map = {};
+    items.forEach(function(cli) {
+      var cliVentas = ventas.filter(function(v) { return v.clienteId === cli.id && v.estado !== 'cancelada'; });
+      if (cliVentas.length === 0) { map[cli.id] = { score: 0, label: 'Sin actividad', color: '#9ca3af' }; return; }
+      var totalComprado = cliVentas.reduce(function(s, v) { return s + Number(v.total || 0); }, 0);
+      var fechas = cliVentas.map(function(v) { return new Date(v.creadoEn || v.fecha).getTime(); }).sort(function(a,b) { return b - a; });
+      var diasDesde = Math.floor((Date.now() - fechas[0]) / 86400000);
+      var ingresos = 0, costoT = 0;
+      cliVentas.forEach(function(v) { (v.items||[]).forEach(function(it) {
+        var q = Number(it.cantidad||0);
+        ingresos += q * Number(it.precioUnit||0);
+        if (Number(it.costoUnit||0) > 0) costoT += q * Number(it.costoUnit);
+      }); });
+      var margenPct = ingresos > 0 ? ((ingresos - costoT) / ingresos) * 100 : 20;
+      var score = Math.min(100, Math.round(
+        (Math.min(cliVentas.length, 20) / 20 * 30) +
+        (Math.min(totalComprado, 50000) / 50000 * 30) +
+        (margenPct > 0 ? Math.min(margenPct, 40) / 40 * 20 : 10) +
+        (Math.max(0, 20 - diasDesde / 3))
+      ));
+      var color = score >= 70 ? '#1a8a3c' : score >= 40 ? '#d97706' : '#dc2626';
+      var label = score >= 70 ? 'Premium' : score >= 40 ? 'Regular' : 'En riesgo';
+      map[cli.id] = { score: score, label: label, color: color };
+    });
+    return map;
+  }, [items, ventas]);
+
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
@@ -692,7 +721,12 @@ function ClientesTab(){
             <div key={x.id} onClick={()=>{setSelId(x.id);setVista('detalle');}} style={{background:'#fff',borderRadius:10,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',cursor:'pointer',border:'1px solid #f3f4f6'}} onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'} onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'}>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
                 <div style={{fontWeight:600,fontSize:15,color:'#1a1a1a',lineHeight:1.3}}>{x.nombre}</div>
-                <span style={{background:TCOLOR[x.tipo]||'#6b7280',color:'#fff',fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,flexShrink:0,marginLeft:8}}>{x.tipo}</span>
+                <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0,marginLeft:8}}>
+                  {clientScores[x.id] && clientScores[x.id].score > 0 && (
+                    <div title={clientScores[x.id].label} style={{width:26,height:26,borderRadius:'50%',border:'2px solid '+clientScores[x.id].color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:clientScores[x.id].color}}>{clientScores[x.id].score}</div>
+                  )}
+                  <span style={{background:TCOLOR[x.tipo]||'#6b7280',color:'#fff',fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20}}>{x.tipo}</span>
+                </div>
               </div>
               {x.ciudad&&<div style={{fontSize:12,color:'#666',marginBottom:4}}>📍 {x.ciudad}</div>}
               {x.telefono&&<div style={{fontSize:12,color:'#666',marginBottom:4}}>📞 {x.telefono}</div>}
