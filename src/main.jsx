@@ -267,13 +267,10 @@ function Root() {
 
   // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
   // Demo selector
-  const demoActivatingRef = React.useRef(false);
-  if (showDemoSelector && !demoMode && !demoActivatingRef.current) {
+  if (showDemoSelector && !demoMode) {
     return <DemoSelector onSelect={(id) => {
-      if (demoActivatingRef.current) return;
-      demoActivatingRef.current = true;
-      activateDemo(id);
       setShowDemoSelector(false);
+      setTimeout(() => activateDemo(id), 0);
     }} />;
   }
   if (!effectiveSession) return <LoginScreen onLogin={handleLogin} onExplore={() => setShowDemoSelector(true)} />;
