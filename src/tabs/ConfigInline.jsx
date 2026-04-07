@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { TAX_BY_COUNTRY, getCountryOptions } from '../lib/taxConfig.js';
 import UsersTab from './UsersTab.jsx';
 import RolesTab from './config/RolesTab.jsx';
 import { db, getOrgId } from '../lib/constants.js';
@@ -399,20 +400,14 @@ export default function ConfigInline({
                   
               {/* ── Impuesto sobre ventas (multi-país) ────────────────────── */}
               {(()=>{
-                const TAX_PRESETS={
-                  UY:{name:'IVA',rates:[{v:22,l:'22% (Básica)'},{v:10,l:'10% (Mínima)'},{v:0,l:'0% (Exento)'}],default:22},
-                  AR:{name:'IVA',rates:[{v:21,l:'21% (General)'},{v:10.5,l:'10.5% (Reducida)'},{v:27,l:'27% (Servicios)'},{v:0,l:'0% (Exento)'}],default:21},
-                  CL:{name:'IVA',rates:[{v:19,l:'19% (General)'},{v:0,l:'0% (Exento)'}],default:19},
-                  CO:{name:'IVA',rates:[{v:19,l:'19% (General)'},{v:5,l:'5% (Reducida)'},{v:0,l:'0% (Exento)'}],default:19},
-                  PE:{name:'IGV',rates:[{v:18,l:'18% (General)'},{v:0,l:'0% (Exento)'}],default:18},
-                  MX:{name:'IVA',rates:[{v:16,l:'16% (General)'},{v:0,l:'0% (Exento)'}],default:16},
-                  BR:{name:'ICMS',rates:[{v:18,l:'18% (SP)'},{v:20,l:'20% (RJ)'},{v:17,l:'17% (Otros)'},{v:0,l:'0% (Exento)'}],default:18},
-                  PY:{name:'IVA',rates:[{v:10,l:'10% (General)'},{v:5,l:'5% (Reducida)'},{v:0,l:'0% (Exento)'}],default:10},
-                  EC:{name:'IVA',rates:[{v:15,l:'15% (General)'},{v:0,l:'0% (Exento)'}],default:15},
-                  ES:{name:'IVA',rates:[{v:21,l:'21% (General)'},{v:10,l:'10% (Reducido)'},{v:4,l:'4% (Super reducido)'},{v:0,l:'0% (Exento)'}],default:21},
-                  US:{name:'Sales Tax',rates:[{v:0,l:'0%'},{v:6,l:'6%'},{v:7,l:'7%'},{v:8.25,l:'8.25%'},{v:10,l:'10%'}],default:0},
-                  OTHER:{name:'Impuesto',rates:[{v:0,l:'0%'},{v:5,l:'5%'},{v:10,l:'10%'},{v:15,l:'15%'},{v:20,l:'20%'},{v:22,l:'22%'}],default:0},
-                };
+                // TAX_PRESETS from taxConfig.js — 18 LATAM countries verified from official sources
+                const TAX_PRESETS = Object.fromEntries(
+                  Object.entries(TAX_BY_COUNTRY).map(([code, cfg]) => [code, {
+                    name: cfg.taxName,
+                    rates: cfg.rates.map(r => ({ v: r.value, l: r.label })),
+                    default: cfg.defaultRate,
+                  }])
+                );
                 const country=brandCfg.tax_country||'UY';
                 const preset=TAX_PRESETS[country]||TAX_PRESETS.OTHER;
                 const taxName=brandCfg.tax_name||preset.name;
@@ -426,18 +421,9 @@ export default function ConfigInline({
                         <label style={{fontSize:11,fontWeight:600,color:"#6a6a68",display:"block",marginBottom:3}}>País</label>
                         <select value={country} onChange={e=>{const c=e.target.value;const p=TAX_PRESETS[c]||TAX_PRESETS.OTHER;setBrandCfg(prev=>({...prev,tax_country:c,tax_name:p.name,iva_default:p.default}));}}
                           style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"1px solid #e2e2de",fontSize:12,background:"#fff"}}>
-                          <option value="UY">🇺🇾 Uruguay</option>
-                          <option value="AR">🇦🇷 Argentina</option>
-                          <option value="CL">🇨🇱 Chile</option>
-                          <option value="CO">🇨🇴 Colombia</option>
-                          <option value="PE">🇵🇪 Perú</option>
-                          <option value="MX">🇲🇽 México</option>
-                          <option value="BR">🇧🇷 Brasil</option>
-                          <option value="PY">🇵🇾 Paraguay</option>
-                          <option value="EC">🇪🇨 Ecuador</option>
-                          <option value="ES">🇪🇸 España</option>
-                          <option value="US">🇺🇸 Estados Unidos</option>
-                          <option value="OTHER">Otro</option>
+                          {getCountryOptions().map(c => (
+                            <option key={c.code} value={c.code}>{c.name} ({c.taxName} {c.defaultRate}%)</option>
+                          ))}
                         </select>
                       </div>
                       <div>

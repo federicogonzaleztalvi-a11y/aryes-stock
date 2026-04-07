@@ -1,8 +1,10 @@
+import { getTaxConfig } from '../lib/taxConfig.js';
 import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
-const ProductForm=({product,suppliers,onSave,onClose})=>{
-  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:22,imagen_url:"",descripcion:"",history:[]};
+const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
+  const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
+  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -50,12 +52,15 @@ const ProductForm=({product,suppliers,onSave,onClose})=>{
         <Field label="Precio de venta (USD)">
           <Inp type="number" step="0.01" value={f.precioVenta||f.precio_venta||0} onChange={e=>set("precioVenta",+e.target.value)}/>
         </Field>
-        <Field label="IVA" hint="Tasa de impuesto al valor agregado">
-          <Sel value={f.iva_rate||22} onChange={e=>set("iva_rate",+e.target.value)}>
-            <option value={0}>0% — Exento</option>
-            <option value={10}>10% — Tasa reducida</option>
-            <option value={22}>22% — Tasa general</option>
+        <Field label={taxCfg.taxName} hint={"Tasa de " + taxCfg.taxName + " (" + taxCfg.country + ")"}>
+          <Sel value={f.iva_rate!=null?f.iva_rate:taxCfg.defaultRate} onChange={e=>set("iva_rate",+e.target.value)}>
+            {taxCfg.rates.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
+            {!taxCfg.rates.some(r=>r.value===(f.iva_rate||0))&&<option value={f.iva_rate}>{f.iva_rate}% — Personalizado</option>}
           </Sel>
+          <input type="number" min={0} max={99} step={0.5} value={f.iva_rate!=null?f.iva_rate:taxCfg.defaultRate}
+            onChange={e=>set("iva_rate",+e.target.value)}
+            style={{width:70,padding:"5px 8px",borderRadius:6,border:"1px solid #e2e2de",fontSize:12,marginTop:4,textAlign:"center"}}
+            placeholder="%"/>
         </Field>
       </div>
       <Field label="Foto del producto (URL)">
