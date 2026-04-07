@@ -269,8 +269,8 @@ function Root() {
   // Demo selector
   if (showDemoSelector && !demoMode) {
     return <DemoSelector onSelect={(id) => {
+      activateDemo(id);
       setShowDemoSelector(false);
-      setTimeout(() => activateDemo(id), 0);
     }} />;
   }
   if (!effectiveSession) return <LoginScreen onLogin={handleLogin} onExplore={() => setShowDemoSelector(true)} />;
