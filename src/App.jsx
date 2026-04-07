@@ -805,7 +805,8 @@ function TrialBanner({ session }) {
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 
 function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMode, demoGuard}){
-  console.log('[AryesApp] MOUNTED — demoMode:', demoMode, 'dbReady:', typeof dbReady !== 'undefined' ? dbReady : 'not yet');
+  console.log("[AryesApp] FUNCTION CALLED — demoMode:", demoMode);
+
   // →→ State and mutations come from AppContext →→→→→→→→→→→→→→→→→→→→→→→→→→→→
   const {
     products, setProducts,

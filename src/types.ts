@@ -529,4 +529,7 @@ export interface AppContextValue {
   // ── Auth ───────────────────────────────────────────────────────────────────
   handleLogout: () => void;
   session:      Session | null;
+  // ── Demo ───────────────────────────────────────────────────────────────────
+  isDemoMode: boolean;
+  calcReorderPoints: (...args: unknown[]) => Promise<unknown[]>;
 }
