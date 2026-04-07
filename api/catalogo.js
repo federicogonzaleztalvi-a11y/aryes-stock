@@ -193,11 +193,81 @@ export default async function handler(req, res) {
       });
     }
 
+    // ── 4. Cross-sell recommendations (only when clienteId is provided) ──────
+    let recommended = [];
+    if (clienteId) {
+      try {
+        const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
+        const svcHeaders = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
+
+        // 4a. Get this client's purchased product IDs from ventas
+        const myVentasRes = await fetch(
+          SB_URL + '/rest/v1/ventas?cliente_id=eq.' + clienteId + '&estado=neq.cancelada&select=items&limit=50',
+          { headers: svcHeaders }
+        );
+        const myPurchased = new Set();
+        if (myVentasRes.ok) {
+          const myVentas = await myVentasRes.json();
+          (myVentas || []).forEach(function(v) {
+            (v.items || []).forEach(function(it) {
+              if (it.productoId) myPurchased.add(it.productoId);
+            });
+          });
+        }
+
+        // 4b. Get ventas from OTHER clients in the same org (last 100 ventas)
+        const otherVentasRes = await fetch(
+          SB_URL + '/rest/v1/ventas?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=created_at.desc&limit=100',
+          { headers: svcHeaders }
+        );
+        if (otherVentasRes.ok) {
+          const otherVentas = await otherVentasRes.json();
+          // Count how many OTHER clients buy each product
+          var prodClients = {};  // productId -> Set of clienteIds
+          (otherVentas || []).forEach(function(v) {
+            (v.items || []).forEach(function(it) {
+              if (it.productoId && !myPurchased.has(it.productoId)) {
+                if (!prodClients[it.productoId]) prodClients[it.productoId] = new Set();
+                prodClients[it.productoId].add(v.cliente_id);
+              }
+            });
+          });
+
+          // Sort by number of clients who buy it (popularity among peers)
+          var ranked = Object.entries(prodClients)
+            .map(function(e) { return { id: e[0], clientCount: e[1].size }; })
+            .sort(function(a, b) { return b.clientCount - a.clientCount; })
+            .slice(0, 6);
+
+          // Match with catalog items to get full product data
+          ranked.forEach(function(r) {
+            var match = items.find(function(p) { return p.id === r.id; });
+            if (match) {
+              recommended.push({
+                id: match.id,
+                nombre: match.nombre,
+                precio: match.precio,
+                unidad: match.unidad,
+                categoria: match.categoria,
+                marca: match.marca,
+                clientCount: r.clientCount,
+                reason: r.clientCount + ' cliente' + (r.clientCount > 1 ? 's' : '') + ' similar' + (r.clientCount > 1 ? 'es' : '') + ' lo compra' + (r.clientCount > 1 ? 'n' : '')
+              });
+            }
+          });
+        }
+      } catch (recErr) {
+        console.error('[catalogo] Recommendation error (non-fatal):', recErr.message);
+        // Non-fatal — continue without recommendations
+      }
+    }
+
     return res.status(200).json({
       items,
       categorias,
       org,
       clienteId: clienteId || null,
+      recommended,
       hasLista: !!listaId,
       descGlobal,
       horarioDesde,

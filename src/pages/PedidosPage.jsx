@@ -802,6 +802,7 @@ export default function PedidosPage() {
   const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
   const [session,  setSession]  = useState(() => loadSession());
   const [vista,    setVista]    = useState('catalogo');
+  const [recommended, setRecommended] = useState([]);
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
@@ -853,6 +854,7 @@ export default function PedidosPage() {
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
+        if (Array.isArray(data.recommended)) setRecommended(data.recommended);
       }
     } catch {}
     finally { setLoading(false); }
