@@ -87,8 +87,11 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   // plans: Supabase is source of truth — no LS cache needed
   // ventas: sync bidireccional LS + Supabase
   // ── Demo mode: cargar datos del dataset ──────────────────────────────────
+  const demoLoadedRef = React.useRef(false);
   useEffect(() => {
     if (!isDemoMode || !demoState) return;
+    if (demoLoadedRef.current) return; // already loaded — prevent infinite loop
+    demoLoadedRef.current = true;
     try {
       const dp = mapDemoProducts(demoState.products);
       const dc = mapDemoClients(demoState.clients);
