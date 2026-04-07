@@ -12,7 +12,11 @@ import { sendPush } from '../hooks/usePushNotifications';
 // ── fetchNextNroVenta — calls Postgres sequence via RPC ───────────────────────
 // Atomic: impossible to produce duplicates regardless of concurrent users.
 // Falls back to local Math.max() only if the RPC fails (e.g. offline).
-async function fetchNextNroVenta(ventasLocal) {
+async function fetchNextNroVenta(ventasLocal, skipRpc = false) {
+  if (skipRpc) {
+    const nums = (ventasLocal || []).map(v => parseInt((v.nroVenta || 'V-0000').replace('V-', '')) || 0);
+    return 'V-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
+  }
   try {
     const headers = getAuthHeaders({ 'Content-Type': 'application/json' });
     const r = await fetch(`${SB_URL}/rest/v1/rpc/next_nro_venta`, {
@@ -255,7 +259,7 @@ function VentasTab(){
         clienteNombre:cl?.nombre||form.clienteNombre,
         total:totalVenta(form.items,form.descuento),
         estado:'pendiente',
-        nroVenta: await fetchNextNroVenta(ventas),
+        nroVenta: await fetchNextNroVenta(ventas, isDemoMode),
         creadoEn:new Date().toISOString()
       };
 
@@ -273,6 +277,38 @@ function VentasTab(){
         }
       });
       setProducts(updProds);
+
+      // ── DEMO MODE: skip RPC, just commit optimistic state ────────────────
+      if (isDemoMode) {
+        console.debug('[VentasTab] demo mode — skipping create_venta RPC');
+        const upd = [venta, ...ventas];
+        setVentas(upd);
+        // Generate demo CFE
+        const demoIva = Math.round(venta.total * 0.22);
+        const demoCfe = {
+          id: 'demo-cfe-' + venta.id,
+          numero: venta.nroVenta.replace('V-', 'E-'),
+          tipo: 'e-Factura',
+          moneda: 'UYU',
+          fecha: venta.fecha || venta.creadoEn?.split('T')[0] || new Date().toISOString().split('T')[0],
+          fecha_venc: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+          clienteId: venta.clienteId,
+          clienteNombre: venta.clienteNombre,
+          subtotal: venta.total - demoIva,
+          iva_total: demoIva,
+          total: venta.total,
+          saldoPendiente: venta.total,
+          status: 'emitida',
+          items: venta.items,
+          createdAt: venta.creadoEn,
+        };
+        setCfes(prev => [demoCfe, ...prev]);
+        setForm(emptyForm);
+        setVista('lista');
+        showMsg('✅ Venta ' + venta.nroVenta + ' creada (demo) → stock descontado', 'ok');
+        setSaving(false);
+        return;
+      }
 
       // ── Atomic DB write via create_venta RPC ──────────────────────────────
       // One Postgres transaction: validate stock + deduct + movements + venta + audit.
@@ -328,6 +364,13 @@ function VentasTab(){
     const upd=ventas.map(v=>v.id===id?{...v,estado:nuevoEstado,estadoLog:[...(v.estadoLog||[]),newEntry],updatedAt:ts}:v);
     setVentas(upd);
     if(ventaSel?.id===id)setVentaSel({...ventaSel,estado:nuevoEstado,estadoLog:[...(ventaSel.estadoLog||[]),newEntry]});
+
+    // ── DEMO MODE: skip RPC, optimistic state already applied above ──────
+    if (isDemoMode) {
+      console.debug('[VentasTab] demo mode — skipping transition RPC:', nuevoEstado);
+      showMsg('Estado → ' + nuevoEstado + ' (demo)', 'ok');
+      return;
+    }
 
     // Call state machine RPC (validates transition server-side)
     try{
@@ -396,6 +439,13 @@ function VentasTab(){
         }
       });
       setProducts(updProds);
+
+      // ── DEMO MODE: skip cancel RPC ──────────────────────────────────────
+      if (isDemoMode) {
+        console.debug('[VentasTab] demo mode — skipping cancel RPC');
+        showMsg('Venta cancelada (demo) → stock restaurado', 'ok');
+        return;
+      }
 
       // Atomic DB cancel via RPC
       const userEmail=(getSession()?.email || 'sistema');
