@@ -1,4 +1,3 @@
-import { LS } from '../lib/constants.js';
 import React from 'react';
 
 // ── QuickStats ────────────────────────────────────────────────────────────────
@@ -10,14 +9,14 @@ import React from 'react';
 
 const F = { sans: "'DM Sans','Inter',system-ui,sans-serif" };
 
-function QuickStats({ critN = 0, orders = [] }) {
+function QuickStats({ critN = 0, orders = [], cfes = [] }) {
   // Pending orders count
   const pendingOrders = (orders || []).filter(o => o.status === 'pending').length;
 
   // Overdue debt total — read from localStorage
   const overdueDebt = React.useMemo(() => {
     try {
-      const cfes = LS.get('aryes-cfe', []);
+      // cfes received as prop from App.jsx
       return cfes
         .filter(f =>
           ['emitida', 'cobrado_parcial'].includes(f.status) &&

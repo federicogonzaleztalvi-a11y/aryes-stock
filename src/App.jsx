@@ -998,8 +998,8 @@ Generado desde Aryes Stock.`;
             />
           </div>
           <div style={{flex:1}}/>
-          <QuickStats critN={critN} orders={orders} />
-          <NotificationBell critN={critN} orders={orders} setTab={setTab} />
+          <QuickStats critN={critN} orders={orders} cfes={cfes} />
+          <NotificationBell critN={critN} orders={orders} setTab={setTab} cfes={cfes} />
           {!demoMode&&<TrialBanner session={session} />}
           {demoMode&&<button onClick={()=>window.location.href='/register'} style={{padding:'6px 16px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Empezar gratis</button>}
 
@@ -1075,7 +1075,7 @@ Generado desde Aryes Stock.`;
           onNewCFE={()=>{setTab('facturacion');setCmdOpen(false);}}
         />
         {/* →→ SMART TOASTS →→ */}
-        <SmartToasts critN={critN} orders={orders} />
+        <SmartToasts critN={critN} orders={orders} cfes={cfes} />
         {ConfirmDialog}
         {/* →→ MODALS →→ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/>{editProd&&<div style={{padding:'0 16px 16px'}}><button onClick={()=>{setModal(null);setEtiquetaProd(editProd);}} style={{width:'100%',background:'#f5f5f7',border:'1px solid #e0e0dc',borderRadius:8,padding:'10px',fontSize:13,cursor:'pointer',color:'#4a4a48'}}>🏷️ Imprimir etiqueta de producto</button></div>}</Modal>}

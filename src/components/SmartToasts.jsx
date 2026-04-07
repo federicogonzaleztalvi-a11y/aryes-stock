@@ -1,4 +1,3 @@
-import { LS } from '../lib/constants.js';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 // ── SmartToasts ──────────────────────────────────────────────────────────────
@@ -14,7 +13,7 @@ const TOAST_STYLES = {
   info:    { bg: '#eff6ff', border: '#bfdbfe', color: '#2563eb', icon: 'ℹ' },
 };
 
-function SmartToasts({ critN = 0, orders: _orders = [] }) {
+function SmartToasts({ critN = 0, orders: _orders = [], cfes: _cfes = [] }) {
   const [toasts, setToasts] = useState([]);
   const shown = useRef(new Set());
 
@@ -41,7 +40,7 @@ function SmartToasts({ critN = 0, orders: _orders = [] }) {
 
     // Overdue invoices — read from localStorage
     try {
-      const cfes = LS.get('aryes-cfe', []);
+      const cfes = _cfes || [];
       const overdueCount = cfes.filter(f =>
         ['emitida', 'cobrado_parcial'].includes(f.status) &&
         f.fechaVenc &&

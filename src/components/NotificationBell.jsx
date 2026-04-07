@@ -1,4 +1,3 @@
-import { LS } from '../lib/constants.js';
 import React, { useState, useEffect, useRef } from 'react';
 
 // ── NotificationBell ─────────────────────────────────────────────────────────
@@ -14,7 +13,7 @@ const COLORS = {
 
 const F = { sans: "'DM Sans','Inter',system-ui,sans-serif" };
 
-function buildAlerts(critN, orders) {
+function buildAlerts(critN, orders, cfes) {
   const alerts = [];
 
   // 1. Critical stock
@@ -49,7 +48,7 @@ function buildAlerts(critN, orders) {
 
   // 3. Overdue invoices (from localStorage)
   try {
-    const cfes = LS.get('aryes-cfe', []);
+    // cfes received as parameter
     const overdueCFEs = cfes.filter(f =>
       ['emitida', 'cobrado_parcial'].includes(f.status) &&
       f.fechaVenc &&
@@ -85,11 +84,11 @@ function buildAlerts(critN, orders) {
   return alerts;
 }
 
-function NotificationBell({ critN = 0, orders = [], setTab }) {
+function NotificationBell({ critN = 0, orders = [], setTab, cfes = [] }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
-  const alerts = buildAlerts(critN, orders);
+  const alerts = buildAlerts(critN, orders, cfes);
   const count = alerts.length;
 
   // Close panel on outside click
