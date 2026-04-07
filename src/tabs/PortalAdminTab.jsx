@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { db, SB_URL, getAuthHeaders } from '../lib/constants.js';
 import { T, Btn } from '../lib/ui.jsx';
+import { useApp } from '../context/AppContext.tsx';
 
 const G = '#1a8a3c';
 
@@ -28,11 +29,84 @@ function estadoBadge(estado) {
 }
 
 export default function PortalAdminTab() {
+  const { products, ventas, setVentas, isDemoMode } = useApp();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pedidoSel, setPedidoSel] = useState(null);
   const [filtro, setFiltro] = useState('todos');
   const [msg, setMsg] = useState('');
+  const [importando, setImportando] = useState(false);
+
+  const importarAVenta = async (order) => {
+    if (importando) return;
+    setImportando(true);
+    try {
+      const ventaId = crypto.randomUUID();
+      // Generate nroVenta locally
+      const nums = (ventas || []).map(v => parseInt((v.nroVenta || 'V-0000').replace('V-', '')) || 0);
+      const nroVenta = 'V-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
+      
+      const items = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]');
+      const enrichedItems = items.map(it => {
+        const prod = products.find(p =>
+          p.id === (it.productId || it.productoId || it.product_id) ||
+          (p.nombre || p.name || '').toLowerCase() === (it.nombre || it.name || '').toLowerCase()
+        );
+        return {
+          productoId: it.productId || it.productoId || it.product_id || '',
+          nombre: it.nombre || it.name || '',
+          precioUnit: Number(it.precio || it.precioUnit || it.price || 0),
+          costoUnit: prod ? Number(prod.unitCost || 0) : 0,
+          unidad: it.unidad || it.unit || 'u.',
+          cantidad: Number(it.qty || it.cantidad || 0),
+        };
+      });
+
+      const newVenta = {
+        id: ventaId, nroVenta,
+        clienteId: order.cliente_id || '',
+        clienteNombre: order.cliente_nombre || '',
+        items: enrichedItems,
+        total: Number(order.total || 0),
+        descuento: 0, estado: 'pendiente',
+        fecha: new Date().toISOString().slice(0, 10),
+        notas: order.notas || '',
+        origenPortal: true, orderId: order.id,
+        creadoEn: new Date().toISOString(), estadoLog: [],
+      };
+
+      // Add to ventas state
+      setVentas(v => [newVenta, ...v]);
+
+      if (!isDemoMode) {
+        // Persist venta to Supabase
+        await db.upsert('ventas', {
+          id: newVenta.id, nro_venta: newVenta.nroVenta,
+          cliente_id: newVenta.clienteId, cliente_nombre: newVenta.clienteNombre,
+          items: newVenta.items, total: newVenta.total, descuento: 0,
+          estado: 'pendiente', fecha: newVenta.fecha, notas: newVenta.notas,
+          b2b_order_id: order.id,
+        }, 'id').catch(e => console.warn('[PortalAdmin] venta upsert failed:', e));
+
+        // Mark b2b_order as importado
+        await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${order.id}`, {
+          method: 'PATCH',
+          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'importado', venta_id: ventaId }),
+        }).catch(() => {});
+      }
+
+      // Update local state
+      cambiarEstado(order.id, 'importado');
+      setPedidoSel(null);
+      showMsg('Pedido importado como venta ' + nroVenta);
+    } catch (e) {
+      console.error('[PortalAdmin] Import error:', e);
+      showMsg('Error al importar: ' + (e.message || 'intentá de nuevo'));
+    } finally {
+      setImportando(false);
+    }
+  };
 
   const showMsg = (text) => { setMsg(text); setTimeout(() => setMsg(''), 3000); };
 
@@ -206,6 +280,12 @@ export default function PortalAdminTab() {
 
             {/* Acciones */}
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {(pedidoSel.status === 'pendiente' || pedidoSel.status === 'confirmado') && pedidoSel.status !== 'importado' && (
+                <button onClick={() => importarAVenta(pedidoSel)} disabled={importando}
+                  style={{ flex:1, background:'#1e40af', color:'#fff', border:'none', borderRadius:8, padding:'11px', fontSize:13, fontWeight:700, cursor: importando ? 'wait' : 'pointer', opacity: importando ? 0.7 : 1 }}>
+                  {importando ? '⏳ Importando...' : '📥 Importar a venta'}
+                </button>
+              )}
               {pedidoSel.status === 'pendiente' && (
                 <>
                   <button onClick={() => cambiarEstado(pedidoSel.id, 'confirmado')}
