@@ -1130,7 +1130,7 @@ Generado desde Aryes Stock.`;
         />
       )}
     
-      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements} clientes={clientes} ventas={ventas} cfes={cfes} cobros={cobros}/>
+      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements} clientes={clientes} ventas={_ventas} cfes={cfes} cobros={cobros}/>
       </div>}
     </>
   );
