@@ -87,7 +87,7 @@ function SectionHeader({ title, action, actionLabel }) {
   );
 }
 
-function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[], confirmOrder, showMsg}) {
+function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[], confirmOrder, showMsg, demoMode}) {
   const exportarReporte = () => {
     const hoy = new Date().toISOString().split('T')[0];
     const rows = [['Reporte Aryes Stock — '+hoy],[],['KPI','Valor'],['Total productos',(products||[]).length],['En cero',(products||[]).filter(p=>Number(p.stock)<=0).length],['Bajo minimo',(products||[]).filter(p=>Number(p.stock)>0&&Number(p.stock)<=Number(p.minStock||0)).length],['Capital en stock',(products||[]).reduce((s,p)=>s+(Number(p.stock||0)*Number(p.unitCost||p.precio||0)),0)],[],['Producto','Stock','Min','Costo','PrecioVenta','Valor'],...(products||[]).map(p=>[p.nombre||p.name,p.stock||0,p.minStock||0,p.unitCost||p.precio||0,p.precioVenta||0,(Number(p.stock||0)*Number(p.unitCost||p.precio||0))])];
