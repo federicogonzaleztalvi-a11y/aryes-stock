@@ -296,8 +296,8 @@ function Root() {
     <>
       <AppProvider session={effectiveSession} onLogout={demoMode ? exitDemo : handleLogout} onSessionUpdate={setSession} demoState={demoMode ? demoState : null}>
         <Routes>
-          <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
-          <Route path="/app/:tab" element={<AryesApp session={effectiveSession} onLogout={demoMode ? () => { exitDemo(); setSession(null); } : handleLogout} onSessionUpdate={setSession} demoMode={demoMode} demoGuard={demoGuard} />} />
+          <Route path="" element={<Navigate to="/app/dashboard" replace />} />
+          <Route path=":tab" element={<AryesApp session={effectiveSession} onLogout={demoMode ? () => { exitDemo(); setSession(null); } : handleLogout} onSessionUpdate={setSession} demoMode={demoMode} demoGuard={demoGuard} />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
         {demoMode && <DemoToast />}
