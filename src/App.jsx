@@ -948,9 +948,9 @@ Generado desde Aryes Stock.`;
 
 
   // Nav constants extracted to AppSidebar.jsx
-  const NAV      = getNavForRole(session?.role || 'admin');
-  const canTab   = (id) => canAccessTab(session?.role || 'admin', id);
-  const activeTab = canTab(tab) ? tab : (getNavForRole(session?.role || 'admin')[0]?.id || 'dashboard');
+  const NAV      = getNavForRole(session?.role || 'admin', brandCfg);
+  const canTab   = (id) => canAccessTab(session?.role || 'admin', id, brandCfg);
+  const activeTab = canTab(tab) ? tab : (getNavForRole(session?.role || 'admin', brandCfg)[0]?.id || 'dashboard');
 
   // If URL contains a tab id that this role cannot access, correct the URL silently.
   // Prevents /app/config displaying dashboard content while URL shows 'config'.

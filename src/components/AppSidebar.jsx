@@ -93,12 +93,25 @@ const NAV_ALL = [
   { id: 'config',         label: 'Configuración',     icon: 'config' },
 ];
 
-const NAV_ROLES = {
+const DEFAULT_NAV_ROLES = {
   admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','scanner','config','conteo','devoluciones','packing','precios','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
   vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes'],
   contador: ['dashboard','facturacion','movimientos','resultados','informes','clientes','compras'],
 };
+
+// Dynamic NAV_ROLES — reads custom_roles from brandCfg if available
+function getNavRoles(brandCfg) {
+  var custom = brandCfg && brandCfg.custom_roles;
+  if (!custom) return DEFAULT_NAV_ROLES;
+  var result = {};
+  Object.keys(custom).forEach(function(k) {
+    result[k] = custom[k].tabs || DEFAULT_NAV_ROLES[k] || ['dashboard'];
+  });
+  // Always ensure admin has all tabs
+  result.admin = DEFAULT_NAV_ROLES.admin;
+  return result;
+}
 
 const NAV_GROUPS = [
   { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers'] },
@@ -108,13 +121,15 @@ const NAV_GROUPS = [
   { label: 'Sistema',     ids: ['importar','config'] },
 ];
 
-export function getNavForRole(role) {
-  const allowed = NAV_ROLES[role] || NAV_ROLES.admin;
-  return NAV_ALL.filter(n => allowed.includes(n.id));
+export function getNavForRole(role, brandCfg) {
+  var roles = getNavRoles(brandCfg);
+  var allowed = roles[role] || roles.admin || DEFAULT_NAV_ROLES.admin;
+  return NAV_ALL.filter(function(n) { return allowed.includes(n.id); });
 }
 
-export function canAccessTab(role, tabId) {
-  return (NAV_ROLES[role] || NAV_ROLES.admin).includes(tabId);
+export function canAccessTab(role, tabId, brandCfg) {
+  var roles = getNavRoles(brandCfg);
+  return (roles[role] || roles.admin || DEFAULT_NAV_ROLES.admin).includes(tabId);
 }
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
@@ -171,7 +186,7 @@ export default function AppSidebar({ session, tab, setTab }) {
   const { syncStatus, hasPendingSync, brandCfg, critN, orders, cfes } = useApp();
 
   const role = session?.role || 'admin';
-  const nav  = getNavForRole(role);
+  const nav  = getNavForRole(role, brandCfg);
 
   const vencidasN  = cfes.filter(f =>
     ['emitida','cobrado_parcial'].includes(f.status) &&

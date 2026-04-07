@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import RolesManager from '../components/RolesManager.jsx';
 import { TAX_BY_COUNTRY, getCountryOptions } from '../lib/taxConfig.js';
 import UsersTab from './UsersTab.jsx';
 import RolesTab from './config/RolesTab.jsx';
@@ -282,10 +283,8 @@ export default function ConfigInline({
           )}
 
           {settingsTab==="roles" && (
-            <RolesTab session={session} />
+            <RolesManager brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
           )}
-
-          {/* ── MARCA ─────────────────────────────────────────────────────── */}
           {settingsTab==="marca" && (
             <div style={{maxWidth:560}}>
               <p style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginBottom:20,lineHeight:1.6}}>
