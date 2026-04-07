@@ -961,6 +961,8 @@ const describeAction = (action: string, detail: string): string => {
     // Auth
     handleLogout: () => onLogout?.(),
     session,
+    // Demo
+    isDemoMode,
   };
 
 
