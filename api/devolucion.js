@@ -1,5 +1,4 @@
 // api/devolucion.js — Solicitud de devolución desde el portal B2B
-const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 // POST /api/devolucion — cliente solicita una devolución
 // El cliente ya está autenticado via OTP (teléfono verificado)
 
@@ -10,11 +9,6 @@ import { setCorsHeaders } from './_cors.js';
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
-const CORS = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
 
 export default async async function handler(req, res) {
   await setCorsHeaders(req, res);

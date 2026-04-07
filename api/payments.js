@@ -1,5 +1,4 @@
 // api/payments.js — Payment processing (MercadoPago Subscriptions + Stripe future)
-const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 //
 // CURRENT: MercadoPago Suscripciones (pagos recurrentes mensuales)
 //   POST /api/payments              → crear suscripción mensual
@@ -55,8 +54,7 @@ function verifyMPSignature(req) {
 }
 
 const PLANS = {
-  starter: { amount: 79,  title: 'Aryes Stock Starter', currency: 'USD' },
-  pro:     { amount: 149, title: 'Aryes Stock Pro',     currency: 'USD' },
+  pro: { amount: 199, title: 'Aryes Stock', currency: 'USD' },
 };
 
 // ── Stripe (futuro — descomentar cuando haya LLC en Delaware) ─────

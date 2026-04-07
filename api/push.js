@@ -1,5 +1,4 @@
 // api/push.js — Web Push Notifications endpoint
-const ALLOWED_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
 // POST /api/push?action=subscribe  → save subscription
 // POST /api/push?action=send       → send push to org (admin only)
 // GET  /api/push?action=vapid-key  → return public VAPID key
@@ -17,11 +16,6 @@ const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hola@aryes.com.uy';
 
-const CORS = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
 
 function setCORS(res) {
   await setCorsHeaders(req, res);
