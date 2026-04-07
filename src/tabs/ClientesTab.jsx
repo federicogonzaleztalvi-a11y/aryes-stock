@@ -5,6 +5,7 @@ import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
 import ClienteImporter from '../components/ClienteImporter.jsx';
+import ClientInsights from '../components/ClientInsights.jsx';
 
 // ── Panel de teléfonos adicionales ───────────────────────────────────────
 function AddressesPanel({ clientId, orgId }) {
@@ -490,6 +491,9 @@ function ClientesTab(){
           </span>
         </div>
       )}
+
+      {/* AI Insights — análisis inteligente tipo Arcor TOKIN */}
+      <ClientInsights cliente={sel} metrics={crmMetrics} ventas={ventas} products={products} />
 
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?'USD '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es-UY'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(row=>(
