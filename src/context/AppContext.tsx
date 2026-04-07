@@ -259,7 +259,7 @@ const describeAction = (action: string, detail: string): string => {
 
   // ── Load config from Supabase (admin only) ─────────────────────────────────
   useEffect(() => {
-    if (session?.role !== 'admin') return;
+    if (session?.role !== 'admin' || isDemoMode) return;
     (async () => {
       try {
         const rows = await db.get<Array<{value: EmailCfg}>>(`app_config?key=eq.emailcfg&org_id=eq.${getOrgId()}`);
