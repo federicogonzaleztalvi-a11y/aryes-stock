@@ -72,7 +72,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   const [notified,  setNotified]  = useState<Record<string, import('../types.js').AlertLevel>>(() => LS.get('aryes9-notified',  {}));
 
   // ── Async / UI state ───────────────────────────────────────────────────────
-  const [dbReady,        setDbReady]        = useState<boolean>(false);
+  const [dbReady,        setDbReady]        = useState<boolean>(!!demoState);
   const [syncStatus,     setSyncStatus]     = useState<string>('');
   const [hasPendingSync, setHasPendingSync] = useState<boolean>(false);
   const [syncToast,      setSyncToast]      = useState<SyncToast | null>(null);
@@ -237,7 +237,7 @@ const describeAction = (action: string, detail: string): string => {
 };
 
   useEffect(() => {
-    if (!session?.refresh_token || !session?.expiresAt) return;
+    if (!session?.refresh_token || !session?.expiresAt || isDemoMode) return;
     const refreshIn = Math.max(0, session.expiresAt - Date.now() - 5 * 60 * 1000);
     const timer = setTimeout(async () => {
       try {

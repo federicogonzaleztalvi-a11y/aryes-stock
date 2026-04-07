@@ -965,7 +965,7 @@ Generado desde Aryes Stock.`;
 
   return(
     <>
-      {session && !dbReady && (
+      {session && !dbReady && !demoMode && (
         <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
           <style>{CSS}</style>
           <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
@@ -975,7 +975,7 @@ Generado desde Aryes Stock.`;
           <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
         </div>
       )}
-      {session && dbReady && <div style={{display:"flex",minHeight:"100vh",background:"#f5f5f7",paddingBottom:0}}>
+      {session && (dbReady || demoMode) && <div style={{display:"flex",minHeight:"100vh",background:"#f5f5f7",paddingBottom:0}}>
       <style>{CSS}</style>
 
       {/* →→ SIDEBAR →→ */}

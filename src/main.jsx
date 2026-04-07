@@ -235,13 +235,12 @@ function Root() {
 
   // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
   // Demo selector
-  console.log('[ROOT DEBUG]', { demoMode, effectiveSession: !!effectiveSession, orgStatus, showDemoSelector, session: !!session });
   if (showDemoSelector && !demoMode) {
     return <DemoSelector onSelect={(id) => { activateDemo(id); setShowDemoSelector(false); }} />;
   }
   if (!effectiveSession) return <LoginScreen onLogin={handleLogin} onExplore={() => setShowDemoSelector(true)} />;
 
-  if (effectiveSession && orgStatus === null) return (
+  if (effectiveSession && orgStatus === null && !demoMode) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: '3px solid #1a8a3c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
