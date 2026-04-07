@@ -1130,7 +1130,7 @@ Generado desde Aryes Stock.`;
         />
       )}
     
-      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements}/>
+      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements} clientes={clientes} ventas={ventas} cfes={cfes} cobros={cobros}/>
       </div>}
     </>
   );
@@ -1152,12 +1152,28 @@ const _QUICK = {
   vendedor: ['¿Qué hay disponible?','Precios de productos','Mis ventas recientes','¿Qué puedo vender?'],
 };
 
-function _buildCtx(role,products,suppliers,orders,movements){
+function _buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes,cobros){
   const low=(products||[]).filter(p=>Number(p.stock)<=Number(p.minStock)).slice(0,20);
   const zero=(products||[]).filter(p=>Number(p.stock)===0).slice(0,10);
   if(role==='vendedor') return {rol:'Vendedor',disponibles:(products||[]).map(p=>({n:p.nombre,m:p.marca,s:p.stock,p:p.precioVenta||p.precio})).slice(0,80),bajo_stock:low.map(p=>p.nombre)};
   if(role==='operador') return {rol:'Operador',productos:(products||[]).map(p=>({n:p.nombre,s:p.stock,min:p.minStock})).slice(0,100),criticos:zero.map(p=>p.nombre),movimientos:(movements||[]).slice(0,15),pedidos:(orders||[]).filter(o=>o.estado==='pendiente').slice(0,10)};
-  return {rol:'Admin',total_productos:(products||[]).length,en_cero:zero.length,bajo_minimo:low.length,proveedores:(suppliers||[]).length,pedidos_pendientes:(orders||[]).filter(o=>o.estado==='pendiente').length,productos:(products||[]).map(p=>({n:p.nombre,m:p.marca,s:p.stock,min:p.minStock,p:p.precioVenta||p.precio})).slice(0,100),criticos:zero.map(p=>p.nombre),movimientos:(movements||[]).slice(0,20),pedidos:(orders||[]).filter(o=>o.estado==='pendiente').slice(0,15)};
+  return function(){
+  var ventasArr=ventas||[];var hoy=new Date().toISOString().slice(0,10);var mes=new Date().toISOString().slice(0,7);
+  var ventasHoy=ventasArr.filter(function(v){return(v.fecha||'').startsWith(hoy);});
+  var ventasMes=ventasArr.filter(function(v){return(v.fecha||'').startsWith(mes);});
+  var cfesArr=cfes||[];
+  var deudaTotal=cfesArr.filter(function(f){return['emitida','cobrado_parcial'].includes(f.status);}).reduce(function(s,f){return s+(f.saldoPendiente||f.total||0);},0);
+  var vencidas=cfesArr.filter(function(f){return['emitida','cobrado_parcial'].includes(f.status)&&f.fechaVenc&&new Date(f.fechaVenc)<new Date();});
+  var deudaPorCli={};cfesArr.filter(function(f){return['emitida','cobrado_parcial'].includes(f.status);}).forEach(function(f){var k=f.clienteNombre||'?';deudaPorCli[k]=(deudaPorCli[k]||0)+(f.saldoPendiente||f.total||0);});
+  var topDeudores=Object.entries(deudaPorCli).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(e){return{c:e[0],d:e[1]};});
+  return{rol:'Admin',total_productos:(products||[]).length,en_cero:zero.length,bajo_minimo:low.length,proveedores:(suppliers||[]).length,
+    productos:(products||[]).map(function(p){return{n:p.nombre||p.name,m:p.marca,s:p.stock,min:p.minStock,p:p.precioVenta||p.precio,c:p.unitCost||0};}).slice(0,100),
+    criticos:zero.map(function(p){return p.nombre||p.name;}),
+    ventas:{total:ventasArr.length,hoy:ventasHoy.length,hoy_monto:ventasHoy.reduce(function(s,v){return s+Number(v.total||0);},0),mes:ventasMes.length,mes_monto:ventasMes.reduce(function(s,v){return s+Number(v.total||0);},0),pendientes:ventasArr.filter(function(v){return v.estado==='pendiente';}).length,ultimas:ventasArr.slice(0,10).map(function(v){return{nro:v.nroVenta,cl:v.clienteNombre,t:v.total,e:v.estado};})},
+    clientes:{total:(clientes||[]).length,lista:(clientes||[]).map(function(c){return{n:c.nombre,tipo:c.tipo};}).slice(0,50)},
+    finanzas:{deuda_total:deudaTotal,facturas_vencidas:vencidas.length,monto_vencido:vencidas.reduce(function(s,f){return s+(f.saldoPendiente||f.total||0);},0),cobros_mes:(cobros||[]).filter(function(c){return(c.fecha||'').startsWith(mes);}).reduce(function(s,c){return s+Number(c.monto||0);},0),top_deudores:topDeudores},
+    movimientos:(movements||[]).slice(0,15),pedidos:(orders||[]).filter(function(o){return o.estado==='pendiente';}).slice(0,10)};
+}();
 }
 
 
@@ -1185,7 +1201,7 @@ function generateExcel({titulo='Informe', columnas=[], filas=[]}) {
   URL.revokeObjectURL(url);
 }
 
-function AIChatFloat({session,products,suppliers,orders,movements}){
+function AIChatFloat({session,products,suppliers,orders,movements,clientes,ventas,cfes,cobros}){
   const [open,setOpen]=React.useState(false);
   const [msgs,setMsgs]=React.useState([]);
   const [input,setInput]=React.useState('');
@@ -1199,7 +1215,7 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
   React.useEffect(()=>{if(open){setUnread(0);setTimeout(()=>inRef.current?.focus(),80);}}, [open]);
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
-    if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy tu asistente de inventario. Preguntame sobre stock, precios, pedidos o pedí un informe.'}]);
+    if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy ARYES AI, tu copiloto de negocio. Preguntame sobre stock, ventas, clientes, deuda, o pedime un informe. También puedo sugerirte qué hacer hoy.'}]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: init greeting once per open, msgs.length read on purpose
   },[open]);
 
@@ -1211,8 +1227,8 @@ function AIChatFloat({session,products,suppliers,orders,movements}){
     const next=[...msgs,{r:'u',t:text}];
     setMsgs(next);setBusy(true);
     try{
-      const ctx=_buildCtx(role,products,suppliers,orders,movements);
-      const sys='Sos el asistente de stock y WMS. Respondé en español, conciso y directo. Usá solo los datos del contexto. Max 200 palabras salvo informes.\n\nPUEDES GENERAR ARCHIVOS EXCEL. Cuando el usuario pida un Excel, exportar datos o descargar, respondé EXACTAMENTE con este formato (sin nada antes ni después):\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nCuando generes Excel, incluí TODOS los datos del contexto relevantes (no solo ejemplos).\nEjemplos de pedidos de Excel y qué poner:\ninventario/stock → titulo=Inventario, columnas=[Producto,Marca,Stock,Mínimo,Precio], filas=todos los productos\nventas → titulo=Ventas, columnas=[Número,Cliente,Total,Estado,Fecha], filas=todas las ventas\nclientes → titulo=Clientes, columnas=[Nombre,Teléfono,Saldo], filas=todos los clientes\nSi piden análisis en texto, respondé normal. Solo usá [EXCEL:...] cuando pidan archivo/Excel/exportar.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
+      const ctx=_buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes,cobros);
+      const sys='Sos ARYES AI, el copiloto inteligente de esta distribuidora. Tu rol es como SOFIA de Despegar: no solo respondes preguntas, sino que orientas al usuario hacia soluciones concretas con INTENCIONALIDAD.\n\nREGLAS:\n1. Responde en espanol rioplatense, conciso y directo. Max 200 palabras salvo informes.\n2. Usa SOLO los datos del contexto. Si no tenes un dato, decilo.\n3. Se proactivo: si ves stock critico, deuda alta, o oportunidades, mencionalas aunque no te pregunten.\n4. Siempre termina con una pregunta o sugerencia de accion concreta.\n5. Cuando el contexto revele algo urgente (stock en cero, factura vencida, cliente sin pedir hace mucho), alerta al usuario.\n\nPUEDES GENERAR ARCHIVOS EXCEL. Cuando el usuario pida un Excel, exportar datos o descargar, responde EXACTAMENTE con este formato (sin nada antes ni despues):\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nCuando generes Excel, inclui TODOS los datos del contexto relevantes (no solo ejemplos).\nEjemplos: inventario -> todos los productos, ventas -> todas las ventas, clientes -> todos los clientes.\nSi piden analisis en texto, responde normal. Solo usa [EXCEL:...] cuando pidan archivo/Excel/exportar.\n\nCAPACIDADES:\n- Calcular margen por producto (precio venta - costo)\n- Identificar los clientes mas rentables\n- Detectar patrones de compra\n- Sugerir a quien contactar hoy basado en frecuencia de compra\n- Analizar deuda por cliente y antiguedad\n- Top deudores y facturas vencidas\n- Cobros del mes vs deuda total\n\nContexto:\n'+JSON.stringify(ctx,null,1);
       const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
       const r=await fetch('/api/chat',{
         method:'POST',
