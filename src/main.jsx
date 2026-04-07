@@ -197,7 +197,12 @@ function Root() {
   };
 
   // Verificar si el trial venció — mostrar pantalla de upgrade
-  const [orgStatus, setOrgStatus] = React.useState(null); // null=loading, 'ok', 'expired', 'canceled'
+  const [orgStatus, setOrgStatus] = React.useState(() => demoMode ? 'ok' : null); // null=loading, 'ok', 'expired', 'canceled'
+
+  // Sync orgStatus immediately when demoMode activates (avoids white flash)
+  React.useEffect(() => {
+    if (demoMode && orgStatus !== 'ok') setOrgStatus('ok');
+  }, [demoMode]);
 
   React.useEffect(() => {
     if (demoMode) { setOrgStatus('ok'); return; }
