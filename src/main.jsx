@@ -180,7 +180,16 @@ function Root() {
   useErrorReporting(); // captura errores JS globales y promises sin catch
   const [session, setSession] = useState(() => readSession());
   const { demoMode, demoIndustry, demoState, activateDemo, exitDemo, demoGuard } = useDemo();
-  const [showDemoSelector, setShowDemoSelector] = useState(false);
+  const [showDemoSelector, setShowDemoSelector] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('demo') === 'true') {
+        window.history.replaceState({}, '', window.location.pathname);
+        return true;
+      }
+    } catch {}
+    return false;
+  });
 
   // ── effectiveSession: demo fake o real ──
   
