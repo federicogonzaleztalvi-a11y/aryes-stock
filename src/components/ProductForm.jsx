@@ -1,3 +1,4 @@
+import ImageUpload from './ImageUpload.jsx';
 import { getTaxConfig } from '../lib/taxConfig.js';
 import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
@@ -63,14 +64,8 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
             placeholder="%"/>
         </Field>
       </div>
-      <Field label="Foto del producto (URL)">
-        <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-          <Inp value={f.imagen_url||""} onChange={e=>set("imagen_url",e.target.value)} placeholder="https://... URL de la imagen"/>
-          {f.imagen_url&&(
-            <img src={f.imagen_url} alt="preview" onError={e=>e.target.style.display="none"}
-              style={{width:56,height:56,objectFit:"cover",borderRadius:8,border:`1px solid ${T.border}`,flexShrink:0}}/>
-          )}
-        </div>
+      <Field label="Foto del producto">
+        <ImageUpload value={f.imagen_url||""} onChange={function(url){set("imagen_url",url);}} orgId="aryes" />
       </Field>
       <Field label="Descripción / Ficha técnica" hint="Opcional — aparece en el catálogo al hacer click en el producto">
         <textarea value={f.descripcion||""} onChange={e=>set("descripcion",e.target.value)}
