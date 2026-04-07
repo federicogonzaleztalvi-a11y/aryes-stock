@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ItemSearchRow from './ItemSearchRow.jsx';
 import ItemsTable from './ItemsTable.jsx';
 import { G, F, COND_PAGO, CFE_TIPOS, MONEDAS, today, addDays, fmtMoney } from './constants.js';
+const fmt = { currency: fmtMoney };
 import { Inp, Sel, Lbl } from './components.jsx';
 
 function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
