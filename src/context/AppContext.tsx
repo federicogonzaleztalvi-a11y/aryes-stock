@@ -653,7 +653,7 @@ const describeAction = (action: string, detail: string): string => {
         return cs;
       });
     },
-  }, !!session); // only enable when logged in
+  }, !!session && !isDemoMode); // only enable when logged in (disabled in demo)
 
   // ── Retry wrapper ─────────────────────────────────────────────────────────
   const dbWriteWithRetry = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
