@@ -7,6 +7,7 @@ import FacturaPDF from '../components/FacturaPDF.jsx';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import { getOrgId } from '../lib/constants.js';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
+const fmt = { currency: fmtMoney };
 import { Pill, TabBtn, KpiCard, Lbl, Sel } from './facturacion/components.jsx';
 
 function FacturacionTab({ products=[] }) {
