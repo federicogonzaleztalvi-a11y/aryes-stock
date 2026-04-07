@@ -255,10 +255,10 @@ export default function ModalCobro({ clientes, cfes, onSave, onClose, prefillCli
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.5)', zIndex:9000,
-      display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+      display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'40px 16px', overflowY:'auto' }}
       onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:16, padding:28, maxWidth:540, width:'100%',
-        maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}
+        boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
