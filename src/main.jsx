@@ -152,6 +152,29 @@ function LoginScreen({ onLogin, onExplore }) {
   );
 }
 
+// ── ErrorBoundary: catches render crashes ─────────────────────────
+class DemoErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null, info: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) {
+    console.error('[DemoErrorBoundary] CAUGHT:', error?.message, error?.stack);
+    console.error('[DemoErrorBoundary] Component stack:', info?.componentStack);
+    this.setState({ info });
+  }
+  render() {
+    if (this.state.error) {
+      return React.createElement('div', { style: { padding: 40, fontFamily: 'monospace' } },
+        React.createElement('h2', { style: { color: 'red' } }, 'Demo render error'),
+        React.createElement('pre', { style: { whiteSpace: 'pre-wrap', fontSize: 12, background: '#f5f5f5', padding: 16, borderRadius: 8, maxHeight: 400, overflow: 'auto' } },
+          this.state.error?.message + '\n\n' + (this.state.error?.stack || '') + '\n\nComponent:\n' + (this.state.info?.componentStack || '')
+        ),
+        React.createElement('button', { onClick: () => { this.setState({ error: null, info: null }); window.location.href = '/'; }, style: { marginTop: 16, padding: '8px 20px', background: '#1a8a3c', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' } }, 'Volver al inicio')
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── Root: owns auth state, renders Login OR App ───────────────────
 function Root() {
   useErrorReporting(); // captura errores JS globales y promises sin catch
@@ -259,6 +282,7 @@ function Root() {
   );
   return (
     <>
+      <DemoErrorBoundary>
       <AppProvider session={effectiveSession} onLogout={demoMode ? exitDemo : handleLogout} onSessionUpdate={setSession} demoState={demoMode ? demoState : null}>
         <Routes>
           <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
@@ -267,6 +291,7 @@ function Root() {
         </Routes>
         {demoMode && <DemoToast />}
       </AppProvider>
+      </DemoErrorBoundary>
       {showOnboarding && !demoMode && (
         <Suspense fallback={null}>
           <OnboardingWizard
