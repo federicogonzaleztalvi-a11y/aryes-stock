@@ -258,9 +258,6 @@ function Root() {
 
   // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
   // Demo selector
-  // TEMPORARY DEBUG: visible marker
-  console.log('[ROOT RENDER]', { demoMode, hasEffSession: !!effectiveSession, orgStatus, dbg_path: window.location.pathname });
-
   if (showDemoSelector && !demoMode) {
     return <DemoSelector onSelect={(id) => { activateDemo(id); setShowDemoSelector(false); }} />;
   }
@@ -285,7 +282,6 @@ function Root() {
   );
   return (
     <>
-      <DemoErrorBoundary>
       <AppProvider session={effectiveSession} onLogout={demoMode ? exitDemo : handleLogout} onSessionUpdate={setSession} demoState={demoMode ? demoState : null}>
         <Routes>
           <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
@@ -294,7 +290,6 @@ function Root() {
         </Routes>
         {demoMode && <DemoToast />}
       </AppProvider>
-      </DemoErrorBoundary>
       {showOnboarding && !demoMode && (
         <Suspense fallback={null}>
           <OnboardingWizard

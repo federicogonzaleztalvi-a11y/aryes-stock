@@ -89,18 +89,23 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   // ── Demo mode: cargar datos del dataset ──────────────────────────────────
   useEffect(() => {
     if (!isDemoMode || !demoState) return;
-    const dp = mapDemoProducts(demoState.products);
-    const dc = mapDemoClients(demoState.clients);
-    const ds = mapDemoSuppliers(demoState.suppliers);
-    const dv = mapDemoVentas(demoState.ventas, demoState.clients, demoState.products);
-    setProducts(dp); setClientes(dc); setSuppliers(ds); setVentas(dv);
-    if (demoState.cfes) setCfes(mapDemoCfes(demoState.cfes, demoState.clients));
-    if (demoState.cobros) setCobros(mapDemoCobros(demoState.cobros));
-    if (demoState.movements) setMovements(mapDemoMovements(demoState.movements) as unknown as Movement[]);
-    if (demoState.rutas) setRutas(mapDemoRutas(demoState.rutas) as unknown as Ruta[]);
-    setBrandCfg({ name:demoState.org.name, logoUrl:'', color:'#1a8a3c', ownerPhone:demoState.org.ownerPhone||'', horario:demoState.org.horario||'', address:demoState.org.address||'', rut:demoState.org.rut||'' });
-    setDbReady(true); setSyncStatus('demo');
-    console.debug('[AppContext] Demo data loaded:', demoState.industry, dp.length, 'products');
+    try {
+      const dp = mapDemoProducts(demoState.products);
+      const dc = mapDemoClients(demoState.clients);
+      const ds = mapDemoSuppliers(demoState.suppliers);
+      const dv = mapDemoVentas(demoState.ventas, demoState.clients, demoState.products);
+      setProducts(dp); setClientes(dc); setSuppliers(ds); setVentas(dv);
+      if (demoState.cfes) setCfes(mapDemoCfes(demoState.cfes, demoState.clients));
+      if (demoState.cobros) setCobros(mapDemoCobros(demoState.cobros));
+      if (demoState.movements) setMovements(mapDemoMovements(demoState.movements) as unknown as Movement[]);
+      if (demoState.rutas) setRutas(mapDemoRutas(demoState.rutas) as unknown as Ruta[]);
+      setBrandCfg({ name:demoState.org.name, logoUrl:'', color:'#1a8a3c', ownerPhone:demoState.org.ownerPhone||'', horario:demoState.org.horario||'', address:demoState.org.address||'', rut:demoState.org.rut||'' });
+      setDbReady(true); setSyncStatus('demo');
+      console.debug('[AppContext] Demo data loaded:', demoState.industry, dp.length, 'products');
+    } catch (err) {
+      console.error('[AppContext] DEMO LOAD ERROR:', err);
+      setDbReady(true); // still allow render
+    }
   }, [isDemoMode, demoState]);
 
   // ── Cargar clientes desde Supabase al arrancar ───────────────────────────
