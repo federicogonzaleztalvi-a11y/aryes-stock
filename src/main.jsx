@@ -258,6 +258,9 @@ function Root() {
 
   // Mostrar loading mientras verifica (máx 2 segundos en una buena conexión)
   // Demo selector
+  // TEMPORARY DEBUG: visible marker
+  console.log('[ROOT RENDER]', { demoMode, hasEffSession: !!effectiveSession, orgStatus, dbg_path: window.location.pathname });
+
   if (showDemoSelector && !demoMode) {
     return <DemoSelector onSelect={(id) => { activateDemo(id); setShowDemoSelector(false); }} />;
   }
