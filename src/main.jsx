@@ -306,7 +306,13 @@ function Root() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <Sentry.ErrorBoundary fallback={<RootErrorBoundary><div/></RootErrorBoundary>}>
+  <Sentry.ErrorBoundary fallback={({error}) => (
+    <div style={{position:'fixed',inset:0,background:'#fff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,fontFamily:'monospace',zIndex:99999}}>
+      <h2 style={{color:'#dc2626',marginBottom:16,fontSize:18}}>Error de aplicación</h2>
+      <pre style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:16,fontSize:12,maxWidth:'90vw',overflowX:'auto',whiteSpace:'pre-wrap',wordBreak:'break-all',color:'#7f1d1d'}}>{String(error?.stack||error?.message||error||'Unknown error')}</pre>
+      <button onClick={()=>{localStorage.clear();window.location.href='/';}} style={{marginTop:20,background:'#dc2626',color:'#fff',border:'none',borderRadius:8,padding:'10px 24px',cursor:'pointer',fontSize:14}}>Volver al inicio</button>
+    </div>
+  )}>
   <RootErrorBoundary>
     <BrowserRouter>
       <Suspense fallback={null}>
