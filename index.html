@@ -19,6 +19,14 @@
     <meta name="description" content="Sistema de gestión para distribuidoras — inventario, ventas, rutas y portal B2B">
   </head>
   <body>
+    <script>
+window.onerror = function(msg, src, line, col, err) {
+  document.body.innerHTML = '<div style="padding:40px;font-family:monospace"><h2 style="color:red">JS Error</h2><pre style="background:#fef2f2;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:12px">' + msg + '\n' + (err && err.stack || '') + '\nSource: ' + src + ':' + line + ':' + col + '</pre></div>';
+};
+window.addEventListener('unhandledrejection', function(e) {
+  document.body.innerHTML = '<div style="padding:40px;font-family:monospace"><h2 style="color:red">Unhandled Promise</h2><pre style="background:#fef2f2;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:12px">' + (e.reason && e.reason.stack || e.reason || 'unknown') + '</pre></div>';
+});
+</script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
