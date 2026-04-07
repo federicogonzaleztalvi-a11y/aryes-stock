@@ -483,7 +483,7 @@ const describeAction = (action: string, detail: string): string => {
 
   // ── Initial full sync from Supabase ───────────────────────────────────────
   useEffect(() => {
-    if (!session) return;
+    if (!session || isDemoMode) return;
     setSyncStatus('sync');
     (async () => {
       try {
@@ -532,7 +532,7 @@ const describeAction = (action: string, detail: string): string => {
 
   // ── Multi-device conflict detection ───────────────────────────────────────
   useEffect(() => {
-    if (!session || !dbReady) return;
+    if (!session || !dbReady || isDemoMode) return;
     const syncFromServer = async () => {
       try {
         const serverProds = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
