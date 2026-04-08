@@ -12,7 +12,7 @@ export default function RecommendedProducts({ recommended, onAdd, carrito }) {
           <span style={{ fontSize: 18 }}>{'\u{1F4A1}'}</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#166534' }}>Recomendado para vos</span>
           <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 500, marginLeft: 4 }}>
-            Basado en lo que compran distribuidoras similares
+            
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(170px,1fr))', gap: 10 }}>
