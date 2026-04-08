@@ -1,5 +1,6 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import RecommendedProducts from '../components/RecommendedProducts.jsx';
 import { fmt } from '../lib/constants.js';
 import IvaLine from '../components/IvaLine.jsx';
 import { demoHoreca } from '../demo/demo-horeca.js';
@@ -152,7 +153,12 @@ function PortalDemoSelector({ onSelect }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#efefeb'; e.currentTarget.style.transform = 'scale(1)'; }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
+              {recommended.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <RecommendedProducts recommended={recommended} onAdd={addItem} carrito={carrito} />
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
             </button>
           ))}
         </div>
@@ -1088,29 +1094,11 @@ export default function PedidosPage() {
       {vista === 'catalogo' && (
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
           {lastOrder && (
-            <div style={{ marginBottom: 20, background: '#f9f9f7', border: '1px solid #e8e4de', borderRadius: 14, padding: '18px 22px', color: '#fff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{String.fromCodePoint(0x1F504)}</div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em', color: '#1a1a18' }}>Repetir pedido anterior</div>
-                    <div style={{ fontSize: 11, color: '#8a8a88', marginTop: 1 }}>{(lastOrder.items||[]).length} productos {String.fromCodePoint(0x00B7)} ${Number(lastOrder.total||0).toLocaleString('es-UY', {minimumFractionDigits: 0})}</div>
-                  </div>
-                </div>
-                <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: '#1a8a3c', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em', transition: 'transform 0.1s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.transform='scale(1.03)';}} onMouseLeave={function(e){e.currentTarget.style.transform='scale(1)';}}>{String.fromCodePoint(0x1F6D2)} Agregar todo</button>
-              </div>
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-                {(lastOrder.items||[]).slice(0, 6).map(function(it, i) {
-                  return React.createElement('div', { key: i, style: { background: '#fff', borderRadius: 10, padding: '10px 12px', minWidth: 120, flexShrink: 0, backdropFilter: 'blur(8px)', border: '1px solid #ede9e3' } },
-                    React.createElement('div', { style: { fontSize: 12, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3, marginBottom: 4 } }, (it.nombre || it.name || '').slice(0, 25)),
-                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                      React.createElement('span', { style: { fontSize: 11, color: '#a0a098' } }, (it.qty || it.cantidad || 1) + ' ' + (it.unidad || 'u.')),
-                      React.createElement('span', { style: { fontSize: 12, fontWeight: 700, color: '#1a8a3c' } }, '$' + Number((it.qty||it.cantidad||1) * (it.precio||it.price||0)).toFixed(0))
-                    )
-                  );
-                })}
-              </div>
-            </div>
+            <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 16, background: '#f9f9f7', border: '1px solid #e8e4de', borderRadius: 12, padding: '14px 20px', cursor: 'pointer', transition: 'background 0.15s', fontFamily: 'Inter,system-ui,sans-serif' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='#f9f9f7';}}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{String.fromCodePoint(0x1F504)}</div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a8a3c', letterSpacing: '-0.01em' }}>Repetir pedido anterior</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a8a3c" strokeWidth="2" style={{ marginLeft: 'auto', flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           )}
           {loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
