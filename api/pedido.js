@@ -69,6 +69,16 @@ async async function handler(req, res) {
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
     );
     if (!r.ok) return res.status(500).json({ error: 'Error al obtener pedidos' });
+        // Patch anomaly flags if detected
+    if (requiere_revision) {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
+      }).catch(function() {});
+      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+    }
+
     return res.status(200).json({ ok: true, pedidos: await r.json() });
   }
 
@@ -86,7 +96,17 @@ async async function handler(req, res) {
         { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
       );
       if (!r.ok) return res.status(500).json({ error: 'Error al obtener historial' });
-      return res.status(200).json({ ok: true, pedidos: await r.json() });
+          // Patch anomaly flags if detected
+    if (requiere_revision) {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
+      }).catch(function() {});
+      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+    }
+
+    return res.status(200).json({ ok: true, pedidos: await r.json() });
     }
     return res.status(400).json({ error: 'action requerida' });
   }
@@ -131,6 +151,16 @@ async async function handler(req, res) {
       body: JSON.stringify({ estado: 'confirmada', confirmado_en: now, confirmado_por: operador }),
     });
     log.info('pedido', 'b2b confirmado', { orderId, nroVenta, cliente: pedido.cliente_nombre });
+        // Patch anomaly flags if detected
+    if (requiere_revision) {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
+      }).catch(function() {});
+      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+    }
+
     return res.status(200).json({ ok: true, venta: {
       id: ventaId, nroVenta,
       clientId: pedido.cliente_id || '', clientName: pedido.cliente_nombre,
@@ -178,6 +208,54 @@ async async function handler(req, res) {
     'Content-Type': 'application/json',
     Accept:         'application/json',
   };
+
+  // ── 2b. Anomaly detection — flag unusual orders for admin review ─────────
+  let requiere_revision = false;
+  let anomaly_reasons = [];
+  try {
+    // Get client's last 10 orders to compare
+    const histRes = await fetch(
+      SB_URL + '/rest/v1/b2b_orders?cliente_id=eq.' + clienteId + '&org_id=eq.' + org + '&order=creado_en.desc&limit=10&select=items,total',
+      { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
+    );
+    if (histRes.ok) {
+      const history = await histRes.json();
+      if (history && history.length >= 2) {
+        // Average order total
+        var avgTotal = history.reduce(function(s, o) { return s + Number(o.total || 0); }, 0) / history.length;
+        // Check if current total is 3x the average
+        if (Number(total) > avgTotal * 3 && avgTotal > 0) {
+          requiere_revision = true;
+          anomaly_reasons.push('Total $' + Number(total).toFixed(0) + ' es ' + Math.round(Number(total)/avgTotal) + 'x el promedio ($' + Math.round(avgTotal) + ')');
+        }
+        // Check individual item quantities vs historical average
+        var histQty = {};
+        history.forEach(function(o) { (o.items || []).forEach(function(it) {
+          var k = it.productId || it.productoId || '';
+          if (!histQty[k]) histQty[k] = [];
+          histQty[k].push(Number(it.qty || it.cantidad || 0));
+        }); });
+        items.forEach(function(it) {
+          var k = it.productId || '';
+          var qty = Number(it.qty || it.cantidad || 0);
+          if (histQty[k] && histQty[k].length >= 2) {
+            var avgQty = histQty[k].reduce(function(s,v){return s+v;},0) / histQty[k].length;
+            if (qty > avgQty * 3 && avgQty > 0) {
+              requiere_revision = true;
+              anomaly_reasons.push((it.nombre || k) + ': ' + qty + ' unidades (promedio: ' + Math.round(avgQty) + ')');
+            }
+          }
+        });
+      } else if (history.length === 0 && Number(total) > 500) {
+        // First order and high value
+        requiere_revision = true;
+        anomaly_reasons.push('Primer pedido del cliente con total alto: $' + Number(total).toFixed(0));
+      }
+    }
+  } catch (anomalyErr) {
+    // Non-fatal — continue without anomaly check
+    log.warn('pedido', 'anomaly check failed (non-fatal)', { error: anomalyErr.message });
+  }
 
   // ── 3. Call atomic RPC: create_b2b_order_with_reservations ───────────────
   // This single RPC validates available_stock for ALL items, creates ALL
@@ -230,7 +308,17 @@ async async function handler(req, res) {
     const rpcData = await rpcRes.json().catch(() => null);
     if (rpcData?.idempotent) {
       log.info('pedido', 'idempotent hit', { orderId: rpcData.orderId });
-      return res.status(200).json({ ok: true, orderId: rpcData.orderId, idempotent: true });
+          // Patch anomaly flags if detected
+    if (requiere_revision) {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
+      }).catch(function() {});
+      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+    }
+
+    return res.status(200).json({ ok: true, orderId: rpcData.orderId, idempotent: true });
     }
 
     log.error('pedido', 'RPC error', { status: rpcRes.status, errMsg });
@@ -242,6 +330,16 @@ async async function handler(req, res) {
   // Handle idempotent response from RPC (order already existed)
   if (result?.idempotent) {
     log.info('pedido', 'idempotent hit via RPC', { orderId: result.orderId });
+        // Patch anomaly flags if detected
+    if (requiere_revision) {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
+      }).catch(function() {});
+      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+    }
+
     return res.status(200).json({ ok: true, orderId: result.orderId, idempotent: true });
   }
 
@@ -253,7 +351,17 @@ async async function handler(req, res) {
     total,
   });
 
-  return res.status(200).json({ ok: true, orderId: result.orderId || orderId });
+      // Patch anomaly flags if detected
+    if (requiere_revision) {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
+      }).catch(function() {});
+      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+    }
+
+    return res.status(200).json({ ok: true, orderId: result.orderId || orderId });
 }
 
 export default withObservability('pedido', handler);
