@@ -969,7 +969,12 @@ export default function PedidosPage() {
               </div>
             </div>
           ) : <div style={{ flex: 1 }} />}
-          <button onClick={() => totalItems > 0 && setShowCart(true)} style={{
+          {lastOrder && (
+              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: 13, color: '#1a8a3c', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
+                Repetir pedido anterior
+              </button>
+            )}
+            <button onClick={() => totalItems > 0 && setShowCart(true)} style={{
             display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px',
             borderRadius: 24, border: 'none', cursor: 'pointer',
             background: totalItems > 0 ? G : '#f0f0ec',
