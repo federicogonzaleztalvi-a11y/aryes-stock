@@ -2,7 +2,7 @@ import React from 'react';
 
 var G = '#1a8a3c';
 
-export default function RecommendedProducts({ recommended, onAdd, carrito }) {
+export default function RecommendedProducts({ recommended, onAdd, onRemove, carrito }) {
   if (!recommended || recommended.length === 0) return null;
 
   return (
@@ -27,17 +27,30 @@ export default function RecommendedProducts({ recommended, onAdd, carrito }) {
                 {p.reason && (
                   <div style={{ fontSize: 10, color: '#4ade80', fontWeight: 600 }}>{p.reason}</div>
                 )}
-                <div style={{ fontSize: 15, fontWeight: 800, color: G }}>
-                  {'$' + Number(p.precio || 0).toFixed(2)}
+                <div>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: G }}>
+                    {'$ ' + Math.round(Number(p.precio || 0))}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#9a9a98', marginLeft: 4 }}>{'/ ' + (p.unit || p.unidad || 'un')}</span>
+                  <div style={{ fontSize: 10, color: '#a0a098' }}>
+                    {'$' + Math.round(Number(p.precio || 0) / 1.22) + ' + IVA ' + (p.iva_rate || 22) + '%'}
+                  </div>
                 </div>
-                <button onClick={function() { onAdd(p.id); }} style={{
-                  background: inCart > 0 ? '#d1fae5' : G,
-                  color: inCart > 0 ? '#166534' : '#fff',
-                  border: 'none', borderRadius: 8, padding: '6px 0',
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer', marginTop: 'auto'
-                }}>
-                  {inCart > 0 ? '\u2713 En carrito (' + inCart + ')' : '+ Agregar'}
-                </button>
+                {inCart > 0 ? (
+                  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 0, marginTop: 'auto', borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0' } },
+                    React.createElement('button', { onClick: function(e) { e.stopPropagation(); onRemove && onRemove(p); }, style: { width: 32, height: 32, border: 'none', background: '#f0fdf4', color: G, fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' } }, '\u2212'),
+                    React.createElement('span', { style: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#1a1a18', minWidth: 28 } }, inCart),
+                    React.createElement('button', { onClick: function(e) { e.stopPropagation(); onAdd(p); }, style: { width: 32, height: 32, border: 'none', background: '#f0fdf4', color: G, fontSize: 16, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' } }, '+')
+                  )
+                ) : (
+                  <button onClick={function() { onAdd(p); }} style={{
+                    background: G, color: '#fff',
+                    border: 'none', borderRadius: 8, padding: '6px 0',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', marginTop: 'auto', width: '100%'
+                  }}>
+                    + Agregar
+                  </button>
+                )}
               </div>
             );
           })}
