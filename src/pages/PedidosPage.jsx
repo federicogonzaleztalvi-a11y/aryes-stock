@@ -456,12 +456,7 @@ function HistorialPedidos({ session, onReordenar }) {
             <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', marginBottom: 3 }}>{fecha}</div>
-                {recommended.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <RecommendedProducts recommended={recommended} onAdd={addItem} carrito={carrito} />
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: '#9a9a92' }}>
+                <div style={{ fontSize: 11, color: '#9a9a92' }}>
                   {Array.isArray(p.items) ? p.items.length : 0} producto{p.items?.length !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -1093,13 +1088,7 @@ export default function PedidosPage() {
       )}
       {vista === 'catalogo' && (
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
-          {lastOrder && (
-            <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', marginBottom: 16, background: '#f9f9f7', border: '1px solid #e8e4de', borderRadius: 12, padding: '14px 20px', cursor: 'pointer', transition: 'background 0.15s', fontFamily: 'Inter,system-ui,sans-serif' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='#f9f9f7';}}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>{String.fromCodePoint(0x1F504)}</div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a8a3c', letterSpacing: '-0.01em' }}>Repetir pedido anterior</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a8a3c" strokeWidth="2" style={{ marginLeft: 'auto', flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          )}
+          
           {loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
               {[...Array(8)].map((_, i) => (
@@ -1112,7 +1101,10 @@ export default function PedidosPage() {
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 11, color: '#a0a098', marginBottom: 14 }}>
+                        {recommended.length > 0 && (
+            <RecommendedProducts recommended={recommended} onAdd={addItem} carrito={carrito} />
+          )}
+<div style={{ fontSize: 11, color: '#a0a098', marginBottom: 14 }}>
                 {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
