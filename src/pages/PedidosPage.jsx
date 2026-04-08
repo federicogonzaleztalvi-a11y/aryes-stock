@@ -417,7 +417,21 @@ function HistorialPedidos({ session, onReordenar }) {
   };
 
   useEffect(() => {
-    if (!session?.token || session?.token === 'demo-token') return;
+    if (!session?.token || session?.token === 'demo-token') {
+      // Demo mode: inject fake lastOrder and recommended from dataset
+      if (isDemo && demoProducts.length > 0) {
+        var fakeItems = demoProducts.slice(0, 5).map(function(p) {
+          return { productId: p.id, nombre: p.name, qty: Math.ceil(2 + (p.name.length % 4)), precio: p.precioVenta || p.precio || 100, unidad: p.unit || 'u.' };
+        });
+        var fakeTotal = fakeItems.reduce(function(s, it) { return s + it.qty * it.precio; }, 0);
+        setLastOrder({ items: fakeItems, total: fakeTotal });
+        var recItems = demoProducts.slice(8, 12).map(function(p) {
+          return { id: p.id, nombre: p.name, precio: p.precioVenta || p.precio || 100, unit: p.unit || 'u.', reason: Math.ceil(2 + (p.name.length % 3)) + ' clientes lo compran' };
+        });
+        setRecommended(recItems);
+      }
+      return;
+    }
     fetch(`${API}/api/pedido?action=historial`, {
       headers: { Authorization: `Bearer ${session.token}` }
     })
@@ -1073,7 +1087,7 @@ export default function PedidosPage() {
       )}
       {vista === 'catalogo' && (
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
-          {lastOrder && !isDemo && (
+          {lastOrder && (
             <div style={{ marginBottom: 20, background: '#f9f9f7', border: '1px solid #e8e4de', borderRadius: 14, padding: '18px 22px', color: '#fff' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
