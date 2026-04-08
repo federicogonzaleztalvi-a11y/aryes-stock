@@ -269,14 +269,8 @@ const describeAction = (action: string, detail: string): string => {
         if (sbMovs?.length > 0) {
           const mapped = sbMovs.map(r => ({ id:r.id, tipo:r.tipo, productoId:r.producto_id, productoNombre:r.producto_nombre, cantidad:r.cantidad, referencia:r.referencia, notas:r.notas, fecha:r.fecha, timestamp:r.timestamp }));
           setMovements(mapped as unknown as Movement[]); LS.set('aryes8-movements', mapped);
-        } else {
-          // Backfill localStorage → Supabase if Supabase returned empty
-          const lsMovs = LS.get<any[]>('aryes8-movements', []);
-          if (lsMovs.length > 0 && session.role !== 'vendedor') {
-            const rows = lsMovs.map(m => ({ id:m.id, tipo:m.tipo, producto_id:m.productoId, producto_nombre:m.productoNombre, cantidad:m.cantidad, referencia:m.referencia, notas:m.notas, fecha:m.fecha, timestamp:m.timestamp || new Date().toISOString() }));
-            db.insertMany('stock_movements', rows).catch(e => console.warn('[AppContext] movement backfill failed:', e?.message || e));
-          }
         }
+        // Backfill removed — was causing duplicate movements when Supabase returned empty due to RLS/org_id mismatch
         if (sbLotes?.length > 0) {
           const mappedLotes: Lote[] = sbLotes.map(r => ({
             id: r.id, productoId: r.producto_id||'', productoNombre: r.producto_nombre||'',
@@ -456,7 +450,7 @@ const describeAction = (action: string, detail: string): string => {
         }
       } catch { /* offline */ }
     };
-    const pollTimer = setInterval(syncFromServer, 30000);
+    const pollTimer = setInterval(syncFromServer, 300000); // 5 min — Realtime handles live updates
     const onFocus = () => syncFromServer();
     const onVisible = () => { if (document.visibilityState === 'visible') syncFromServer(); };
     window.addEventListener('focus', onFocus);
@@ -750,19 +744,10 @@ const describeAction = (action: string, detail: string): string => {
 
     // ── Actualizar stock de existentes ────────────────────────────────────────
     if (toUpdate.length > 0) {
-      const updatedProds = products.map(p => {
+      setProducts(prev => prev.map(p => {
         const m = toUpdate.find((x: any) => x.existing?.id === p.id);
         return m ? { ...p, stock: m.stock } : p;
-      });
-      setProducts(prev => {
-        const newIds = new Set(created.map(c => c.id));
-        return [...prev.filter(p => !newIds.has(p.id)), ...created,
-          ...prev.filter(p => !newIds.has(p.id)).map(p => {
-            const m = toUpdate.find((x: any) => x.existing?.id === p.id);
-            return m ? { ...p, stock: m.stock } : p;
-          })
-        ];
-      });
+      }));
       await Promise.allSettled(
         toUpdate.map((m: any) => db.patchWithLock(
           'products',
