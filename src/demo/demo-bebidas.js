@@ -1,4 +1,9 @@
 // Demo dataset: Bebidas — Bebidas Express S.A.
+
+// Deterministic random — same numbers every time (no Math.random)
+const _seed = {v: 42};
+function sRand() { _seed.v = (_seed.v * 16807 + 0) % 2147483647; return (_seed.v & 0x7fffffff) / 2147483647; }
+function sRandInt(min, max) { return min + Math.floor(sRand() * (max - min + 1)); }
 // Mayorista de bebidas uruguayo, 180 SKUs representados con 40 productos clave
 
 export const demoBebidas = {
@@ -171,10 +176,10 @@ export const demoBebidas = {
     for (let m=5; m>=1; m--) {
       const md = new Date(now); md.setMonth(md.getMonth()-m);
       for (let j=0; j<(8+Math.floor(m*1.5)); j++) {
-        const day = 1+Math.floor(Math.random()*28);
+        const day = 1+Math.floor(sRand()*28);
         const id2 = new Date(md.getFullYear(), md.getMonth(), day);
-        const ci = Math.floor(Math.random()*this.clients.length);
-        const t = 5000+Math.floor(Math.random()*45000);
+        const ci = Math.floor(sRand()*this.clients.length);
+        const t = 5000+Math.floor(sRand()*45000);
         const iv = Math.round(t*0.22);
         cfes.push({
           id: 'cfe-bebidas-h'+m+'-'+j, numero: 'E-'+String(800+m*20+j).padStart(4,'0'),
@@ -210,11 +215,11 @@ export const demoBebidas = {
     for (let m=5; m>=1; m--) {
       const md = new Date(now); md.setMonth(md.getMonth()-m);
       for (let j=0; j<6; j++) {
-        const day = 1+Math.floor(Math.random()*28);
+        const day = 1+Math.floor(sRand()*28);
         const id2 = new Date(md.getFullYear(), md.getMonth(), day);
         cobros.push({
           id: 'cob-bebidas-h'+m+'-'+j, cliente_id: this.clients[j%this.clients.length]?.id||'c1',
-          monto: 5000+Math.floor(Math.random()*30000),
+          monto: 5000+Math.floor(sRand()*30000),
           metodo: j%2===0?'transferencia':'efectivo',
           fecha: id2.toISOString().split('T')[0], notas: '',
           facturas_aplicar: [], created_at: id2.toISOString(),
@@ -229,13 +234,13 @@ export const demoBebidas = {
     const movs = [];
     const types = ['delivery','manual_in','order_placed','manual_out'];
     (this.products || []).slice(0,15).forEach((p,i) => {
-      const d = new Date(now); d.setDate(d.getDate()-Math.floor(Math.random()*14));
+      const d = new Date(now); d.setDate(d.getDate()-Math.floor(sRand()*14));
       const tipo = types[i%4];
       const isOut = tipo==='order_placed'||tipo==='manual_out';
       movs.push({
         id: 'mov-bebidas-'+i, tipo,
         producto_id: p.sku||p.id, producto_nombre: p.name,
-        cantidad: isOut ? -(Math.floor(Math.random()*10)+1) : Math.floor(Math.random()*20)+5,
+        cantidad: isOut ? -(Math.floor(sRand()*10)+1) : Math.floor(sRand()*20)+5,
         referencia: tipo==='delivery'?'PO-'+(100+i):tipo==='order_placed'?'V-'+(i+1):'',
         notas: '', fecha: d.toISOString().split('T')[0],
         timestamp: d.toISOString(),
