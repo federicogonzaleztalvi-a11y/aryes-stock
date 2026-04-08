@@ -417,21 +417,7 @@ function HistorialPedidos({ session, onReordenar }) {
   };
 
   useEffect(() => {
-    if (!session?.token || session?.token === 'demo-token') {
-      // Demo mode: inject fake lastOrder and recommended from dataset
-      if (isDemo && demoProducts.length > 0) {
-        var fakeItems = demoProducts.slice(0, 5).map(function(p) {
-          return { productId: p.id, nombre: p.name, qty: Math.ceil(2 + (p.name.length % 4)), precio: p.precioVenta || p.precio || 100, unidad: p.unit || 'u.' };
-        });
-        var fakeTotal = fakeItems.reduce(function(s, it) { return s + it.qty * it.precio; }, 0);
-        setLastOrder({ items: fakeItems, total: fakeTotal });
-        var recItems = demoProducts.slice(8, 12).map(function(p) {
-          return { id: p.id, nombre: p.name, precio: p.precioVenta || p.precio || 100, unit: p.unit || 'u.', reason: Math.ceil(2 + (p.name.length % 3)) + ' clientes lo compran' };
-        });
-        setRecommended(recItems);
-      }
-      return;
-    }
+    if (!session?.token || session?.token === 'demo-token') return;
     fetch(`${API}/api/pedido?action=historial`, {
       headers: { Authorization: `Bearer ${session.token}` }
     })
@@ -875,7 +861,21 @@ export default function PedidosPage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (session) loadCatalogo(session); }, [session, loadCatalogo]);
+  // Demo mode: inject fake lastOrder and recommended when demo products load
+  useEffect(() => {
+    if (!isPortalDemo || items.length === 0) return;
+    var fakeItems = items.slice(0, 5).map(function(p) {
+      return { productId: p.id, nombre: p.nombre, qty: Math.ceil(2 + ((p.nombre||'').length % 4)), precio: p.precio || 100, unidad: p.unidad || 'u.' };
+    });
+    var fakeTotal = fakeItems.reduce(function(s, it) { return s + it.qty * it.precio; }, 0);
+    setLastOrder({ items: fakeItems, total: fakeTotal });
+    var recItems = items.slice(8, 12).map(function(p) {
+      return { id: p.id, nombre: p.nombre, precio: p.precio || 100, unit: p.unidad || 'u.', reason: Math.ceil(2 + ((p.nombre||'').length % 3)) + ' clientes lo compran' };
+    });
+    setRecommended(recItems);
+  }, [isPortalDemo, items]);
+
+    useEffect(() => { if (session) loadCatalogo(session); }, [session, loadCatalogo]);
 
   const filtered = useMemo(() => items.filter(i => {
     const mCat = catFil === 'Todos' || i.categoria === catFil;
