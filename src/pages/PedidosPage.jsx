@@ -803,6 +803,7 @@ export default function PedidosPage() {
   const [session,  setSession]  = useState(() => loadSession());
   const [vista,    setVista]    = useState('catalogo');
   const [recommended, setRecommended] = useState([]);
+  const [lastOrder, setLastOrder] = useState(null);
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
@@ -1072,6 +1073,31 @@ export default function PedidosPage() {
       )}
       {vista === 'catalogo' && (
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
+          {lastOrder && !isDemo && (
+            <div style={{ marginBottom: 20, background: 'linear-gradient(135deg, #1a1a18 0%, #2d2d2a 100%)', borderRadius: 14, padding: '18px 22px', color: '#fff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(26,138,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>{String.fromCodePoint(0x1F504)}</div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.01em' }}>Repetir pedido anterior</div>
+                    <div style={{ fontSize: 11, color: '#a0a098', marginTop: 1 }}>{(lastOrder.items||[]).length} productos {String.fromCodePoint(0x00B7)} ${Number(lastOrder.total||0).toLocaleString('es-UY', {minimumFractionDigits: 0})}</div>
+                  </div>
+                </div>
+                <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: '#1a8a3c', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em', transition: 'transform 0.1s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.transform='scale(1.03)';}} onMouseLeave={function(e){e.currentTarget.style.transform='scale(1)';}}>{String.fromCodePoint(0x1F6D2)} Agregar todo</button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                {(lastOrder.items||[]).slice(0, 6).map(function(it, i) {
+                  return React.createElement('div', { key: i, style: { background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px', minWidth: 120, flexShrink: 0, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.06)' } },
+                    React.createElement('div', { style: { fontSize: 12, fontWeight: 600, color: '#fff', lineHeight: 1.3, marginBottom: 4 } }, (it.nombre || it.name || '').slice(0, 25)),
+                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                      React.createElement('span', { style: { fontSize: 11, color: '#a0a098' } }, (it.qty || it.cantidad || 1) + ' ' + (it.unidad || 'u.')),
+                      React.createElement('span', { style: { fontSize: 12, fontWeight: 700, color: '#4ade80' } }, '$' + Number((it.qty||it.cantidad||1) * (it.precio||it.price||0)).toFixed(0))
+                    )
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
               {[...Array(8)].map((_, i) => (
