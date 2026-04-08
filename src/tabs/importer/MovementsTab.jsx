@@ -50,7 +50,13 @@ const MovementsTab=({products,setProducts,session})=>{
     // Update product stock
     const updatedProds=products.map(p=>p.id===prod.id?{...p,stock:newStock}:p);
     const now=new Date().toISOString();
-    await dbWriteWithRetry(()=>db.patch('products',{stock:newStock,updated_at:now},{id:prod.id}));
+    // Use RPC for stock changes (ledger inmutable — no direct stock writes)
+    const diff = newStock - (prod.stock || 0);
+    if (diff > 0) {
+      try { await fetch(SB_URL+'/rest/v1/rpc/stock_recepcion', { method:'POST', headers:{ apikey:SKEY, Authorization:'Bearer '+SKEY, 'Content-Type':'application/json' }, body:JSON.stringify({ p_product_uuid: prod.uuid || prod.id, p_qty: diff, p_org_id: getOrgId(), p_ref: 'manual_adjustment' }) }); } catch(e) { console.warn('[MovementsTab] RPC fallback:', e); }
+    } else if (diff < 0) {
+      try { await fetch(SB_URL+'/rest/v1/rpc/stock_venta', { method:'POST', headers:{ apikey:SKEY, Authorization:'Bearer '+SKEY, 'Content-Type':'application/json' }, body:JSON.stringify({ p_product_uuid: prod.uuid || prod.id, p_qty: Math.abs(diff), p_org_id: getOrgId(), p_ref: 'manual_adjustment' }) }); } catch(e) { console.warn('[MovementsTab] RPC fallback:', e); }
+    }
     setProducts(updatedProds);
     LS.set('aryes6-products',updatedProds);
     // Check low stock alert
