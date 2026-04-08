@@ -153,12 +153,7 @@ function PortalDemoSelector({ onSelect }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#efefeb'; e.currentTarget.style.transform = 'scale(1)'; }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>{label}</div>
-              {recommended.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <RecommendedProducts recommended={recommended} onAdd={addItem} carrito={carrito} />
-            </div>
-          )}
-          <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
+              <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
             </button>
           ))}
         </div>
@@ -461,7 +456,12 @@ function HistorialPedidos({ session, onReordenar }) {
             <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', marginBottom: 3 }}>{fecha}</div>
-                <div style={{ fontSize: 11, color: '#9a9a92' }}>
+                {recommended.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <RecommendedProducts recommended={recommended} onAdd={addItem} carrito={carrito} />
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: '#9a9a92' }}>
                   {Array.isArray(p.items) ? p.items.length : 0} producto{p.items?.length !== 1 ? 's' : ''}
                 </div>
               </div>
