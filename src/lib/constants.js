@@ -85,6 +85,8 @@ export const LS = {
 // ─── db — Supabase REST client ────────────────────────────────────────────────
 export const db = {
   async get(table, query = '') {
+    // Demo mode guard — no Supabase session available
+    try { getAuthHeaders(); } catch { return null; }
     let r;
     try {
       r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
@@ -103,6 +105,8 @@ export const db = {
   },
 
   async upsert(table, data, conflictCol = '') {
+    // Demo mode guard — silently succeed without calling Supabase
+    try { getAuthHeaders(); } catch { return [data]; }
     const payload = data.org_id !== undefined ? data : { ...data, org_id: getOrgId() };
     const url = `${SB_URL}/rest/v1/${table}${conflictCol ? `?on_conflict=${conflictCol}` : ''}`;
     const r = await fetch(url, {
@@ -118,6 +122,8 @@ export const db = {
   },
 
   async patch(table, data, match) {
+    // Demo mode guard
+    try { getAuthHeaders(); } catch { return [data]; }
     const query = typeof match === 'string'
       ? match
       : Object.entries(match).map(([k, v]) => `${k}=eq.${v}`).join('&');
@@ -135,6 +141,8 @@ export const db = {
   },
 
   async del(table, match) {
+    // Demo mode guard
+    try { getAuthHeaders(); } catch { return; }
     const query = Object.entries(match).map(([k, v]) => `${k}=eq.${v}`).join('&');
     const orgFilter = `&org_id=eq.${getOrgId()}`;
     await fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
