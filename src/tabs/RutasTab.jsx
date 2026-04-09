@@ -7,6 +7,8 @@ import ModalCobro from './facturacion/ModalCobro.jsx';
 
 import GeneradorRuta from '../components/GeneradorRuta.jsx';
 
+import { nearestNeighborTSP } from './rutas/utils.js';
+
 function RutasTab(){
   const { clientes, setClientes, rutas, setRutas, setHasPendingSync, cfes, cobros, setCobros } = useApp();
   const { isAdmin } = useRole();
@@ -290,6 +292,31 @@ function RutasTab(){
       creado_en:updRuta.creadoEn, updated_at:new Date().toISOString(),
     },'id').catch(e=>{ console.warn('[RutasTab] upsert failed:',e?.message||e); setHasPendingSync(true); });
     setBusqCli("");
+    // Auto re-optimize after adding a stop (if route has 3+ stops with coords)
+    setTimeout(() => {
+      const updR = rutas.find(r => r.id === rutaActiva);
+      if (updR && updR.entregas.length >= 3) {
+        const conCoords = updR.entregas.filter(e => {
+          const c = clientes.find(cl => cl.id === e.clienteId);
+          return c?.lat && c?.lng;
+        });
+        if (conCoords.length >= 3) {
+          setMsg("Re-optimizando ruta...");
+          // nearestNeighborTSP imported at top
+          const optimized = nearestNeighborTSP(updR.entregas, clientes);
+          const updRutas = rutas.map(r => r.id === rutaActiva ? { ...r, entregas: optimized } : r);
+          setRutas(updRutas);
+          const finalRuta = updRutas.find(r => r.id === rutaActiva);
+          if (finalRuta) db.upsert('rutas', {
+            id: finalRuta.id, vehiculo: finalRuta.vehiculo, zona: finalRuta.zona,
+            dia: finalRuta.dia, notas: finalRuta.notas, entregas: finalRuta.entregas,
+            creado_en: finalRuta.creadoEn, updated_at: new Date().toISOString(),
+          }, 'id').catch(() => {});
+          setMsg("Ruta re-optimizada automaticamente");
+          setTimeout(() => setMsg(""), 3000);
+        }
+      }
+    }, 300);
   };
 
   // ── Optimizar ruta: geocode + nearest-neighbor TSP ───────────────────────
