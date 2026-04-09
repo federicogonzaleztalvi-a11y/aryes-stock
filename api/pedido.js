@@ -8,6 +8,7 @@
 // INTERNAL OPS: unaffected — VentasTab / create_venta unchanged
 
 import { checkRateLimit } from './_rate-limit.js';
+import webpush from 'web-push';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
 
@@ -321,9 +322,8 @@ async function handler(req, res) {
       );
       if (pushSubs.ok) {
         const subs = await pushSubs.json();
-        const webpush = await import('web-push');
         if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-          webpush.default.setVapidDetails(
+          webpush.setVapidDetails(
             process.env.VAPID_SUBJECT || 'mailto:hola@aryes.com.uy',
             process.env.VAPID_PUBLIC_KEY,
             process.env.VAPID_PRIVATE_KEY
@@ -339,7 +339,7 @@ async function handler(req, res) {
             subs.map(sub => {
               try {
                 const subscription = typeof sub.subscription === 'string' ? JSON.parse(sub.subscription) : sub.subscription;
-                return webpush.default.sendNotification(subscription, payload);
+                return webpush.sendNotification(subscription, payload);
               } catch { return Promise.resolve(); }
             })
           );
