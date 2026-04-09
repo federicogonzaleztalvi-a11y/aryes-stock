@@ -459,6 +459,62 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
+      {/* ── Email capture ────────────────────────────────────────────────── */}
+      <FadeIn>
+        <section style={{ padding: '48px 24px', background: '#f9f9f7', borderTop: '1px solid #e8e8e6' }}>
+          <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 600, fontFamily: F.serif, color: '#1a1a18', marginBottom: 8 }}>
+              No te pierdas nada
+            </div>
+            <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
+              Dejanos tu email y te avisamos cuando lancemos novedades.
+            </p>
+            <form onSubmit={function(e) {
+              e.preventDefault();
+              var emailInput = e.target.querySelector('input[type=email]');
+              var btn = e.target.querySelector('button');
+              var email = emailInput?.value?.trim();
+              if (!email) return;
+              btn.textContent = 'Enviando...';
+              btn.disabled = true;
+              fetch((import.meta.env.VITE_SUPABASE_URL || '') + '/rest/v1/leads', {
+                method: 'POST',
+                headers: {
+                  apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+                  Authorization: 'Bearer ' + (import.meta.env.VITE_SUPABASE_ANON_KEY || ''),
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify({ email: email, source: 'landing' }),
+              }).then(function(r) {
+                if (r.ok || r.status === 409) {
+                  emailInput.value = '';
+                  btn.textContent = 'Listo!';
+                  btn.style.background = '#166534';
+                  setTimeout(function() { btn.textContent = 'Suscribirme'; btn.disabled = false; btn.style.background = G; }, 3000);
+                } else {
+                  btn.textContent = 'Error, intenta de nuevo';
+                  btn.disabled = false;
+                  setTimeout(function() { btn.textContent = 'Suscribirme'; btn.style.background = G; }, 3000);
+                }
+              }).catch(function() {
+                btn.textContent = 'Error de conexion';
+                btn.disabled = false;
+                setTimeout(function() { btn.textContent = 'Suscribirme'; btn.style.background = G; }, 3000);
+              });
+            }} style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto' }}>
+              <input type="email" required placeholder="tu@email.com"
+                style={{ flex: 1, padding: '12px 16px', border: '1px solid #e0e0dc', borderRadius: 10, fontSize: 14, fontFamily: F.sans, outline: 'none' }} />
+              <button type="submit"
+                style={{ padding: '12px 24px', background: G, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: F.sans, whiteSpace: 'nowrap' }}>
+                Suscribirme
+              </button>
+            </form>
+            <p style={{ fontSize: 11, color: '#b0b0ac', marginTop: 10 }}>Sin spam. Solo novedades del producto.</p>
+          </div>
+        </section>
+      </FadeIn>
+
       {/* ── Footer ───────────────────────────────────────────────────────── */}
       <footer style={{ borderTop: '1px solid #e8e8e6' }}>
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 24px 20px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 40 }}>
