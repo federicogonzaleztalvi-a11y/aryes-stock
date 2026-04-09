@@ -459,7 +459,51 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
-      {/* ── Email capture ────────────────────────────────────────────────── */}
+      {/* ── Comparison table ──────────────────────────────────────────── */}
+      <FadeIn>
+        <section style={{ padding: '64px 24px', maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>COMPARATIVA</div>
+            <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 28 : 36, color: '#1a1a18', fontWeight: 400, margin: 0 }}>
+              Por que Aryes y no otra cosa
+            </h2>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: F.sans }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e8e8e6' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9a9a98', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Funcionalidad</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', borderRadius: '10px 10px 0 0', color: G, fontWeight: 700 }}>Aryes</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Planillas y WhatsApp</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Software generico</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Inventario en tiempo real', true, false, true],
+                  ['Portal de pedidos para tus clientes', true, false, false],
+                  ['Rutas de entrega optimizadas', true, false, false],
+                  ['Facturacion y cobros integrados', true, false, true],
+                  ['Notificaciones automaticas', true, false, false],
+                  ['Tracking en vivo para el cliente', true, false, false],
+                  ['Listo en 24 horas', true, false, false],
+                  ['Facil de usar, sin capacitacion', true, true, false],
+                  ['Precio accesible para PyMEs', true, true, false],
+                ].map(function(row, i) {
+                  return React.createElement('tr', { key: i, style: { borderBottom: '1px solid #f0f0ee' } },
+                    React.createElement('td', { style: { padding: '12px 16px', color: '#1a1a18', fontWeight: 500 } }, row[0]),
+                    React.createElement('td', { style: { padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', fontSize: 16, color: G } }, row[1] ? '\u2713' : '\u2014'),
+                    React.createElement('td', { style: { padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[2] ? G : '#d1d5db' } }, row[2] ? '\u2713' : '\u2014'),
+                    React.createElement('td', { style: { padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[3] ? G : '#d1d5db' } }, row[3] ? '\u2713' : '\u2014')
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </FadeIn>
+
+            {/* ── Email capture ────────────────────────────────────────────────── */}
       <FadeIn>
         <section style={{ padding: '48px 24px', background: '#f9f9f7', borderTop: '1px solid #e8e8e6' }}>
           <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center' }}>
