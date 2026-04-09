@@ -38,12 +38,12 @@ async function validatePortalSession(token) {
   return rows?.[0] || null;
 }
 
-async async function handler(req, res) {
+async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (!SB_URL || !SB_ANON)    return res.status(500).json({ error: 'Server misconfigured' });
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-  if (!_checkRate_ped(_ip)) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
+  if (!(await checkRateLimit('pedido:' + _ip, 60, 10))) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
 
 
   // ── GET /api/pedido?action=pendientes — lista pedidos B2B pendientes (operador) ──
@@ -59,15 +59,7 @@ async async function handler(req, res) {
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
     );
     if (!r.ok) return res.status(500).json({ error: 'Error al obtener pedidos' });
-        // Patch anomaly flags if detected
-    if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
-        method: 'PATCH',
-        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
-      }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
-    }
+    
 
     return res.status(200).json({ ok: true, pedidos: await r.json() });
   }
@@ -86,15 +78,7 @@ async async function handler(req, res) {
         { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
       );
       if (!r.ok) return res.status(500).json({ error: 'Error al obtener historial' });
-          // Patch anomaly flags if detected
-    if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
-        method: 'PATCH',
-        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
-      }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
-    }
+      
 
     return res.status(200).json({ ok: true, pedidos: await r.json() });
     }
@@ -141,15 +125,7 @@ async async function handler(req, res) {
       body: JSON.stringify({ estado: 'confirmada', confirmado_en: now, confirmado_por: operador }),
     });
     log.info('pedido', 'b2b confirmado', { orderId, nroVenta, cliente: pedido.cliente_nombre });
-        // Patch anomaly flags if detected
-    if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
-        method: 'PATCH',
-        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
-      }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
-    }
+    
 
     return res.status(200).json({ ok: true, venta: {
       id: ventaId, nroVenta,
@@ -298,15 +274,7 @@ async async function handler(req, res) {
     const rpcData = await rpcRes.json().catch(() => null);
     if (rpcData?.idempotent) {
       log.info('pedido', 'idempotent hit', { orderId: rpcData.orderId });
-          // Patch anomaly flags if detected
-    if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
-        method: 'PATCH',
-        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
-      }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
-    }
+      
 
     return res.status(200).json({ ok: true, orderId: rpcData.orderId, idempotent: true });
     }
@@ -320,15 +288,7 @@ async async function handler(req, res) {
   // Handle idempotent response from RPC (order already existed)
   if (result?.idempotent) {
     log.info('pedido', 'idempotent hit via RPC', { orderId: result.orderId });
-        // Patch anomaly flags if detected
-    if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
-        method: 'PATCH',
-        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
-      }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
-    }
+    
 
     return res.status(200).json({ ok: true, orderId: result.orderId, idempotent: true });
   }
@@ -341,14 +301,53 @@ async async function handler(req, res) {
     total,
   });
 
-      // Patch anomaly flags if detected
+  
+
+    // Patch anomaly flags if detected
     if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + (result.orderId || orderId), {
         method: 'PATCH',
         headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
       }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: orderId, reasons: anomaly_reasons });
+      log.info('pedido', 'anomaly detected', { orderId: result.orderId || orderId, reasons: anomaly_reasons });
+    }
+
+    // ── Push notification to org admin ───────────────────────────────────
+    try {
+      const pushSubs = await fetch(
+        SB_URL + '/rest/v1/push_subscriptions?org_id=eq.' + encodeURIComponent(org) + '&limit=20',
+        { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
+      );
+      if (pushSubs.ok) {
+        const subs = await pushSubs.json();
+        const webpush = await import('web-push');
+        if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+          webpush.default.setVapidDetails(
+            process.env.VAPID_SUBJECT || 'mailto:hola@aryes.com.uy',
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+          );
+          const payload = JSON.stringify({
+            title: 'Nuevo pedido B2B',
+            body: (clienteNombre || 'Un cliente') + ' hizo un pedido por $' + Number(total).toFixed(0),
+            icon: '/aryes-logo.png',
+            tag: 'b2b-order-' + (result.orderId || orderId),
+            url: '/app/pedidos',
+          });
+          await Promise.allSettled(
+            subs.map(sub => {
+              try {
+                const subscription = typeof sub.subscription === 'string' ? JSON.parse(sub.subscription) : sub.subscription;
+                return webpush.default.sendNotification(subscription, payload);
+              } catch { return Promise.resolve(); }
+            })
+          );
+          log.info('pedido', 'push sent', { org, subs: subs.length });
+        }
+      }
+    } catch (pushErr) {
+      log.warn('pedido', 'push notification failed (non-fatal)', { error: pushErr.message });
     }
 
     return res.status(200).json({ ok: true, orderId: result.orderId || orderId });
