@@ -66,6 +66,80 @@ function useIsMobile() {
   return mobile;
 }
 
+
+function ROICalc() {
+  const [horasDia, setHorasDia] = useState(3);
+  const [ventasDia, setVentasDia] = useState(15);
+  const [errorPct, setErrorPct] = useState(5);
+
+  const horasMes = horasDia * 22;
+  const horasAhorro = Math.round(horasMes * 0.7);
+  const costoHora = 8;
+  const ahorroPesos = horasAhorro * costoHora;
+  const ventasMes = ventasDia * 22;
+  const ventasPerdidas = Math.round(ventasMes * (errorPct / 100));
+  const ticketPromedio = 120;
+  const recuperado = ventasPerdidas * ticketPromedio;
+
+  const sl = { width: '100%', accentColor: G, cursor: 'pointer' };
+  const lbl = { fontSize: 13, color: '#6b7280', marginBottom: 4, display: 'block' };
+  const val = { fontSize: 15, fontWeight: 600, color: '#1a1a18' };
+
+  return (
+    <div>
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e8e6', padding: '24px', marginBottom: 20 }}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={lbl}>Horas por dia en planillas / WhatsApp</span>
+            <span style={val}>{horasDia}h</span>
+          </div>
+          <input type="range" min="1" max="8" value={horasDia} onChange={e => setHorasDia(Number(e.target.value))} style={sl} />
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={lbl}>Ventas / entregas por dia</span>
+            <span style={val}>{ventasDia}</span>
+          </div>
+          <input type="range" min="5" max="60" step="5" value={ventasDia} onChange={e => setVentasDia(Number(e.target.value))} style={sl} />
+        </div>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={lbl}>Errores en pedidos / stock (%)</span>
+            <span style={val}>{errorPct}%</span>
+          </div>
+          <input type="range" min="1" max="15" value={errorPct} onChange={e => setErrorPct(Number(e.target.value))} style={sl} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e8e6', padding: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, fontWeight: 700, color: G, fontFamily: F.sans }}>{horasAhorro}h</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>horas libres por mes</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e8e6', padding: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, fontWeight: 700, color: G, fontFamily: F.sans }}>US$ {ahorroPesos}</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>en tiempo recuperado</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e8e6', padding: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, fontWeight: 700, color: G, fontFamily: F.sans }}>{ventasPerdidas}</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>errores evitados por mes</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e8e6', padding: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 32, fontWeight: 700, color: G, fontFamily: F.sans }}>US$ {recuperado}</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>en ventas no perdidas</div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <button onClick={function() { window.location.href = '/register'; }}
+          style={{ padding: '14px 32px', background: G, color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>
+          Empezar gratis
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const mobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -507,6 +581,24 @@ export default function LandingPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </section>
+      </FadeIn>
+
+            {/* ── ROI Calculator ─────────────────────────────────────────────── */}
+      <FadeIn>
+        <section id="roi" style={{ padding: '64px 24px', background: '#f9f9f7', borderTop: '1px solid #e8e8e6' }}>
+          <div style={{ maxWidth: 640, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>CALCULADORA</div>
+              <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 28 : 36, color: '#1a1a18', fontWeight: 400, margin: 0 }}>
+                Cuanto te ahorra Aryes
+              </h2>
+              <p style={{ fontSize: 15, color: '#6b7280', margin: '12px auto 0' }}>
+                Movi los sliders y mira el impacto en tu operacion.
+              </p>
+            </div>
+            <ROICalc />
           </div>
         </section>
       </FadeIn>
