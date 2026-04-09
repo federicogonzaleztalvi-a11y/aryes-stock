@@ -465,37 +465,43 @@ export default function LandingPage() {
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>COMPARATIVA</div>
             <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 28 : 36, color: '#1a1a18', fontWeight: 400, margin: 0 }}>
-              Por que Aryes y no otra cosa
+              Todo en un solo lugar
             </h2>
+            <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 520, margin: '12px auto 0' }}>
+              Otras herramientas resuelven una parte. Aryes conecta todo el flujo de tu distribuidora.
+            </p>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: F.sans }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #e8e8e6' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9a9a98', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Funcionalidad</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', borderRadius: '10px 10px 0 0', color: G, fontWeight: 700 }}>Aryes</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9a9a98', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}></th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', borderRadius: '10px 10px 0 0', color: G, fontWeight: 700, fontSize: 14 }}>Aryes</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Planillas y WhatsApp</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Software generico</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Software de rutas</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>ERP / sistema contable</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ['Inventario en tiempo real', true, false, true],
-                  ['Portal de pedidos para tus clientes', true, false, false],
-                  ['Rutas de entrega optimizadas', true, false, false],
-                  ['Facturacion y cobros integrados', true, false, true],
-                  ['Notificaciones automaticas', true, false, false],
-                  ['Tracking en vivo para el cliente', true, false, false],
-                  ['Listo en 24 horas', true, false, false],
-                  ['Facil de usar, sin capacitacion', true, true, false],
-                  ['Precio accesible para PyMEs', true, true, false],
+                  ['Inventario en tiempo real', true, false, false, true],
+                  ['Ventas y facturacion', true, false, false, true],
+                  ['Rutas de entrega optimizadas', true, false, true, false],
+                  ['Portal de pedidos para tus clientes', true, false, false, false],
+                  ['Cobros y cuenta corriente', true, false, false, true],
+                  ['Tracking en vivo para el cliente', true, false, true, false],
+                  ['Alertas de stock y reposicion', true, false, false, false],
+                  ['WhatsApp integrado al flujo', true, false, false, false],
+                  ['Listo en 24 horas', true, true, true, false],
+                  ['Sin capacitacion', true, true, false, false],
                 ].map(function(row, i) {
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid #f0f0ee' }}>
                       <td style={{ padding: '12px 16px', color: '#1a1a18', fontWeight: 500 }}>{row[0]}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', fontSize: 16, color: G }}>{row[1] ? '\u2713' : '\u2014'}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[2] ? G : '#d1d5db' }}>{row[2] ? '\u2713' : '\u2014'}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[3] ? G : '#d1d5db' }}>{row[3] ? '\u2713' : '\u2014'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', fontSize: 16, color: G, fontWeight: 700 }}>{row[1] ? '\u2713' : '\u2014'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[2] ? '#6b7280' : '#d1d5db' }}>{row[2] ? '\u2713' : '\u2014'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[3] ? '#6b7280' : '#d1d5db' }}>{row[3] ? '\u2713' : '\u2014'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[4] ? '#6b7280' : '#d1d5db' }}>{row[4] ? '\u2713' : '\u2014'}</td>
                     </tr>
                   );
                 })}
