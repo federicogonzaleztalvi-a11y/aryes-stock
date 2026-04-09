@@ -194,7 +194,7 @@ export default function DriverView() {
       if (e.key.length === 1) { // printable character
         buffer += e.key;
         clearTimeout(timer);
-        timer = setTimeout(() => { buffer = ''; }, 200); // reset if no key in 200ms
+        timer = setTimeout(() => { buffer = ''; }, 80); // reset if no key in 80ms — human typing is 120-200ms, scanners are <50ms
       }
     };
     window.addEventListener('keydown', handleKey);
