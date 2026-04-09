@@ -96,8 +96,17 @@ export default function DriverView() {
   // Queue an operation for offline sync
   const queueOffline = (url, opts) => {
     const queue = JSON.parse(localStorage.getItem('driver-offline-queue') || '[]');
+    if (queue.length >= 50) queue.shift(); // keep max 50 operations, drop oldest
     queue.push({ url, opts, ts: Date.now() });
-    localStorage.setItem('driver-offline-queue', JSON.stringify(queue));
+    try {
+      localStorage.setItem('driver-offline-queue', JSON.stringify(queue));
+    } catch (e) {
+      // localStorage full — drop photos from oldest entries to make space
+      for (let i = 0; i < queue.length - 1 && i < 10; i++) {
+        try { const b = JSON.parse(queue[i].opts?.body || '{}'); delete b.entregas; queue[i].opts.body = JSON.stringify(b); } catch {}
+      }
+      try { localStorage.setItem('driver-offline-queue', JSON.stringify(queue)); } catch {}
+    }
   };
   const [nota,    setNota]    = useState('');
   const [foto,    setFoto]    = useState(null); // base64
