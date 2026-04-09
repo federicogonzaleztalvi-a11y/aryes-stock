@@ -490,11 +490,13 @@ export default function LandingPage() {
                   ['Facil de usar, sin capacitacion', true, true, false],
                   ['Precio accesible para PyMEs', true, true, false],
                 ].map(function(row, i) {
-                  return React.createElement('tr', { key: i, style: { borderBottom: '1px solid #f0f0ee' } },
-                    React.createElement('td', { style: { padding: '12px 16px', color: '#1a1a18', fontWeight: 500 } }, row[0]),
-                    React.createElement('td', { style: { padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', fontSize: 16, color: G } }, row[1] ? '\u2713' : '\u2014'),
-                    React.createElement('td', { style: { padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[2] ? G : '#d1d5db' } }, row[2] ? '\u2713' : '\u2014'),
-                    React.createElement('td', { style: { padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[3] ? G : '#d1d5db' } }, row[3] ? '\u2713' : '\u2014')
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid #f0f0ee' }}>
+                      <td style={{ padding: '12px 16px', color: '#1a1a18', fontWeight: 500 }}>{row[0]}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', fontSize: 16, color: G }}>{row[1] ? '\u2713' : '\u2014'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[2] ? G : '#d1d5db' }}>{row[2] ? '\u2713' : '\u2014'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: 16, color: row[3] ? G : '#d1d5db' }}>{row[3] ? '\u2713' : '\u2014'}</td>
+                    </tr>
                   );
                 })}
               </tbody>
