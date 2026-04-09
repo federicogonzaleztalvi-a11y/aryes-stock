@@ -28,27 +28,7 @@ function toOrgId(name) {
 }
 
 
-// ── Rate limiting: max 3 registrations per IP per hour ────────────
-const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour
-const RATE_LIMIT_MAX = 3;
-const rateLimitStore = new Map();
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const key = ip || 'unknown';
-  const entry = rateLimitStore.get(key) || [];
-  const recent = entry.filter(ts => now - ts < RATE_LIMIT_WINDOW);
-  if (recent.length >= RATE_LIMIT_MAX) return false;
-  recent.push(now);
-  rateLimitStore.set(key, recent);
-  // Cleanup old entries periodically
-  if (rateLimitStore.size > 1000) {
-    for (const [k, v] of rateLimitStore) {
-      if (v.every(ts => now - ts > RATE_LIMIT_WINDOW)) rateLimitStore.delete(k);
-    }
-  }
-  return true;
-}
+import { checkRateLimit } from './_rate-limit.js';
 
 async function handler(req, res) {
   await setCorsHeaders(req, res);
@@ -56,7 +36,7 @@ async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   // Rate limit check
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || 'unknown';
-  if (!checkRateLimit(clientIp)) {
+  if (!(await checkRateLimit('register:' + clientIp, 3600, 3))) {
     log.warn('register', 'rate limited', { ip: clientIp });
     return res.status(429).json({ error: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.' });
   }

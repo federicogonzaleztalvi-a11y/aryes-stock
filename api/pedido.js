@@ -7,6 +7,7 @@
 //   - all in one Postgres transaction (all-or-nothing)
 // INTERNAL OPS: unaffected — VentasTab / create_venta unchanged
 
+import { checkRateLimit } from './_rate-limit.js';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
 
@@ -22,17 +23,6 @@ const CORS = {
 };
 
 
-// ── Rate limiting: max 10 requests per IP per 1 min ──
-const _rl_ped = new Map();
-function _checkRate_ped(ip) {
-  const now = Date.now();
-  const entry = _rl_ped.get(ip) || [];
-  const recent = entry.filter(t => now - t < 60000);
-  if (recent.length >= 10) return false;
-  recent.push(now);
-  _rl_ped.set(ip, recent);
-  return true;
-}
 async function validatePortalSession(token) {
   if (!token) return null;
   const key = SB_SVC || SB_ANON;
