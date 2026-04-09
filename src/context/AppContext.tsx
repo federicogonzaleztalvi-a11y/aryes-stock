@@ -8,7 +8,8 @@ import { LS, db, SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js'
 // Multi-user filter: vendedor/repartidor only see their own data
 const getUserFilter = (session: any, field: string = 'vendedor_id'): string => {
   if (!session || session.role === 'admin' || session.role === 'contador') return '';
-  return `&${field}=eq.${encodeURIComponent(session.email)}`;
+  // Show records assigned to this user OR unassigned (null) — so new records are visible to everyone
+  return `&or=(${field}.eq.${encodeURIComponent(session.email)},${field}.is.null)`;
 };
 import { useRealtime } from '../hooks/useRealtime.js';
 import { mapDemoProducts, mapDemoClients, mapDemoSuppliers, mapDemoVentas, mapDemoCfes, mapDemoCobros, mapDemoMovements, mapDemoRutas } from './demoMapper.ts';
