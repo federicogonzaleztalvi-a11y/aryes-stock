@@ -119,6 +119,8 @@ export const db = {
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       console.warn('[db] upsert failed:', table, e?.message || r.status);
+      // Dispatch global error event so UI can show feedback
+      window.dispatchEvent(new CustomEvent('aryes-sync-error', { detail: { table, error: e?.message || 'Error al guardar' } }));
     }
     return r.ok ? r.json() : null;
   },
@@ -138,6 +140,7 @@ export const db = {
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       console.warn('[db] patch failed:', table, e?.message || r.status);
+      window.dispatchEvent(new CustomEvent('aryes-sync-error', { detail: { table, error: e?.message || 'Error al guardar' } }));
     }
     return r.ok ? r.json() : null;
   },
