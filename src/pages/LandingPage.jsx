@@ -90,14 +90,14 @@ function ROICalc() {
       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e8e8e6', padding: '24px', marginBottom: 20 }}>
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={lbl}>Horas por dia en planillas / WhatsApp</span>
+            <span style={lbl}>Horas por día en planillas / WhatsApp</span>
             <span style={val}>{horasDia}h</span>
           </div>
           <input type="range" min="1" max="8" value={horasDia} onChange={e => setHorasDia(Number(e.target.value))} style={sl} />
         </div>
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={lbl}>Ventas / entregas por dia</span>
+            <span style={lbl}>Ventas / entregas por día</span>
             <span style={val}>{ventasDia}</span>
           </div>
           <input type="range" min="5" max="60" step="5" value={ventasDia} onChange={e => setVentasDia(Number(e.target.value))} style={sl} />
@@ -564,10 +564,10 @@ export default function LandingPage() {
                   ['Portal de pedidos para tus clientes', true, false, false, false],
                   ['Cobros y cuenta corriente', true, false, false, true],
                   ['Tracking en vivo para el cliente', true, false, true, false],
-                  ['Alertas de stock y reposicion', true, false, false, false],
+                  ['Alertas de stock y reposición', true, false, false, false],
                   ['WhatsApp integrado al flujo', true, false, false, false],
                   ['Listo en 24 horas', true, true, true, false],
-                  ['Sin capacitacion', true, true, false, false],
+                  ['Sin capacitación', true, true, false, false],
                 ].map(function(row, i) {
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid #f0f0ee' }}>
@@ -592,10 +592,10 @@ export default function LandingPage() {
             <div style={{ textAlign: 'center', marginBottom: 32 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>CALCULADORA</div>
               <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 28 : 36, color: '#1a1a18', fontWeight: 400, margin: 0 }}>
-                Cuanto te ahorra Aryes
+                Cuánto te ahorra Aryes
               </h2>
               <p style={{ fontSize: 15, color: '#6b7280', margin: '12px auto 0' }}>
-                Movi los sliders y mira el impacto en tu operacion.
+                Mové los controles y mirá el impacto en tu operación.
               </p>
             </div>
             <ROICalc />
