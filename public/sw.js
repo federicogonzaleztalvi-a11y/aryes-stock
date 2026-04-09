@@ -1,38 +1,80 @@
 // sw.js — Aryes Stock Service Worker
-// Handles Web Push Notifications
+// PWA: caches app shell for fast loading + handles push notifications
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+const CACHE_NAME = 'aryes-v1';
+const SHELL_ASSETS = [
+  '/',
+  '/index.html',
+  '/aryes-logo.png',
+];
 
-// Push event — show notification
-self.addEventListener('push', event => {
-  let data = { title: 'Aryes Stock', body: 'Hay una actualizacion', icon: '/favicon.ico' };
-  try {
-    if (event.data) data = { ...data, ...event.data.json() };
-  } catch { /* use defaults */ }
-
-  const options = {
-    body:    data.body,
-    icon:    data.icon || '/favicon.ico',
-    badge:   '/favicon.ico',
-    tag:     data.tag || 'aryes-notif',
-    data:    data.url ? { url: data.url } : {},
-    actions: data.actions || [],
-    requireInteraction: data.urgent || false,
-  };
-
+// Install — cache app shell
+self.addEventListener('install', event => {
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(SHELL_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Notification click — open app or specific URL
+// Activate — clean old caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Fetch — network first, fall back to cache (SPA friendly)
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // Skip non-GET, API calls, and Supabase requests
+  if (event.request.method !== 'GET') return;
+  if (url.pathname.startsWith('/api/')) return;
+  if (url.hostname.includes('supabase')) return;
+  if (url.hostname.includes('posthog')) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        // Cache successful responses for static assets
+        if (response.ok && (url.pathname.startsWith('/assets/') || SHELL_ASSETS.includes(url.pathname))) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request).then(cached => cached || caches.match('/')))
+  );
+});
+
+// Push notification
+self.addEventListener('push', event => {
+  let data = { title: 'Aryes Stock', body: 'Hay una actualización', icon: '/aryes-logo.png' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {}
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/aryes-logo.png',
+      badge: '/aryes-logo.png',
+      tag: data.tag || 'aryes-notif',
+      data: data.url ? { url: data.url } : {},
+      requireInteraction: data.urgent || false,
+    })
+  );
+});
+
+// Notification click
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-      // Focus existing window if open
       const existing = clients.find(c => c.url.includes(self.location.origin));
       if (existing) return existing.focus().then(c => c.navigate(url));
       return self.clients.openWindow(url);
