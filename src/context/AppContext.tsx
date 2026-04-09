@@ -3,7 +3,13 @@ import React, {
   createContext, useContext,
   useState, useEffect, useMemo,
 } from 'react';
-import { LS, db, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
+import { LS, db, SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
+
+// Multi-user filter: vendedor/repartidor only see their own data
+const getUserFilter = (session: any, field: string = 'vendedor_id'): string => {
+  if (!session || session.role === 'admin' || session.role === 'contador') return '';
+  return `&${field}=eq.${encodeURIComponent(session.email)}`;
+};
 import { useRealtime } from '../hooks/useRealtime.js';
 import { mapDemoProducts, mapDemoClients, mapDemoSuppliers, mapDemoVentas, mapDemoCfes, mapDemoCobros, mapDemoMovements, mapDemoRutas } from './demoMapper.ts';
 import { alertLevel, ALERT_CFG, totalLead } from '../lib/ui.jsx';
@@ -190,8 +196,8 @@ const describeAction = (action: string, detail: string): string => {
 
       // ── Batch A: commercial data (critical for daily ops UI) ──────────────
       const [sbVentas, sbClients, sbCollections, sbInvoices] = await Promise.all([
-        db.get<Record<string, any>[]>(`ventas?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`),
-        db.get<Record<string, any>[]>(`clients?org_id=eq.${getOrgId()}&order=created_at.asc&limit=2000`),
+        db.get<Record<string, any>[]>(`ventas?org_id=eq.${getOrgId()}${getUserFilter(session)}&order=creado_en.desc&limit=500`),
+        db.get<Record<string, any>[]>(`clients?org_id=eq.${getOrgId()}${getUserFilter(session)}&order=created_at.asc&limit=2000`),
         db.get<Record<string, any>[]>(`collections?org_id=eq.${getOrgId()}&order=created_at.desc&limit=500`),
         db.get<Record<string, any>[]>(`invoices?org_id=eq.${getOrgId()}&order=created_at.desc&limit=500`),
       ]);
@@ -205,6 +211,7 @@ const describeAction = (action: string, detail: string): string => {
             notas: r.notas || '', fechaEntrega: r.fecha_entrega || null, creadoEn: r.creado_en,
             tieneDevolucion: r.tiene_devolucion || false,
             estadoLog: r.estado_log || [], estadoUpdatedBy: r.estado_updated_by || '',
+            vendedorId: r.vendedor_id||null,
           }));
           setVentas(mappedVentas);
         }
@@ -229,6 +236,7 @@ const describeAction = (action: string, detail: string): string => {
             modoEntregaCustom: ['envio','retira','express'].includes(r.modo_entrega) ? '' : (r.modo_entrega || ''),
             notasEntrega: r.notas_entrega || '',
             notas: r.notas||'', creado: r.created_at||'',
+            vendedorId: r.vendedor_id||null,
           }));
           setClientes(mappedClientes);
         }
@@ -260,7 +268,7 @@ const describeAction = (action: string, detail: string): string => {
       const [sbMovs, sbLotes, sbRutas, sbDevs, sbConteos] = await Promise.all([
         db.get<Record<string, any>[]>(`stock_movements?org_id=eq.${getOrgId()}&order=created_at.desc&limit=2000`),
         db.get<Record<string, any>[]>(`lotes?org_id=eq.${getOrgId()}&order=fecha_venc.asc.nullslast&limit=2000`),
-        db.get<Record<string, any>[]>(`rutas?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=200`),
+        db.get<Record<string, any>[]>(`rutas?org_id=eq.${getOrgId()}${getUserFilter(session, 'repartidor_id')}&order=creado_en.desc&limit=200`),
         db.get<Record<string, any>[]>(`devoluciones?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`),
         db.get<Record<string, any>[]>(`conteos?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=200`),
       ]);
