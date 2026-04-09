@@ -791,10 +791,10 @@ const describeAction = (action: string, detail: string): string => {
   // ── Dynamic Reorder Point ─────────────────────────────────────────────────
   const calcReorderPoints = async (): Promise<any[]> => {
     try {
+      const _headers = getAuthHeaders();
       const r = await fetch(`${SB_URL}/rest/v1/rpc/calc_reorder_points`, {
         method: 'POST',
-        headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`,
-                   'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { ..._headers, 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ p_org_id: getOrgId() }),
       });
       if (!r.ok) return [];
