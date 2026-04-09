@@ -82,6 +82,17 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   const [dbReady,        setDbReady]        = useState<boolean>(!!demoState);
   const [syncStatus,     setSyncStatus]     = useState<string>('');
   const [hasPendingSync, setHasPendingSync] = useState<boolean>(false);
+
+  // Global sync error listener — shows toast when db.upsert/patch fails
+  useEffect(() => {
+    const handler = (e) => {
+      setSyncToast({ msg: 'Error al guardar en servidor. Verificá tu conexión.', type: 'error' });
+      setHasPendingSync(true);
+      setTimeout(() => setSyncToast(null), 5000);
+    };
+    window.addEventListener('aryes-sync-error', handler);
+    return () => window.removeEventListener('aryes-sync-error', handler);
+  }, []);
   const [syncToast,      setSyncToast]      = useState<SyncToast | null>(null);
   const [emailCfg,       setEmailCfg]       = useState<EmailCfg>({ serviceId:'', templateId:'', publicKey:'', toEmail:'', enabled:false });
   const [brandCfg,       setBrandCfg]       = useState(() => {
