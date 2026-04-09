@@ -464,7 +464,7 @@ function ClientesTab(){
             <label style={{fontSize:11,fontWeight:600,color:'#888',display:'block',marginBottom:4}}>VENDEDOR ASIGNADO</label>
             <select value={form.vendedorId||''} onChange={e=>setForm(p=>({...p,vendedorId:e.target.value}))} style={{...inp,background:'#fff'}}>
               <option value="">Sin asignar (visible para todos)</option>
-              {usersList.filter(u=>u.role==='vendedor'||u.role==='admin').map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name} ({u.role})</option>)}
+              {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.username||u.name)).map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name||u.username} ({u.role})</option>)}
             </select>
           </div>}
 <button onClick={save} style={{padding:'9px 24px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>{editId?'Guardar':'Agregar cliente'}</button>
