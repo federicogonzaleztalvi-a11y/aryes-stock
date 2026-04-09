@@ -328,6 +328,7 @@ function VentasTab(){
           p_fecha_entrega:  venta.fechaEntrega || '',
           p_creado_en:      venta.creadoEn,
           p_user_email:     userEmail,
+          p_vendedor_id:    userEmail,
         });
       } catch (rpcErr) {
         // RPC failed — revert optimistic UI to keep client consistent with DB

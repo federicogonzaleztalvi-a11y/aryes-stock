@@ -458,7 +458,16 @@ function ClientesTab(){
         ))}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8}}>
           <button onClick={()=>{setVista('lista');setEditId(null);}} style={{padding:'9px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
-          <button onClick={save} style={{padding:'9px 24px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>{editId?'Guardar':'Agregar cliente'}</button>
+          
+          {/* Vendedor asignado (solo visible para admin) */}
+          {session?.role==='admin' && <div style={{marginBottom:12}}>
+            <label style={{fontSize:11,fontWeight:600,color:'#888',display:'block',marginBottom:4}}>VENDEDOR ASIGNADO</label>
+            <select value={form.vendedorId||''} onChange={e=>setForm(p=>({...p,vendedorId:e.target.value}))} style={{...inp,background:'#fff'}}>
+              <option value="">Sin asignar (visible para todos)</option>
+              {usersList.filter(u=>u.role==='vendedor'||u.role==='admin').map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name} ({u.role})</option>)}
+            </select>
+          </div>}
+<button onClick={save} style={{padding:'9px 24px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>{editId?'Guardar':'Agregar cliente'}</button>
         </div>
       </div>
     </section>

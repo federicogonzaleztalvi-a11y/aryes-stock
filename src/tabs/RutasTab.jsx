@@ -53,7 +53,7 @@ function RutasTab(){
     const updRuta = updRutas.find(r => r.id === ruta.id);
     if (updRuta) db.upsert('rutas', {
       id: updRuta.id, vehiculo: updRuta.vehiculo, zona: updRuta.zona,
-      dia: updRuta.dia, notas: updRuta.notas, entregas: updRuta.entregas,
+      dia: updRuta.dia, notas: updRuta.notas, entregas: updRuta.entregas, repartidor_id: null,
       capacidad_kg: updRuta.capacidadKg || 0, capacidad_bultos: updRuta.capacidadBultos || 0,
       creado_en: updRuta.creadoEn, updated_at: new Date().toISOString(),
     }, 'id').catch(() => setHasPendingSync(true));
