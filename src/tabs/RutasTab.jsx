@@ -294,7 +294,7 @@ function RutasTab(){
     setBusqCli("");
     // Auto re-optimize after adding a stop (if route has 3+ stops with coords)
     setTimeout(() => {
-      const updR = rutas.find(r => r.id === rutaActiva);
+      const updR = upd.find(r => r.id === rutaActiva);
       if (updR && updR.entregas.length >= 3) {
         const conCoords = updR.entregas.filter(e => {
           const c = clientes.find(cl => cl.id === e.clienteId);
@@ -304,7 +304,7 @@ function RutasTab(){
           setMsg("Re-optimizando ruta...");
           // nearestNeighborTSP imported at top
           const optimized = nearestNeighborTSP(updR.entregas, clientes);
-          const updRutas = rutas.map(r => r.id === rutaActiva ? { ...r, entregas: optimized } : r);
+          const updRutas = upd.map(r => r.id === rutaActiva ? { ...r, entregas: optimized } : r);
           setRutas(updRutas);
           const finalRuta = updRutas.find(r => r.id === rutaActiva);
           if (finalRuta) db.upsert('rutas', {
