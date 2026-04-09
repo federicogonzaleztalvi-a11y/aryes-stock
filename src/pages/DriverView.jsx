@@ -63,6 +63,42 @@ export default function DriverView() {
 
   // Active confirmation panel: { idx, mode: 'entregado'|'no_entregado'|'nota' }
   const [panel,   setPanel]   = useState(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // ── Offline support ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline  = () => { setIsOffline(false); syncPending(); };
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online',  goOnline);
+    return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline); };
+  }, []);
+
+  // Cache ruta to localStorage whenever it changes
+  useEffect(() => {
+    if (ruta && rutaId) localStorage.setItem('driver-ruta-' + rutaId, JSON.stringify(ruta));
+  }, [ruta, rutaId]);
+
+  // Sync pending offline operations when back online
+  const syncPending = async () => {
+    const queue = JSON.parse(localStorage.getItem('driver-offline-queue') || '[]');
+    if (!queue.length) return;
+    const session = getSession();
+    const token = session?.access_token || SB_ANON;
+    for (const op of queue) {
+      try {
+        await fetch(op.url, { ...op.opts, headers: { ...op.opts.headers, apikey: SB_ANON, Authorization: 'Bearer ' + token } });
+      } catch { break; } // stop on first failure, retry next time
+    }
+    localStorage.removeItem('driver-offline-queue');
+  };
+
+  // Queue an operation for offline sync
+  const queueOffline = (url, opts) => {
+    const queue = JSON.parse(localStorage.getItem('driver-offline-queue') || '[]');
+    queue.push({ url, opts, ts: Date.now() });
+    localStorage.setItem('driver-offline-queue', JSON.stringify(queue));
+  };
   const [nota,    setNota]    = useState('');
   const [foto,    setFoto]    = useState(null); // base64
   const fotoRef = useRef(null);
@@ -85,7 +121,18 @@ export default function DriverView() {
         entregas: (r.entregas || []).map(e => ({ ...e })),
       });
     })
-    .catch(() => setError('Error al cargar la ruta. Verificá tu conexión.'))
+    .catch(() => {
+      // Offline fallback: try to load from localStorage cache
+      const cached = localStorage.getItem('driver-ruta-' + rutaId);
+      if (cached) {
+        try {
+          setRuta(JSON.parse(cached));
+          showMsg('Modo offline — usando datos guardados', 'warn');
+          return;
+        } catch {}
+      }
+      setError('Error al cargar la ruta. Verificá tu conexión.');
+    })
     .finally(() => setLoading(false));
   }, [rutaId, orgId]);
 
@@ -111,6 +158,48 @@ export default function DriverView() {
       { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 }
     );
   }, [rutaId, orgId]);
+
+  // ── Bluetooth/USB Barcode Scanner Support ──────────────────────────────
+  // Most Bluetooth barcode scanners pair as HID keyboards and "type" the code
+  // followed by Enter. We capture fast consecutive keystrokes as a scan.
+  const [lastScan, setLastScan] = useState(null);
+  useEffect(() => {
+    let buffer = '';
+    let timer = null;
+    const handleKey = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; // don't capture form input
+      if (e.key === 'Enter' && buffer.length >= 4) {
+        // Buffer has a valid scan
+        const code = buffer.trim();
+        setLastScan(code);
+        buffer = '';
+        // Match scanned barcode to a product in the route's items
+        if (ruta) {
+          const match = ruta.entregas.find(ent => {
+            // Check if any item in this stop matches the barcode
+            return ent.items?.some(it => it.barcode === code || it.codigo === code || it.productId === code);
+          });
+          if (match && match.estado === 'pendiente') {
+            const idx = ruta.entregas.indexOf(match);
+            setPanel({ idx, mode: 'entregado' });
+            showMsg('Escaneado: ' + (match.clienteNombre || code));
+          } else if (match) {
+            showMsg('Parada ya entregada: ' + match.clienteNombre, 'warn');
+          } else {
+            showMsg('Código escaneado: ' + code + ' (sin coincidencia en ruta)', 'warn');
+          }
+        }
+        return;
+      }
+      if (e.key.length === 1) { // printable character
+        buffer += e.key;
+        clearTimeout(timer);
+        timer = setTimeout(() => { buffer = ''; }, 200); // reset if no key in 200ms
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => { window.removeEventListener('keydown', handleKey); clearTimeout(timer); };
+  }, [ruta]);
 
   // ── GPS: limpiar al desmontar ─────────────────────────────────────────────
   useEffect(() => {
@@ -165,8 +254,22 @@ export default function DriverView() {
   // ── Save ruta to Supabase ─────────────────────────────────────────────────
   const saveRuta = async (updatedRuta) => {
     setSaving(true);
+    // Always save to localStorage first (instant, works offline)
+    localStorage.setItem('driver-ruta-' + updatedRuta.id, JSON.stringify(updatedRuta));
+
     const session = getSession();
     const token   = session?.access_token || SB_ANON;
+
+    if (!navigator.onLine) {
+      // Queue for sync when back online
+      queueOffline(
+        SB_URL + '/rest/v1/rutas?id=eq.' + updatedRuta.id,
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ entregas: updatedRuta.entregas, updated_at: new Date().toISOString() }) }
+      );
+      setSaving(false);
+      return;
+    }
 
     try {
       const r = await fetch(`${SB_URL}/rest/v1/rutas?id=eq.${updatedRuta.id}`, {
