@@ -614,10 +614,13 @@ const describeAction = (action: string, detail: string): string => {
       setSyncToast({ msg: `Error al guardar entrega en servidor. El cambio está guardado localmente — se sincronizará al reconectar.`, type: 'error' });
       setTimeout(() => setSyncToast(null), 7000);
     };
-    db.patch('orders', { status:'delivered', updated_at:now }, { id })
-      .catch(e => notifyWriteError('orders.patch', e));
-    db.patchWithLock('products', { stock:newStock, updated_at:now }, `uuid=eq.${o.productId}`, 'stock', prod.stock)
-      .catch(e => notifyWriteError('products.patchWithLock', e));
+    // Sequential writes — if order patch fails, don't update stock (prevents inconsistency)
+    try {
+      await db.patch('orders', { status:'delivered', updated_at:now }, { id });
+      await db.patchWithLock('products', { stock:newStock, updated_at:now }, `uuid=eq.${o.productId}`, 'stock', prod.stock);
+    } catch (e) {
+      notifyWriteError('markDelivered', e);
+    }
   };
 
   const confirmOrder = async (product: Product, qty: number): Promise<void> => {
