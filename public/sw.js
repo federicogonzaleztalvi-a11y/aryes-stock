@@ -1,7 +1,7 @@
 // sw.js — Aryes Stock Service Worker
 // PWA: caches app shell for fast loading + handles push notifications
 
-const CACHE_NAME = 'aryes-v1';
+const CACHE_NAME = 'aryes-' + '20260409';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -40,7 +40,8 @@ self.addEventListener('fetch', event => {
     fetch(event.request)
       .then(response => {
         // Cache successful responses for static assets
-        if (response.ok && (url.pathname.startsWith('/assets/') || SHELL_ASSETS.includes(url.pathname))) {
+        if (response.ok && SHELL_ASSETS.includes(url.pathname)) {
+          // Only cache shell assets — /assets/*.js already have content hashes in filenames
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
