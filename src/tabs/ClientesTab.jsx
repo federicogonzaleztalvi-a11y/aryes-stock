@@ -733,7 +733,7 @@ function ClientesTab(){
           {filtered.map(x=>(
             <div key={x.id} onClick={()=>{setSelId(x.id);setVista('detalle');}} style={{background:'#fff',borderRadius:10,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',cursor:'pointer',border:'1px solid #f3f4f6'}} onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'} onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'}>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
-                <div style={{fontWeight:600,fontSize:15,color:'#1a1a1a',lineHeight:1.3}}>{x.nombre}</div>
+                <div style={{fontWeight:600,fontSize:15,color:'#1a1a1a',lineHeight:1.3}}>{x.nombre}{x.vendedorId?<span style={{fontSize:9,background:'#dbeafe',color:'#2563eb',padding:'1px 6px',borderRadius:8,marginLeft:6,fontWeight:500}}>{x.vendedorId.split('@')[0]}</span>:<span style={{fontSize:9,background:'#fef3c7',color:'#92400e',padding:'1px 6px',borderRadius:8,marginLeft:6,fontWeight:500}}>Sin asignar</span>}</div>
                 <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0,marginLeft:8}}>
                   {clientScores[x.id] && clientScores[x.id].score > 0 && (
                     <div title={clientScores[x.id].label} style={{width:26,height:26,borderRadius:'50%',border:'2px solid '+clientScores[x.id].color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:800,color:clientScores[x.id].color}}>{clientScores[x.id].score}</div>
