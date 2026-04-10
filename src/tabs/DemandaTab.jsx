@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 
 function DemandaTab(){
   const { products: prods, movements: movs, ventas, suppliers } = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const [periodo,setPeriodo]=useState(30);
     const pStart=new Date();pStart.setDate(pStart.getDate()-periodo);
   // Calcular rotacion y proyeccion por producto
@@ -115,7 +115,7 @@ function DemandaTab(){
               {sensing.map((c,i)=>{
                 const urgente=c.ratio>=1.2;
                 const medio=c.ratio>=0.8&&c.ratio<1.2;
-                const color=urgente?"#dc2626":medio?"#d97706":"#1a8a3c";
+                const color=urgente?"#dc2626":medio?"#d97706":"#059669";
                 const bg=urgente?"#fef2f2":medio?"#fffbeb":"#f0fdf4";
                 const waMsg=`Hola ${c.nombre.split(' ')[0]}, ¿cómo andas? Te contactamos porque hace ${c.diasDesde} días que no te visitamos. ¿Necesitás reponer ${c.ultimoItem||'mercadería'}? 🚛`;
                 return(

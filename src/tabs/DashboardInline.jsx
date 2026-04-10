@@ -12,7 +12,7 @@ const F = {
   mono:  "'DM Mono','Fira Code',monospace",
 };
 
-const G = '#1a8a3c';
+const G = '#059669';
 
 
 function Sparkline({ data=[], color=T.green, height=32, width=80 }) {
@@ -62,7 +62,7 @@ function KpiCard({ label, value, sub, accent=T.border, danger=false, warn=false,
       {/* Accent line top */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-        background: isRed ? '#dc2626' : isAmber ? '#d97706' : accent !== T.border ? accent : '#1a8a3c',
+        background: isRed ? '#dc2626' : isAmber ? '#d97706' : accent !== T.border ? accent : '#059669',
         borderRadius: '16px 16px 0 0',
         opacity: (isRed || isAmber || accent !== T.border) ? 1 : 0,
       }}/>
@@ -954,7 +954,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                         const po=purchaseOrders.find(o=>o.supplier_id===sup.id);
                         if(!po?.expected_arrival) return null;
                         const dias=Math.ceil((new Date(po.expected_arrival)-new Date())/86400000);
-                        const color=dias<=0?'#dc2626':dias<=3?'#d97706':'#1a8a3c';
+                        const color=dias<=0?'#dc2626':dias<=3?'#d97706':'#059669';
                         return <div style={{fontFamily:F.sans,fontSize:10,fontWeight:700,color,marginTop:2}}>
                           {dias<=0?'⚠ Llegó hoy':dias===1?'📦 Llega mañana':`📦 ETA: ${dias}d`}
                         </div>;
@@ -1144,7 +1144,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
       <button onClick={exportarReporte} title="Exportar reporte CSV"
         style={{position:'fixed',bottom:80,right:20,zIndex:800,width:48,height:48,borderRadius:'50%',
-          background:'#1a8a3c',color:'#fff',border:'none',cursor:'pointer',fontSize:20,
+          background:'#059669',color:'#fff',border:'none',cursor:'pointer',fontSize:20,
           boxShadow:'0 4px 12px rgba(0,0,0,.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
         📥
       </button>

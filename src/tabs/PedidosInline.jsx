@@ -6,7 +6,7 @@ import { fmt } from '../lib/constants.js';
 import { downloadCSV } from '../lib/ui.jsx';
 import { T, Cap, Btn, fmtDate, fmtShort } from '../lib/ui.jsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const PHASES = [
   { key: 'preparation', label: 'Preparacion', icon: '📦', color: '#3b82f6' },
   { key: 'customs',     label: 'Aduana',      icon: '🛃', color: '#8b5cf6' },

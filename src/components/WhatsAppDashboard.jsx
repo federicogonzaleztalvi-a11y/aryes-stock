@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import { fmt } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const WA = '#25d366';
 
   '$' + Number(n || 0).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

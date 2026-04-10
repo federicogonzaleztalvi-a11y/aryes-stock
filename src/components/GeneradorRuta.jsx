@@ -16,7 +16,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db, getOrgId } from '../lib/constants.js';
 
-const G   = '#1a8a3c';
+const G   = '#059669';
 const AMB = '#d97706';
 const RED = '#dc2626';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const ROLES = ['admin', 'operador', 'vendedor'];
 const ROLE_COLORS = { admin: '#7c3aed', operador: '#2563eb', vendedor: '#059669' };
 const ROLE_LABELS = { admin: 'Administrador', operador: 'Operador', vendedor: 'Vendedor' };

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext.tsx';
 
 function KPIsTab(){
   const { products: prods, movements: movs , ventas, lotes, rutas} = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const [periodo,setPeriodo]=useState("mes");
   const hoy=new Date();
   const diasAtras=(n)=>{const d=new Date();d.setDate(d.getDate()-n);return d;};
@@ -51,7 +51,7 @@ function KPIsTab(){
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
         <CARD icon="💰" label={"Ventas ("+periodo+")"} value={ventasP.length} sub={"$"+totalVentas.toLocaleString("es-UY")} color={G} />
-        {costoVentas>0&&<CARD icon="📈" label="Margen bruto" value={fmt.percent(margenBruto)} sub={"Ganancia: $"+gananciaTotal.toLocaleString("es-UY",{minimumFractionDigits:2,maximumFractionDigits:2})} color={margenBruto>=15?"#1a8a3c":"#d97706"} />}
+        {costoVentas>0&&<CARD icon="📈" label="Margen bruto" value={fmt.percent(margenBruto)} sub={"Ganancia: $"+gananciaTotal.toLocaleString("es-UY",{minimumFractionDigits:2,maximumFractionDigits:2})} color={margenBruto>=15?"#059669":"#d97706"} />}
         <CARD icon="📦" label="Stock critico" value={stockCrit+sinStock} sub={stockCrit+" criticos · "+sinStock+" sin stock"} alert={sinStock>0||stockCrit>5} color={sinStock>0?"#dc2626":stockCrit>0?"#f59e0b":G} />
         <CARD icon="📅" label="Venc. proximos" value={vencProx} sub={vencidos+" ya vencidos"} alert={vencidos>0} color={vencidos>0?"#dc2626":"#f59e0b"} />
         <CARD icon="🚛" label="Efectividad entregas" value={efectividad+"%"} sub={entregasOk+"/"+entregasAll.length+" entregas"} color={efectividad>=90?G:efectividad>=70?"#f59e0b":"#dc2626"} />

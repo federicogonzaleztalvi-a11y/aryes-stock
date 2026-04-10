@@ -43,7 +43,7 @@ export class ErrorBoundary extends React.Component {
           onClick={() => this.setState({ hasError: false, error: null })}
           style={{
             marginTop: 8, padding: '8px 20px', borderRadius: 8,
-            background: '#1a8a3c', color: '#fff', border: 'none',
+            background: '#059669', color: '#fff', border: 'none',
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
           }}
         >

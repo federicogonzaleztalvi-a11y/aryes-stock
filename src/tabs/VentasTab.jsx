@@ -54,8 +54,8 @@ function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
           cfes, setCfes, cobros, setCobros, brandCfg , isDemoMode} = useApp();
-  const G="#1a8a3c";
-  const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#1a8a3c',cancelada:'#ef4444'};
+  const G="#059669";
+  const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#059669',cancelada:'#ef4444'};
 
   // clientes now reactive from AppContext → no focus refresh needed
 
@@ -603,7 +603,7 @@ function VentasTab(){
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
-                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#1a8a3c':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
+                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#059669':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString('es-UY')}</td>
                     <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
                   </tr>
@@ -660,9 +660,9 @@ function VentasTab(){
           {v.estado==='confirmada'&&<button onClick={()=>cambiarEstado(v.id,'preparada')} style={{padding:'7px 16px',background:'#8b5cf6',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar preparada</button>}
           {(v.estado==='preparada'||v.estado==='confirmada')&&<button onClick={()=>cambiarEstado(v.id,'entregada')} style={{padding:'7px 16px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:12}}>Marcar entregada</button>}
           {v.estado!=='cancelada'&&v.estado!=='entregada'&&<button onClick={()=>{if(window.confirm('¿Cancelar venta '+v.nroVenta+'? Esta acción restaura el stock y no se puede deshacer.'))cambiarEstado(v.id,'cancelada')}} style={{padding:'7px 16px',border:'1px solid #fecaca',background:'#fff',color:'#dc2626',borderRadius:8,cursor:'pointer',fontSize:12}}>Cancelar (restaura stock)</button>}
-          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #1a8a3c',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#1a8a3c'}}>📊° Cobrar</button>}
+          {v.estado==='entregada'&&<button onClick={()=>{setCobroPrefill({clienteId:v.clienteId,clienteNombre:v.clienteNombre,monto:v.total,ventaId:v.id});setShowCobro(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #059669',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#059669'}}>📊° Cobrar</button>}
           {isAdmin&&v.estado==='entregada'&&<button onClick={()=>{setFacturarVenta(v);setShowFacturar(true);}} style={{padding:'7px 14px',background:'#fff',border:'1px solid #6366f1',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#6366f1'}}>📊 Facturar</button>}
-          {(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setRemitoVenta(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#374151'}}>📄 Remito</button>}{(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setEtiquetaDespacho(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #1a8a3c',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#1a8a3c'}}>🏷️ Etiqueta</button>}
+          {(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setRemitoVenta(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #374151',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#374151'}}>📄 Remito</button>}{(v.estado==='preparada'||v.estado==='confirmada'||v.estado==='entregada')&&<button onClick={()=>setEtiquetaDespacho(v)} style={{padding:'7px 14px',background:'#fff',border:'1px solid #059669',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,color:'#059669'}}>🏷️ Etiqueta</button>}
         </div>
         {/* ── Estado timeline ─────────────────────────────────────── */}
         {v.estadoLog?.length > 0 && (

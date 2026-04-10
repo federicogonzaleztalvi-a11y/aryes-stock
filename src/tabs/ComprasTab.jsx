@@ -4,7 +4,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { db, SB_URL, SKEY } from '../lib/constants.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-const G   = '#1a8a3c';
+const G   = '#059669';
 const fmt = (n, cur='USD') => {
   const sym = cur==='UYU'?'$':cur==='USD'?'US$':'€';
   return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
@@ -14,14 +14,14 @@ const today   = () => new Date().toISOString().split('T')[0];
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
 
 function etaBadge(ea, st) {
-  if (st === 'delivered' || st === 'received') return { label: '✅ Llegó', color: '#1a8a3c', bg: '#f0fdf4' };
+  if (st === 'delivered' || st === 'received') return { label: '✅ Llegó', color: '#059669', bg: '#f0fdf4' };
   if (!ea) return { label: 'Sin ETA', color: '#9ca3af', bg: '#f9fafb' };
   const d = new Date(ea + 'T12:00:00'), n = new Date(); n.setHours(0,0,0,0);
   const diff = Math.round((d - n) / 86400000);
   if (diff < 0)   return { label: `🔴 ${Math.abs(diff)}d atrasado`, color: '#dc2626', bg: '#fef2f2' };
   if (diff === 0) return { label: '🟡 Hoy', color: '#d97706', bg: '#fffbeb' };
   if (diff <= 3)  return { label: `🟠 En ${diff}d`, color: '#f97316', bg: '#fff7ed' };
-  if (diff <= 7)  return { label: `🟢 En ${diff}d`, color: '#1a8a3c', bg: '#f0fdf4' };
+  if (diff <= 7)  return { label: `🟢 En ${diff}d`, color: '#059669', bg: '#f0fdf4' };
   return { label: `📅 En ${diff}d`, color: '#6b7280', bg: '#f9fafb' };
 }
 function ETAInput({ orderId, value, status, onSave }) {
@@ -29,7 +29,7 @@ function ETAInput({ orderId, value, status, onSave }) {
   const [val, setVal] = React.useState(value || '');
   const badge = etaBadge(value, status);
   const save = () => { setEditing(false); if (val !== (value || '')) onSave(orderId, val || null); };
-  if (editing) return <input type="date" value={val} onChange={e => setVal(e.target.value)} onBlur={save} onKeyDown={e => e.key === 'Enter' && save()} autoFocus style={{ padding:'3px 6px', border:'1.5px solid #1a8a3c', borderRadius:6, fontSize:12, outline:'none', width:120 }} />;
+  if (editing) return <input type="date" value={val} onChange={e => setVal(e.target.value)} onBlur={save} onKeyDown={e => e.key === 'Enter' && save()} autoFocus style={{ padding:'3px 6px', border:'1.5px solid #059669', borderRadius:6, fontSize:12, outline:'none', width:120 }} />;
   return <span onClick={() => setEditing(true)} title="Clic para editar ETA" style={{ cursor:'pointer', fontSize:11, fontWeight:700, color:badge.color, background:badge.bg, padding:'2px 8px', borderRadius:20, whiteSpace:'nowrap' }}>{badge.label}</span>;
 }
 

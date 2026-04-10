@@ -5,14 +5,14 @@
 import { DEMO_INDUSTRIES } from './datasets.js';
 
 const COLORS = {
-  horeca: '#1a8a3c',
+  horeca: '#059669',
   bebidas: '#185FA5',
   limpieza: '#0F6E56',
   construccion: '#BA7517',
 };
 
 export default function DemoBanner({ industry, orgName, onExit, onSignup }) {
-  const color = COLORS[industry] || '#1a8a3c';
+  const color = COLORS[industry] || '#059669';
   const industryName = DEMO_INDUSTRIES.find(i => i.id === industry)?.name || '';
 
   return (

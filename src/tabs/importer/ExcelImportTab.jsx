@@ -79,14 +79,14 @@ const ExcelImportTab=({products,setProducts,session:_session})=>{
             <div style={{fontSize:48,marginBottom:12}}>📂</div>
             <div style={{fontSize:15,fontWeight:600,color:'#3a3a38',marginBottom:8}}>Subí tu archivo CSV</div>
             <div style={{fontSize:13,color:'#9a9a98',marginBottom:20}}>Exportá desde Excel como CSV y subilo acá</div>
-            <label style={{padding:'10px 24px',background:'#1a8a3c',color:'#fff',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',display:'inline-block'}}>
+            <label style={{padding:'10px 24px',background:'#059669',color:'#fff',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',display:'inline-block'}}>
               Elegir archivo
               <input type="file" accept=".csv,.txt" onChange={handleFile} style={{display:'none'}}/>
             </label>
             {loading&&<div style={{marginTop:16,color:'#9a9a98',fontSize:13}}>Procesando...</div>}
           </div>
           <div style={{background:'#f0f7ec',borderRadius:10,padding:'16px 20px',marginBottom:16}}>
-            <div style={{fontSize:13,fontWeight:600,color:'#1a8a3c',marginBottom:8}}>Columnas aceptadas en el CSV:</div>
+            <div style={{fontSize:13,fontWeight:600,color:'#059669',marginBottom:8}}>Columnas aceptadas en el CSV:</div>
             <div style={{fontSize:12,color:'#5a7a4a',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 24px'}}>
               <span><strong>nombre</strong> — nombre del producto</span>
               <span><strong>marca</strong> — ej: Selecta, MEC3</span>
@@ -106,10 +106,10 @@ const ExcelImportTab=({products,setProducts,session:_session})=>{
       {step==='preview'&&(
         <div>
           <div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'12px 16px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <span style={{fontSize:14,color:'#1a8a3c',fontWeight:600}}>✓ {rows.length} productos detectados</span>
+            <span style={{fontSize:14,color:'#059669',fontWeight:600}}>✓ {rows.length} productos detectados</span>
             <div style={{display:'flex',gap:10}}>
               <button onClick={()=>setStep('upload')} style={{padding:'7px 14px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>← Volver</button>
-              <button onClick={applyImport} style={{padding:'7px 18px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Importar {rows.length} productos</button>
+              <button onClick={applyImport} style={{padding:'7px 18px',background:'#059669',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Importar {rows.length} productos</button>
             </div>
           </div>
           <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:10,overflow:'hidden'}}>
@@ -137,7 +137,7 @@ const ExcelImportTab=({products,setProducts,session:_session})=>{
       {step==='done'&&(
         <div style={{textAlign:'center',padding:'48px 0'}}>
           <div style={{fontSize:56,marginBottom:16}}>✅</div>
-          <div style={{fontSize:22,fontWeight:600,color:'#1a8a3c',marginBottom:8}}>{msg}</div>
+          <div style={{fontSize:22,fontWeight:600,color:'#059669',marginBottom:8}}>{msg}</div>
           <div style={{fontSize:14,color:'#9a9a98',marginBottom:32}}>Los productos ya están disponibles en el inventario</div>
           <button onClick={()=>{setStep('upload');setRows([]);setMsg('');}} style={{padding:'10px 24px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>Importar otro archivo</button>
         </div>

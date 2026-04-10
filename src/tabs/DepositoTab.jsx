@@ -4,7 +4,7 @@ import { LS } from '../lib/constants.js';
 
 function DepositoTab(){
   const { products: prods , lotes} = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const KDEP="aryes-deposito";
   const ZONAS=[{id:'A',label:'Zona A - Ambiente',color:'#3b82f6'},{id:'F',label:'Zona F - Frio/Freezer',color:'#06b6d4'}];
   const [config,setConfig]=useState({pasillos:8,estantes:4,niveles:3,posiciones:6,zonas:['A','F']});

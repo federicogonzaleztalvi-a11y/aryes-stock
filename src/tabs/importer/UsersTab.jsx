@@ -33,7 +33,7 @@ const UsersTab=({session})=>{
   const startNew=()=>{ setForm({username:'',password:'',name:'',role:'operador'}); setEditing('new'); setMsg(''); };
 
   const roleLabel=r=>r==='admin'?'Administrador':r==='operador'?'Operador':'Vendedor (solo lectura)';
-  const roleColor=r=>r==='admin'?'#1a8a3c':r==='operador'?'#2563eb':'#9a9a98';
+  const roleColor=r=>r==='admin'?'#059669':r==='operador'?'#2563eb':'#9a9a98';
 
   return(
     <div style={{padding:'32px 40px',maxWidth:700}}>
@@ -42,10 +42,10 @@ const UsersTab=({session})=>{
           <div style={{fontSize:11,letterSpacing:'.1em',color:'#9a9a98',fontWeight:600,textTransform:'uppercase',marginBottom:4}}>Configuración</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:36,fontWeight:500,color:'#1a1a18',margin:0}}>Usuarios</h1>
         </div>
-        <button onClick={startNew} style={{padding:'9px 18px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Agregar usuario</button>
+        <button onClick={startNew} style={{padding:'9px 18px',background:'#059669',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>+ Agregar usuario</button>
       </div>
 
-      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#1a8a3c':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
+      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#059669':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
 
       {/* User list */}
       <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:editing?24:0}}>
@@ -99,7 +99,7 @@ const UsersTab=({session})=>{
             </div>
           </div>
           <div style={{display:'flex',gap:10}}>
-            <button onClick={save} style={{padding:'9px 20px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
+            <button onClick={save} style={{padding:'9px 20px',background:'#059669',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
             <button onClick={()=>setEditing(null)} style={{padding:'9px 20px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Cancelar</button>
           </div>
         </div>

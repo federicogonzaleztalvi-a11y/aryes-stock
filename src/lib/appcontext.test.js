@@ -125,7 +125,7 @@ describe('Client mapping (Supabase → frontend)', () => {
 
 describe('Supplier mapping (Supabase → frontend)', () => {
   const dbRow = {
-    id: 'sup-1', name: 'Conaprole', flag: 'UY', color: '#1a8a3c',
+    id: 'sup-1', name: 'Conaprole', flag: 'UY', color: '#059669',
     times: { preparation: 2, customs: 0, freight: 1, warehouse: 0 },
     company: 'Conaprole SA', phone: '29161100', email: 'ventas@conaprole.com',
     country: 'Uruguay', city: 'Montevideo', currency: 'UYU',

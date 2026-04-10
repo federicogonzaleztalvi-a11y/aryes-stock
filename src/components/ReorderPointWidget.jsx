@@ -1,7 +1,7 @@
 // src/components/ReorderPointWidget.jsx
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-const G='#1a8a3c';
+const G='#059669';
 const fmt1=n=>Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:1,maximumFractionDigits:1});
 export default function ReorderPointWidget(){
   const{products,calcReorderPoints}=useApp();

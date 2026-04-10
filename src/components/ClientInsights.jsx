@@ -1,6 +1,6 @@
 import React from 'react';
 
-const G = '#1a8a3c';
+const G = '#059669';
 
 export default function ClientInsights({ cliente, metrics, ventas, products }) {
   if (!metrics || metrics.ventasCount === 0) return null;

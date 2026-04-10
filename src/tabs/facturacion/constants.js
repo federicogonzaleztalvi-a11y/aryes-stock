@@ -2,7 +2,7 @@
 // Used by: FacturacionTab, ItemSearchRow, ItemsTable, ModalFactura, components.jsx
 
 // ─── Tokens ───────────────────────────────────────────────────────────────
-export const G  = '#1a8a3c';
+export const G  = '#059669';
 export const F  = {
   sans:  "'DM Sans', system-ui, sans-serif",
   serif: "'Playfair Display', Georgia, serif",

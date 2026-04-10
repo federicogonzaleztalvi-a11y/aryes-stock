@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-var G = '#1a8a3c';
+var G = '#059669';
 var ACCEPTED = '.jpg,.jpeg,.png,.webp,.heic,.heif';
 var MAX_SIZE = 5 * 1024 * 1024; // 5MB
 var SB_URL = import.meta.env.VITE_SUPABASE_URL;

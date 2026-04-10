@@ -4,7 +4,7 @@ import { db } from '../lib/constants.js';
 
 function ConteoTab(){
   const { products: prods, setProducts: setProds, conteos, setConteos, setHasPendingSync, addMov } = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const [conteoActivo,setConteoActivo]=useState(null);
   const [itemIdx,setItemIdx]=useState(0);
   const [cantFisica,setCantFisica]=useState("");
@@ -139,7 +139,7 @@ function ConteoTab(){
           <input type="number" value={cantFisica} onChange={e=>setCantFisica(e.target.value)}
             onKeyDown={e=>e.key==="Enter"&&registrarItem()}
             autoFocus min="0" placeholder="0"
-            style={{fontSize:36,fontWeight:700,textAlign:"center",width:160,padding:"10px",border:"2px solid #1a8a3c",borderRadius:10,outline:"none",fontFamily:"inherit"}} />
+            style={{fontSize:36,fontWeight:700,textAlign:"center",width:160,padding:"10px",border:"2px solid #059669",borderRadius:10,outline:"none",fontFamily:"inherit"}} />
           <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:20}}>
             <button onClick={saltarItem} style={{padding:"10px 24px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Saltar</button>
             <button onClick={registrarItem} disabled={cantFisica===""} style={{padding:"10px 32px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:15}}>Confirmar ✓</button>
@@ -164,7 +164,7 @@ function ConteoTab(){
             <div style={{fontSize:28,fontWeight:800,color:G}}>{contados}</div></div>
           <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
             <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5}}>Con diferencia</div>
-            <div style={{fontSize:28,fontWeight:800,color:difs.length>0?"#ef4444":"#1a8a3c"}}>{difs.length}</div></div>
+            <div style={{fontSize:28,fontWeight:800,color:difs.length>0?"#ef4444":"#059669"}}>{difs.length}</div></div>
           <div style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",textAlign:"center"}}>
             <div style={{fontSize:11,color:"#888",textTransform:"uppercase",letterSpacing:.5}}>Sin contar</div>
             <div style={{fontSize:28,fontWeight:800,color:"#6b7280"}}>{conteoActivo.items.length-contados}</div></div>
@@ -177,7 +177,7 @@ function ConteoTab(){
               <tbody>{difs.map((it,i)=>(<tr key={it.id} style={{borderTop:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
                 <td style={{padding:"9px 14px",fontWeight:500}}>{it.nombre}</td>
                 <td style={{padding:"9px 14px",color:"#6b7280"}}>{it.stockSistema} {it.unidad}</td>
-                <td style={{padding:"9px 14px",fontWeight:700,color:"#1a8a3c"}}>{it.cantFisica} {it.unidad}</td>
+                <td style={{padding:"9px 14px",fontWeight:700,color:"#059669"}}>{it.cantFisica} {it.unidad}</td>
                 <td style={{padding:"9px 14px",fontWeight:700,color:it.diferencia>0?"#059669":"#dc2626"}}>{it.diferencia>0?"+":""}{it.diferencia}</td>
               </tr>))}</tbody>
             </table>
@@ -217,7 +217,7 @@ function ConteoTab(){
               ))}
             </div>
             {zonaFiltro!=="todas"&&zonas.find(z=>z.id===Number(zonaFiltro))?.categorias?.length>0&&(
-              <div style={{fontSize:11,color:"#1a8a3c",marginTop:6}}>
+              <div style={{fontSize:11,color:"#059669",marginTop:6}}>
                 Categorías: {zonas.find(z=>z.id===Number(zonaFiltro)).categorias.join(", ")}
               </div>
             )}

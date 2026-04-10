@@ -57,11 +57,11 @@ function ZonasDeposito({ orgId }) {
       <div style={{display:'grid',gap:8}}>
         {zonas.map(z => (
           <div key={z.id} style={{display:'flex',alignItems:'center',gap:12,background:'#f9f9f7',border:'1px solid #e5e5e0',borderRadius:8,padding:'12px 14px'}}>
-            <div style={{width:32,height:32,background:'#1a8a3c',color:'#fff',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0}}>{z.orden}</div>
+            <div style={{width:32,height:32,background:'#059669',color:'#fff',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0}}>{z.orden}</div>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:700,color:'#1a1a18'}}>{z.nombre}</div>
               {z.descripcion && <div style={{fontSize:11,color:'#9a9a98'}}>{z.descripcion}</div>}
-              {z.categorias?.length > 0 && <div style={{fontSize:11,color:'#1a8a3c',marginTop:2}}>{z.categorias.join(', ')}</div>}
+              {z.categorias?.length > 0 && <div style={{fontSize:11,color:'#059669',marginTop:2}}>{z.categorias.join(', ')}</div>}
             </div>
             <button onClick={()=>setEditZona({...z})} style={{background:'none',border:'1px solid #e5e5e0',borderRadius:6,padding:'4px 10px',fontSize:11,cursor:'pointer',color:'#4a4a48'}}>Editar</button>
             <button onClick={()=>eliminar(z.id)} style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:16,padding:'0 4px'}}>×</button>
@@ -99,7 +99,7 @@ function ZonasDeposito({ orgId }) {
           </div>
           <div style={{display:'flex',gap:8}}>
             <button onClick={guardar} disabled={saving}
-              style={{flex:1,background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,padding:'10px',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
+              style={{flex:1,background:'#059669',color:'#fff',border:'none',borderRadius:8,padding:'10px',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
               {saving?'Guardando...':'Guardar zona'}
             </button>
             <button onClick={()=>setEditZona(null)}
@@ -183,7 +183,7 @@ function DominioCNAMEPanel({ orgId }) {
         <button
           onClick={agregar}
           disabled={saving || !nuevo.trim()}
-          style={{background:"#1a8a3c",color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontSize:13,fontWeight:700,cursor:saving?"default":"pointer",opacity:saving?0.6:1}}>
+          style={{background:"#059669",color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontSize:13,fontWeight:700,cursor:saving?"default":"pointer",opacity:saving?0.6:1}}>
           {saving ? "Guardando..." : "Registrar"}
         </button>
       </div>
@@ -208,7 +208,7 @@ export default function ConfigInline({
   const [localBrand, setLocalBrand] = useState({
     name:       brandCfg.name       || '',
     logoUrl:    brandCfg.logoUrl    || '',
-    color:      brandCfg.color      || '#1a8a3c',
+    color:      brandCfg.color      || '#059669',
     ownerPhone: brandCfg.ownerPhone || '',
     rut:        brandCfg.rut        || '',
     direccion:  brandCfg.direccion  || '',
@@ -223,7 +223,7 @@ export default function ConfigInline({
     setLocalBrand({
       name:       brandCfg.name       || '',
       logoUrl:    brandCfg.logoUrl    || '',
-      color:      brandCfg.color      || '#1a8a3c',
+      color:      brandCfg.color      || '#059669',
       ownerPhone: brandCfg.ownerPhone || '',
       rut:        brandCfg.rut        || '',
       direccion:  brandCfg.direccion  || '',
@@ -324,16 +324,16 @@ export default function ConfigInline({
                   <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Color principal</label>
                   <div style={{display:'flex',gap:10,alignItems:'center'}}>
                     <input type='color'
-                      value={localBrand.color||'#1a8a3c'}
+                      value={localBrand.color||'#059669'}
                       onChange={e=>setLocalBrand(b=>({...b,color:e.target.value}))}
                       style={{width:48,height:36,padding:2,border:'1px solid #e2e2de',borderRadius:6,cursor:'pointer'}}
                     />
                     <input
-                      value={localBrand.color||'#1a8a3c'}
+                      value={localBrand.color||'#059669'}
                       onChange={e=>setLocalBrand(b=>({...b,color:e.target.value}))}
                       style={{...inp2,width:120}}
                     />
-                    <div style={{padding:'6px 14px',borderRadius:6,background:localBrand.color||'#1a8a3c',color:'#fff',fontSize:12,fontWeight:600}}>
+                    <div style={{padding:'6px 14px',borderRadius:6,background:localBrand.color||'#059669',color:'#fff',fontSize:12,fontWeight:600}}>
                       Vista previa
                     </div>
                   </div>
@@ -449,10 +449,10 @@ export default function ConfigInline({
                 );
               })()}
               <button onClick={saveBrand} disabled={brandSaving}
-                    style={{padding:'9px 24px',background:brandSaving?'#9ca3af':(localBrand.color||'#1a8a3c'),color:'#fff',border:'none',borderRadius:8,cursor:brandSaving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
+                    style={{padding:'9px 24px',background:brandSaving?'#9ca3af':(localBrand.color||'#059669'),color:'#fff',border:'none',borderRadius:8,cursor:brandSaving?'not-allowed':'pointer',fontWeight:600,fontSize:13}}>
                     {brandSaving?'Guardando…':'Guardar marca'}
                   </button>
-                  {brandSaved && <span style={{color:'#1a8a3c',fontSize:13,fontWeight:600}}>✓ Guardado</span>}
+                  {brandSaved && <span style={{color:'#059669',fontSize:13,fontWeight:600}}>✓ Guardado</span>}
                 </div>
               </div>
             </div>
@@ -523,7 +523,7 @@ export default function ConfigInline({
                   {id:'sicfe',name:'Sicfe',desc:'Más de 11.000 clientes en Uruguay. Integración vía API REST.',logo:'🔒'}
                 ].map(p=>(
                   <div key={p.id} style={{border:'1.5px solid #e2e2de',borderRadius:10,padding:'16px 18px',display:'flex',alignItems:'center',gap:14,cursor:'pointer',transition:'border-color .15s'}}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor='#1a8a3c'}
+                    onMouseEnter={e=>e.currentTarget.style.borderColor='#059669'}
                     onMouseLeave={e=>e.currentTarget.style.borderColor='#e2e2de'}>
                     <span style={{fontSize:28}}>{p.logo}</span>
                     <div style={{flex:1}}>
@@ -534,7 +534,7 @@ export default function ConfigInline({
                   </div>
                 ))}
                 <div style={{background:'#f9f9f7',borderRadius:8,padding:'12px 16px',fontFamily:'DM Sans,Inter,sans-serif',fontSize:12,color:'#6a6a68'}}>
-                  ¿Tenés contrato con otro proveedor habilitado por DGI? <span style={{color:'#1a8a3c',fontWeight:600,cursor:'pointer'}}>Contactanos →</span>
+                  ¿Tenés contrato con otro proveedor habilitado por DGI? <span style={{color:'#059669',fontWeight:600,cursor:'pointer'}}>Contactanos →</span>
                 </div>
               </div>
             </div>
@@ -564,7 +564,7 @@ export default function ConfigInline({
                       setBrandCfg(updated);
                       db.upsert('app_config', {key:'brandcfg',value:updated,org_id:getOrgId()}, 'key,org_id');
                     }} style={{opacity:0,width:0,height:0}} />
-                    <span style={{position:'absolute',inset:0,background:brandCfg?.portalCatalogo!==false?'#1a8a3c':'#ccc',borderRadius:12,transition:'.2s'}} />
+                    <span style={{position:'absolute',inset:0,background:brandCfg?.portalCatalogo!==false?'#059669':'#ccc',borderRadius:12,transition:'.2s'}} />
                     <span style={{position:'absolute',top:2,left:brandCfg?.portalCatalogo!==false?22:2,width:20,height:20,background:'#fff',borderRadius:10,transition:'.2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
                   </label>
                 </div>
@@ -581,7 +581,7 @@ export default function ConfigInline({
                       setBrandCfg(updated);
                       db.upsert('app_config', {key:'brandcfg',value:updated,org_id:getOrgId()}, 'key,org_id');
                     }} style={{opacity:0,width:0,height:0}} />
-                    <span style={{position:'absolute',inset:0,background:brandCfg?.portalPedidos!==false?'#1a8a3c':'#ccc',borderRadius:12,transition:'.2s'}} />
+                    <span style={{position:'absolute',inset:0,background:brandCfg?.portalPedidos!==false?'#059669':'#ccc',borderRadius:12,transition:'.2s'}} />
                     <span style={{position:'absolute',top:2,left:brandCfg?.portalPedidos!==false?22:2,width:20,height:20,background:'#fff',borderRadius:10,transition:'.2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
                   </label>
                 </div>
@@ -590,14 +590,14 @@ export default function ConfigInline({
                 <div style={{background:'#f7f6f3',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
                   <div style={{fontFamily:'Inter,sans-serif',fontSize:12,fontWeight:700,color:'#1a1a18',marginBottom:8}}>URL de tu portal</div>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                    <code style={{flex:1,fontFamily:'monospace',fontSize:12,color:'#1a8a3c',background:'#fff',padding:'8px 12px',borderRadius:6,border:'1px solid #e8e4de',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    <code style={{flex:1,fontFamily:'monospace',fontSize:12,color:'#059669',background:'#fff',padding:'8px 12px',borderRadius:6,border:'1px solid #e8e4de',overflow:'hidden',textOverflow:'ellipsis'}}>
                       {window.location.origin}/catalogo?org={brandCfg?.orgId||getOrgId()}
                     </code>
                     <button onClick={()=>{
                       const url=window.location.origin+'/catalogo?org='+(brandCfg?.orgId||getOrgId());
                       navigator.clipboard?.writeText(url);
                       alert('URL copiada al portapapeles');
-                    }} style={{padding:'8px 14px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                    }} style={{padding:'8px 14px',background:'#059669',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
                       Copiar
                     </button>
                   </div>
@@ -653,7 +653,7 @@ export default function ConfigInline({
                     btn.textContent='Error al exportar';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},3000);
                   }
                 }}
-                style={{padding:'10px 24px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:13,fontWeight:600,cursor:'pointer'}}
+                style={{padding:'10px 24px',background:'#059669',color:'#fff',border:'none',borderRadius:6,fontSize:13,fontWeight:600,cursor:'pointer'}}
               >Exportar todos mis datos</button>
               <p style={{fontSize:11,color:'#9a9a98',marginTop:12}}>El archivo incluye todos tus datos en formato CSV. Podés abrirlo en Excel, Google Sheets o cualquier herramienta de análisis.</p>
 

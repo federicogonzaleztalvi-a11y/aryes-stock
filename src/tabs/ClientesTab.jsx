@@ -71,7 +71,7 @@ function AddressesPanel({ clientId, orgId }) {
       {addresses.map(a => (
         <div key={a.id} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'8px 0',borderBottom:'1px solid #f0f0ec',fontSize:13}}>
           <div>
-            <span style={{fontSize:10,fontWeight:700,color:'#1a8a3c',textTransform:'uppercase',letterSpacing:'0.05em'}}>{a.label}</span>
+            <span style={{fontSize:10,fontWeight:700,color:'#059669',textTransform:'uppercase',letterSpacing:'0.05em'}}>{a.label}</span>
             <div style={{fontWeight:600,color:'#1a1a18',marginTop:2}}>{a.direccion}</div>
             {a.ciudad && <div style={{fontSize:12,color:'#9a9a98'}}>{a.ciudad}</div>}
             {a.referencia && <div style={{fontSize:11,color:'#bbb',fontStyle:'italic'}}>{a.referencia}</div>}
@@ -106,7 +106,7 @@ function AddressesPanel({ clientId, orgId }) {
               style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
           </div>
           <button onClick={agregar} disabled={saving||!form.direccion.trim()}
-            style={{background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,padding:'9px',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
+            style={{background:'#059669',color:'#fff',border:'none',borderRadius:6,padding:'9px',fontSize:13,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
             {saving ? 'Guardando...' : 'Guardar dirección'}
           </button>
         </div>
@@ -184,7 +184,7 @@ function PhonesPanel({ clientId, orgId }) {
           <option>Secundario</option><option>Compras</option><option>Dueño</option><option>Administración</option>
         </select>
         <button onClick={agregar} disabled={saving||nuevo.length<6}
-          style={{background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
+          style={{background:'#059669',color:'#fff',border:'none',borderRadius:6,padding:'7px 14px',fontSize:12,fontWeight:700,cursor:'pointer',opacity:saving?0.6:1}}>
           + Agregar
         </button>
       </div>
@@ -315,7 +315,7 @@ function ClientesTab(){
         (margenPct > 0 ? Math.min(margenPct, 40) / 40 * 20 : 10) +
         (Math.max(0, 20 - diasDesde / 3))
       ));
-      var color = score >= 70 ? '#1a8a3c' : score >= 40 ? '#d97706' : '#dc2626';
+      var color = score >= 70 ? '#059669' : score >= 40 ? '#d97706' : '#dc2626';
       var label = score >= 70 ? 'Premium' : score >= 40 ? 'Regular' : 'En riesgo';
       map[cli.id] = { score: score, label: label, color: color };
     });
@@ -752,11 +752,11 @@ function ClientesTab(){
       <div style={{marginTop:24,background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
         <button onClick={()=>setAgingOpen(o=>!o)}
           style={{width:'100%',display:'flex',alignItems:'center',gap:10,background:'none',border:'none',cursor:'pointer',padding:0,textAlign:'left'}}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a8a3c" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           <span style={{fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,color:'#1a1a18',flex:1}}>
             Aging de deuda
             {agingData.totalDeuda > 0 && <span style={{marginLeft:8,fontSize:12,color:'#dc2626',fontWeight:700}}>US$ {agingData.totalDeuda.toFixed(0)}</span>}
-            {agingData.totalDeuda === 0 && <span style={{marginLeft:8,fontSize:12,color:'#1a8a3c',fontWeight:500}}>Sin deuda</span>}
+            {agingData.totalDeuda === 0 && <span style={{marginLeft:8,fontSize:12,color:'#059669',fontWeight:500}}>Sin deuda</span>}
             {agingData.clientesConDeuda > 0 && <span style={{marginLeft:8,fontSize:11,color:'#9a9a98'}}>{agingData.clientesConDeuda} clientes</span>}
           </span>
           <span style={{fontSize:11,color:'#9ca3af'}}>{agingOpen?'▲':'▼'}</span>

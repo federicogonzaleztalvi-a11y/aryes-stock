@@ -139,13 +139,13 @@ export default function ResetPasswordPage() {
           )}
 
           {err && <p style={{ fontFamily: F, fontSize: 12, color: '#dc2626', textAlign: 'center', margin: 0 }}>{err}</p>}
-          {msg && <p style={{ fontFamily: F, fontSize: 12, color: '#1a8a3c', textAlign: 'center', margin: 0 }}>{msg}</p>}
+          {msg && <p style={{ fontFamily: F, fontSize: 12, color: '#059669', textAlign: 'center', margin: 0 }}>{msg}</p>}
 
           <button
             onClick={mode === 'request' ? handleRequestReset : handleUpdatePassword}
             disabled={loading}
             style={{
-              background: '#1a8a3c', color: '#fff', border: '1px solid #1a8a3c',
+              background: '#059669', color: '#fff', border: '1px solid #059669',
               fontFamily: F, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em',
               textTransform: 'uppercase', padding: '10px 22px', cursor: loading ? 'default' : 'pointer',
               width: '100%', opacity: loading ? 0.4 : 1, borderRadius: 4,
@@ -157,7 +157,7 @@ export default function ResetPasswordPage() {
           </button>
 
           <p style={{ fontFamily: F, fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
-            <a href="/app" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>← Volver al login</a>
+            <a href="/app" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>← Volver al login</a>
           </p>
         </div>
       </div>

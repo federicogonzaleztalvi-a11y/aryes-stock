@@ -7,7 +7,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 function LotesTab(){
   const { products: prods, lotes, setLotes, ventas } = useApp();
   const { isAdmin } = useRole();
-  const G="#1a8a3c";
+  const G="#059669";
   const { confirm, ConfirmDialog } = useConfirm();
   const emptyForm={productoId:'',productoNombre:'',lote:'',fechaVenc:'',cantidad:0,proveedor:'',notas:''};
   const [form,setForm]=useState(emptyForm);

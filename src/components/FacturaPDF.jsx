@@ -47,7 +47,7 @@ export default function FacturaPDF({ cfe, brandCfg, onClose }) {
     }, 500);
   };
 
-  const G = brandCfg?.color || '#1a8a3c';
+  const G = brandCfg?.color || '#059669';
   const items = cfe.items || [];
   const subtotal = items.reduce((s, it) => s + (it.cant * it.precio), 0);
   const descPct = cfe.descuento || 0;
@@ -58,7 +58,7 @@ export default function FacturaPDF({ cfe, brandCfg, onClose }) {
 
   // Determinar color y label por tipo de documento
   const tipoConfig = {
-    'e-Factura':   { label: 'e-Factura',    color: '#1a8a3c' },
+    'e-Factura':   { label: 'e-Factura',    color: '#059669' },
     'e-Ticket':    { label: 'e-Ticket',     color: '#3b82f6' },
     'e-N.Créd.':   { label: 'Nota de Crédito', color: '#d97706' },
     'e-N.Déb.':    { label: 'Nota de Débito',  color: '#dc2626' },

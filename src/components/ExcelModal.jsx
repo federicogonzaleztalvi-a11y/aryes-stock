@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { T, Modal, Btn } from '../lib/ui.jsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const F = { sans: "'DM Sans','Inter',system-ui,sans-serif" };
 
 // ── Parsear CSV/TSV texto plano ───────────────────────────────────────────────

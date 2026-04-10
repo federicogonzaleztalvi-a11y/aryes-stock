@@ -108,7 +108,7 @@ const MovementsTab=({products,setProducts,session})=>{
         ))}
       </div>
 
-      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#1a8a3c':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13,fontWeight:500}}>{msg}</div>}
+      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#059669':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13,fontWeight:500}}>{msg}</div>}
 
       {/* Register movement form */}
       {canEdit&&(

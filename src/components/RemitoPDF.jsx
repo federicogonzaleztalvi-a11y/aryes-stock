@@ -61,7 +61,7 @@ export default function RemitoPDF({ venta, brandCfg, onClose }) {
   const descuento = venta.descuento || 0;
   const descMonto = subtotal * (descuento / 100);
   const total    = venta.total || (subtotal - descMonto);
-  const G        = brandCfg?.color || '#1a8a3c';
+  const G        = brandCfg?.color || '#059669';
 
   return (
     <div style={{

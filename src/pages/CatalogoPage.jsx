@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { fmt } from '../lib/constants.js';
 
-const G    = '#1a8a3c';
+const G    = '#059669';
 const SANS = "'DM Sans','Inter',system-ui,sans-serif";
 const API  = import.meta.env.VITE_API_BASE || '';
 
@@ -258,7 +258,7 @@ function SolicitarAcceso({ ownerPhone, distribuidora, onEnviado }) {
     <div style={{ textAlign: 'center', padding: '24px 0' }}>
       <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#f0fdf4',
         display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a8a3c" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>¡Solicitud enviada!</div>
       <div style={{ fontSize: 13, color: '#9a9a92' }}>

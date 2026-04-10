@@ -3,7 +3,7 @@ import { fmt } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
-const G    = '#1a8a3c';
+const G    = '#059669';
 const RED  = '#dc2626';
 const AMB  = '#d97706';
 const F    = { sans:"'DM Sans','Inter',system-ui,sans-serif", serif:"'Playfair Display',Georgia,serif" };

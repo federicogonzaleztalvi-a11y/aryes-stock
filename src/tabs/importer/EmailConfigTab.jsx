@@ -118,7 +118,7 @@ const EmailConfigTab=({products,session})=>{
 
       {/* Setup guide */}
       <div style={{background:'#f0f7ec',border:'1px solid #b8d9a8',borderRadius:10,padding:'16px 20px',marginBottom:24}}>
-        <div style={{fontSize:13,fontWeight:700,color:'#1a8a3c',marginBottom:8}}>Cómo configurar (gratis con EmailJS):</div>
+        <div style={{fontSize:13,fontWeight:700,color:'#059669',marginBottom:8}}>Cómo configurar (gratis con EmailJS):</div>
         <ol style={{fontSize:12,color:'#5a7a4a',margin:0,paddingLeft:20,lineHeight:1.8}}>
           <li>Entrá a <strong>emailjs.com</strong> y creá una cuenta gratuita</li>
           <li>En "Email Services" conectá tu Gmail o email de la empresa</li>
@@ -127,7 +127,7 @@ const EmailConfigTab=({products,session})=>{
         </ol>
       </div>
 
-      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#1a8a3c':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
+      {msg&&<div style={{padding:'10px 14px',background:msg.includes('✓')?'#f0f7ec':'#fef2f2',color:msg.includes('✓')?'#059669':'#dc2626',borderRadius:8,marginBottom:16,fontSize:13}}>{msg}</div>}
 
       {canEdit?(
         <div style={{background:'#fff',border:'1px solid #e2e2de',borderRadius:12,padding:24}}>
@@ -145,7 +145,7 @@ const EmailConfigTab=({products,session})=>{
               </div>
             ))}
             <div style={{display:'flex',gap:10,marginTop:4}}>
-              <button onClick={save} style={{padding:'10px 24px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
+              <button onClick={save} style={{padding:'10px 24px',background:'#059669',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Guardar</button>
               <button onClick={test} disabled={testing} style={{padding:'10px 20px',background:'#f0f0ec',border:'none',borderRadius:8,fontSize:14,cursor:'pointer',fontFamily:'inherit',opacity:testing?.6:1}}>
                 {testing?'Enviando...':'Enviar email de prueba'}
               </button>

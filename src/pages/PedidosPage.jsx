@@ -16,7 +16,7 @@ const DEMO_DATASETS = {
 };
 
 
-const G    = '#1a8a3c';
+const G    = '#059669';
 const SANS = "'DM Sans','Inter',system-ui,sans-serif";
 const API  = import.meta.env.VITE_API_BASE || '';
 // Detectar org desde hostname (CNAME por cliente) o query param
@@ -409,11 +409,11 @@ function HistorialPedidos({ session, onReordenar }) {
 
   const EST = {
     pendiente:  { label: 'Pendiente',  color: '#d97706', bg: '#fffbeb' },
-    importada:  { label: 'Confirmado', color: '#1a8a3c', bg: '#f0fdf4' },
-    confirmada: { label: 'Confirmado', color: '#1a8a3c', bg: '#f0fdf4' },
+    importada:  { label: 'Confirmado', color: '#059669', bg: '#f0fdf4' },
+    confirmada: { label: 'Confirmado', color: '#059669', bg: '#f0fdf4' },
     preparada:  { label: 'Preparando', color: '#7c3aed', bg: '#f5f3ff' },
     en_ruta:    { label: 'En camino',  color: '#f97316', bg: '#fff7ed' },
-    entregada:  { label: 'Entregado',  color: '#1a8a3c', bg: '#f0fdf4' },
+    entregada:  { label: 'Entregado',  color: '#059669', bg: '#f0fdf4' },
     cancelada:  { label: 'Cancelado',  color: '#ef4444', bg: '#fef2f2' },
   };
 
@@ -970,7 +970,7 @@ export default function PedidosPage() {
             </div>
           ) : <div style={{ flex: 1 }} />}
           {lastOrder && (
-              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: 13, color: '#1a8a3c', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
+              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: 13, color: '#059669', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
                 Repetir pedido anterior
               </button>
             )}

@@ -15,7 +15,7 @@ import { useState, useMemo } from 'react';
 import { fmt } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 
 const fmtDate = d => {
   if (!d) return '—';

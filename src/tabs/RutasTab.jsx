@@ -12,7 +12,7 @@ import { nearestNeighborTSP } from './rutas/utils.js';
 function RutasTab(){
   const { clientes, setClientes, rutas, setRutas, setHasPendingSync, cfes, cobros, setCobros } = useApp();
   const { isAdmin } = useRole();
-  const G="#1a8a3c";
+  const G="#059669";
   const { confirm, ConfirmDialog } = useConfirm();
 
   // ── ETA: posiciones en tiempo real desde aryes_tracking ──────────────────
@@ -982,7 +982,7 @@ function RutasTab(){
             </button>
             {ruta.entregas.filter(e=>e.estado!=="entregado").length>0&&(
               <button onClick={abrirRutaCompleta}
-                style={{padding:"7px 14px",background:"#1a8a3c",color:"#fff",border:"none",
+                style={{padding:"7px 14px",background:"#059669",color:"#fff",border:"none",
                         borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,
                         display:"flex",alignItems:"center",gap:4}}>
                 Navegar ruta completa
@@ -1139,7 +1139,7 @@ function RutasTab(){
                 onDrop={ev => { ev.preventDefault(); if (dragIdx !== null) { reordenarEntregas(dragIdx, idx); } setDragIdx(null); setDragOver(null); }}
                 style={{
                   background:isEntregado?"#f0fdf4":isNoEnt?"#fef2f2":"#fff",
-                  border:"2px solid "+(isOver?"#1a8a3c":isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),
+                  border:"2px solid "+(isOver?"#059669":isEntregado?"#bbf7d0":isNoEnt?"#fecaca":"#e5e7eb"),
                   borderRadius:10, padding:"12px 16px",
                   opacity: isDragging ? 0.4 : 1,
                   transition: "border-color .15s, opacity .15s",

@@ -1,6 +1,6 @@
 import React from 'react';
 
-var G = '#1a8a3c';
+var G = '#059669';
 
 export default function RecommendedProducts({ recommended, onAdd, onRemove, carrito }) {
   if (!recommended || recommended.length === 0) return null;

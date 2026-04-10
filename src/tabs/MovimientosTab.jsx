@@ -5,7 +5,7 @@ import { downloadCSV } from '../lib/ui.jsx';
 
 function MovimientosTab(){
   const { products: prods, setProducts: setProds, movements: movs, setMovements: setMovs } = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const TIPOS=["Entrada","Salida","Ajuste","Devolucion","Transferencia"];
   const TCOLOR={"Entrada":"#10b981","Salida":"#ef4444","Ajuste":"#f59e0b","Devolucion":"#3b82f6","Transferencia":"#8b5cf6"};
   const emptyForm={tipo:"Entrada",productoId:'',cantidad:1,referencia:'',notas:'',fecha:new Date().toISOString().split('T')[0]};

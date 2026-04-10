@@ -3,7 +3,7 @@ import { SB_URL } from '../../lib/constants.js';
 import { SB_KEY } from './catalog-data.js';
 
 const LoginScreen=({onLogin})=>{
-  const G="#1a8a3c";
+  const G="#059669";
   const [em,setEm]=useState(""); const [pw,setPw]=useState(""); const [err,setErr]=useState(""); const [busy,setBusy]=useState(false);
   const submit=async()=>{
     if(!em||!pw){setErr("Ingresa email y contrasena");return;}

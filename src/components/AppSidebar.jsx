@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext.tsx';
 const S = {
   bg:        '#ffffff',
   border:    '#f0ede8',
-  green:     '#1a8a3c',
+  green:     '#059669',
   greenBg:   '#f0fdf4',
   greenSoft: '#e8f5e0',
   danger:    '#dc2626',

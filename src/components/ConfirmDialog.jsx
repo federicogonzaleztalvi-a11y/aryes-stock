@@ -17,7 +17,7 @@ const F = { sans: "'DM Sans','Inter',system-ui,sans-serif" };
 const VARIANTS = {
   danger:  { icon: '🗑', confirmBg: '#dc2626', confirmColor: '#fff', confirmLabel: 'Eliminar' },
   warning: { icon: '⚠️', confirmBg: '#d97706', confirmColor: '#fff', confirmLabel: 'Continuar' },
-  info:    { icon: 'ℹ️', confirmBg: '#1a8a3c', confirmColor: '#fff', confirmLabel: 'Confirmar' },
+  info:    { icon: 'ℹ️', confirmBg: '#059669', confirmColor: '#fff', confirmLabel: 'Confirmar' },
 };
 
 function Dialog({ open, title, description, variant = 'danger', confirmLabel, cancelLabel = 'Cancelar', onConfirm, onCancel }) {

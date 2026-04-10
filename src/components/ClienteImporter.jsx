@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { db, getOrgId } from '../lib/constants.js';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 
 function parseCSV(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);

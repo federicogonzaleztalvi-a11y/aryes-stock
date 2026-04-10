@@ -239,7 +239,7 @@ function NotificationBell({ critN = 0, orders = [], setTab, cfes = [] }) {
                         style={{
                           background: 'none', border: 'none', padding: 0,
                           cursor: 'pointer', fontFamily: F.sans,
-                          fontSize: 11, fontWeight: 700, color: '#1a8a3c',
+                          fontSize: 11, fontWeight: 700, color: '#059669',
                         }}
                       >
                         {alert.action.label} →

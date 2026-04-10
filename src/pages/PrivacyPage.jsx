@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 
 const F = "'Inter','SF Pro Display',-apple-system,sans-serif";
-const G = '#1a8a3c';
+const G = '#059669';
 
 export default function PrivacyPage() {
   useEffect(() => { window.scrollTo(0, 0); }, []);

@@ -18,7 +18,7 @@ export const T = {
   textMd:   "#3a3a38",
   textSm:   "#6a6a68",
   textXs:   "#9a9a98",
-  green:    "#1a8a3c",
+  green:    "#059669",
   greenBg:  "#f0f7ec",
   greenBd:  "#b8d9a8",
   amber:    "#d97706",
@@ -210,7 +210,7 @@ export function ComingSoon({ title, description, icon = '🔧' }) {
       <h2 style={{ fontFamily: 'Playfair Display,serif', fontSize: 28, color: '#1a1a18', margin: '0 0 12px' }}>
         {title}
       </h2>
-      <div style={{ display: 'inline-block', background: '#f0f9f0', color: '#1a8a3c', fontSize: 11, fontWeight: 700, letterSpacing: '0.01em', textTransform: 'none', padding: '4px 12px', borderRadius: 20, marginBottom: 20 }}>
+      <div style={{ display: 'inline-block', background: '#f0f9f0', color: '#059669', fontSize: 11, fontWeight: 700, letterSpacing: '0.01em', textTransform: 'none', padding: '4px 12px', borderRadius: 20, marginBottom: 20 }}>
         Próximamente
       </div>
       {description && (

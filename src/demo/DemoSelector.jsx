@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DEMO_INDUSTRIES } from './datasets.js';
 
-const COLORS = { horeca:'#1a8a3c', bebidas:'#185FA5', limpieza:'#0F6E56', construccion:'#BA7517' };
+const COLORS = { horeca:'#059669', bebidas:'#185FA5', limpieza:'#0F6E56', construccion:'#BA7517' };
 const EMPRESA = {
   horeca: { name:'Distribuciones Del Sur S.R.L.', skus:'250 productos', clientes:'45 clientes', examples:'Quesos, fiambres, aceites, harinas, lácteos, conservas' },
   bebidas: { name:'Bebidas Express S.A.', skus:'180 productos', clientes:'60 clientes', examples:'Cervezas, refrescos, aguas, jugos, vinos, espirituosas' },

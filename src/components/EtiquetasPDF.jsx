@@ -52,7 +52,7 @@ function fmtFecha(iso) {
 }
 
 function EtiquetaProducto({ producto, brandCfg }) {
-  const G = brandCfg?.color || '#1a8a3c';
+  const G = brandCfg?.color || '#059669';
   const qrValue = `ARYES-SKU:${producto.uuid || producto.id}|${producto.name}`;
   return (
     <div style={{ width: 320, border: `2px solid ${G}`, borderRadius: 8, fontFamily: 'Arial, sans-serif', overflow: 'hidden', pageBreakInside: 'avoid' }}>
@@ -85,7 +85,7 @@ function EtiquetaProducto({ producto, brandCfg }) {
 }
 
 function EtiquetaPallet({ recepcion, brandCfg }) {
-  const G = brandCfg?.color || '#1a8a3c';
+  const G = brandCfg?.color || '#059669';
   const qrValue = `ARYES-PALLET:${recepcion.id || Date.now()}|LOTE:${recepcion.lote || 'SL'}|VENC:${recepcion.vencimiento || 'SV'}`;
   const filas = [
     ['Proveedor', recepcion.proveedorNombre || recepcion.proveedor || '—'],
@@ -131,7 +131,7 @@ function EtiquetaPallet({ recepcion, brandCfg }) {
 }
 
 function EtiquetaDespacho({ venta, brandCfg }) {
-  const G = brandCfg?.color || '#1a8a3c';
+  const G = brandCfg?.color || '#059669';
   const trackingUrl = `${window.location.origin}/tracking?ruta=${venta.rutaId || ''}&cliente=${venta.clienteId || ''}&org=${venta.org_id || 'aryes'}`;
   const items = venta.items || [];
   return (
@@ -184,7 +184,7 @@ function EtiquetaDespacho({ venta, brandCfg }) {
 export default function EtiquetasPDF({ tipo, data, brandCfg, onClose, cantidad = 1 }) {
   const printRef = useRef(null);
   useEtiquetaPrintStyles();
-  const G = brandCfg?.color || '#1a8a3c';
+  const G = brandCfg?.color || '#059669';
 
   const handlePrint = () => {
     const el = printRef.current;

@@ -3,7 +3,7 @@
 // Typography: DM Serif Display (titles) + DM Sans (body)
 import { useState, useEffect, useRef } from 'react';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const F = {
   serif: "'DM Serif Display','Playfair Display',Georgia,serif",
   sans: "'DM Sans','Inter',system-ui,sans-serif",

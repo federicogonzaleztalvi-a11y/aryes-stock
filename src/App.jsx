@@ -62,7 +62,7 @@ input,select,textarea,button{font-family:'Inter',system-ui,sans-serif;}
 input:focus,select:focus,textarea:focus{outline:none;}
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-thumb{background:#d0d0cc;border-radius:4px;}
-input[type=range]{accent-color:#1a8a3c;}
+input[type=range]{accent-color:#059669;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 @keyframes pulseDot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.85);}}
 @keyframes smartToastIn{from{opacity:0;transform:translateX(12px);}to{opacity:1;transform:translateX(0);}}
@@ -92,7 +92,7 @@ const T = {
   textXs:   "#9a9a98",
 
   // Brand → primary green
-  green:    "#1a8a3c",
+  green:    "#059669",
   greenBg:  "#f0f7ec",
   greenBd:  "#b8d9a8",
 
@@ -690,7 +690,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
                     </div>
                     <div style={{textAlign:'right'}}>
                       <div style={{fontFamily:T.sans,fontSize:12,fontWeight:700,
-                        color:p.diasRestantes===null||p.diasRestantes<7?'#dc2626':p.diasRestantes<14?'#d97706':'#1a8a3c'}}>
+                        color:p.diasRestantes===null||p.diasRestantes<7?'#dc2626':p.diasRestantes<14?'#d97706':'#059669'}}>
                         {p.diasRestantes === null ? 'Sin stock' : `${p.diasRestantes}d restantes`}
                       </div>
                       <div style={{fontFamily:T.sans,fontSize:10,color:T.textXs}}>
@@ -920,7 +920,7 @@ Generado desde Aryes Stock.`;
     const id = isEdit ? editSup.id : crypto.randomUUID();
     const now = new Date().toISOString();
     const supplierData = {
-      id, name:f.name||f.nombre||'', flag:f.flag||'', color:f.color||'#1a8a3c',
+      id, name:f.name||f.nombre||'', flag:f.flag||'', color:f.color||'#059669',
       times:f.times||{preparation:2,customs:1,freight:4,warehouse:1},
       company:f.company||'', contact:f.contact||'', email:f.email||'',
       phone:f.phone||'', country:f.country||'', city:f.city||'',
@@ -970,7 +970,7 @@ Generado desde Aryes Stock.`;
         <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
           <style>{CSS}</style>
           <img src="/aryes-logo.png" alt="Aryes" style={{height:52,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
-          <div style={{width:32,height:32,border:"3px solid #1a8a3c",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+          <div style={{width:32,height:32,border:"3px solid #059669",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
           <p style={{fontFamily:"Inter,sans-serif",fontSize:14,color:"#6a6a68",fontWeight:500}}>Conectando...</p>
           <p style={{fontFamily:"Inter,sans-serif",fontSize:12,color:"#aaa",marginTop:4}}>Si tardás más de 5 seg, recargá la página</p>
           <style>{"@keyframes spin{to{transform:rotate(360deg);}}"}</style>
@@ -1001,7 +1001,7 @@ Generado desde Aryes Stock.`;
           <QuickStats critN={critN} orders={orders} cfes={cfes} />
           <NotificationBell critN={critN} orders={orders} setTab={setTab} cfes={cfes} />
           {!demoMode&&<TrialBanner session={session} />}
-          {demoMode&&<button onClick={()=>window.location.href='/register'} style={{padding:'6px 16px',background:'#1a8a3c',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Empezar gratis</button>}
+          {demoMode&&<button onClick={()=>window.location.href='/register'} style={{padding:'6px 16px',background:'#059669',color:'#fff',border:'none',borderRadius:6,fontSize:12,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>Empezar gratis</button>}
 
           {/* User pill with dropdown */}
           <UserMenuDropdown session={session} userMenuOpen={userMenuOpen} setUserMenuOpen={setUserMenuOpen} canTab={canTab} setTab={setTab} handleLogout={handleLogout} onResumenWA={generarResumenWA} />
@@ -1257,7 +1257,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
     }finally{setBusy(false);}
   };
 
-  const G='#1a8a3c';
+  const G='#059669';
   const S={
     btn:{position:'fixed',bottom:28,right:28,zIndex:9999,width:44,height:44,borderRadius:22,background:open?'#ffffff':G,border:open?'1.5px solid #e8e4de':'none',cursor:'pointer',boxShadow:open?'0 2px 8px rgba(0,0,0,.08)':'0 4px 16px rgba(26,138,60,.35)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s cubic-bezier(.34,1.56,.64,1)',flexShrink:0},
     panel:{position:'fixed',bottom:84,right:28,zIndex:9998,width:360,height:500,background:'#ffffff',borderRadius:20,boxShadow:'0 12px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #ede9e3'},

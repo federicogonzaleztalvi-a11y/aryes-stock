@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fmt } from '../lib/constants.js';
 
-const G = '#1a8a3c';
+const G = '#059669';
 
 function fmtTs(ts) {
   if (!ts) return '';

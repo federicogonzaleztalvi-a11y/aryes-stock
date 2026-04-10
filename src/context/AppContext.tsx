@@ -96,8 +96,8 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   const [syncToast,      setSyncToast]      = useState<SyncToast | null>(null);
   const [emailCfg,       setEmailCfg]       = useState<EmailCfg>({ serviceId:'', templateId:'', publicKey:'', toEmail:'', enabled:false });
   const [brandCfg,       setBrandCfg]       = useState(() => {
-    try { return JSON.parse(localStorage.getItem('aryes-brand') || 'null') || { name:'', logoUrl:'', color:'#1a8a3c' }; }
-    catch { return { name:'', logoUrl:'', color:'#1a8a3c' }; }
+    try { return JSON.parse(localStorage.getItem('aryes-brand') || 'null') || { name:'', logoUrl:'', color:'#059669' }; }
+    catch { return { name:'', logoUrl:'', color:'#059669' }; }
   });
 
   // ── Persist to localStorage on every change ────────────────────────────────
@@ -120,7 +120,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
       if (demoState.cobros) setCobros(mapDemoCobros(demoState.cobros));
       if (demoState.movements) setMovements(mapDemoMovements(demoState.movements) as unknown as Movement[]);
       if (demoState.rutas) setRutas(mapDemoRutas(demoState.rutas) as unknown as Ruta[]);
-      setBrandCfg({ name:demoState.org.name, logoUrl:'', color:'#1a8a3c', ownerPhone:demoState.org.ownerPhone||'', horario:demoState.org.horario||'', address:demoState.org.address||'', rut:demoState.org.rut||'' });
+      setBrandCfg({ name:demoState.org.name, logoUrl:'', color:'#059669', ownerPhone:demoState.org.ownerPhone||'', horario:demoState.org.horario||'', address:demoState.org.address||'', rut:demoState.org.rut||'' });
       setDbReady(true); setSyncStatus('demo');
       console.debug('[AppContext] Demo data loaded:', demoState.industry, dp.length, 'products');
     } catch (err) {
@@ -410,7 +410,7 @@ const describeAction = (action: string, detail: string): string => {
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', `org_id=eq.${getOrgId()}&order=name.asc`);
         if (sups?.length > 0) {
-          const mapped = sups.map(s => ({ id:s.id, name:s.name, flag:s.flag||'', color:s.color||'#1a8a3c', times:s.times||{preparation:2,customs:1,freight:4,warehouse:1}, company:s.company||'', contact:s.contact||'', email:s.email||'', phone:s.phone||'', country:s.country||'', city:s.city||'', currency:s.currency||'USD', paymentTerms:s.payment_terms||'30', paymentMethod:s.payment_method||'', minOrder:s.min_order||'', discount:s.discount||'0', rating:s.rating||3, active:s.active!==false, notes:s.notes||'' }));
+          const mapped = sups.map(s => ({ id:s.id, name:s.name, flag:s.flag||'', color:s.color||'#059669', times:s.times||{preparation:2,customs:1,freight:4,warehouse:1}, company:s.company||'', contact:s.contact||'', email:s.email||'', phone:s.phone||'', country:s.country||'', city:s.city||'', currency:s.currency||'USD', paymentTerms:s.payment_terms||'30', paymentMethod:s.payment_method||'', minOrder:s.min_order||'', discount:s.discount||'0', rating:s.rating||3, active:s.active!==false, notes:s.notes||'' }));
           setSuppliers(mapped);
         }
         const usrs = await db.get<Record<string, any>[]>('users', `org_id=eq.${getOrgId()}&order=id.asc`);

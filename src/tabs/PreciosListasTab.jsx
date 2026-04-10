@@ -4,7 +4,7 @@ import { fmt } from '../lib/constants.js';
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SKEY   = import.meta.env.VITE_SUPABASE_ANON_KEY;
 

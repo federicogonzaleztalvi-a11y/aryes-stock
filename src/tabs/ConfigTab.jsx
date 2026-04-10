@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { LS, db } from '../lib/constants.js';
 
 function ConfigTab(){
-  const G="#1a8a3c";
+  const G="#059669";
   const [emailCfg,setEmailCfg]=useState({serviceId:'',templateId:'',publicKey:'',toEmail:'',enabled:false});
     useEffect(()=>{
     (async()=>{
@@ -83,7 +83,7 @@ function ConfigTab(){
         <h3 style={{fontSize:15,fontWeight:700,color:'#1a1a1a',margin:'0 0 12px'}}>🔒 Usuarios del sistema</h3>
         <div style={{display:'grid',gap:8}}>
           {[
-            {rol:'admin',user:'admin',pass:'',color:'#1a8a3c'},
+            {rol:'admin',user:'admin',pass:'',color:'#059669'},
             {rol:'operador',user:'operador',pass:'stock123',color:'#3b82f6'},
             {rol:'vendedor',user:'vendedor',pass:'ventas123',color:'#8b5cf6'},
           ].map(u=>(

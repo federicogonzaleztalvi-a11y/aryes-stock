@@ -11,7 +11,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp }  from '../context/AppContext.tsx';
 import { SKEY, SB_URL, getOrgId } from '../lib/constants.js';
 
-const G = '#1a8a3c';
+const G = '#059669';
 const POLL_MS = 15_000;   // admin map refresh
 
 // ── Leaflet loader (CDN, no npm) ─────────────────────────────────────────────
@@ -32,7 +32,7 @@ function loadLeaflet() {
 }
 
 // ── Colors per driver ────────────────────────────────────────────────────────
-const COLORS = ['#1a8a3c','#2563eb','#d97706','#dc2626','#7c3aed','#059669'];
+const COLORS = ['#059669','#2563eb','#d97706','#dc2626','#7c3aed','#059669'];
 function colorFor(idx) { return COLORS[idx % COLORS.length]; }
 
 // ── Map component (rendered once, updated imperatively) ──────────────────────

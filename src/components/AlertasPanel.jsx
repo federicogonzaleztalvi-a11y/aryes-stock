@@ -56,8 +56,8 @@ function AlertRow({ icon, title, subtitle, accent, action, actionLabel, secondAc
         )}
         {secondAction && (
           <button onClick={secondAction} style={{
-            padding: '4px 12px', background: '#1a8a3c18', color: '#1a8a3c',
-            border: '1px solid #1a8a3c44', borderRadius: 6,
+            padding: '4px 12px', background: '#05966918', color: '#059669',
+            border: '1px solid #05966944', borderRadius: 6,
             fontFamily: F.sans, fontSize: 11, fontWeight: 700, cursor: 'pointer',
             whiteSpace: 'nowrap',
           }}>{secondActionLabel}</button>

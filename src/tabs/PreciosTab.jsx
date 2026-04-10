@@ -13,7 +13,7 @@ const DEFAULT_LISTAS = [
   { id: 'C', nombre: 'Lista C - Minorista', descuento: 0,  color: '#f59e0b', activa: true },
 ];
 
-const G   = '#1a8a3c';
+const G   = '#059669';
 const inp = { padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' };
 
 // ── Vista: Precios base (precio_venta por producto) ────────────────────────

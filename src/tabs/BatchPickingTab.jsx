@@ -4,7 +4,7 @@ import { LS, fmt} from '../lib/constants.js';
 
 function BatchPickingTab(){
   const { products: prods, setProducts: setProds } = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const { ventas } = useApp();
   const [selIds,setSelIds]=useState([]);
   const [picking,setPicking]=useState(null);
@@ -114,13 +114,13 @@ function BatchPickingTab(){
               <div style={{fontSize:11,color:"#888"}}>{it.pedidos.map(p=>p.nroVenta+": "+p.cantidad).join(" · ")}</div>
             </div>
             <div style={{fontWeight:800,fontSize:16,color:G}}>{it.cantTotal} {it.unidad}</div>
-            <div style={{width:28,height:28,borderRadius:"50%",background:recolectados[it.key]?"#1a8a3c":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:16,flexShrink:0}}>{recolectados[it.key]?"✓":""}</div>
+            <div style={{width:28,height:28,borderRadius:"50%",background:recolectados[it.key]?"#059669":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:16,flexShrink:0}}>{recolectados[it.key]?"✓":""}</div>
           </div>
         ))}
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
         <button onClick={()=>setPicking(null)} style={{padding:"10px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Cancelar</button>
-        <button onClick={confirmarBatch} disabled={!todoRecolectado} style={{padding:"10px 28px",background:todoRecolectado?"#1a8a3c":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todoRecolectado?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar y descontar stock</button>
+        <button onClick={confirmarBatch} disabled={!todoRecolectado} style={{padding:"10px 28px",background:todoRecolectado?"#059669":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todoRecolectado?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar y descontar stock</button>
       </div>
     </section>
   );
@@ -132,14 +132,14 @@ function BatchPickingTab(){
       {msg&&<div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:8,padding:"10px 16px",marginBottom:16,color:G,fontSize:13,fontWeight:600}}>{msg}</div>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
         <div style={{fontSize:14,fontWeight:700,color:"#374151"}}>{selIds.length>0?selIds.length+" ordenes seleccionadas":"Selecciona ordenes para hacer batch"}</div>
-        <button onClick={generarBatch} disabled={selIds.length===0} style={{padding:"8px 20px",background:selIds.length>0?"#1a8a3c":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:selIds.length>0?"pointer":"not-allowed",fontWeight:700,fontSize:13}}>Generar batch →</button>
+        <button onClick={generarBatch} disabled={selIds.length===0} style={{padding:"8px 20px",background:selIds.length>0?"#059669":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:selIds.length>0?"pointer":"not-allowed",fontWeight:700,fontSize:13}}>Generar batch →</button>
       </div>
       {pendientes.length===0?(<div style={{background:"#f9fafb",borderRadius:10,padding:24,textAlign:"center",color:"#888",fontSize:13}}>No hay órdenes pendientes de picking</div>):(
         <div style={{display:"grid",gap:8}}>
           {pendientes.map(v=>(
-            <div key={v.id} onClick={()=>toggleSel(v.id)} style={{background:selIds.includes(v.id)?"#f0fdf4":"#fff",border:"2px solid "+(selIds.includes(v.id)?"#1a8a3c":"#e5e7eb"),borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .15s"}}>
-              <div style={{width:22,height:22,borderRadius:4,background:selIds.includes(v.id)?"#1a8a3c":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,flexShrink:0}}>{selIds.includes(v.id)?"✓":""}</div>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:"#1a8a3c"}}>{v.nroVenta}</div><div style={{fontSize:12,color:"#666"}}>{v.clienteNombre} · {v.items?.length||0} productos</div></div>
+            <div key={v.id} onClick={()=>toggleSel(v.id)} style={{background:selIds.includes(v.id)?"#f0fdf4":"#fff",border:"2px solid "+(selIds.includes(v.id)?"#059669":"#e5e7eb"),borderRadius:10,padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all .15s"}}>
+              <div style={{width:22,height:22,borderRadius:4,background:selIds.includes(v.id)?"#059669":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,flexShrink:0}}>{selIds.includes(v.id)?"✓":""}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:"#059669"}}>{v.nroVenta}</div><div style={{fontSize:12,color:"#666"}}>{v.clienteNombre} · {v.items?.length||0} productos</div></div>
               <div style={{fontWeight:700,fontSize:14}}>${fmt.int(v.total||0)}</div>
               <span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20,textTransform:"capitalize"}}>{v.estado}</span>
             </div>

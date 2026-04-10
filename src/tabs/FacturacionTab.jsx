@@ -345,7 +345,7 @@ function FacturacionTab({ products=[] }) {
                       <Pill status={c.status} />
                       <button onClick={()=>setPdfCfe(c)} title="Ver PDF" style={{
                         background:'none', border:'none', cursor:'pointer',
-                        color:'#1a8a3c', fontSize:13, padding:0, fontWeight:600 }}>🖨️</button>
+                        color:'#059669', fontSize:13, padding:0, fontWeight:600 }}>🖨️</button>
                       {c.status!=='anulada'&&c.status!=='cobrada' && (
                         <button onClick={()=>anular(c.id)} title="Anular" style={{
                           background:'none', border:'none', cursor:'pointer',

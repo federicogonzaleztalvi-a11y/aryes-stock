@@ -127,15 +127,15 @@ function LoginScreen({ onLogin, onExplore }) {
           </div>
           {err && <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{err}</p>}
           <button onClick={handle} disabled={loading}
-            style={{ background: '#1a8a3c', color: '#fff', border: '1px solid #1a8a3c', fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.4 : 1, borderRadius: 4 }}>
+            style={{ background: '#059669', color: '#fff', border: '1px solid #059669', fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '10px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.4 : 1, borderRadius: 4 }}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
-            <a href="/reset-password" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
+            <a href="/reset-password" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
           </p>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
             ¿No tenés cuenta?{' '}
-            <a href="/register" style={{ color: '#1a8a3c', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
+            <a href="/register" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
           </p>
           {onExplore && (
             <button onClick={onExplore}
@@ -168,7 +168,7 @@ class DemoErrorBoundary extends React.Component {
         React.createElement('pre', { style: { whiteSpace: 'pre-wrap', fontSize: 12, background: '#f5f5f5', padding: 16, borderRadius: 8, maxHeight: 400, overflow: 'auto' } },
           this.state.error?.message + '\n\n' + (this.state.error?.stack || '') + '\n\nComponent:\n' + (this.state.info?.componentStack || '')
         ),
-        React.createElement('button', { onClick: () => { this.setState({ error: null, info: null }); window.location.href = '/'; }, style: { marginTop: 16, padding: '8px 20px', background: '#1a8a3c', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' } }, 'Volver al inicio')
+        React.createElement('button', { onClick: () => { this.setState({ error: null, info: null }); window.location.href = '/'; }, style: { marginTop: 16, padding: '8px 20px', background: '#059669', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' } }, 'Volver al inicio')
       );
     }
     return this.props.children;
@@ -277,7 +277,7 @@ function Root() {
 
   if (effectiveSession && orgStatus === null && !demoMode) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid #1a8a3c', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ width: 32, height: 32, border: '3px solid #059669', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
   );

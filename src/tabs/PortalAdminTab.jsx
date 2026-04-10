@@ -5,7 +5,7 @@ import { db, SB_URL, getAuthHeaders } from '../lib/constants.js';
 import { T, Btn } from '../lib/ui.jsx';
 import { useApp } from '../context/AppContext.tsx';
 
-const G = '#1a8a3c';
+const G = '#059669';
 
 function fmtFecha(iso) {
   if (!iso) return '—';

@@ -18,7 +18,7 @@ async function callRpc(fnName, params = {}) {
 
 function RecepcionTab(){
   const { products: prods, setProducts: setProds, orders: pedidos, addMov, lotes, setLotes } = useApp();
-  const G="#1a8a3c";
+  const G="#059669";
   const KREC="aryes-recepciones";
   const [recepciones,setRecepciones]=useState([]);
   const [vista,setVista]=useState('lista');
@@ -278,7 +278,7 @@ function RecepcionTab(){
                     <input type="date" style={{...inp,width:120}} value={it.vencimiento} onChange={e=>updateItem(i,'vencimiento',e.target.value)} />
                   </td>
                   <td style={{padding:'8px 10px',width:100}}>
-                    <select value={it.calidad||'ok'} onChange={e=>updateItem(i,'calidad',e.target.value)} style={{padding:'6px 8px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:11,fontWeight:700,fontFamily:'inherit',color:it.calidad==='rechazado'?'#dc2626':it.calidad==='observado'?'#f59e0b':'#1a8a3c',background:it.calidad==='rechazado'?'#fef2f2':it.calidad==='observado'?'#fffbeb':'#f0fdf4'}}>
+                    <select value={it.calidad||'ok'} onChange={e=>updateItem(i,'calidad',e.target.value)} style={{padding:'6px 8px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:11,fontWeight:700,fontFamily:'inherit',color:it.calidad==='rechazado'?'#dc2626':it.calidad==='observado'?'#f59e0b':'#059669',background:it.calidad==='rechazado'?'#fef2f2':it.calidad==='observado'?'#fffbeb':'#f0fdf4'}}>
                       <option value="ok">OK</option>
                       <option value="observado">Observado</option>
                       <option value="rechazado">Rechazado</option>
