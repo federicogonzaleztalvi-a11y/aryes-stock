@@ -372,6 +372,8 @@ function ClientesTab(){
 
   const save=()=>{
     if(!form.nombre.trim()){setMsg('Nombre obligatorio');return;}
+    if(form.nombre.length>200){setMsg('Nombre demasiado largo (max 200 caracteres)');return;}
+    if(form.email&&!/^[^@]+@[^@]+\.[^@]+$/.test(form.email)){setMsg('Email inválido');return;}
     const isNew = !editId;
     const newId = isNew ? crypto.randomUUID() : editId;
     const record = isNew

@@ -164,7 +164,7 @@ function VentasTab(){
     }
     // →→ Price list resolution →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
     // Priority: 1) manual override 2) custom item price in list 3) list discount 4) precioVenta
-    let precio = prod.precioVenta || prod.precio || prod.price || 0;
+    let precio = Math.max(0, Number(prod.precioVenta || prod.precio || prod.price || 0));
     if (itemPrecio > 0) {
       precio = itemPrecio; // manual override always wins
     } else {
@@ -185,7 +185,7 @@ function VentasTab(){
     setForm(f=>({...f,items:[...f.items,{
       productoId:prod.id,
       nombre:prod.nombre||prod.name,
-      cantidad:Number(itemCant),
+      cantidad:Math.max(1, Math.round(Number(itemCant))),
       precioUnit:Number(precio),
       costoUnit:Number(prod.unitCost||0),
       unidad:prod.unit||prod.unidad||'u',
