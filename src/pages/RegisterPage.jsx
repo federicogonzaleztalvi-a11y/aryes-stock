@@ -90,7 +90,7 @@ export default function RegisterPage() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <img src="/pazque-logo.png" alt="Pazque" style={{ height: 36, objectFit: 'contain', marginBottom: 24 }} onError={e => e.target.style.display = 'none'} />
+          <img src="/pazque-icon.png" alt="Pazque" style={{ height: 48, objectFit: 'contain', marginBottom: 20 }} onError={e => e.target.style.display = 'none'} />
           <h1 style={{ fontFamily: F.sans, fontSize: 28, fontWeight: 700, color: '#1a1a18', marginBottom: 8, letterSpacing: -0.5 }}>
             Empezá gratis
           </h1>
