@@ -89,12 +89,12 @@ export default function RegisterPage() {
       <div style={{ width: '100%', maxWidth: 480 }}>
 
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img src="/pazque-logo.png" alt="Logo" style={{ height: 80, objectFit: 'contain', marginBottom: 16 }} onError={e => e.target.style.display = 'none'} />
-          <h1 style={{ fontFamily: F.sans, fontSize: 24, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <img src="/pazque-logo.png" alt="Pazque" style={{ height: 36, objectFit: 'contain', marginBottom: 24 }} onError={e => e.target.style.display = 'none'} />
+          <h1 style={{ fontFamily: F.sans, fontSize: 28, fontWeight: 700, color: '#1a1a18', marginBottom: 8, letterSpacing: -0.5 }}>
             Empezá gratis
           </h1>
-          <p style={{ fontFamily: F.sans, fontSize: 14, color: '#6a6a68' }}>
+          <p style={{ fontFamily: F.sans, fontSize: 15, color: '#6a6a68' }}>
             14 días de prueba. Sin tarjeta de crédito.
           </p>
         </div>
