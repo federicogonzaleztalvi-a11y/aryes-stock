@@ -55,7 +55,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
-        <img src="/logo.png" alt="Logo" style={{ height: 44, objectFit: 'contain', marginBottom: 20 }} onError={e => e.target.style.display = 'none'} />
+        <img src="/pazque-logo.png" alt="Logo" style={{ height: 44, objectFit: 'contain', marginBottom: 20 }} onError={e => e.target.style.display = 'none'} />
         {reason === 'canceled' ? (
           <>
             <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>

@@ -16,7 +16,7 @@ export default function DemoSelector({ onSelect }) {
       <style>{`@keyframes dsFadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}.ds-card{transition:all .15s ease;}.ds-card:hover{border-color:#c8c8cc !important;}`}</style>
       <div style={{ maxWidth:440, width:'100%' }}>
         <div style={{ textAlign:'center', marginBottom:28 }}>
-          <img src="/logo.png" alt="Pazque" style={{ height:40, objectFit:'contain', marginBottom:12 }} onError={e => e.target.style.display='none'} />
+          <img src="/pazque-logo.png" alt="Pazque" style={{ height:40, objectFit:'contain', marginBottom:12 }} onError={e => e.target.style.display='none'} />
           <p style={{ fontSize:20, fontWeight:600, color:'#1d1d1f', margin:'0 0 4px', letterSpacing:'-0.02em' }}>¿Qué tipo de distribuidora operás?</p>
           <p style={{ fontSize:13, color:'#86868b', margin:0 }}>Elegí una industria para explorar</p>
         </div>
