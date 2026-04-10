@@ -116,7 +116,7 @@ export default function WhatsAppDashboard() {
   // ── Generar mensaje WhatsApp ──────────────────────────────────────────────
   const mensaje = useMemo(() => {
     const m = metricas;
-    const empresa = brandCfg?.name || 'Aryes';
+    const empresa = brandCfg?.name || 'Pazque';
     const lines = [];
 
     lines.push(`📊 *Resumen ${hoyStr}*`);
@@ -175,7 +175,7 @@ export default function WhatsAppDashboard() {
       lines.push('');
     }
 
-    lines.push(`_Generado desde Aryes Stock · ${new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}_`);
+    lines.push(`_Generado desde Pazque · ${new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}_`);
 
     return lines.join('\n');
   }, [metricas, brandCfg, hoyStr]);

@@ -21,7 +21,7 @@ const LoginScreen=({onLogin})=>{
   return(<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f8,#e8f0e8)",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Inter,sans-serif",padding:16}}>
     <div style={{background:"#fff",borderRadius:20,padding:"44px 40px 40px",width:"100%",maxWidth:380,boxShadow:"0 20px 60px rgba(0,0,0,.12)"}}>
       <div style={{textAlign:"center",marginBottom:32}}>
-        <img src="/pazque-logo.png" alt="Pazque" style={{height:52,marginBottom:14,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
+        <img src="/pazque-logo.png" alt="Pazque" style={{height: 120,marginBottom:14,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
         <h1 style={{fontFamily:"Playfair Display,serif",fontSize:28,color:"#111",margin:"0 0 6px",fontWeight:700}}>Importar catálogo</h1>
         <p style={{fontSize:13,color:"#888",margin:0}}>Sistema de gestion de inventario</p>
       </div>

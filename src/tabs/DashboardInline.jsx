@@ -90,7 +90,7 @@ function SectionHeader({ title, action, actionLabel }) {
 function DashboardInline({products, suppliers, orders, movements, session, setTab, critN, alerts, enriched, setModal, tfCols, cfes=[], cobros=[], confirmOrder, showMsg, demoMode}) {
   const exportarReporte = () => {
     const hoy = new Date().toISOString().split('T')[0];
-    const rows = [['Reporte Aryes Stock — '+hoy],[],['KPI','Valor'],['Total productos',(products||[]).length],['En cero',(products||[]).filter(p=>Number(p.stock)<=0).length],['Bajo minimo',(products||[]).filter(p=>Number(p.stock)>0&&Number(p.stock)<=Number(p.minStock||0)).length],['Capital en stock',(products||[]).reduce((s,p)=>s+(Number(p.stock||0)*Number(p.unitCost||p.precio||0)),0)],[],['Producto','Stock','Min','Costo','PrecioVenta','Valor'],...(products||[]).map(p=>[p.nombre||p.name,p.stock||0,p.minStock||0,p.unitCost||p.precio||0,p.precioVenta||0,(Number(p.stock||0)*Number(p.unitCost||p.precio||0))])];
+    const rows = [['Reporte Pazque — '+hoy],[],['KPI','Valor'],['Total productos',(products||[]).length],['En cero',(products||[]).filter(p=>Number(p.stock)<=0).length],['Bajo minimo',(products||[]).filter(p=>Number(p.stock)>0&&Number(p.stock)<=Number(p.minStock||0)).length],['Capital en stock',(products||[]).reduce((s,p)=>s+(Number(p.stock||0)*Number(p.unitCost||p.precio||0)),0)],[],['Producto','Stock','Min','Costo','PrecioVenta','Valor'],...(products||[]).map(p=>[p.nombre||p.name,p.stock||0,p.minStock||0,p.unitCost||p.precio||0,p.precioVenta||0,(Number(p.stock||0)*Number(p.unitCost||p.precio||0))])];
     const csv=rows.map(r=>r.map(v=>String(v||'').includes(',')?'"'+String(v||'')+'"':String(v||'')).join(',')).join('\n');
     const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
     const url=URL.createObjectURL(blob);
@@ -152,7 +152,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       })(),
       deuda           > 0 ? `💳 Deuda pendiente: *U$S ${deuda.toLocaleString('es-UY',{minimumFractionDigits:0})}*` : null,
       ``,
-      `_Aryes Stock · ${hoy.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}_`
+      `_Pazque · ${hoy.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}_`
     ].filter(Boolean).join('\n');
     const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
     if (!tel) { alert('Configurá tu número en Configuración → Marca y empresa'); return; }

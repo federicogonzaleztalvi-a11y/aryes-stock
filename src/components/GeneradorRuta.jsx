@@ -103,7 +103,7 @@ async function geocodeCliente(cli) {
   try {
     const res  = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
-      { headers: { 'Accept-Language': 'es', 'User-Agent': 'AryesStock/1.0' } }
+      { headers: { 'Accept-Language': 'es', 'User-Agent': 'Pazque/1.0' } }
     );
     const data = await res.json();
     if (data?.length > 0) return { lat: Number(data[0].lat), lng: Number(data[0].lon) };

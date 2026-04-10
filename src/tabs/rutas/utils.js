@@ -104,7 +104,7 @@ export function nearestNeighborTSP(entregas, clientes) {
 export async function geocodeAddress(direccion, ciudad) {
   const q = [direccion, ciudad, 'Uruguay'].filter(Boolean).join(', ');
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
-  const res = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'AryesStock/1.0' } });
+  const res = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'Pazque/1.0' } });
   const data = await res.json();
   if (data?.length > 0) return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
   return null;

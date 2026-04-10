@@ -878,7 +878,7 @@ function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMod
     const fecha = new Date().toLocaleDateString('es-UY', {weekday:'long',day:'numeric',month:'long'});
     const msg = `📊 *Resumen del día — ${fecha}*
 
-Generado desde Aryes Stock.`;
+Generado desde Pazque.`;
     window.open(`https://wa.me/${ownerPhone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
   };
   const { confirm, ConfirmDialog } = useConfirm();
@@ -969,7 +969,7 @@ Generado desde Aryes Stock.`;
       {session && !dbReady && !demoMode && (
         <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
           <style>{CSS}</style>
-          <img src="/pazque-logo.png" alt="Pazque" style={{height:52,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
+          <img src="/pazque-logo.png" alt="Pazque" style={{height: 120,objectFit:"contain"}} onError={e=>e.target.style.display="none"} />
           <div style={{width:32,height:32,border:"3px solid #059669",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
           <p style={{fontFamily:"Inter,sans-serif",fontSize:14,color:"#6a6a68",fontWeight:500}}>Conectando...</p>
           <p style={{fontFamily:"Inter,sans-serif",fontSize:12,color:"#aaa",marginTop:4}}>Si tardás más de 5 seg, recargá la página</p>
@@ -986,7 +986,7 @@ Generado desde Aryes Stock.`;
       <main id="main-content" style={{marginLeft:220,flex:1,height:"100vh",overflowY:"auto",display:"flex",flexDirection:"column"}}>
 
         {/* →→ TOPBAR →→ */}
-        <div style={{display:"flex",alignItems:"center",gap:16,padding:"0 32px",height:52,background:"#ffffff",borderBottom:"1px solid #f0ede8",position:"sticky",top:0,zIndex:100,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,padding:"0 32px",height: 120,background:"#ffffff",borderBottom:"1px solid #f0ede8",position:"sticky",top:0,zIndex:100,flexShrink:0}}>
           {/* Search */}
           <div style={{flex:1,maxWidth:360,position:"relative"}}>
             <svg style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b0aca6" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>

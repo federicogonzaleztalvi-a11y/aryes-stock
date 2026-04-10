@@ -42,7 +42,7 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
 </head>
 <body>
   <div class="recibo">
-    <h1>${empresa?.nombre || 'Aryes'}</h1>
+    <h1>${empresa?.nombre || 'Pazque'}</h1>
     <p class="sub">${empresa?.direccion || ''} — ${empresa?.telefono || ''}</p>
     <hr class="divider">
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-bottom:16px;text-align:center">

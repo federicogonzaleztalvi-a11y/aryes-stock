@@ -78,7 +78,7 @@ function EtiquetaProducto({ producto, brandCfg }) {
         </div>
       </div>
       <div style={{ background: '#f9f9f7', padding: '5px 12px', fontSize: 9, color: '#bbb', textAlign: 'center' }}>
-        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Aryes Stock'}
+        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Pazque'}
       </div>
     </div>
   );
@@ -124,7 +124,7 @@ function EtiquetaPallet({ recepcion, brandCfg }) {
         </div>
       )}
       <div style={{ background: '#f9f9f7', padding: '5px 12px', fontSize: 9, color: '#bbb', textAlign: 'center' }}>
-        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Aryes Stock'}
+        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Pazque'}
       </div>
     </div>
   );
@@ -175,7 +175,7 @@ function EtiquetaDespacho({ venta, brandCfg }) {
         </div>
       </div>
       <div style={{ background: '#f9f9f7', padding: '5px 12px', fontSize: 9, color: '#bbb', textAlign: 'center' }}>
-        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Aryes Stock'}
+        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Pazque'}
       </div>
     </div>
   );

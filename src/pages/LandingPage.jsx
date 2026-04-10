@@ -1,4 +1,4 @@
-// LandingPage.jsx — Aryes Stock landing page v8
+// LandingPage.jsx — Pazque landing page v8
 // Design: Stripe clarity × Linear aesthetic × Faire warmth
 // Typography: DM Serif Display (titles) + DM Sans (body)
 import { useState, useEffect, useRef } from 'react';
@@ -284,7 +284,7 @@ export default function LandingPage() {
         <FadeIn delay={0.4}>
           <BrowserFrame
             src="/screenshots/dashboard.png"
-            alt="Dashboard de Aryes Stock con KPIs financieros y operativos"
+            alt="Dashboard de Pazque con KPIs financieros y operativos"
             style={{ maxWidth: 960, margin: '0 auto', boxShadow: '0 20px 60px rgba(0,0,0,0.08)' }}
           />
         </FadeIn>

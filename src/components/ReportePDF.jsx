@@ -269,7 +269,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
 
     <!-- Footer -->
     <div class="footer">
-      <span>${empresa} · Aryes Stock · Sistema de gestión comercial</span>
+      <span>${empresa} · Pazque · Sistema de gestión comercial</span>
       <span>Página 1 · ${hoy}</span>
     </div>
   </div>
@@ -284,7 +284,7 @@ export default function ReportePDF() {
 
   const { inicio, fin } = useMemo(() => getPeriodoRange(periodo), [periodo]);
   const labelPeriodo = PERIODOS.find(p => p.id === periodo)?.label || periodo;
-  const empresa = brandCfg?.name || 'Aryes';
+  const empresa = brandCfg?.name || 'Pazque';
 
   const ventasFiltradas = useMemo(() =>
     ventas.filter(v => {

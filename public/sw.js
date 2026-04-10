@@ -1,4 +1,4 @@
-// sw.js — Aryes Stock Service Worker
+// sw.js — Pazque Service Worker
 // PWA: caches app shell for fast loading + handles push notifications
 
 const CACHE_NAME = 'aryes-' + '20260409';
