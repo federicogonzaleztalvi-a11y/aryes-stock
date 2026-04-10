@@ -14,25 +14,25 @@
   ],
   "icons": [
     {
-      "src": "/aryes-logo.png",
+      "src": "/pazque-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/aryes-logo.png",
+      "src": "/pazque-logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/aryes-logo.png",
+      "src": "/pazque-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/aryes-logo.png",
+      "src": "/pazque-logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

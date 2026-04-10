@@ -231,7 +231,7 @@ export default function AppSidebar({ session, tab, setTab }) {
         ) : (
           <img
             src="/logo.png"
-            alt="Aryes"
+            alt="Pazque"
             style={{ height: 36, objectFit: 'contain', maxWidth: '100%', display: 'block' }}
             onError={e => { e.target.style.display = 'none'; }}
           />

@@ -5,7 +5,7 @@ const CACHE_NAME = 'aryes-' + '20260409';
 const SHELL_ASSETS = [
   '/',
   '/index.html',
-  '/aryes-logo.png',
+  '/pazque-logo.png',
 ];
 
 // Install — cache app shell
@@ -53,7 +53,7 @@ self.addEventListener('fetch', event => {
 
 // Push notification
 self.addEventListener('push', event => {
-  let data = { title: 'Aryes Stock', body: 'Hay una actualización', icon: '/aryes-logo.png' };
+  let data = { title: 'Pazque', body: 'Hay una actualización', icon: '/pazque-logo.png' };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {}
@@ -61,8 +61,8 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon || '/aryes-logo.png',
-      badge: '/aryes-logo.png',
+      icon: data.icon || '/pazque-logo.png',
+      badge: '/pazque-logo.png',
       tag: data.tag || 'aryes-notif',
       data: data.url ? { url: data.url } : {},
       requireInteraction: data.urgent || false,
