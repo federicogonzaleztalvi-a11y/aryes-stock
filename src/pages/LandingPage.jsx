@@ -180,7 +180,7 @@ export default function LandingPage() {
             <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
               <span onClick={() => scrollTo('producto')} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>Producto</span>
               <span onClick={() => scrollTo('precios')} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
-              <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
+              <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
                 style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer', textDecoration: 'none' }}>Contacto</a>
               <span onClick={() => window.location.href = '/app'} style={{
                 fontSize: 13, color: '#4b4b48', cursor: 'pointer', fontWeight: 500,
@@ -209,7 +209,7 @@ export default function LandingPage() {
           }}>
             <span onClick={() => scrollTo('producto')} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Producto</span>
             <span onClick={() => scrollTo('precios')} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
-            <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
+            <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
               style={{ fontSize: 15, color: '#6b7280', textDecoration: 'none' }}>Contacto</a>
             <span onClick={() => window.location.href = '/app'} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Iniciar sesión</span>
             <button onClick={() => { setMenuOpen(false); window.location.href = '/register'; }}
@@ -521,7 +521,7 @@ export default function LandingPage() {
               }}>
               Empezar gratis
             </button>
-            <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
+            <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
               style={{
                 padding: '14px 32px', background: '#fff', color: '#1a1a18',
                 border: '1px solid #e5e5e3', borderRadius: 10, fontSize: 15,
@@ -550,7 +550,7 @@ export default function LandingPage() {
               <thead>
                 <tr style={{ borderBottom: '2px solid #e8e8e6' }}>
                   <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9a9a98', fontWeight: 500, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}></th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', borderRadius: '10px 10px 0 0', color: G, fontWeight: 700, fontSize: 14 }}>Aryes</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', background: '#f0fdf4', borderRadius: '10px 10px 0 0', color: G, fontWeight: 700, fontSize: 14 }}>Pazque</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Planillas y WhatsApp</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Software de rutas</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>ERP / sistema contable</th>
@@ -694,10 +694,10 @@ export default function LandingPage() {
           {/* Right — Contact */}
           <div style={{ textAlign: mobile ? 'left' : 'right' }}>
             <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Contacto</div>
-            <a href="mailto:contacto@aryes.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: 14, display: 'block', marginBottom: 12 }}>
-              contacto@aryes.com
+            <a href="mailto:contacto@pazque.com" style={{ color: '#6b7280', textDecoration: 'none', fontSize: 14, display: 'block', marginBottom: 12 }}>
+              contacto@pazque.com
             </a>
-            <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Aryes%20Stock" target="_blank" rel="noreferrer"
+            <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '8px 16px', border: '1px solid #e5e5e3', borderRadius: 8,
@@ -713,7 +713,7 @@ export default function LandingPage() {
         {/* Bottom bar */}
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '16px 24px', borderTop: '1px solid #e8e8e6' }}>
           <div style={{ fontSize: 12, color: '#b0b0ac' }}>
-            <span>© 2026 Aryes</span>
+            <span>© 2026 Pazque</span>
             <span style={{ margin: '0 8px', color: '#d0d0cc' }}>·</span>
             <a href="/terms" style={{ color: '#b0b0ac', textDecoration: 'none' }}>Términos</a>
             <span style={{ margin: '0 8px', color: '#d0d0cc' }}>·</span>

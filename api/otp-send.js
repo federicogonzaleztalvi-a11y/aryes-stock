@@ -33,7 +33,7 @@ function toE164Uruguay(tel) {
 }
 
 async function sendViaInfobip(to, code) {
-  const mensaje = `Tu código de acceso a Aryes es: *${code}*\n\nVálido por 10 minutos. No lo compartas.`;
+  const mensaje = `Tu código de acceso a Pazque es: *${code}*\n\nVálido por 10 minutos. No lo compartas.`;
 
   if (IB_CHANNEL === 'whatsapp') {
     // WhatsApp via Infobip — mucho más barato que SMS (~10x)
@@ -66,8 +66,8 @@ async function sendViaInfobip(to, code) {
     const body = {
       messages: [{
         destinations: [{ to }],
-        from: org_sender || IB_SENDER || 'Aryes',
-        text: `Tu código de acceso a Aryes es: ${code}\n\nVálido por 10 minutos. No lo compartas.`,
+        from: org_sender || IB_SENDER || 'Pazque',
+        text: `Tu código de acceso a Pazque es: ${code}\n\nVálido por 10 minutos. No lo compartas.`,
       }],
     };
     const res = await fetch(url, {
@@ -143,7 +143,7 @@ export default async async function handler(req, res) {
   }
 
   if (!clients?.length) {
-    return res.status(404).json({ error: 'Número no registrado. Contactá a Aryes para activar tu acceso.' });
+    return res.status(404).json({ error: 'Número no registrado. Contactá a Pazque para activar tu acceso.' });
   }
 
   // Multi-tenant: get org-specific WhatsApp sender if configured

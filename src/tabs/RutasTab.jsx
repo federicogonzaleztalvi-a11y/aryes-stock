@@ -113,7 +113,7 @@ function RutasTab(){
   const [rutaActiva,setRutaActiva]=useState(null);
 
   // ── Configuracion de zonas de entrega ─────────────────────────────────────
-  // Modo A: empresa con dias fijos por zona (ej: Aryes — Centro los Lunes)
+  // Modo A: empresa con dias fijos por zona (ej: Pazque — Centro los Lunes)
   // Modo B: empresa sin zonas — ruta libre optimizada
   const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const [zonasConfig, setZonasConfig] = React.useState(() => {

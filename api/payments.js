@@ -54,7 +54,7 @@ function verifyMPSignature(req) {
 }
 
 const PLANS = {
-  pro: { amount: 199, title: 'Aryes Stock', currency: 'USD' },
+  pro: { amount: 199, title: 'Pazque', currency: 'USD' },
 };
 
 // ── Stripe (futuro — descomentar cuando haya LLC en Delaware) ─────

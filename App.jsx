@@ -27,7 +27,7 @@ const LS = {
 };
 
 // ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-// DESIGN TOKENS ‚Äî Aryes palette
+// DESIGN TOKENS ‚Äî Pazque palette
 // ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 const T = {
   // Backgrounds
@@ -75,7 +75,7 @@ const T = {
 // ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
 // ARYES LOGO SVG (hoja verde + wordmark, fiel al original)
 // ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
-const AryesLogo = ({ height = 36 }) => (
+const PazqueLogo = ({ height = 36 }) => (
   <svg height={height} viewBox="0 0 160 44" fill="none" xmlns="http://www.w3.org/2000/svg">
     {/* Leaf shape */}
     <path d="M16 4 C16 4 4 12 4 22 C4 30 10 36 18 36 C18 36 14 26 20 18 C24 12 30 10 30 10 C30 10 22 8 16 4Z" fill={T.green}/>
@@ -1858,7 +1858,7 @@ const EmailSettings = ({ cfg, setCfg, enriched, onTestSend, onManualSend }) => {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           service_id: cfg.serviceId, template_id: cfg.templateId, user_id: cfg.publicKey,
-          template_params: { to_email: cfg.toEmail, subject:"‚úì Aryes ‚Äî Email de prueba funcionando", html_content:"<p style='font-family:sans-serif;padding:20px;'>‚úÖ Las notificaciones de Aryes est√°n configuradas correctamente. Recibir√°s alertas autom√°ticas cuando el stock cruce el punto de pedido.</p>", alert_count:0 }
+          template_params: { to_email: cfg.toEmail, subject:"‚úì Pazque ‚Äî Email de prueba funcionando", html_content:"<p style='font-family:sans-serif;padding:20px;'>‚úÖ Las notificaciones de Pazque est√°n configuradas correctamente. Recibir√°s alertas autom√°ticas cuando el stock cruce el punto de pedido.</p>", alert_count:0 }
         })
       });
       setTestResult(resp.status===200?"ok":"error");
@@ -2042,7 +2042,7 @@ function ImporterTab({onDone}){
       <div style={{background:T.card,borderRadius:12,padding:48,textAlign:"center",boxShadow:"0 2px 8px rgba(0,0,0,.05)"}}>
         <div style={{fontSize:52,marginBottom:16}}>‚úÖ</div>
         <h2 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.green,marginBottom:8}}>Inventario cargado</h2>
-        <p style={{color:T.textSm,marginBottom:32}}>Los productos demo fueron eliminados y reemplazados por el cat√°logo real de Aryes</p>
+        <p style={{color:T.textSm,marginBottom:32}}>Los productos demo fueron eliminados y reemplazados por el cat√°logo real de Pazque</p>
         <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap",marginBottom:32}}>
           {[{n:result.total,l:"productos cargados",c:T.green},{n:11,l:"marcas",c:T.amber},{n:3,l:"proveedores",c:"#8e44ad"}].map((s,i)=>(
             <div key={i} style={{background:T.cardWarm,borderRadius:10,padding:"16px 24px",textAlign:"center",minWidth:120}}>
@@ -2257,7 +2257,7 @@ export default function AryesApp(){
         </tr>`).join("");
       const html = `<div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#2d5a1b;padding:20px 24px;">
-          <h1 style="color:#fff;font-size:22px;margin:0;">Aryes ‚Äî Alerta de Stock</h1>
+          <h1 style="color:#fff;font-size:22px;margin:0;">Pazque ‚Äî Alerta de Stock</h1>
           <p style="color:rgba(255,255,255,.75);margin:4px 0 0;font-size:13px;">${new Date().toLocaleDateString("es-UY",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
         </div>
         <div style="padding:20px 24px;background:#fef2f2;border-left:4px solid #b91c1c;">
@@ -2274,7 +2274,7 @@ export default function AryesApp(){
           <tbody>${rows}</tbody>
         </table>
         <div style="padding:20px 24px;background:#f5f0e8;margin-top:20px;">
-          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado autom√°ticamente por el sistema de gesti√≥n de stock de Aryes.</p>
+          <p style="font-size:12px;color:#7a7368;margin:0;">Este email fue enviado autom√°ticamente por el sistema de gesti√≥n de stock de Pazque.</p>
         </div>
       </div>`;
       await fetch(`https://api.emailjs.com/api/v1.0/email/send`, {
@@ -2285,7 +2285,7 @@ export default function AryesApp(){
           user_id: cfg.publicKey,
           template_params: {
             to_email: cfg.toEmail,
-            subject: `Aryes Stock ‚Äî ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atenci√≥n"}`,
+            subject: `Pazque ‚Äî ${alertProducts.length} producto${alertProducts.length>1?"s":""}  ${alertProducts.some(p=>p.alert.level==="order_now")?"requieren pedido URGENTE":"requieren atenci√≥n"}`,
             html_content: html,
             alert_count: alertProducts.length,
           }
@@ -2331,7 +2331,7 @@ export default function AryesApp(){
       <aside style={{width:220,background:T.card,borderRight:`1px solid ${T.border}`,position:"fixed",top:0,left:0,bottom:0,display:"flex",flexDirection:"column"}}>
         {/* Logo */}
         <div style={{padding:"22px 22px 18px",borderBottom:`1px solid ${T.border}`}}>
-          <AryesLogo height={34}/>
+          <PazqueLogo height={34}/>
           <div style={{marginTop:6}}><Cap style={{color:T.green}}>Gesti√≥n de stock ¬∑ UY</Cap></div>
         </div>
 

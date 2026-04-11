@@ -77,7 +77,7 @@ export default function RegisterPage() {
           Ingresar a mi cuenta →
         </a>
         <p style={{ marginTop: 20, fontFamily: F.sans, fontSize: 11, color: '#9a9a98' }}>
-          ¿Necesitás ayuda? Escribinos a <a href="mailto:hola@aryes.com" style={{ color: G }}>hola@aryes.com</a>
+          ¿Necesitás ayuda? Escribinos a <a href="mailto:hola@pazque.com" style={{ color: G }}>hola@pazque.com</a>
         </p>
       </div>
     </div>

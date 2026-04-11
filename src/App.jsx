@@ -804,7 +804,7 @@ function TrialBanner({ session }) {
 // LOGIN SCREEN
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 
-function AryesApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMode, demoGuard}){
+function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMode, demoGuard}){
 
   // →→ State and mutations come from AppContext →→→→→→→→→→→→→→→→→→→→→→→→→→→→
   const {
@@ -1356,5 +1356,5 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   );
 }
 
-export default AryesApp;
+export default PazqueApp;
 // deploy trigger Sun Mar 22 01:46:08 UTC 2026

@@ -1,4 +1,4 @@
-// ── Aryes catalog data — shared across importer sub-tabs ─────────────────────
+// ── Pazque catalog data — shared across importer sub-tabs ─────────────────────
 // Exported so each section file can import what it needs.
 import { SKEY } from '../../lib/constants.js';
 

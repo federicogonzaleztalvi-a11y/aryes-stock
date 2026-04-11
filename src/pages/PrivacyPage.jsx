@@ -55,7 +55,7 @@ export default function PrivacyPage() {
         <p style={S.p}>Tus datos se conservan mientras tu cuenta esté activa. Al cancelar tu cuenta, conservamos tus datos por 30 días para permitirte reactivar o exportar. Después de ese período, todos tus datos se eliminan permanentemente de nuestros servidores y backups en un plazo de 90 días.</p>
 
         <h2 style={S.h2}>11. Tus derechos</h2>
-        <p style={S.p}>Tenés derecho a: (a) acceder a todos tus datos en cualquier momento desde la plataforma; (b) solicitar la corrección de datos incorrectos; (c) solicitar la eliminación de tu cuenta y datos; (d) exportar tus datos; (e) revocar tu consentimiento para comunicaciones. Para ejercer estos derechos, escribinos a contacto@aryes.com.uy</p>
+        <p style={S.p}>Tenés derecho a: (a) acceder a todos tus datos en cualquier momento desde la plataforma; (b) solicitar la corrección de datos incorrectos; (c) solicitar la eliminación de tu cuenta y datos; (d) exportar tus datos; (e) revocar tu consentimiento para comunicaciones. Para ejercer estos derechos, escribinos a contacto@pazque.com</p>
 
         <h2 style={S.h2}>12. Menores de edad</h2>
         <p style={S.p}>El Servicio está diseñado para uso empresarial y no está dirigido a menores de 18 años. No recopilamos intencionalmente información de menores de edad.</p>
@@ -64,10 +64,10 @@ export default function PrivacyPage() {
         <p style={S.p}>Podemos actualizar esta política de privacidad periódicamente. Los cambios se notificarán por email y/o dentro de la plataforma con al menos 15 días de anticipación. La fecha de última actualización siempre será visible al inicio de esta página.</p>
 
         <h2 style={S.h2}>14. Contacto</h2>
-        <p style={S.p}>Para consultas sobre privacidad, escribinos a contacto@aryes.com</p>
+        <p style={S.p}>Para consultas sobre privacidad, escribinos a contacto@pazque.com</p>
 
         <div style={{ borderTop: '1px solid #e2e2de', marginTop: 48, paddingTop: 24 }}>
-          <p style={{ fontFamily: F, fontSize: 12, color: '#9a9a98' }}>© 2026 Aryes. Todos los derechos reservados.</p>
+          <p style={{ fontFamily: F, fontSize: 12, color: '#9a9a98' }}>© 2026 Pazque. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ const SB_SVC  = process.env.SUPABASE_SERVICE_KEY || SB_ANON;
 
 const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hola@aryes.com.uy';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hola@pazque.com';
 
 
 function setCORS(res) {
@@ -104,7 +104,7 @@ export default async async function handler(req, res) {
       return res.status(200).json({ ok: true, sent: 0, msg: 'No subscribers' });
     }
 
-    const payload = JSON.stringify({ title: title || 'Aryes Stock', body, url, tag, urgent });
+    const payload = JSON.stringify({ title: title || 'Pazque', body, url, tag, urgent });
     let sent = 0, failed = 0;
 
     await Promise.allSettled(subs.map(async sub => {

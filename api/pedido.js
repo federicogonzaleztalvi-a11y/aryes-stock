@@ -324,14 +324,14 @@ async function handler(req, res) {
         const subs = await pushSubs.json();
         if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
           webpush.setVapidDetails(
-            process.env.VAPID_SUBJECT || 'mailto:hola@aryes.com.uy',
+            process.env.VAPID_SUBJECT || 'mailto:hola@pazque.com',
             process.env.VAPID_PUBLIC_KEY,
             process.env.VAPID_PRIVATE_KEY
           );
           const payload = JSON.stringify({
             title: 'Nuevo pedido B2B',
             body: (clienteNombre || 'Un cliente') + ' hizo un pedido por $' + Number(total).toFixed(0),
-            icon: '/aryes-logo.png',
+            icon: '/pazque-logo.png',
             tag: 'b2b-order-' + (result.orderId || orderId),
             url: '/app/pedidos',
           });

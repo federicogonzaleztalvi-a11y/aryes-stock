@@ -2,7 +2,7 @@
 import React, { useState, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ReactDOM from 'react-dom/client'
-import AryesApp from './App.jsx';
+import PazqueApp from './App.jsx';
 import { AppProvider } from './context/AppContext.tsx';
 import { SB_URL, SKEY as SB_KEY, getOrgId} from './lib/constants.js';
 import { useErrorReporting } from './hooks/useErrorReporting.ts';
@@ -204,7 +204,7 @@ function Root() {
   }, []);
 
   const effectiveSession = demoMode ? {
-    email: 'demo@aryes.com', role: 'admin', name: 'Demo', orgId: 'demo',
+    email: 'demo@pazque.com', role: 'admin', name: 'Demo', orgId: 'demo',
     access_token: 'demo-token', expiresAt: Date.now() + 86400000, _demo: true,
   } : session;
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -248,7 +248,7 @@ function Root() {
     .then(r => r.json())
     .then(orgs => {
       const org = orgs?.[0];
-      if (!org) { setOrgStatus('ok'); return; } // si no hay org, dejar pasar (Aryes legacy)
+      if (!org) { setOrgStatus('ok'); return; } // si no hay org, dejar pasar (Pazque legacy)
       if (!org.active) { setOrgStatus('canceled'); return; }
       if (org.subscription_status === 'active') { setOrgStatus('ok'); return; }
       if (org.subscription_status === 'trial') {
@@ -297,7 +297,7 @@ function Root() {
       <AppProvider session={effectiveSession} onLogout={demoMode ? exitDemo : handleLogout} onSessionUpdate={setSession} demoState={demoMode ? demoState : null}>
         <Routes>
           <Route path="" element={<Navigate to="/app/dashboard" replace />} />
-          <Route path=":tab" element={<AryesApp session={effectiveSession} onLogout={demoMode ? () => { exitDemo(); setSession(null); } : handleLogout} onSessionUpdate={setSession} demoMode={demoMode} demoGuard={demoGuard} />} />
+          <Route path=":tab" element={<PazqueApp session={effectiveSession} onLogout={demoMode ? () => { exitDemo(); setSession(null); } : handleLogout} onSessionUpdate={setSession} demoMode={demoMode} demoGuard={demoGuard} />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
         {demoMode && <DemoToast />}

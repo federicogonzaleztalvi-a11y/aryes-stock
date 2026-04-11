@@ -142,7 +142,7 @@ function DominioCNAMEPanel({ orgId }) {
         body: JSON.stringify({ domain: nuevo.trim().toLowerCase(), org_id: orgId, active: true }),
       });
       setNuevo('');
-      setMsg('Dominio registrado. Contactá a Aryes para activarlo en Vercel.');
+      setMsg('Dominio registrado. Contactá a Pazque para activarlo en Vercel.');
       setTimeout(() => setMsg(''), 5000);
       await cargar();
     } catch(e) { console.error(e); }
@@ -659,7 +659,7 @@ export default function ConfigInline({
 
               <div style={{marginTop:32,paddingTop:20,borderTop:'1px solid #e2e2de'}}>
                 <h3 style={{fontSize:15,fontWeight:700,marginBottom:4,color:'#dc2626'}}>Eliminar cuenta</h3>
-                <p style={{fontSize:13,color:'#6a6a68',marginBottom:12}}>Si querés eliminar tu cuenta y todos tus datos, escribinos a contacto@aryes.com. Tus datos se eliminan de forma permanente en un plazo de 30 días.</p>
+                <p style={{fontSize:13,color:'#6a6a68',marginBottom:12}}>Si querés eliminar tu cuenta y todos tus datos, escribinos a contacto@pazque.com. Tus datos se eliminan de forma permanente en un plazo de 30 días.</p>
               </div>
             </div>
           )}
@@ -679,7 +679,7 @@ export default function ConfigInline({
                     pedidos.tuempresa.com → cname.vercel-dns.com
                   </div>
                   <div>2. Registrá el dominio acá abajo</div>
-                  <div>3. Contactá a Aryes para activarlo en Vercel (tarda ~5 minutos)</div>
+                  <div>3. Contactá a Pazque para activarlo en Vercel (tarda ~5 minutos)</div>
                 </div>
               </div>
               <DominioCNAMEPanel orgId={brandCfg?.orgId || 'aryes'} />

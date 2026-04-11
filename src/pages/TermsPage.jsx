@@ -61,10 +61,10 @@ export default function TermsPage() {
         <p style={S.p}>Estos términos se rigen por las leyes del país donde Aryes tenga su domicilio legal. Cualquier disputa será sometida a la jurisdicción de los tribunales competentes de dicho domicilio.</p>
 
         <h2 style={S.h2}>13. Contacto</h2>
-        <p style={S.p}>Para consultas sobre estos términos, escribinos a contacto@aryes.com</p>
+        <p style={S.p}>Para consultas sobre estos términos, escribinos a contacto@pazque.com</p>
 
         <div style={{ borderTop: '1px solid #e2e2de', marginTop: 48, paddingTop: 24 }}>
-          <p style={{ fontFamily: F, fontSize: 12, color: '#9a9a98' }}>© 2026 Aryes. Todos los derechos reservados.</p>
+          <p style={{ fontFamily: F, fontSize: 12, color: '#9a9a98' }}>© 2026 Pazque. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

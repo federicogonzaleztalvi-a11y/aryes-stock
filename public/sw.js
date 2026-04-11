@@ -63,7 +63,7 @@ self.addEventListener('push', event => {
       body: data.body,
       icon: data.icon || '/pazque-logo.png',
       badge: '/pazque-logo.png',
-      tag: data.tag || 'aryes-notif',
+      tag: data.tag || 'pazque-notif',
       data: data.url ? { url: data.url } : {},
       requireInteraction: data.urgent || false,
     })

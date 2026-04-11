@@ -7,7 +7,7 @@ function requireEnv(name) {
   const val = import.meta.env[name];
   if (!val) {
     throw new Error(
-      `[Aryes] Missing required environment variable: ${name}\n` +
+      `[Pazque] Missing required environment variable: ${name}\n` +
       `Set it in .env.local (dev) or Vercel dashboard (production).`
     );
   }

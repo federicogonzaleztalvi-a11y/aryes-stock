@@ -139,7 +139,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
 
       <p style={{ marginTop: 32, fontFamily: F.sans, fontSize: 12, color: '#9a9a98', textAlign: 'center' }}>
         Pago seguro con MercadoPago · Cancelá cuando quieras · Soporte en {' '}
-        <a href="mailto:hola@aryes.com" style={{ color: G }}>hola@aryes.com</a>
+        <a href="mailto:hola@pazque.com" style={{ color: G }}>hola@pazque.com</a>
       </p>
     </div>
   );
