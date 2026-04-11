@@ -168,7 +168,7 @@ export default function LandingPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src="/pazque-logo.png" alt="Pazque" style={{ height: 200, objectFit: 'contain', marginLeft: -60, marginRight: -60 }} onError={e => e.target.style.display='none'} />
+            <img src="/pazque-logo.png" alt="Pazque" style={{ height: 200, objectFit: 'contain', marginLeft: -60, marginRight: -60, marginTop: -72, marginBottom: -72 }} onError={e => e.target.style.display='none'} />
           </div>
 
           {!mobile && (
