@@ -659,13 +659,8 @@ export default function LandingPage() {
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '48px 24px 20px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 40 }}>
           {/* Left — Logo + description + social */}
           <div style={{ maxWidth: 320 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 7, background: G,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontSize: 14, fontWeight: 500,
-              }}>A</div>
-              <span style={{ fontFamily: F.serif, fontSize: 20, color: '#1a1a18', letterSpacing: -0.5 }}>ARYES</span>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+              <img src="/pazque-logo.png" alt="Pazque" style={{ height: 24, objectFit: 'contain' }} onError={e => e.target.style.display='none'} />
             </div>
             <p style={{ fontSize: 13, color: '#9a9a96', lineHeight: 1.6, margin: '0 0 16px' }}>
               Plataforma de gestión para distribuidoras B2B.<br />
@@ -707,7 +702,7 @@ export default function LandingPage() {
 
         {/* Bottom bar */}
         <div style={{ maxWidth: 1080, margin: '0 auto', padding: '16px 24px', borderTop: '1px solid #e8e8e6' }}>
-          <div style={{ fontSize: 12, color: '#b0b0ac' }}>
+          <div style={{ fontSize: 12, color: '#b0b0ac', textAlign: 'right' }}>
             <span>© 2026 Pazque</span>
             <span style={{ margin: '0 8px', color: '#d0d0cc' }}>·</span>
             <a href="/terms" style={{ color: '#b0b0ac', textDecoration: 'none' }}>Términos</a>
