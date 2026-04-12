@@ -1762,7 +1762,7 @@ const MovementsView = ({ movements, products, suppliers, onAddManual }) => {
             const rows=[["Fecha","Hora","Tipo","Producto","Proveedor","Cantidad","Unidad","Nota"],...filtered.map(m=>{const d=new Date(m.ts);return[d.toLocaleDateString("es-UY"),d.toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"}),(MOV_CFG[m.type]||{label:m.type}).label,m.productName,m.supplierName||"",m.qty,m.unit,m.note||""];})];
             const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("
 ");
-            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,Ôªø"+encodeURIComponent(csv);a.download=`aryes-movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,Ôªø"+encodeURIComponent(csv);a.download=`pazque-movimientos-${new Date().toISOString().slice(0,10)}.csv`;a.click();
           }} style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.green,background:T.greenBg,border:`1px solid ${T.greenBd}`,padding:"8px 16px",borderRadius:4,cursor:"pointer"}}>
             ‚Üì Exportar CSV ({filtered.length} registros)
           </button>
@@ -2174,7 +2174,7 @@ function ImporterTab({onDone}){
   );
 }
 
-export default function AryesApp(){
+export default function PazqueApp(){
   const [tab,setTab]=useState("dashboard");
   const [products,setProducts]=useState(()=>LS.get("aryes6-products",DEFAULT_PRODUCTS));
   const [suppliers,setSuppliers]=useState(()=>LS.get("aryes6-suppliers",DEFAULT_SUPPLIERS));

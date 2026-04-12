@@ -103,7 +103,7 @@ describe('Demo mode — guard logic', () => {
 
   it('demo session has _demo flag', () => {
     const demoSession = {
-      email: 'demo@aryes.com',
+      email: 'demo@pazque.com',
       role: 'admin',
       name: 'Demo',
       orgId: 'demo',

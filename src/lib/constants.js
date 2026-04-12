@@ -48,7 +48,7 @@ export const getSession = () => {
 };
 
 // ─── getOrgId — lee org desde sesión (default: 'aryes') ──────────────────────
-// ─── getOrgId — reads org from session (defaults to 'aryes') ─────────────────
+// ─── getOrgId — reads org from session (defaults to org from session) ─────────────────
 export const getOrgId = () => {
   try {
     const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');

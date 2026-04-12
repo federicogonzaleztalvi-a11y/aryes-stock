@@ -94,7 +94,7 @@ describe('readSession — JWT expiry logic', () => {
   it('keeps a session with no expiresAt field (legacy — never auto-expires)', () => {
     // Sessions created before expiresAt was added have no expiry field.
     // readSession() should return them as-is rather than crashing.
-    const session = { access_token: 'tok_legacy', email: 'admin@aryes.com' };
+    const session = { access_token: 'tok_legacy', email: 'admin@pazque.com' };
     const storage = makeStorage({ 'aryes-session': JSON.stringify(session) });
     expect(readSession(storage)).toEqual(session);
   });

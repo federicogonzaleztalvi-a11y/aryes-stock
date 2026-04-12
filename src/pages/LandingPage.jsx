@@ -587,7 +587,7 @@ export default function LandingPage() {
             <div style={{ textAlign: 'center', marginBottom: 32 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>CALCULADORA</div>
               <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 28 : 36, color: '#1a1a18', fontWeight: 400, margin: 0 }}>
-                Cuánto te ahorra Aryes
+                Cuánto te ahorra Pazque
               </h2>
               <p style={{ fontSize: 15, color: '#6b7280', margin: '12px auto 0' }}>
                 Mové los controles y mirá el impacto en tu operación.

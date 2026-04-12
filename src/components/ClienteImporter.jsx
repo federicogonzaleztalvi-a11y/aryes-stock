@@ -239,7 +239,7 @@ export default function ClienteImporter({ onClose, onImported }) {
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url;
-                  a.download = 'plantilla-clientes-aryes.csv'; a.click();
+                  a.download = 'plantilla-clientes-pazque.csv'; a.click();
                 }}
                   style={{ background: G, color: '#fff', border: 'none', borderRadius: 6,
                     padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>

@@ -25,7 +25,7 @@ export default function TermsPage() {
         <p style={S.updated}>Última actualización: abril 2026</p>
 
         <h2 style={S.h2}>1. Aceptación de los términos</h2>
-        <p style={S.p}>Al registrarte, acceder o utilizar Pazque (en adelante, "el Servicio"), aceptás estos Términos de Servicio. Si no estás de acuerdo, no utilices el Servicio. Pazque es operado por Aryes (en adelante, "nosotros").</p>
+        <p style={S.p}>Al registrarte, acceder o utilizar Pazque (en adelante, "el Servicio"), aceptás estos Términos de Servicio. Si no estás de acuerdo, no utilices el Servicio. Pazque es operado por Pazque S.R.L. (en adelante, "nosotros").</p>
 
         <h2 style={S.h2}>2. Descripción del servicio</h2>
         <p style={S.p}>Pazque es una plataforma SaaS de gestión comercial para distribuidoras B2B. Incluye módulos de inventario, ventas, rutas, facturación, portal B2B para clientes, seguimiento de entregas y reportes. El Servicio se provee "tal cual" y está sujeto a mejoras continuas.</p>
@@ -49,7 +49,7 @@ export default function TermsPage() {
         <p style={S.p}>Nos esforzamos por mantener el Servicio disponible las 24 horas, los 7 días de la semana. Sin embargo, no garantizamos una disponibilidad del 100%. El Servicio puede tener interrupciones programadas para mantenimiento o actualizaciones, las cuales intentaremos notificar con anticipación cuando sea posible.</p>
 
         <h2 style={S.h2}>9. Limitación de responsabilidad</h2>
-        <p style={S.p}>En la máxima medida permitida por la ley, Aryes no será responsable por daños indirectos, incidentales, especiales o consecuentes que resulten del uso o la imposibilidad de uso del Servicio. Nuestra responsabilidad total no excederá el monto pagado por vos en los últimos 3 meses de suscripción.</p>
+        <p style={S.p}>En la máxima medida permitida por la ley, Pazque no será responsable por daños indirectos, incidentales, especiales o consecuentes que resulten del uso o la imposibilidad de uso del Servicio. Nuestra responsabilidad total no excederá el monto pagado por vos en los últimos 3 meses de suscripción.</p>
 
         <h2 style={S.h2}>10. Cancelación</h2>
         <p style={S.p}>Podés cancelar tu suscripción en cualquier momento desde la configuración de tu cuenta. La cancelación toma efecto al final del período de facturación vigente. Tras la cancelación, tendrás acceso de solo lectura a tus datos por 30 días.</p>
@@ -58,7 +58,7 @@ export default function TermsPage() {
         <p style={S.p}>Nos reservamos el derecho de modificar estos términos. Los cambios se notificarán por email y/o dentro de la plataforma con al menos 15 días de anticipación. El uso continuado del Servicio después de la notificación constituye aceptación de los nuevos términos.</p>
 
         <h2 style={S.h2}>12. Ley aplicable</h2>
-        <p style={S.p}>Estos términos se rigen por las leyes del país donde Aryes tenga su domicilio legal. Cualquier disputa será sometida a la jurisdicción de los tribunales competentes de dicho domicilio.</p>
+        <p style={S.p}>Estos términos se rigen por las leyes del país donde Pazque tenga su domicilio legal. Cualquier disputa será sometida a la jurisdicción de los tribunales competentes de dicho domicilio.</p>
 
         <h2 style={S.h2}>13. Contacto</h2>
         <p style={S.p}>Para consultas sobre estos términos, escribinos a contacto@pazque.com</p>

@@ -223,7 +223,7 @@ export default function ExcelModal({ products, onApply, onClose, suppliers = [] 
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url;
-                  a.download = 'plantilla-productos-aryes.csv'; a.click();
+                  a.download = 'plantilla-productos-pazque.csv'; a.click();
                 }}
                 style={{ background: G, color: '#fff', border: 'none', borderRadius: 6,
                   padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>

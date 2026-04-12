@@ -42,7 +42,7 @@ function getOrgFromContext() {
   // 1. Query param explícito — máxima prioridad
   const qp = new URLSearchParams(window.location.search).get('org');
   if (qp) return qp;
-  // 2. Hosts conocidos de Aryes → org por defecto
+  // 2. Hosts conocidos de Pazque → org por defecto
   const host = window.location.hostname;
   if (host === 'localhost' || host.includes('vercel.app') || host.includes('aryes-stock')) return 'aryes';
   // 3. Dominio custom — se resuelve async via Supabase (ver useEffect abajo)

@@ -1,7 +1,7 @@
 // sw.js — Pazque Service Worker
 // PWA: caches app shell for fast loading + handles push notifications
 
-const CACHE_NAME = 'aryes-' + '20260409';
+const CACHE_NAME = 'pazque-' + '20260409';
 const SHELL_ASSETS = [
   '/',
   '/index.html',

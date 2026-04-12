@@ -95,7 +95,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;a.download='reporte-aryes-'+hoy+'.csv';a.click();
+    a.href=url;a.download='reporte-pazque-'+hoy+'.csv';a.click();
     URL.revokeObjectURL(url);
   };
 
