@@ -54,8 +54,17 @@ function verifyMPSignature(req) {
 }
 
 const PLANS = {
-  pro: { amount: 149, title: 'Pazque', currency: 'USD' },
+  pro:       { amount: 299, title: 'Pazque', currency: 'USD' },
+  pro_intro: { amount: 149, title: 'Pazque — Precio lanzamiento', currency: 'USD' },
 };
+
+const INTRO_MONTHS = 3;
+
+function getPlanForOrg(org) {
+  if (!org.subscription_started_at) return PLANS.pro_intro;
+  const months = (Date.now() - new Date(org.subscription_started_at).getTime()) / (30.44 * 24 * 60 * 60 * 1000);
+  return months < INTRO_MONTHS ? PLANS.pro_intro : PLANS.pro;
+}
 
 // ── Stripe (futuro — descomentar cuando haya LLC en Delaware) ─────
 // const STRIPE_SECRET  = process.env.STRIPE_SECRET_KEY;
@@ -95,9 +104,6 @@ async function mpSubscription(req, res) {
   const { plan = 'pro', org_id } = req.body || {};
   if (!org_id) return res.status(400).json({ error: 'org_id requerido' });
 
-  const planData = PLANS[plan];
-  if (!planData) return res.status(400).json({ error: 'Plan invalido' });
-
   // Obtener datos de la org
   const orgRes = await fetch(
     SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org_id) + '&limit=1',
@@ -106,6 +112,9 @@ async function mpSubscription(req, res) {
   const orgs = await orgRes.json();
   if (!orgs?.length) return res.status(404).json({ error: 'Org no encontrada' });
   const org = orgs[0];
+
+  // Determinar precio según antigüedad (intro 3 meses a 149, después 299)
+  const planData = getPlanForOrg(org);
 
   // Crear plan de suscripción en MercadoPago
   // Primero crear el plan (preapproval_plan), luego la suscripción (preapproval)
@@ -212,6 +221,7 @@ async function mpWebhook(req, res) {
           subscription_status:  'active',
           plan_name:            plan || 'pro',
           trial_ends_at:        null,
+          subscription_started_at: new Date().toISOString(),
           active:               true,
           mp_payment_id:        String(id),
         });
