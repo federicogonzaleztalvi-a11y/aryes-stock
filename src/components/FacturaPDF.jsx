@@ -95,7 +95,7 @@ export default function FacturaPDF({ cfe, brandCfg, onClose }) {
           marginBottom:28, borderBottom:`3px solid ${tipoInfo.color}`, paddingBottom:20 }}>
           <div>
             {brandCfg?.logoUrl && (
-              <img src={brandCfg.logoUrl} alt="logo" style={{ height:48, marginBottom:8, display:'block' }} />
+              <img src={brandCfg.logoUrl} alt="logo" style={{ height:48, objectFit:'contain', maxWidth:'180px', marginBottom:8, display:'block' }} onError={e => e.target.style.display='none'} />
             )}
             <div style={{ fontSize:20, fontWeight:700, color:tipoInfo.color }}>
               {brandCfg?.name || 'Empresa'}

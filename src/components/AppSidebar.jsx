@@ -228,13 +228,24 @@ export default function AppSidebar({ session, tab, setTab }) {
             style={{ height: 36, objectFit: 'contain', maxWidth: '100%', display: 'block' }}
             onError={e => { e.target.style.display = 'none'; }}
           />
+        ) : brandName ? (
+          <div style={{
+            width: 36, height: 36, borderRadius: 8,
+            background: brandColor + '18',
+            color: brandColor,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, fontWeight: 700, fontFamily: S.sans,
+            flexShrink: 0,
+          }}>
+            {brandName.charAt(0).toUpperCase()}
+          </div>
         ) : (
-          <img
-            src="/pazque-logo.png"
-            alt="Pazque"
-            style={{ height: 36, objectFit: 'contain', maxWidth: '100%', display: 'block' }}
-            onError={e => { e.target.style.display = 'none'; }}
-          />
+          <div style={{
+            height: 36, display: 'flex', alignItems: 'center',
+            fontSize: 11, color: S.textXs, fontFamily: S.sans,
+          }}>
+            Configurá tu logo en Ajustes
+          </div>
         )}
 
         {brandName && (
