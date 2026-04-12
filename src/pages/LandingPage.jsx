@@ -470,7 +470,7 @@ export default function LandingPage() {
 
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 10, marginBottom: 6 }}>
               <span style={{ fontSize: 18, color: '#b0b0ac', textDecoration: 'line-through' }}>$299</span>
-              <span style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: '#1a1a18' }}>$199</span>
+              <span style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: '#1a1a18' }}>$149</span>
               <span style={{ fontSize: 15, color: '#9a9a96' }}>USD/mes</span>
             </div>
             <p style={{ fontSize: 13, color: G, fontWeight: 500, margin: '0 0 24px' }}>Precio fijo los primeros 3 meses</p>

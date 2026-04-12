@@ -13,7 +13,7 @@ const SB_URL   = process.env.SUPABASE_URL;
 const SB_SVC   = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MP_TOKEN = process.env.MP_ACCESS_TOKEN;
 const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET;
-const APP_URL  = process.env.APP_URL || 'https://aryes-stock.vercel.app';
+const APP_URL  = process.env.APP_URL || 'https://pazque.com';
 
 
 // ── MercadoPago webhook signature verification ────────────────────
@@ -54,7 +54,7 @@ function verifyMPSignature(req) {
 }
 
 const PLANS = {
-  pro: { amount: 199, title: 'Pazque', currency: 'USD' },
+  pro: { amount: 149, title: 'Pazque', currency: 'USD' },
 };
 
 // ── Stripe (futuro — descomentar cuando haya LLC en Delaware) ─────
