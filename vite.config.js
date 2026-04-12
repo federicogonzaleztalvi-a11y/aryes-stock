@@ -4,6 +4,21 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig({
   plugins: [
+    // SW cache versioning — inject build timestamp
+    {
+      name: 'sw-version',
+      async closeBundle() {
+        const fs = await import('fs');
+        const swFile = 'dist/sw.js';
+        if (fs.existsSync(swFile)) {
+          const v = Date.now().toString(36);
+          let sw = fs.readFileSync(swFile, 'utf8');
+          sw = sw.replace('BUILD_VERSION', "'" + v + "'");
+          fs.writeFileSync(swFile, sw, 'utf8');
+          console.log('  SW version injected:', v);
+        }
+      },
+    },
     react(),
     ...(process.env.SENTRY_AUTH_TOKEN ? [sentryVitePlugin({ org: process.env.SENTRY_ORG, project: process.env.SENTRY_PROJECT, authToken: process.env.SENTRY_AUTH_TOKEN })] : []),
   ],
