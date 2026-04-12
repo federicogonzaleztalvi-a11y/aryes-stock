@@ -969,7 +969,7 @@ Generado desde Pazque.`;
       {session && !dbReady && !demoMode && (
         <div style={{position:"fixed",inset:0,background:"#f9f9f7",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,zIndex:9999}}>
           <style>{CSS}</style>
-          <img src="/pazque-logo.png" alt="Pazque" style={{height: 32,objectFit:"contain",marginBottom:4}} onError={e=>e.target.style.display="none"} />
+          <img src="/pazque-logo.png" alt="Pazque" style={{height: 32,objectFit:"contain",marginBottom:16}} onError={e=>e.target.style.display="none"} />
           <div style={{width:32,height:32,border:"3px solid #059669",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
           <p style={{fontFamily:"Inter,sans-serif",fontSize:14,color:"#6a6a68",fontWeight:500}}>Conectando...</p>
           <p style={{fontFamily:"Inter,sans-serif",fontSize:12,color:"#aaa",marginTop:4}}>Si tardás más de 5 seg, recargá la página</p>
