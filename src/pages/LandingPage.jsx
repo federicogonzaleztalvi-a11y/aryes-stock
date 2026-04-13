@@ -537,7 +537,7 @@ export default function LandingPage() {
               Todo en un solo lugar
             </h2>
             <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 520, margin: '12px auto 0' }}>
-              Otras herramientas resuelven una parte. Aryes conecta todo el flujo de tu distribuidora.
+              Otras herramientas resuelven una parte. Pazque conecta todo el flujo de tu distribuidora.
             </p>
           </div>
           <div style={{ overflowX: 'auto' }}>
