@@ -329,7 +329,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           {/* Public client delivery tracking — no auth */}
           <Route path="/tracking" element={<TrackingPage />} />
           {/* Public self-registration */}
-          <Route path="/" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
+          <Route path="/" element={(() => {
+            if (window.location.hash && window.location.hash.includes('access_token') && window.location.hash.includes('type=recovery')) {
+              window.location.href = '/reset-password' + window.location.hash;
+              return <div/>;
+            }
+            return <Suspense fallback={<div/>}><LandingPage /></Suspense>;
+          })()} />
           <Route path="/landing" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/terms" element={<Suspense fallback={<div/>}><TermsPage /></Suspense>} />
