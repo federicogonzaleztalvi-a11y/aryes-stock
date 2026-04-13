@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { db, LS } from '../lib/constants.js';
+import { useState, useEffect } from 'react';
+import { db, LS, SB_URL, SKEY } from '../lib/constants.js';
 
 const G = '#059669';
 const ONBOARDING_KEY = 'stock-onboarding-done';
@@ -288,6 +288,16 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
 
   // Accumulated state per step
   const [company, setCompany] = useState({ name: '', country: '', city: '', email: '' });
+
+  // Pre-fill company name from organization (set during registration)
+  useEffect(() => {
+    if (!session?.orgId) return;
+    fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.orgId) + '&select=name,email&limit=1', {
+      headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY }
+    }).then(r => r.json()).then(orgs => {
+      if (orgs?.[0]) setCompany(c => ({ ...c, name: orgs[0].name || c.name, email: orgs[0].email || c.email }));
+    }).catch(() => {});
+  }, [session?.orgId]);
   const [brand, setBrand] = useState({ name: '', logoUrl: '', color: '#059669' });
   const [supplier, setSupplier] = useState({ name: '', flag: 'AR', currency: 'USD', company: '', email: '' });
   const [product, setProduct] = useState({ name: '', stock: '0', unit: 'kg', unitCost: '0', supplierId: '' });
