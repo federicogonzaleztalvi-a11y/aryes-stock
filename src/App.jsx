@@ -830,6 +830,16 @@ function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMo
 
   // →→ Layout-only UI state (stays in App) →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
   const [settingsTab,    setSettingsTab]    = useState('usuarios');
+
+  // Listen for navigation events from other tabs
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail?.tab) setTab(e.detail.tab);
+      if (e.detail?.sub) setTimeout(() => setSettingsTab(e.detail.sub), 50);
+    };
+    window.addEventListener('pazque-nav', handler);
+    return () => window.removeEventListener('pazque-nav', handler);
+  }, []);
   const [userMenuOpen,   setUserMenuOpen]   = useState(false);
   const [cmdOpen,        setCmdOpen]        = useState(false);
   // →→ URL-based tab routing (react-router-dom) →→→→→→→→→→→→→→→→→→→→→→→→→→→→→
