@@ -21,7 +21,8 @@ function _checkRate_cat(ip) {
   return true;
 }
 function setHeaders(res, extra = {}) {
-  Object.entries({ ...CORS, ...extra }).forEach(([k, v]) => res.setHeader(k, v));
+  setCorsHeaders({ headers: {} }, res);
+  Object.entries(extra).forEach(([k, v]) => res.setHeader(k, v));
 }
 
 export default async function handler(req, res) {
