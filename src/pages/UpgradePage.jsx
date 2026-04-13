@@ -8,19 +8,13 @@ const F = { sans: "'Inter',system-ui,sans-serif" };
 
 const PLANS = [
   {
-    id:    'starter',
-    name:  'Starter',
-    price: '$79',
-    desc:  'Para distribuidoras chicas que empiezan',
-    features: ['Hasta 3 usuarios', 'Stock y ventas', 'Rutas básicas', 'Soporte por email'],
-  },
-  {
     id:    'pro',
-    name:  'Pro',
+    name:  'Pazque',
     price: '$149',
-    desc:  'Todo lo que necesitás para operar',
+    priceAfter: '$299',
+    desc:  'Precio de lanzamiento los primeros 3 meses. Después USD 299/mes.',
     popular: true,
-    features: ['Usuarios ilimitados', 'Portal B2B para clientes', 'Rutas con IA', 'Facturación DGI', 'Soporte prioritario'],
+    features: ['Usuarios ilimitados', 'Inventario y ventas', 'Portal B2B para clientes', 'Rutas con GPS y tracking', 'Facturación electrónica', 'Dashboard con KPIs', 'Soporte por WhatsApp'],
   },
 ];
 
@@ -55,7 +49,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
-        <img src="/pazque-icon.png" alt="Logo" style={{ height: 80, objectFit: 'contain', marginBottom: 20 }} onError={e => e.target.style.display = 'none'} />
+        <img src="/pazque-logo.png" alt="Logo" style={{ height: 28, objectFit: 'contain', marginBottom: 20 }} onError={e => e.target.style.display = 'none'} />
         {reason === 'canceled' ? (
           <>
             <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
@@ -139,7 +133,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
 
       <p style={{ marginTop: 32, fontFamily: F.sans, fontSize: 12, color: '#9a9a98', textAlign: 'center' }}>
         Pago seguro con MercadoPago · Cancelá cuando quieras · Soporte en {' '}
-        <a href="mailto:hola@pazque.com" style={{ color: G }}>hola@pazque.com</a>
+        <a href="mailto:contacto@pazque.com" style={{ color: G }}>contacto@pazque.com</a>
       </p>
     </div>
   );
