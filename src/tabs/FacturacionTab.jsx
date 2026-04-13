@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { LS, db } from '../lib/constants.js';
@@ -42,6 +43,7 @@ function FacturacionTab({ products=[] }) {
   const [prefill, setPrefill] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroCli,    setFiltroCli]    = useState('todos');
+  const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
   const [busq,         setBusq]         = useState('');
   const [detalleCli,   setDetalleCli]   = useState(null);
 
@@ -431,7 +433,29 @@ function FacturacionTab({ products=[] }) {
                 );
               })()}
 
-              {/* Movimientos */}
+              {/* Botón estado de cuenta */}
+              <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:12 }}>
+                <button onClick={()=>setShowEstadoCuenta(true)}
+                  style={{ padding:'8px 16px', background:'#fff', border:'1px solid #e2e2de',
+                    borderRadius:8, fontFamily:F.sans, fontSize:12, fontWeight:600,
+                    color:'#1a1a18', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+                  Descargar estado de cuenta
+                </button>
+              </div>
+
+              
+              {/* Modal estado de cuenta */}
+              {showEstadoCuenta && (
+                <EstadoCuentaPDF
+                  cliente={clienteDetalle}
+                  cfes={cfesCliente}
+                  cobros={cobrosCliente}
+                  brandCfg={brandCfg}
+                  onClose={() => setShowEstadoCuenta(false)}
+                />
+              )}
+
+{/* Movimientos */}
               <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e2e2de',
                 overflow:'hidden' }}>
                 <div style={{ padding:'14px 18px', borderBottom:'1px solid #f0f0ec',
