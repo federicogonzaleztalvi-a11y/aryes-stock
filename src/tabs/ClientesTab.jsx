@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useRole } from '../hooks/useRole.ts';
 import { useApp } from '../context/AppContext.tsx';
-import { db } from '../lib/constants.js';
+import { db, LS } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
 import ClienteImporter from '../components/ClienteImporter.jsx';
