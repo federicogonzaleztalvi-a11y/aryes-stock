@@ -173,7 +173,7 @@ export default async function handler(req, res) {
     let portalCfg = { portalCatalogo: true, portalPedidos: true };
     try {
       const cfgRes = await fetch(
-        \`\${SB_URL}/rest/v1/app_config?key=eq.brandcfg&org_id=eq.\${org}&limit=1\`,
+        `${SB_URL}/rest/v1/app_config?key=eq.brandcfg&org_id=eq.${org}&limit=1`,
         { headers }
       );
       if (cfgRes.ok) {
