@@ -56,7 +56,36 @@ async async function handler(req, res) {
     }
   }
 
-  const { tel, org = 'aryes' } = req.query || {};
+  const { tel, org = 'aryes', action, cliente_id } = req.query || {};
+
+  // ── Estado de cuenta: devuelve cfes + cobros de un cliente ──
+  if (action === 'cuenta' && cliente_id) {
+    const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_ANON;
+    const svcH = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
+
+    const [cfesRes, cobrosRes] = await Promise.all([
+      fetch(SB_URL + '/rest/v1/cfes?cliente_id=eq.' + encodeURIComponent(cliente_id) + '&org_id=eq.' + encodeURIComponent(org) + '&order=fecha.desc&limit=200', { headers: svcH }),
+      fetch(SB_URL + '/rest/v1/cobros?cliente_id=eq.' + encodeURIComponent(cliente_id) + '&org_id=eq.' + encodeURIComponent(org) + '&order=fecha.desc&limit=200', { headers: svcH }),
+    ]);
+
+    const cfes = cfesRes.ok ? await cfesRes.json() : [];
+    const cobros = cobrosRes.ok ? await cobrosRes.json() : [];
+
+    const mappedCfes = (cfes || []).map(r => ({
+      id: r.id, numero: r.numero || '', tipo: r.tipo || 'e-Factura',
+      fecha: r.fecha || '', fechaVenc: r.fecha_venc || null,
+      total: r.total || 0, saldoPendiente: r.saldo_pendiente || 0,
+      status: r.status || 'emitida',
+    }));
+
+    const mappedCobros = (cobros || []).map(r => ({
+      id: r.id, monto: r.monto || 0, metodo: r.metodo || '',
+      fecha: r.fecha || '', nroCobro: r.nro_cobro || '',
+    }));
+
+    return res.status(200).json({ cfes: mappedCfes, cobros: mappedCobros });
+  }
+
   if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });
 
   const telClean = tel.replace(/\D/g, '');

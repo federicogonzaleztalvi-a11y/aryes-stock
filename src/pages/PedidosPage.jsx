@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import RecommendedProducts from '../components/RecommendedProducts.jsx';
 import { fmt } from '../lib/constants.js';
+import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
+import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
 import IvaLine from '../components/IvaLine.jsx';
 import { demoHoreca } from '../demo/demo-horeca.js';
 import { demoBebidas } from '../demo/demo-bebidas.js';
@@ -803,6 +805,7 @@ export default function PedidosPage() {
   const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
   const [session,  setSession]  = useState(() => loadSession());
   const [vista,    setVista]    = useState('catalogo');
+  const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
   const [recommended, setRecommended] = useState([]);
   const [lastOrder, setLastOrder] = useState(null);
   const [items,    setItems]    = useState([]);
@@ -1013,6 +1016,14 @@ export default function PedidosPage() {
                 onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                 {Icon.history} Mis pedidos
               </button>
+              <button onClick={() => setShowEstadoCuenta(true)} style={{
+                display: 'flex', alignItems: 'center', gap: 9, width: '100%',
+                padding: '9px 16px', border: 'none', background: 'transparent',
+                fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='#f7f7f4'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                Estado de cuenta
+              </button>
               <button onClick={logout} style={{
                 display: 'flex', alignItems: 'center', gap: 9, width: '100%',
                 padding: '9px 16px', border: 'none', background: 'transparent',
@@ -1154,6 +1165,15 @@ export default function PedidosPage() {
             </span>
           </button>
         </div>
+      )}
+
+      {/* Estado de cuenta modal */}
+      {showEstadoCuenta && (
+        <EstadoCuentaPortal
+          session={effectiveSession}
+          brandCfg={brandCfg}
+          onClose={() => setShowEstadoCuenta(false)}
+        />
       )}
 
       {showCart && (
