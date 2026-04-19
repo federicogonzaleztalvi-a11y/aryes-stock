@@ -342,7 +342,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/privacy" element={<Suspense fallback={<div/>}><PrivacyPage /></Suspense>} />
           <Route path="/reset-password" element={<Suspense fallback={<div/>}><ResetPasswordPage /></Suspense>} />
           {/* Upgrade / pricing page */}
-          <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
+          <Route path="/upgrade" element={<UpgradePage session={session} reason="upgrade" />} />
           {/* Everything else → authenticated app */}
           <Route path="/app/*" element={<Root />} />
         </Routes>
