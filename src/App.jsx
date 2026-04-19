@@ -790,12 +790,14 @@ function TrialBanner({ session }) {
     ' ',
     daysLeft === 0 ? 'Tu prueba vence hoy' : 'Prueba: ' + daysLeft + ' día' + (daysLeft !== 1 ? 's' : ''),
     React.createElement('a', {
-      href: '/upgrade',
+      href: '#',
+      onClick: function(e) { e.preventDefault(); window.dispatchEvent(new CustomEvent('pazque-upgrade')); },
       style: {
         color: urgent ? '#dc2626' : '#92400e',
         fontWeight: 700,
         textDecoration: 'underline',
         marginLeft: 4,
+        cursor: 'pointer',
       }
     }, 'Suscribite')
   );

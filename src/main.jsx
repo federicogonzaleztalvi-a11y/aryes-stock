@@ -281,6 +281,19 @@ function Root() {
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
   );
+  // Upgrade manual (desde el banner de trial)
+  const [showUpgrade, setShowUpgrade] = React.useState(false);
+  React.useEffect(() => {
+    const handler = () => setShowUpgrade(true);
+    window.addEventListener('pazque-upgrade', handler);
+    return () => window.removeEventListener('pazque-upgrade', handler);
+  }, []);
+  if (showUpgrade && effectiveSession) return (
+    <Suspense fallback={null}>
+      <UpgradePage session={effectiveSession} reason="upgrade" />
+    </Suspense>
+  );
+
   // Trial vencido o cuenta cancelada → página de upgrade
   if (orgStatus === 'expired') return (
     <Suspense fallback={null}>
@@ -342,7 +355,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/privacy" element={<Suspense fallback={<div/>}><PrivacyPage /></Suspense>} />
           <Route path="/reset-password" element={<Suspense fallback={<div/>}><ResetPasswordPage /></Suspense>} />
           {/* Upgrade / pricing page */}
-          <Route path="/upgrade" element={<UpgradePage session={session} reason="upgrade" />} />
+          <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
           {/* Everything else → authenticated app */}
           <Route path="/app/*" element={<Root />} />
         </Routes>
