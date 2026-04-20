@@ -230,6 +230,12 @@ function Root() {
 
   // Verificar si el trial venció — mostrar pantalla de upgrade
   const [orgStatus, setOrgStatus] = React.useState(() => demoMode ? 'ok' : null); // null=loading, 'ok', 'expired', 'canceled'
+  const [showUpgrade, setShowUpgrade] = React.useState(false);
+  React.useEffect(() => {
+    const handler = () => setShowUpgrade(true);
+    window.addEventListener('pazque-upgrade', handler);
+    return () => window.removeEventListener('pazque-upgrade', handler);
+  }, []);
 
   // Sync orgStatus immediately when demoMode activates (avoids white flash)
   React.useEffect(() => {
@@ -281,13 +287,7 @@ function Root() {
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
   );
-  // Upgrade manual (desde el banner de trial)
-  const [showUpgrade, setShowUpgrade] = React.useState(false);
-  React.useEffect(() => {
-    const handler = () => setShowUpgrade(true);
-    window.addEventListener('pazque-upgrade', handler);
-    return () => window.removeEventListener('pazque-upgrade', handler);
-  }, []);
+  // Upgrade manual (desde el banner)
   if (showUpgrade && effectiveSession) return (
     <Suspense fallback={null}>
       <UpgradePage session={effectiveSession} reason="upgrade" />
