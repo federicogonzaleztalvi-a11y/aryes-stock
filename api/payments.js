@@ -54,8 +54,8 @@ function verifyMPSignature(req) {
 }
 
 const PLANS = {
-  pro:       { amount: 299, title: 'Pazque', currency: 'USD' },
-  pro_intro: { amount: 149, title: 'Pazque — Precio lanzamiento', currency: 'USD' },
+  pro:       { amount: 11990, title: 'Pazque', currency: 'UYU' },
+  pro_intro: { amount: 5990, title: 'Pazque — Precio lanzamiento', currency: 'UYU' },
 };
 
 const INTRO_MONTHS = 3;

@@ -10,9 +10,9 @@ const PLANS = [
   {
     id:    'pro',
     name:  'Pazque',
-    price: '$149',
-    priceAfter: '$299',
-    desc:  'Precio de lanzamiento los primeros 3 meses. Después USD 299/mes.',
+    price: '$5.990',
+    priceAfter: '$11.990',
+    desc:  'Precio de lanzamiento los primeros 3 meses. Después $11.990/mes.',
     popular: true,
     features: ['Usuarios ilimitados', 'Inventario y ventas', 'Portal B2B para clientes', 'Rutas con GPS y tracking', 'Facturación electrónica', 'Dashboard con KPIs', 'Soporte por WhatsApp'],
   },
