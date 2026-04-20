@@ -171,7 +171,7 @@ async function mpSubscription(req, res) {
   if (!subRes.ok) {
     const err = await subRes.json().catch(() => ({}));
     log.error('payments', 'MP subscription creation failed', { status: subRes.status, err });
-    return res.status(500).json({ error: 'Error al crear la suscripcion' });
+    return res.status(500).json({ error: 'Error al crear la suscripcion', detail: err, mpStatus: subRes.status });
   }
 
   const sub = await subRes.json();
