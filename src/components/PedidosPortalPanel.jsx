@@ -3,6 +3,7 @@
 // El panel muestra un historial de lo importado recientemente
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getOrgId } from '../lib/constants.js';
 import { fmt } from '../lib/constants.js';
 
 const G = '#059669';
@@ -32,7 +33,7 @@ export default function PedidosPortalPanel({ onImportar }) {
   const fetchAndAutoImport = useCallback(async () => {
     if (importing) return;
     try {
-      const r = await fetch('/api/pedido?action=pendientes&org=aryes');
+      const r = await fetch('/api/pedido?action=pendientes&org=${getOrgId()}');
       const d = await r.json();
       if (!d.ok || !Array.isArray(d.pedidos) || d.pedidos.length === 0) return;
 

@@ -1,4 +1,5 @@
 import ImageUpload from './ImageUpload.jsx';
+import { getOrgId } from '../lib/constants.js';
 import { getTaxConfig } from '../lib/taxConfig.js';
 import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
@@ -65,7 +66,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
         </Field>
       </div>
       <Field label="Foto del producto">
-        <ImageUpload value={f.imagen_url||""} onChange={function(url){set("imagen_url",url);}} orgId="aryes" />
+        <ImageUpload value={f.imagen_url||""} onChange={function(url){set("imagen_url",url);}} orgId={getOrgId()} />
       </Field>
       <Field label="Descripción / Ficha técnica" hint="Opcional — aparece en el catálogo al hacer click en el producto">
         <textarea value={f.descripcion||""} onChange={e=>set("descripcion",e.target.value)}

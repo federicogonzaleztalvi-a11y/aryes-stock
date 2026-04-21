@@ -968,7 +968,7 @@ function RutasTab(){
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button
               onClick={()=>{
-                const url=`${window.location.origin}/driver?ruta=${ruta.id}&org=${ruta.org_id||'aryes'}`;
+                const url=`${window.location.origin}/driver?ruta=${ruta.id}&org=${ruta.org_id||getOrgId()}`;
                 navigator.clipboard?.writeText(url).then(()=>setMsg('📱 Link copiado! Mandáselo al repartidor')).catch(()=>window.open(url,'_blank'));
               }}
               style={{padding:"7px 14px",background:"#1a1a18",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>

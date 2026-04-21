@@ -401,7 +401,7 @@ function VentasTab(){
     const estado=nuevoEstado;
 
     // Web Push — notificar al admin en otros dispositivos (Delivery Hero automatic events)
-    const orgId = (getSession()?.orgId || 'aryes');
+    const orgId = (getSession()?.orgId || getOrgId());
     if (estado === 'en_ruta') {
       sendPush(orgId, {
         title: 'Venta en camino',

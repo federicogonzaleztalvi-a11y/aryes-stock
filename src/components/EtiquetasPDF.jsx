@@ -8,7 +8,7 @@
 import { useEffect, useRef } from 'react';
 
 function QR({ value, size = 120 }) {
-  const encoded = encodeURIComponent(value || 'aryes');
+  const encoded = encodeURIComponent(value || getOrgId());
   return (
     <img
       src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}&margin=4`}
@@ -132,7 +132,7 @@ function EtiquetaPallet({ recepcion, brandCfg }) {
 
 function EtiquetaDespacho({ venta, brandCfg }) {
   const G = brandCfg?.color || '#059669';
-  const trackingUrl = `${window.location.origin}/tracking?ruta=${venta.rutaId || ''}&cliente=${venta.clienteId || ''}&org=${venta.org_id || 'aryes'}`;
+  const trackingUrl = `${window.location.origin}/tracking?ruta=${venta.rutaId || ''}&cliente=${venta.clienteId || ''}&org=${venta.org_id || getOrgId()}`;
   const items = venta.items || [];
   return (
     <div style={{ width: 380, border: `3px solid ${G}`, borderRadius: 8, fontFamily: 'Arial, sans-serif', overflow: 'hidden', pageBreakInside: 'avoid' }}>

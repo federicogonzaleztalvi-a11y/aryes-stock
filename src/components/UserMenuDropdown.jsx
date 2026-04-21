@@ -62,7 +62,7 @@ function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setT
           )}
           <button
             onClick={() => {
-              const org = (getSession()?.orgId || 'aryes');
+              const org = (getSession()?.orgId || getOrgId());
               const url = `${window.location.origin}/catalogo?org=${org}`;
               navigator.clipboard?.writeText(url).catch(()=>{});
               window.open(url, '_blank', 'noopener,noreferrer');

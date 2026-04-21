@@ -20,7 +20,7 @@ function AddressesPanel({ clientId, orgId }) {
     if (!clientId) return;
     try {
       const r = await fetch(
-        `${SB}/rest/v1/client_addresses?client_id=eq.${clientId}&org_id=eq.${orgId||'aryes'}&active=eq.true&order=created_at.asc`,
+        `${SB}/rest/v1/client_addresses?client_id=eq.${clientId}&org_id=eq.${orgId||getOrgId()}&active=eq.true&order=created_at.asc`,
         { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
       );
       const data = await r.json();
@@ -37,7 +37,7 @@ function AddressesPanel({ clientId, orgId }) {
       await fetch(`${SB}/rest/v1/client_addresses`, {
         method: 'POST',
         headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ client_id: clientId, org_id: orgId||'aryes', ...form }),
+        body: JSON.stringify({ client_id: clientId, org_id: orgId||getOrgId(), ...form }),
       });
       setForm({ label:'Sucursal', direccion:'', ciudad:'', referencia:'' });
       setShow(false);
@@ -127,7 +127,7 @@ function PhonesPanel({ clientId, orgId }) {
     if (!clientId) return;
     try {
       const r = await fetch(
-        `${SB}/rest/v1/client_phones?client_id=eq.${clientId}&org_id=eq.${orgId||'aryes'}&active=eq.true&order=created_at.asc`,
+        `${SB}/rest/v1/client_phones?client_id=eq.${clientId}&org_id=eq.${orgId||getOrgId()}&active=eq.true&order=created_at.asc`,
         { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
       );
       const data = await r.json();
@@ -145,7 +145,7 @@ function PhonesPanel({ clientId, orgId }) {
       await fetch(`${SB}/rest/v1/client_phones`, {
         method: 'POST',
         headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ client_id: clientId, org_id: orgId||'aryes', phone: tel, label }),
+        body: JSON.stringify({ client_id: clientId, org_id: orgId||getOrgId(), phone: tel, label }),
       });
       setNuevo(''); await cargar();
     } catch(e) { console.error(e); }
@@ -570,12 +570,12 @@ function ClientesTab(){
 
       {/* ── Teléfonos adicionales ─────────────────────────────── */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
-        <PhonesPanel clientId={sel.id} orgId={'aryes'} />
+        <PhonesPanel clientId={sel.id} orgId={getOrgId()} />
       </div>
 
       {/* ── Direcciones de entrega ────────────────────────────── */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
-        <AddressesPanel clientId={sel.id} orgId={'aryes'} />
+        <AddressesPanel clientId={sel.id} orgId={getOrgId()} />
       </div>
 
       {/* ── Actividad comercial ───────────────────────────────── */}

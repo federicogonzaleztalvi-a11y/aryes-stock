@@ -121,7 +121,7 @@ function RecepcionTab(){
         fetch(`${SB_R}/rest/v1/rpc/stock_recepcion`,{
           method:'POST',
           headers:{apikey:KEY_R,Authorization:`Bearer ${KEY_R}`,'Content-Type':'application/json'},
-          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantidadRecibida),p_org_id:'aryes',p_ref:`recepcion-${pedidoSel?.id||'manual'}`})
+          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantidadRecibida),p_org_id:getOrgId(),p_ref:`recepcion-${pedidoSel?.id||'manual'}`})
         }).catch(e=>console.warn('[RecepcionTab] stock_recepcion RPC:',e));
       }
     });

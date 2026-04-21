@@ -17,7 +17,7 @@ function ConteoTab(){
   useState(()=>{
     const SB=import.meta.env.VITE_SUPABASE_URL;
     const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
-    fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.aryes&active=eq.true&order=orden.asc`,
+    fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${getOrgId()}&active=eq.true&order=orden.asc`,
       {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
   });

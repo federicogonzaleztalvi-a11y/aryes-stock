@@ -3,6 +3,7 @@
 // y los pasa a EstadoCuentaPDF para renderizar
 
 import { useState, useEffect } from 'react';
+import { getOrgId } from '../lib/constants.js';
 import EstadoCuentaPDF from './EstadoCuentaPDF.jsx';
 
 const API = window.location.origin;
@@ -21,7 +22,7 @@ export default function EstadoCuentaPortal({ session, brandCfg, onClose }) {
       return;
     }
 
-    const org = session?.org || new URLSearchParams(window.location.search).get('org') || 'aryes';
+    const org = session?.org || new URLSearchParams(window.location.search).get('org') || getOrgId();
     const token = session?.token || '';
 
     fetch(`${API}/api/historial?action=cuenta&cliente_id=${encodeURIComponent(session.clienteId)}&org=${encodeURIComponent(org)}`, {

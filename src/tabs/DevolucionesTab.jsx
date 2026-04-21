@@ -70,7 +70,7 @@ function DevolucionesTab(){
         fetch(`${SB}/rest/v1/rpc/stock_devolucion`,{
           method:'POST',
           headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json'},
-          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantDevolver),p_org_id:'aryes',p_ref:`devolucion-${form.ventaId||'manual'}`})
+          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantDevolver),p_org_id:getOrgId(),p_ref:`devolucion-${form.ventaId||'manual'}`})
         }).catch(e=>console.warn('[DevolucionesTab] stock_devolucion RPC:',e));
       }
     });

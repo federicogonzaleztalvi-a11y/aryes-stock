@@ -16,7 +16,7 @@ function BatchPickingTab(){
   useState(()=>{
     const SB=import.meta.env.VITE_SUPABASE_URL;
     const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
-    fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.aryes&active=eq.true&order=orden.asc`,
+    fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${getOrgId()}&active=eq.true&order=orden.asc`,
       {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
   });
@@ -80,7 +80,7 @@ function BatchPickingTab(){
         fetch(`${SB_B}/rest/v1/rpc/stock_venta`,{
           method:'POST',
           headers:{apikey:KEY_B,Authorization:`Bearer ${KEY_B}`,'Content-Type':'application/json'},
-          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:it.cantTotal,p_org_id:'aryes',p_ref:`batch-picking-${picking.id}`})
+          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:it.cantTotal,p_org_id:getOrgId(),p_ref:`batch-picking-${picking.id}`})
         }).catch(e=>console.warn('[BatchPickingTab] stock_venta RPC:',e));
       }
     });

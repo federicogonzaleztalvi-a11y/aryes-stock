@@ -542,7 +542,7 @@ export default function ConfigInline({
 
           {/* ── INTEGRACIONES ─────────────────────────────────────────────── */}
           {settingsTab==="zonas" && (
-            <ZonasDeposito orgId={brandCfg?.orgId || 'aryes'} />
+            <ZonasDeposito orgId={brandCfg?.orgId || getOrgId()} />
           )}
           {settingsTab==="portal" && (
             <div style={{maxWidth:560}}>
@@ -682,7 +682,7 @@ export default function ConfigInline({
                   <div>3. Contactá a Pazque para activarlo en Vercel (tarda ~5 minutos)</div>
                 </div>
               </div>
-              <DominioCNAMEPanel orgId={brandCfg?.orgId || 'aryes'} />
+              <DominioCNAMEPanel orgId={brandCfg?.orgId || getOrgId()} />
             </div>
           )}
           {settingsTab==="integraciones" && (
