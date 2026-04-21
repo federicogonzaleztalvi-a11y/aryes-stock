@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { LS, db, getOrgId } from '../lib/constants.js';
 
 function ImportTab(){
   const G="#059669";
@@ -42,7 +42,7 @@ function ImportTab(){
     reader.readAsText(file,'UTF-8');
   };
 
-  const confirmarImport=()=>{
+  const confirmarImport=async()=>{
     if(preview.length===0)return;
     setImporting(true);
     const existing=[...prods];
@@ -57,6 +57,22 @@ function ImportTab(){
     setPreview([]);
     setMsg(added+' productos agregados, '+updated+' actualizados.');
     setImporting(false);
+    // Persistir en Supabase
+    try {
+      for (const p of preview) {
+        await db.upsert('products', {
+          uuid: p.id,
+          name: p.nombre || p.name || '',
+          stock: Number(p.stock) || 0,
+          unit: p.unidad || p.unit || 'u',
+          unit_cost: Number(p.precio) || 0,
+          min_stock: Number(p.rop) || 5,
+          brand: p.proveedor || '',
+          org_id: getOrgId(),
+          updated_at: new Date().toISOString(),
+        }, 'uuid');
+      }
+    } catch (e) { console.warn('[ImportTab] Supabase sync error:', e); }
   };
 
   const exportCSV=()=>{
