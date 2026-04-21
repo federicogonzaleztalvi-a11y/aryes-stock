@@ -144,43 +144,12 @@ async function mpSubscription(req, res) {
   }
 
   const mpPlan = await planRes.json();
+  log.info('payments', 'MP plan created', { orgId: org_id, plan, planId: mpPlan.id });
 
-  // Crear la suscripción vinculada al plan
-  const subRes = await fetch('https://api.mercadopago.com/preapproval', {
-    method: 'POST',
-    headers: {
-      Authorization: 'Bearer ' + MP_TOKEN,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      preapproval_plan_id: mpPlan.id,
-      reason:              planData.title,
-      payer_email:         org.email,
-      external_reference:  org_id + '|' + plan,
-      back_url:            APP_URL + '/app?upgraded=1',
-      auto_recurring: {
-        frequency:          1,
-        frequency_type:     'months',
-        transaction_amount: planData.amount,
-        currency_id:        planData.currency,
-      },
-      status: 'pending',
-    }),
-  });
-
-  if (!subRes.ok) {
-    const err = await subRes.json().catch(() => ({}));
-    log.error('payments', 'MP subscription creation failed', { status: subRes.status, err });
-    return res.status(500).json({ error: 'Error al crear la suscripcion', detail: err, mpStatus: subRes.status });
-  }
-
-  const sub = await subRes.json();
-  log.info('payments', 'MP subscription created', { orgId: org_id, plan, subId: sub.id });
-
-  // Retornar URL de pago donde el cliente ingresa su tarjeta
+  // Retornar init_point del plan — MP maneja el pago y la suscripción
   return res.status(200).json({
-    url:   sub.init_point,
-    subId: sub.id,
+    url:    mpPlan.init_point,
+    planId: mpPlan.id,
   });
 }
 
