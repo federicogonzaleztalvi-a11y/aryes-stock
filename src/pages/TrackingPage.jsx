@@ -20,7 +20,8 @@ export default function TrackingPage() {
   const params    = new URLSearchParams(window.location.search);
   const rutaId    = params.get('ruta');
   const clienteId = params.get('cliente');
-  const orgId     = params.get('org') || 'aryes';
+  const orgId     = params.get('org');
+  if (!orgId) return <div style={{padding:40,textAlign:'center',fontFamily:'system-ui'}}>Link inválido — falta parámetro de organización.</div>;
 
   const [data,       setData]       = useState(null);
   const [loading,    setLoading]    = useState(true);
