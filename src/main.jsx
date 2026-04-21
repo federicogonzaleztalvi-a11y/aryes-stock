@@ -265,6 +265,14 @@ function Root() {
       }
       if (org.subscription_status === 'past_due') { setOrgStatus('ok'); return; } // gracia de 3 días
       if (org.subscription_status === 'canceled') { setOrgStatus('canceled'); return; }
+      if (org.subscription_status === 'pending_upgrade') {
+        // 7 días de gracia para activar el plan full
+        const upgraded = org.upgrade_requested_at ? new Date(org.upgrade_requested_at) : null;
+        if (!upgraded || (Date.now() - upgraded.getTime()) > 7 * 24 * 60 * 60 * 1000) {
+          setOrgStatus('pending_upgrade'); return;
+        }
+        setOrgStatus('ok'); return; // dentro del período de gracia
+      }
       setOrgStatus('ok'); // default: dejar pasar
     })
     .catch(() => setOrgStatus('ok')); // si falla el check, dejar pasar (no bloquear por error de red)
@@ -303,6 +311,11 @@ function Root() {
   if (orgStatus === 'canceled') return (
     <Suspense fallback={null}>
       <UpgradePage session={session} reason="canceled" />
+    </Suspense>
+  );
+  if (orgStatus === 'pending_upgrade') return (
+    <Suspense fallback={null}>
+      <UpgradePage session={session} reason="pending_upgrade" />
     </Suspense>
   );
   return (

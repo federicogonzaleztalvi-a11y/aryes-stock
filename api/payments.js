@@ -223,7 +223,7 @@ async function mpWebhook(req, res) {
           });
           if (fullRes.ok) {
             const fullMpPlan = await fullRes.json();
-            await updateOrg({ id: orgId }, { mp_plan_id: fullMpPlan.id, mp_plan_type: 'pending_full', subscription_status: 'pending_upgrade' });
+            await updateOrg({ id: orgId }, { mp_plan_id: fullMpPlan.id, mp_plan_type: 'pending_full', subscription_status: 'pending_upgrade', upgrade_requested_at: new Date().toISOString() });
             try {
               const WA_TOKEN = process.env.WA_ACCESS_TOKEN;
               const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;

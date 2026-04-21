@@ -68,6 +68,15 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
               Tus datos están seguros. Elegí un plan para seguir usando Pazque sin interrupciones.
             </p>
           </>
+        ) : reason === 'pending_upgrade' ? (
+          <>
+            <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
+              Tu plan de lanzamiento terminó
+            </h1>
+            <p style={{ fontFamily: F.sans, fontSize: 15, color: '#6a6a68', maxWidth: 420 }}>
+              Activá tu plan para seguir usando Pazque sin interrupciones. Tus datos están seguros.
+            </p>
+          </>
         ) : (
           <>
             <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
