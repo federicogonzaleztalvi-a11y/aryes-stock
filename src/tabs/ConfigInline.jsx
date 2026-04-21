@@ -268,7 +268,7 @@ export default function ConfigInline({
         <div>
           {/* Sub-tab bar */}
           <div style={{display:"flex",gap:8,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
-            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"},{id:"portal",l:"Portal B2B"},{id:"datos",l:"Datos"}].map(st=>(
+            {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"},{id:"portal",l:"Portal B2B"},{id:"datos",l:"Datos"},{id:"plan",l:"Plan"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:"0 0 auto",padding:"10px 16px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:T.sans,fontSize:12,fontWeight:600,
                   background:settingsTab===st.id?T.green:"#fff",color:settingsTab===st.id?"#fff":T.textSm,borderRadius:6,border:settingsTab===st.id?"none":"1px solid "+T.border}}>
@@ -660,6 +660,40 @@ export default function ConfigInline({
               <div style={{marginTop:32,paddingTop:20,borderTop:'1px solid #e2e2de'}}>
                 <h3 style={{fontSize:15,fontWeight:700,marginBottom:4,color:'#dc2626'}}>Eliminar cuenta</h3>
                 <p style={{fontSize:13,color:'#6a6a68',marginBottom:12}}>Si querés eliminar tu cuenta y todos tus datos, escribinos a contacto@pazque.com. Tus datos se eliminan de forma permanente en un plazo de 30 días.</p>
+              </div>
+            </div>
+          )}
+          {settingsTab==="plan" && (
+            <div style={{maxWidth:500}}>
+              <h3 style={{fontSize:15,fontWeight:700,marginBottom:4}}>Tu plan</h3>
+              <p style={{fontSize:13,color:'#6a6a68',marginBottom:20}}>Gestioná tu suscripción a Pazque.</p>
+              <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:16,marginBottom:24}}>
+                <div style={{fontSize:13,fontWeight:600,color:'#059669',marginBottom:4}}>Plan activo</div>
+                <div style={{fontSize:24,fontWeight:700,color:'#1a1a18'}}>$5.990<span style={{fontSize:13,fontWeight:400,color:'#6a6a68'}}>/mes</span></div>
+                <div style={{fontSize:12,color:'#6a6a68',marginTop:4}}>Precio de lanzamiento por 3 meses. Luego $11.990/mes.</div>
+              </div>
+              <div style={{paddingTop:16,borderTop:'1px solid #e2e2de'}}>
+                <h4 style={{fontSize:14,fontWeight:600,color:'#dc2626',marginBottom:4}}>Cancelar suscripción</h4>
+                <p style={{fontSize:13,color:'#6a6a68',marginBottom:12}}>Si cancelás, tu cuenta seguirá activa hasta el final del período pagado. Tus datos no se eliminan.</p>
+                <button
+                  onClick={async()=>{
+                    if(!confirm('¿Estás seguro de que querés cancelar tu suscripción? Tu cuenta seguirá activa hasta el final del período pagado.')) return;
+                    try{
+                      const SB=import.meta.env.VITE_SUPABASE_URL;
+                      const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
+                      const sess=JSON.parse(localStorage.getItem('aryes-session')||'null');
+                      if(!sess?.orgId) return alert('Error: sesión no válida');
+                      await fetch(SB+'/rest/v1/organizations?id=eq.'+encodeURIComponent(sess.orgId),{
+                        method:'PATCH',
+                        headers:{apikey:KEY,Authorization:'Bearer '+(sess.access_token||KEY),'Content-Type':'application/json',Prefer:'return=minimal'},
+                        body:JSON.stringify({subscription_status:'canceled',active:false}),
+                      });
+                      alert('Suscripción cancelada. Tu cuenta seguirá activa hasta el final del período pagado.');
+                      window.location.reload();
+                    }catch(e){alert('Error al cancelar. Contactá a contacto@pazque.com');}
+                  }}
+                  style={{padding:'8px 20px',background:'#fff',color:'#dc2626',border:'1px solid #fecaca',borderRadius:6,fontSize:13,fontWeight:600,cursor:'pointer'}}
+                >Cancelar suscripción</button>
               </div>
             </div>
           )}
