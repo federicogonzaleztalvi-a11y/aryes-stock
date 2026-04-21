@@ -203,6 +203,17 @@ function Root() {
     }
   }, []);
 
+  // ── Feedback visual al volver de MercadoPago ──
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = React.useState(false);
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') === '1') {
+      setShowUpgradeSuccess(true);
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setShowUpgradeSuccess(false), 8000);
+    }
+  }, []);
+
   const effectiveSession = demoMode ? {
     email: 'demo@pazque.com', role: 'admin', name: 'Demo', orgId: 'demo',
     access_token: 'demo-token', expiresAt: Date.now() + 86400000, _demo: true,
@@ -231,6 +242,7 @@ function Root() {
   // Verificar si el trial venció — mostrar pantalla de upgrade
   const [orgStatus, setOrgStatus] = React.useState(() => demoMode ? 'ok' : null); // null=loading, 'ok', 'expired', 'canceled'
   const [showUpgrade, setShowUpgrade] = React.useState(false);
+  const [upgradeDaysLeft, setUpgradeDaysLeft] = React.useState(null);
   React.useEffect(() => {
     const handler = () => setShowUpgrade(true);
     window.addEventListener('pazque-upgrade', handler);
@@ -271,7 +283,10 @@ function Root() {
         if (!upgraded || (Date.now() - upgraded.getTime()) > 7 * 24 * 60 * 60 * 1000) {
           setOrgStatus('pending_upgrade'); return;
         }
-        setOrgStatus('ok'); return; // dentro del período de gracia
+        // Dentro de gracia — mostrar días restantes
+        const daysLeft = Math.max(0, Math.ceil((7 * 24 * 60 * 60 * 1000 - (Date.now() - upgraded.getTime())) / 86400000));
+        setUpgradeDaysLeft(daysLeft);
+        setOrgStatus('ok'); return;
       }
       setOrgStatus('ok'); // default: dejar pasar
     })
@@ -295,6 +310,21 @@ function Root() {
       <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
     </div>
   );
+  // Banner de upgrade pendiente (gracia)
+  const UpgradeGraceBanner = upgradeDaysLeft !== null ? React.createElement('div', {
+    style: { position:'fixed', top:0, left:0, right:0, zIndex:9998, background:'#fef2f2', color:'#dc2626', padding:'10px 24px', textAlign:'center', fontFamily:"'Inter',system-ui,sans-serif", fontSize:13, fontWeight:600, borderBottom:'1px solid #fecaca', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }
+  }, 
+    '⚠️ Tu plan de lanzamiento terminó. ',
+    upgradeDaysLeft === 0 ? 'Hoy es el último día para activar tu plan.' : 'Te quedan ' + upgradeDaysLeft + ' día' + (upgradeDaysLeft !== 1 ? 's' : '') + ' para activar tu plan.',
+    ' ',
+    React.createElement('a', { href:'#', onClick: function(e) { e.preventDefault(); window.dispatchEvent(new CustomEvent('pazque-upgrade')); }, style: { color:'#dc2626', fontWeight:700, textDecoration:'underline', cursor:'pointer' } }, 'Activar ahora')
+  ) : null;
+
+  // Banner de pago exitoso
+  const UpgradeSuccessBanner = showUpgradeSuccess ? React.createElement('div', {
+    style: { position:'fixed', top:0, left:0, right:0, zIndex:9999, background:'#059669', color:'#fff', padding:'12px 24px', textAlign:'center', fontFamily:"'Inter',system-ui,sans-serif", fontSize:14, fontWeight:600, animation:'slideDown 0.3s ease' }
+  }, '✅ ¡Pago recibido! Tu suscripción está activa. Bienvenido a Pazque.') : null;
+
   // Upgrade manual (desde el banner)
   if (showUpgrade && effectiveSession) return (
     <Suspense fallback={null}>
@@ -320,6 +350,8 @@ function Root() {
   );
   return (
     <>
+      {UpgradeGraceBanner}
+      {UpgradeSuccessBanner}
       <AppProvider session={effectiveSession} onLogout={demoMode ? exitDemo : handleLogout} onSessionUpdate={setSession} demoState={demoMode ? demoState : null}>
         <Routes>
           <Route path="" element={<Navigate to="/app/dashboard" replace />} />
