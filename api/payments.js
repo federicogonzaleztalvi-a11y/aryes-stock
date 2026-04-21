@@ -131,6 +131,7 @@ async function mpSubscription(req, res) {
         frequency_type:   'months',
         transaction_amount: planData.amount,
         currency_id:      planData.currency,
+        ...(planData === PLANS.pro_intro ? { repetitions: 3 } : {}),
       },
       back_url: APP_URL + '/app?upgraded=1',
       status:   'active',
@@ -146,7 +147,13 @@ async function mpSubscription(req, res) {
   const mpPlan = await planRes.json();
   log.info('payments', 'MP plan created', { orgId: org_id, plan, planId: mpPlan.id });
 
-  // Retornar init_point del plan — MP maneja el pago y la suscripción
+  // Guardar plan_id en la org
+  await updateOrg({ id: org_id }, {
+    mp_plan_id: mpPlan.id,
+    mp_plan_type: planData === PLANS.pro_intro ? 'intro' : 'full',
+  });
+
+  // Retornar init_point del plan
   return res.status(200).json({
     url:    mpPlan.init_point,
     planId: mpPlan.id,
@@ -196,8 +203,49 @@ async function mpWebhook(req, res) {
         });
         log.info('payments', 'subscription authorized — org activated', { orgId });
       } else if (status === 'cancelled' && orgId) {
-        await updateOrg({ id: orgId }, { subscription_status: 'canceled', active: false });
-        log.info('payments', 'subscription cancelled', { orgId });
+        const orgCheck = await fetch(
+          SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(orgId) + '&select=mp_plan_type,name&limit=1',
+          { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC } }
+        );
+        const orgData = (await orgCheck.json())?.[0];
+        if (orgData?.mp_plan_type === 'intro') {
+          log.info('payments', 'intro completed, creating full plan', { orgId });
+          const fullPlan = PLANS.pro;
+          const fullRes = await fetch('https://api.mercadopago.com/preapproval_plan', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + MP_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reason: fullPlan.title,
+              auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: fullPlan.amount, currency_id: fullPlan.currency },
+              back_url: APP_URL + '/app?upgraded=1',
+              status: 'active',
+            }),
+          });
+          if (fullRes.ok) {
+            const fullMpPlan = await fullRes.json();
+            await updateOrg({ id: orgId }, { mp_plan_id: fullMpPlan.id, mp_plan_type: 'pending_full', subscription_status: 'pending_upgrade' });
+            try {
+              const WA_TOKEN = process.env.WA_ACCESS_TOKEN;
+              const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;
+              if (WA_TOKEN && WA_PHONE_ID) {
+                const usersRes = await fetch(SB_URL + '/rest/v1/users?org_id=eq.' + encodeURIComponent(orgId) + '&role=eq.admin&select=phone&limit=1', { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC } });
+                const users = await usersRes.json();
+                const adminPhone = users?.[0]?.phone;
+                if (adminPhone) {
+                  const msg = 'Hola ' + (orgData.name || '') + ', tu periodo de lanzamiento en Pazque termino. Para seguir usando la plataforma sin interrupciones, activa tu plan a $11.990/mes aca: ' + fullMpPlan.init_point;
+                  await fetch('https://graph.facebook.com/v21.0/' + WA_PHONE_ID + '/messages', { method: 'POST', headers: { Authorization: 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ messaging_product: 'whatsapp', to: adminPhone, type: 'text', text: { body: msg } }) });
+                  log.info('payments', 'upgrade WA sent', { orgId, phone: adminPhone });
+                }
+              }
+            } catch (waErr) { log.error('payments', 'upgrade WA failed', { orgId, error: waErr.message }); }
+          } else {
+            log.error('payments', 'full plan creation failed', { orgId });
+            await updateOrg({ id: orgId }, { subscription_status: 'canceled', active: false });
+          }
+        } else {
+          await updateOrg({ id: orgId }, { subscription_status: 'canceled', active: false });
+          log.info('payments', 'subscription cancelled by user', { orgId });
+        }
       }
 
     } else if (topic === 'payment') {
