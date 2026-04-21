@@ -141,7 +141,7 @@ async function mpSubscription(req, res) {
   if (!planRes.ok) {
     const err = await planRes.json().catch(() => ({}));
     log.error('payments', 'MP plan creation failed', { status: planRes.status, err });
-    return res.status(500).json({ error: 'Error al crear el plan de suscripcion', detail: err, mpStatus: planRes.status });
+    return res.status(500).json({ error: 'Error al crear el plan de suscripcion' });
   }
 
   const mpPlan = await planRes.json();

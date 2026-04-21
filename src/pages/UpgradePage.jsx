@@ -36,7 +36,7 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
         body: JSON.stringify({ plan: planId, org_id: session?.orgId }),
       });
       const data = await r.json();
-      if (!r.ok) { setErr(data.error + (data.detail ? ' — ' + JSON.stringify(data.detail) : '')); setLoading(null); return; }
+      if (!r.ok) { setErr(data.error || 'Error al iniciar el pago'); setLoading(null); return; }
       window.location.href = data.url;
     } catch {
       setErr('Error de conexion. Intentá de nuevo.');
