@@ -100,13 +100,13 @@ function PedidoModal({ carrito, onClose, whatsapp, showPrice }) {
     if (!nombre.trim()) { alert('Ingresá tu nombre o empresa'); return; }
     const lineas = carrito.map(it =>
       showPrice && it.precio > 0
-        ? `• ${it.nombre} × ${it.qty} ${it.unidad} = ${fmt.currencyCompact(it.precio * it.qty)}`
+        ? `• ${it.nombre} × ${it.qty} ${it.unidad} = ${fmt.currency(it.precio * it.qty)}`
         : `• ${it.nombre} × ${it.qty} ${it.unidad}`
     ).join('\n');
     const msg = [
       `Hola, soy *${nombre.trim()}* y quiero hacer un pedido:`,
       '', lineas, '',
-      showPrice && total > 0 ? `*TOTAL: ${fmt.currencyCompact(total)}*` : '',
+      showPrice && total > 0 ? `*TOTAL: ${fmt.currency(total)}*` : '',
       nota.trim() ? `\nNotas: ${nota.trim()}` : '',
     ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
@@ -126,13 +126,13 @@ function PedidoModal({ carrito, onClose, whatsapp, showPrice }) {
               <span style={{ fontWeight: 600 }}>{it.nombre}</span>
               <span style={{ color: '#9a9a92', marginLeft: 6 }}>× {it.qty} {it.unidad}</span>
             </div>
-            {showPrice && it.precio > 0 && <span style={{ fontWeight: 700, color: G }}>{fmt.currencyCompact(it.precio * it.qty)}</span>}
+            {showPrice && it.precio > 0 && <span style={{ fontWeight: 700, color: G }}>{fmt.currency(it.precio * it.qty)}</span>}
           </div>
         ))}
 
         {showPrice && total > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontWeight: 700, fontSize: 15, borderTop: '1.5px solid #e8e8e0', marginTop: 4 }}>
-            <span>Total</span><span style={{ color: G }}>{fmt.currencyCompact(total)}</span>
+            <span>Total</span><span style={{ color: G }}>{fmt.currency(total)}</span>
           </div>
         )}
 
