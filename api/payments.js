@@ -192,6 +192,19 @@ async function mpWebhook(req, res) {
       [orgId, plan] = ref.split('|');
       status = sub.status; // authorized, paused, cancelled
 
+      // Si no hay external_reference, buscar org por mp_plan_id
+      if (!orgId && sub.preapproval_plan_id) {
+        const orgLookup = await fetch(
+          SB_URL + '/rest/v1/organizations?mp_plan_id=eq.' + encodeURIComponent(sub.preapproval_plan_id) + '&select=id&limit=1',
+          { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC } }
+        );
+        const orgsFound = await orgLookup.json();
+        if (orgsFound?.[0]?.id) {
+          orgId = orgsFound[0].id;
+          log.info('payments', 'org found by mp_plan_id', { orgId, planId: sub.preapproval_plan_id });
+        }
+      }
+
       if (status === 'authorized' && orgId) {
         await updateOrg({ id: orgId }, {
           subscription_status:  'active',
