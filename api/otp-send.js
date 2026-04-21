@@ -1,5 +1,5 @@
-// api/otp-send.js — Genera y envía un OTP por WhatsApp o SMS via Infobip
-// Si INFOBIP_API_KEY no está configurado, devuelve el código en la respuesta (modo dev)
+// api/otp-send.js — Genera y envía un OTP por WhatsApp via Meta Cloud API
+// Si WA_ACCESS_TOKEN no está configurado, devuelve el código en la respuesta (modo dev)
 
 import { setCorsHeaders } from './_cors.js';
 
@@ -7,13 +7,11 @@ const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON    = process.env.SUPABASE_ANON_KEY;
 
-const IB_API_KEY  = process.env.INFOBIP_API_KEY;
-const IB_BASE_URL = process.env.INFOBIP_BASE_URL;
-const IB_SENDER   = process.env.INFOBIP_SENDER;
-const IB_CHANNEL  = process.env.INFOBIP_CHANNEL;
+const WA_TOKEN    = process.env.WA_ACCESS_TOKEN;
+const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://aryes-stock.vercel.app',
+  'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://pazque.com',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -32,62 +30,29 @@ function toE164Uruguay(tel) {
   return digits;
 }
 
-async function sendViaInfobip(to, code) {
-  const mensaje = `Tu código de acceso a Pazque es: *${code}*\n\nVálido por 10 minutos. No lo compartas.`;
-
-  if (IB_CHANNEL === 'whatsapp') {
-    // WhatsApp via Infobip — mucho más barato que SMS (~10x)
-    const url = `${IB_BASE_URL}/whatsapp/1/message/text`;
-    const body = {
-      from: org_sender || IB_SENDER,
-      to,
-      content: { text: mensaje },
-    };
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `App ${IB_API_KEY}`,
-        'Content-Type':  'application/json',
-        'Accept':        'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('[otp-send] Infobip WhatsApp error:', err);
-      throw new Error('WhatsApp no enviado: ' + err);
-    }
-    const data = await res.json();
-    console.log('[otp-send] WhatsApp enviado via Infobip:', data?.messages?.[0]?.status?.name || 'ok');
-    return data;
-  } else {
-    // SMS via Infobip (fallback)
-    const url = `${IB_BASE_URL}/sms/2/text/advanced`;
-    const body = {
-      messages: [{
-        destinations: [{ to }],
-        from: org_sender || IB_SENDER || 'Pazque',
-        text: `Tu código de acceso a Pazque es: ${code}\n\nVálido por 10 minutos. No lo compartas.`,
-      }],
-    };
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `App ${IB_API_KEY}`,
-        'Content-Type':  'application/json',
-        'Accept':        'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('[otp-send] Infobip SMS error:', err);
-      throw new Error('SMS no enviado: ' + err);
-    }
-    const data = await res.json();
-    console.log('[otp-send] SMS enviado via Infobip:', data?.messages?.[0]?.status?.name);
-    return data;
+async function sendViaWhatsApp(to, code) {
+  const msg = 'Tu codigo de acceso a Pazque es: *' + code + '*\n\nValido por 10 minutos. No lo compartas.';
+  const res = await fetch('https://graph.facebook.com/v21.0/' + WA_PHONE_ID + '/messages', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + WA_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: to,
+      type: 'text',
+      text: { body: msg },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('[otp-send] WhatsApp error:', err);
+    throw new Error('WhatsApp no enviado: ' + err);
   }
+  const data = await res.json();
+  console.log('[otp-send] WhatsApp enviado via Meta:', data?.messages?.[0]?.id || 'ok');
+  return data;
 }
 
 
@@ -102,7 +67,7 @@ function _checkRate_otp(ip) {
   _rl_otp.set(ip, recent);
   return true;
 }
-export default async async function handler(req, res) {
+export default async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
@@ -147,7 +112,7 @@ export default async async function handler(req, res) {
   }
 
   // Multi-tenant: get org-specific WhatsApp sender if configured
-  let org_sender = IB_SENDER;
+  let org_sender = null;
   try {
     const orgRes = await fetch(
       `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=whatsapp_sender&limit=1`,
@@ -193,14 +158,14 @@ export default async async function handler(req, res) {
     return res.status(500).json({ error: 'Error al generar código' });
   }
 
-  if (IB_API_KEY && IB_BASE_URL) {
+  if (WA_TOKEN && WA_PHONE_ID) {
     try {
       const telE164 = toE164Uruguay(telClean);
-      await sendViaInfobip(telE164, code);
+      await sendViaWhatsApp(telE164, code);
       return res.status(200).json({ ok: true, clienteNombre: clients[0].name });
     } catch (err) {
       console.error('[otp-send] Error enviando mensaje:', err.message);
-      return res.status(500).json({ error: 'Error al enviar el código. Intentá de nuevo.' });
+      return res.status(500).json({ error: 'Error al enviar el codigo. Intenta de nuevo.' });
     }
   }
 
