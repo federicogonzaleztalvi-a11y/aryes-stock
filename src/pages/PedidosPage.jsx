@@ -369,7 +369,7 @@ function ProductCard({ item, qty, onAdd, onRemove }) {
           {item.nombre}
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
-          {item.precio > 0 ? fmt.currencyCompact(item.precio) : <span style={{ fontSize: 12, color: '#a0a098' }}>Consultar</span>}
+          {item.precio > 0 ? fmt.currency(item.precio) : <span style={{ fontSize: 12, color: '#a0a098' }}>Consultar</span>}
           {item.precio > 0 && <span style={{ fontSize: 10, color: '#a0a098', fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
@@ -463,7 +463,7 @@ function HistorialPedidos({ session, onReordenar }) {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: G }}>{fmt.currencyCompact(p.total)}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: G }}>{fmt.currency(p.total)}</div>
                 <span style={{ fontSize: 10, fontWeight: 700, color: est.color,
                   background: est.bg, padding: '2px 8px', borderRadius: 20, marginTop: 4, display: 'inline-block' }}>
                   {est.label}
@@ -479,7 +479,7 @@ function HistorialPedidos({ session, onReordenar }) {
                       fontSize: 12, padding: '6px 0', color: '#4a4a42',
                       borderBottom: i < p.items.length - 1 ? '1px solid #f5f5f0' : 'none' }}>
                       <span>{it.cantidad} x {it.nombre}</span>
-                      <span style={{ fontWeight: 600, color: G }}>{fmt.currencyCompact(it.subtotal)}</span>
+                      <span style={{ fontWeight: 600, color: G }}>{fmt.currency(it.subtotal)}</span>
                     </div>
                   ))}
                 </div>
@@ -624,13 +624,13 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                 <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 2 }}>
-                  {qty} × {fmt.currencyCompact(item.precio)}
+                  {qty} × {fmt.currency(item.precio)}
                   {descPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descPct}%</span>}
                   <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                 </div>
               </div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>
-                {fmt.currencyCompact(netoLinea)}
+                {fmt.currency(netoLinea)}
               </div>
             </div>
           ))}
@@ -642,21 +642,21 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
             display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: '#9a9a92' }}>Subtotal neto</span>
-              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(subtotalNeto)}</span>
+              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
             </div>
             {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
               const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
               return (
                 <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 12, color: '#9a9a92' }}>IVA {rate}%</span>
-                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(ivaDeRate)}</span>
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaDeRate)}</span>
                 </div>
               );
             })}
             <div style={{ borderTop: '1px solid #e8e8e0', paddingTop: 8, marginTop: 2,
               display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
-              <span style={{ fontSize: 20, fontWeight: 700, color: G }}>{fmt.currencyCompact(total)}</span>
+              <span style={{ fontSize: 20, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
             </div>
           </div>
         </div>
@@ -718,7 +718,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{qty} x {fmt.currencyCompact(item.precio)}</span>
+                    <span>{qty} x {fmt.currency(item.precio)}</span>
                     {descPct > 0 && <span style={{ color: '#dc2626' }}>-{descPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
                   </div>
@@ -726,11 +726,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
                 <div style={{ textAlign: 'right' }}>
                   {descPct > 0 && (
                     <div style={{ fontSize: 11, color: '#b0b0a8', textDecoration: 'line-through' }}>
-                      {fmt.currencyCompact(item.precio * qty)}
+                      {fmt.currency(item.precio * qty)}
                     </div>
                   )}
                   <div style={{ fontSize: 13, fontWeight: 700, color: G }}>
-                    {fmt.currencyCompact(netoLinea)}
+                    {fmt.currency(netoLinea)}
                   </div>
                 </div>
               </div>
@@ -768,21 +768,21 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: '#9a9a92' }}>Subtotal neto</span>
-              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(subtotalNeto)}</span>
+              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
             </div>
             {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
               const ivaRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
               return (
                 <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 12, color: '#9a9a92' }}>IVA {rate}%</span>
-                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currencyCompact(ivaRate)}</span>
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaRate)}</span>
                 </div>
               );
             })}
             <div style={{ borderTop: '0.5px solid #e8e8e0', paddingTop: 8,
               display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: G }}>{fmt.currencyCompact(total)}</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
             </div>
           </div>
           <button onClick={confirmar} disabled={loading || lineas.length === 0} style={{
