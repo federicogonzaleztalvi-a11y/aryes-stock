@@ -27,7 +27,7 @@ function _checkRate_his(ip) {
   _rl_his.set(ip, recent);
   return true;
 }
-async async function handler(req, res) {
+async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET')    return res.status(405).json({ error: 'Method not allowed' });
@@ -41,26 +41,31 @@ async async function handler(req, res) {
     return res.status(503).json({ error: 'Servicio temporalmente no disponible' });
   }
 
-  // Validate portal session token — prevents unauthorized access to order history
+  // Session REQUIRED — validate portal session and derive org from it
   const authHeader = req.headers['authorization'] || '';
   const sessionToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (sessionToken) {
-    // If token provided, validate it
-    const key = SB_ANON;
-    const sessRes = await fetch(
-      `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&revoked=eq.false&limit=1`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-    );
-    if (!sessRes.ok || !(await sessRes.json())?.length) {
-      return res.status(401).json({ error: 'Sesión inválida' });
-    }
-  }
+  if (!sessionToken) return res.status(401).json({ error: 'No autenticado' });
 
-  const { tel, org = 'aryes', action, cliente_id } = req.query || {};
+  const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_ANON;
+  const sessRes = await fetch(
+    `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&select=org_id,cliente_id,tel&limit=1`,
+    { headers: { apikey: svcKey, Authorization: `Bearer ${svcKey}`, Accept: 'application/json' } }
+  );
+  if (!sessRes.ok) return res.status(401).json({ error: 'Sesión inválida' });
+  const sessions = await sessRes.json();
+  if (!sessions?.length) return res.status(401).json({ error: 'Sesión expirada. Iniciá sesión nuevamente.' });
+  const portalSession = sessions[0];
 
-  // ── Estado de cuenta: devuelve cfes + cobros de un cliente ──
-  if (action === 'cuenta' && cliente_id) {
-    const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_ANON;
+  // Derive org and identity from validated session — NEVER from query string
+  const org = portalSession.org_id;
+  const sessionClienteId = portalSession.cliente_id;
+  const sessionTel = portalSession.tel;
+  const { action } = req.query || {};
+
+  // ── Estado de cuenta: usa cliente_id de la sesión validada ──
+  if (action === 'cuenta') {
+    const cliente_id = sessionClienteId;
+    if (!cliente_id) return res.status(400).json({ error: 'Cliente no identificado en la sesión' });
     const svcH = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
 
     const [cfesRes, cobrosRes] = await Promise.all([
@@ -86,7 +91,8 @@ async async function handler(req, res) {
     return res.status(200).json({ cfes: mappedCfes, cobros: mappedCobros });
   }
 
-  if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });
+  const tel = sessionTel;
+  if (!tel) return res.status(400).json({ error: 'Teléfono no encontrado en la sesión' });
 
   const telClean = tel.replace(/\D/g, '');
   if (telClean.length < 8) return res.status(400).json({ error: 'Teléfono inválido' });
