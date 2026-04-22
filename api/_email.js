@@ -39,7 +39,7 @@ export const templates = {
           Empezar ahora →
         </a>
         <p style="font-size:12px;color:#9a9a98;margin-top:32px">
-          ¿Dudas? Respondé este email o escribinos a contacto@pazque.com
+          ¿Dudas? Escribinos a contacto@pazque.com
         </p>
       </div>`,
   }),
