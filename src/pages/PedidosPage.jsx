@@ -1022,7 +1022,7 @@ export default function PedidosPage() {
                 onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                 {Icon.history} Mis pedidos
               </button>
-              <button onClick={() => setShowEstadoCuenta(true)} style={{
+              <button onClick={() => !isPortalDemo && setShowEstadoCuenta(true)} style={{ ...(isPortalDemo ? {opacity:0.4,pointerEvents:'none'} : {}),
                 display: 'flex', alignItems: 'center', gap: 9, width: '100%',
                 padding: '9px 16px', border: 'none', background: 'transparent',
                 fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
