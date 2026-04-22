@@ -61,5 +61,9 @@
       ]
     }
   ],
+  "crons": [{
+    "path": "/api/cron-trial",
+    "schedule": "0 12 * * *"
+  }],
   "version": 2
 }
