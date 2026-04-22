@@ -821,6 +821,12 @@ export default function PedidosPage() {
   const NAV_MAX = 10;
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
 
   // Detect demo mode from URL
   useEffect(() => {
@@ -943,9 +949,9 @@ export default function PedidosPage() {
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
         position: 'sticky', top: 0, zIndex: 100 }} onClick={() => setDdOpen(false)}>
 
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: window.innerWidth < 768 ? '6px 12px' : '0 24px',
-          minHeight: 56, display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? 8 : 16,
-          borderBottom: '0.5px solid #f0f0ec', flexWrap: window.innerWidth < 768 ? 'wrap' : 'nowrap' }}>
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
+          minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
+          borderBottom: '0.5px solid #f0f0ec', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
             <div style={{ width: 28, height: 28, background: G, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -958,7 +964,7 @@ export default function PedidosPage() {
             )}
           </div>
           {vista === 'catalogo' ? (
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: window.innerWidth < 768 ? '0 4px' : '0 16px', ...(window.innerWidth < 768 ? { order: 10, flex: '1 1 100%' } : {}) }}>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isMobile ? '4px 0' : '0 16px', ...(isMobile ? { order: 10, flex: '1 1 100%' } : {}) }}>
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#a0a098' }}>{Icon.search}</div>
                 <input value={busq} onChange={e => setBusq(e.target.value)}
@@ -973,7 +979,7 @@ export default function PedidosPage() {
             </div>
           ) : <div style={{ flex: 1 }} />}
           {lastOrder && (
-              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: 13, color: '#059669', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
+              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: isMobile ? 11 : 13, color: '#059669', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: isMobile ? '4px 8px' : '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
                 Repetir pedido anterior
               </button>
             )}
@@ -996,9 +1002,9 @@ export default function PedidosPage() {
                 fontSize: 12, fontWeight: 600, color: G, flexShrink: 0, border: '1.5px solid #bbf7d0' }}>
                 {effectiveSession?.nombre?.slice(0,1).toUpperCase()}
               </div>
-              <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
+              {!isMobile && <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
                 {effectiveSession?.nombre?.split(' ')[0]}
-              </span>
+              </span>}
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             <div className="udd" style={{ display: 'none', position: 'absolute', right: 0, top: '100%',
