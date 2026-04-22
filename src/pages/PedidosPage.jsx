@@ -943,9 +943,9 @@ export default function PedidosPage() {
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
         position: 'sticky', top: 0, zIndex: 100 }} onClick={() => setDdOpen(false)}>
 
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
-          minHeight: 56, display: 'flex', alignItems: 'center', gap: 8,
-          borderBottom: '0.5px solid #f0f0ec', flexWrap: 'wrap', paddingTop: 6, paddingBottom: 6 }}>
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: window.innerWidth < 768 ? '6px 12px' : '0 24px',
+          minHeight: 56, display: 'flex', alignItems: 'center', gap: window.innerWidth < 768 ? 8 : 16,
+          borderBottom: '0.5px solid #f0f0ec', flexWrap: window.innerWidth < 768 ? 'wrap' : 'nowrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
             <div style={{ width: 28, height: 28, background: G, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -958,7 +958,7 @@ export default function PedidosPage() {
             )}
           </div>
           {vista === 'catalogo' ? (
-            <div style={{ flex: '1 1 200px', display: 'flex', justifyContent: 'center', padding: '0 4px', order: 10 }}>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: window.innerWidth < 768 ? '0 4px' : '0 16px', ...(window.innerWidth < 768 ? { order: 10, flex: '1 1 100%' } : {}) }}>
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#a0a098' }}>{Icon.search}</div>
                 <input value={busq} onChange={e => setBusq(e.target.value)}
