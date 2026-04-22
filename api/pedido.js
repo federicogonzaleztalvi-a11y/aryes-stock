@@ -52,11 +52,19 @@ async function handler(req, res) {
     const action = req.query?.action;
     if (action !== 'pendientes')
       return res.status(401).json({ error: 'No autorizado' });
-    // GET pendientes no necesita auth fuerte — app admin ya protege el acceso
-    const org = req.query?.org || 'aryes';
+    // Require auth — derive org from authenticated user
+    const authH = req.headers['authorization'] || '';
+    const userToken = authH.startsWith('Bearer ') ? authH.slice(7) : null;
+    if (!userToken) return res.status(401).json({ error: 'No autenticado' });
+    const userRes = await fetch(SB_URL + '/auth/v1/user', { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + userToken } });
+    if (!userRes.ok) return res.status(401).json({ error: 'Sesion invalida' });
+    const userData = await userRes.json();
+    const userMeta = userData?.user_metadata || userData?.raw_user_meta_data || {};
+    const org = userMeta.org_id;
+    if (!org) return res.status(403).json({ error: 'Usuario sin organización' });
     const key = SB_SVC || SB_ANON;
     const r = await fetch(
-      `${SB_URL}/rest/v1/b2b_orders?org_id=eq.${org}&estado=eq.pendiente&order=creado_en.desc&limit=50`,
+      `${SB_URL}/rest/v1/b2b_orders?org_id=eq.${encodeURIComponent(org)}&estado=eq.pendiente&order=creado_en.desc&limit=50`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
     );
     if (!r.ok) return res.status(500).json({ error: 'Error al obtener pedidos' });
@@ -91,12 +99,21 @@ async function handler(req, res) {
   // ── POST /api/pedido?action=confirmar — confirmar pedido B2B → venta (operador) ──
   const actionConfirm = req.query?.action;
   if (actionConfirm === 'confirmar') {
-    // POST confirmar llamado desde admin — protegido por login de la app
-    const { orderId, operador = 'admin', org = 'aryes' } = req.body || {};
+    // POST confirmar — require auth, derive org from user
+    const authHC = req.headers['authorization'] || '';
+    const userTokenC = authHC.startsWith('Bearer ') ? authHC.slice(7) : null;
+    if (!userTokenC) return res.status(401).json({ error: 'No autenticado' });
+    const userResC = await fetch(SB_URL + '/auth/v1/user', { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + userTokenC } });
+    if (!userResC.ok) return res.status(401).json({ error: 'Sesion invalida' });
+    const userDataC = await userResC.json();
+    const userMetaC = userDataC?.user_metadata || userDataC?.raw_user_meta_data || {};
+    const org = userMetaC.org_id;
+    if (!org) return res.status(403).json({ error: 'Usuario sin organización' });
+    const { orderId, operador = 'admin' } = req.body || {};
     if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
     const key = SB_SVC || SB_ANON;
     const orderRes = await fetch(
-      `${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}&org_id=eq.${org}&limit=1`,
+      `${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}&org_id=eq.${encodeURIComponent(org)}&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
     );
     const orders = await orderRes.json();
