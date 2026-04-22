@@ -8,6 +8,7 @@
 //   Descomentar sección Stripe y cambiar UpgradePage a provider=stripe
 
 import { log } from './_log.js';
+import { sendEmail, templates } from './_email.js';
 
 const SB_URL   = process.env.SUPABASE_URL;
 const SB_SVC   = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -230,6 +231,16 @@ async function mpWebhook(req, res) {
           mp_payment_id:        String(id),
         });
         log.info('payments', 'subscription authorized — org activated', { orgId });
+            // Email de confirmación de pago (non-blocking)
+            try {
+              const orgEmail = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(orgId) + '&select=name,email&limit=1', { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC } });
+              const orgInfo = (await orgEmail.json())?.[0];
+              if (orgInfo?.email) {
+                const planInfo = getPlanForOrg(orgInfo);
+                const tpl = templates.paymentConfirmed(orgInfo.name || '', planInfo.amount.toLocaleString('es-UY'));
+                await sendEmail({ to: orgInfo.email, ...tpl });
+              }
+            } catch (e) { log.warn('payments', 'payment email failed', { orgId, error: e.message }); }
       } else if (status === 'cancelled' && orgId) {
         const orgCheck = await fetch(
           SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(orgId) + '&select=mp_plan_type,name&limit=1',

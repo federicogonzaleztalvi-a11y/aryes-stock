@@ -3,6 +3,7 @@
 // No auth required — this is the public signup flow.
 
 import { log, withObservability } from './_log.js';
+import { sendEmail, templates } from './_email.js';
 import { setCorsHeaders } from './_cors.js';
 
 
@@ -144,6 +145,12 @@ async function handler(req, res) {
   }
 
   log.info('register', 'new org registered', { orgId, empresa: empresa.trim(), email });
+
+  // Email de bienvenida (non-blocking)
+  try {
+    const tpl = templates.welcome(empresa.trim());
+    await sendEmail({ to: email, ...tpl });
+  } catch (e) { log.warn('register', 'welcome email failed', { email, error: e.message }); }
 
   return res.status(201).json({
     ok:    true,
