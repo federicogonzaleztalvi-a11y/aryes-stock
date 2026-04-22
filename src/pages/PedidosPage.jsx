@@ -943,9 +943,9 @@ export default function PedidosPage() {
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
         position: 'sticky', top: 0, zIndex: 100 }} onClick={() => setDdOpen(false)}>
 
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 24px',
-          height: 66, display: 'flex', alignItems: 'center', gap: 16,
-          borderBottom: '0.5px solid #f0f0ec' }}>
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
+          minHeight: 56, display: 'flex', alignItems: 'center', gap: 8,
+          borderBottom: '0.5px solid #f0f0ec', flexWrap: 'wrap', paddingTop: 6, paddingBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
             <div style={{ width: 28, height: 28, background: G, borderRadius: 7,
               display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -958,7 +958,7 @@ export default function PedidosPage() {
             )}
           </div>
           {vista === 'catalogo' ? (
-            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '0 16px' }}>
+            <div style={{ flex: '1 1 200px', display: 'flex', justifyContent: 'center', padding: '0 4px', order: 10 }}>
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#a0a098' }}>{Icon.search}</div>
                 <input value={busq} onChange={e => setBusq(e.target.value)}
@@ -978,7 +978,7 @@ export default function PedidosPage() {
               </button>
             )}
             <button onClick={() => totalItems > 0 && setShowCart(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px',
+            display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
             borderRadius: 24, border: 'none', cursor: 'pointer',
             background: totalItems > 0 ? G : '#f0f0ec',
             color: totalItems > 0 ? '#fff' : '#9a9a92',
@@ -1041,9 +1041,9 @@ export default function PedidosPage() {
           </div>
         </div>
 
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          height: 44, position: 'relative' }} onClick={e => e.stopPropagation()}>
+        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
+          display: 'flex', alignItems: 'center',
+          height: 44, position: 'relative', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
           {vista === 'catalogo' && cats.slice(0, NAV_MAX).map(cat => (
             <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
               padding: '0 16px', height: 44, border: 'none', background: 'transparent',
