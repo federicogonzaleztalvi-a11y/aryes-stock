@@ -164,6 +164,9 @@ function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
           <div style={{ fontFamily:F.sans, fontSize:12, color:'#9a9a98' }}>
             {items.length} línea{items.length!==1?'s':''} · {fmt.currency(total,moneda)}
           </div>
+          <div style={{ background:'#fffbeb', borderRadius:8, padding:'10px 14px', marginBottom:12, fontSize:12, color:'#92400e', lineHeight:1.5, borderLeft:'3px solid #f59e0b' }}>
+            ⚠️ Este comprobante es un registro interno de Pazque. Para validez fiscal ante DGI, debe ser emitido a través de tu proveedor certificado (Uruware, Pymo, etc.).
+          </div>
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={()=>onSave({tipo,moneda,fecha,fechaVenc,clienteId,clienteNombre,clienteRut,items,notas,descuento,subtotal,ivaTotal,total,status:'borrador'})}
               disabled={!canSave} style={{ background:'#f0f0ec', color:'#3a3a38', border:'none',
