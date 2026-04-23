@@ -1,7 +1,7 @@
 // api/_cors.js — Dynamic CORS for multi-tenant custom domains
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-const BASE_ORIGIN = process.env.APP_URL || 'https://aryes-stock.vercel.app';
+const BASE_ORIGIN = process.env.APP_URL || 'https://pazque.com';
 
 // Cache domain list for 5 minutes to avoid DB hit on every request
 let _domainCache = null;
@@ -12,7 +12,7 @@ async function getAllowedOrigins() {
   const now = Date.now();
   if (_domainCache && now - _domainCacheTime < CACHE_TTL) return _domainCache;
 
-  const origins = [BASE_ORIGIN, 'https://aryes-stock.vercel.app'];
+  const origins = [BASE_ORIGIN, 'https://pazque.com'];
 
   if (SB_URL && SB_KEY) {
     try {

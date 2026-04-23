@@ -23,6 +23,12 @@
       "maxDuration": 10
     }
   },
+  "redirects": [{
+    "source": "/:path*",
+    "has": [{ "type": "host", "value": "www.pazque.com" }],
+    "destination": "https://pazque.com/:path*",
+    "permanent": true
+  }],
   "rewrites": [
     {
       "source": "/api/:path*",

@@ -10,7 +10,7 @@ const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
 const CORS = {
-  'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://aryes-stock.vercel.app',
+  'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://pazque.com',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
