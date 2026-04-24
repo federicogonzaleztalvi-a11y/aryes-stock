@@ -3,8 +3,6 @@
 
 const CACHE_NAME = 'pazque-' + BUILD_VERSION;
 const SHELL_ASSETS = [
-  '/',
-  '/index.html',
   '/pazque-logo.png',
 ];
 
@@ -47,7 +45,7 @@ self.addEventListener('fetch', event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then(cached => cached || caches.match('/')))
+      .catch(() => caches.match(event.request))
   );
 });
 
