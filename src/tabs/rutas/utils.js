@@ -101,8 +101,8 @@ export function nearestNeighborTSP(entregas, clientes) {
 }
 
 // ── Nominatim geocoder (OpenStreetMap, free, no API key) ─────────────────────
-export async function geocodeAddress(direccion, ciudad) {
-  const q = [direccion, ciudad, 'Uruguay'].filter(Boolean).join(', ');
+export async function geocodeAddress(direccion, ciudad, pais) {
+  const q = [direccion, ciudad, pais || ''].filter(Boolean).join(', ');
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
   const res = await fetch(url, { headers: { 'Accept-Language': 'es', 'User-Agent': 'Pazque/1.0' } });
   const data = await res.json();

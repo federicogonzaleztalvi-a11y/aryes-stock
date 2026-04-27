@@ -42,7 +42,7 @@ function RutasTab(){
   // ── ETA calculation ───────────────────────────────────────────────────────
   // Returns estimated minutes from driver's current position to a stop,
   // walking through all pending stops before it in order.
-  // velocidad: km/h from GPS (default 30 km/h for Uruguay urban)
+  // velocidad: km/h from GPS (default 30 km/h urban default)
   // ── Drag & drop reorder ─────────────────────────────────────────────────
   const reordenarEntregas = (fromIdx, toIdx) => {
     if (fromIdx === toIdx || !ruta) return;
@@ -336,7 +336,7 @@ function RutasTab(){
       if (cli.lat && cli.lng) continue; // already geocoded
       if (!cli.direccion && !cli.ciudad) continue; // no address to geocode
       try {
-        const coords = await geocodeAddress(cli.direccion, cli.ciudad);
+        const coords = await geocodeAddress(cli.direccion, cli.ciudad, cli.pais);
         if (coords) {
           const updCli = { ...cli, ...coords, geocodedAt: new Date().toISOString() };
           clientesActualizados[idx] = updCli;
@@ -608,7 +608,7 @@ function RutasTab(){
   };
 
   const abrirMaps=(e)=>{
-    const q=encodeURIComponent((e.ciudad||e.clienteNombre)+" Uruguay");
+    const q=encodeURIComponent((e.ciudad||e.clienteNombre));
     window.open("https://maps.google.com/?q="+q,"_blank","noopener,noreferrer");
   };
 
@@ -618,9 +618,9 @@ function RutasTab(){
     const pendientes = ruta.entregas.filter(e => e.estado !== "entregado");
     if (pendientes.length === 0) return;
     // Google Maps URL format: /dir/origin/waypoint1/waypoint2/.../destination
-    // Use client name + city + Uruguay as search terms — works without geocoded coords
+    // Use client name + city as search terms — works without geocoded coords
     const stops = pendientes.map(e =>
-      encodeURIComponent([(e.clienteNombre||''), (e.ciudad||''), 'Uruguay'].filter(Boolean).join(', '))
+      encodeURIComponent([(e.clienteNombre||''), (e.ciudad||'')].filter(Boolean).join(', '))
     );
     if (stops.length === 1) {
       window.open("https://maps.google.com/?q=" + stops[0], "_blank", "noopener,noreferrer");
