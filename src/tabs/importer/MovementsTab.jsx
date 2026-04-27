@@ -192,7 +192,7 @@ const MovementsTab=({products,setProducts,session})=>{
         ))}
         <button onClick={()=>{
           const csv=['Fecha,Producto,Marca,Tipo,Cantidad,Stock Antes,Stock Después,Motivo,Referencia,Usuario',
-            ...filtered.map(m=>[new Date(m.date).toLocaleString('es-UY'),m.productName,m.brand,m.type,m.qty,m.stockBefore,m.stockAfter,m.reason,m.reference||'',m.user].join(','))
+            ...filtered.map(m=>[new Date(m.date).toLocaleString('es'),m.productName,m.brand,m.type,m.qty,m.stockBefore,m.stockAfter,m.reason,m.reference||'',m.user].join(','))
           ].join('\n');
           const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
           a.download='movimientos.csv';a.click();
@@ -213,7 +213,7 @@ const MovementsTab=({products,setProducts,session})=>{
             <tbody>
               {filtered.slice(0,50).map(m=>(
                 <tr key={m.id} style={{borderTop:'1px solid #f0f0ec'}}>
-                  <td style={{padding:'9px 12px',color:'#9a9a98',whiteSpace:'nowrap'}}>{new Date(m.date).toLocaleDateString('es-UY')} {new Date(m.date).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}</td>
+                  <td style={{padding:'9px 12px',color:'#9a9a98',whiteSpace:'nowrap'}}>{new Date(m.date).toLocaleDateString('es')} {new Date(m.date).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</td>
                   <td style={{padding:'9px 12px'}}><div style={{fontWeight:600,color:'#1a1a18'}}>{m.productName}</div><div style={{fontSize:11,color:'#9a9a98'}}>{m.brand}</div></td>
                   <td style={{padding:'9px 12px'}}><span style={{padding:'3px 8px',borderRadius:10,fontSize:11,fontWeight:600,background:m.type==='entrada'?'#f0fdf4':'#fef2f2',color:m.type==='entrada'?'#16a34a':'#dc2626'}}>{m.type==='entrada'?'↑ Entrada':'↓ Salida'}</span></td>
                   <td style={{padding:'9px 12px',fontWeight:700,color:m.type==='entrada'?'#16a34a':'#dc2626'}}>{m.type==='entrada'?'+':'-'}{m.qty}</td>

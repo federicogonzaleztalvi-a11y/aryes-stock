@@ -111,7 +111,7 @@ function VentasTab(){
       const msg = [
         `Hola ${nombre}, confirmamos recepcion del pago:`,
         ``,
-        `Monto recibido: *U$S ${montoStr}*`,
+        `Monto recibido: *${getOrgConfigStatic(brandCfg).currencySymbol} ${montoStr}*`,
         `Forma de pago: ${cobro.metodo || 'Efectivo'}`,
         `Fecha: ${fecha}`,
         saldoTras > 0
@@ -240,10 +240,10 @@ function VentasTab(){
           const limiteStr = limite.toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
           const proceed = window.confirm(
             `⚠️ Límite de crédito excedido para ${cli.nombre}\n\n` +
-            `Deuda actual: U$S ${deudaStr}\n` +
-            `Esta venta: U$S ${totalVenta.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}\n` +
-            `Límite configurado: U$S ${limiteStr}\n` +
-            `Exceso: U$S ${exceso}\n\n` +
+            `Deuda actual: ${getOrgConfigStatic(brandCfg).currencySymbol} ${deudaStr}\n` +
+            `Esta venta: ${getOrgConfigStatic(brandCfg).currencySymbol} ${totalVenta.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}\n` +
+            `Límite configurado: ${getOrgConfigStatic(brandCfg).currencySymbol} ${limiteStr}\n` +
+            `Exceso: ${getOrgConfigStatic(brandCfg).currencySymbol} ${exceso}\n\n` +
             `¿Confirmar venta de todas formas?`
           );
           if(!proceed) return;
