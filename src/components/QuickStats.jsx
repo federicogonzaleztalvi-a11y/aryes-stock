@@ -46,7 +46,7 @@ function QuickStats({ critN = 0, orders = [], cfes = [] }) {
     },
     overdueDebt > 0 && {
       key: 'debt',
-      label: `$${Math.round(overdueDebt).toLocaleString('es-UY')} venc.`,
+      label: `$${Math.round(overdueDebt).toLocaleString('es')} venc.`,
       bg: '#fffbeb',
       border: '#fde68a',
       color: '#d97706',

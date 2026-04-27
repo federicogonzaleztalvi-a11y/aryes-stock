@@ -19,7 +19,7 @@ const G = '#059669';
 
 const fmtDate = d => {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return new Date(d).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
 const PERIODOS = [
@@ -109,7 +109,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
     <tr>
       <td style="text-align:center;color:#9ca3af">${i + 1}</td>
       <td style="font-weight:500">${p.nombre}</td>
-      <td style="text-align:center">${Number(p.cantidad).toLocaleString('es-UY')} ${p.unidad}</td>
+      <td style="text-align:center">${Number(p.cantidad).toLocaleString('es')} ${p.unidad}</td>
       <td style="text-align:right;font-weight:700;color:${G}">${fmt.currencyCompact(p.total)}</td>
     </tr>
   `).join('');
@@ -121,7 +121,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
     </tr>
   `).join('');
 
-  const hoy = new Date().toLocaleDateString('es-UY', { day: '2-digit', month: 'long', year: 'numeric' });
+  const hoy = new Date().toLocaleDateString('es', { day: '2-digit', month: 'long', year: 'numeric' });
 
   return `<!DOCTYPE html>
 <html lang="es">

@@ -86,7 +86,7 @@ function DevolucionesTab(){
       ventaId: form.ventaId, clienteNombre: form.clienteNombre,
       motivo: form.motivo, notas: form.notas,
       items: itemsDevueltos, estado: 'procesada',
-      fecha: new Date().toLocaleDateString('es-UY'),
+      fecha: new Date().toLocaleDateString('es'),
       creadoEn: now,
     };
     setDevoluciones([dev, ...devoluciones]);

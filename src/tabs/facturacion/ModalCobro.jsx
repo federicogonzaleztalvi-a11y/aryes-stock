@@ -64,7 +64,7 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
       <span class="total">${fmt.currency(cobro.monto)}</span>
     </div>
     ${cobro.notas ? `<p style="font-size:12px;color:#6b7280;margin-top:12px">Notas: ${cobro.notas}</p>` : ''}
-    <p class="footer">Documento no fiscal · Comprobante interno de cobro<br>${new Date().toLocaleString('es-UY')}</p>
+    <p class="footer">Documento no fiscal · Comprobante interno de cobro<br>${new Date().toLocaleString('es')}</p>
   </div>
   <div class="no-print" style="text-align:center;margin-top:16px">
     <button onclick="window.print()" style="padding:10px 28px;background:${G};color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨 Imprimir recibo</button>

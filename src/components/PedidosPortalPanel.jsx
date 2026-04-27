@@ -16,7 +16,7 @@ function fmtTs(ts) {
   if (diffMin < 1)  return 'ahora mismo';
   if (diffMin < 60) return `hace ${diffMin} min`;
   if (diffMin < 1440) return `hace ${Math.floor(diffMin/60)} h`;
-  return d.toLocaleDateString('es-UY');
+  return d.toLocaleDateString('es');
 }
 
 export default function PedidosPortalPanel({ onImportar }) {

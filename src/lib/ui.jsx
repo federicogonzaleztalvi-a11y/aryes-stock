@@ -84,8 +84,8 @@ export const alertLevel  = (p, s) => {
 };
 
 // ── Formatters ───────────────────────────────────────────────────────────────
-export const fmtDate  = d => d ? new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"}) : "—";
-export const fmtShort = d => d ? new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short"}) : "—";
+export const fmtDate  = d => d ? new Date(d).toLocaleDateString("es",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+export const fmtShort = d => d ? new Date(d).toLocaleDateString("es",{day:"2-digit",month:"short"}) : "—";
 
 // ── Atoms ────────────────────────────────────────────────────────────────────
 export const Cap = ({children,style:sx}) => (

@@ -270,7 +270,7 @@ function DepositoTab(){
                           <td style={{padding:'9px 14px',fontFamily:'monospace',fontWeight:700,color:G,fontSize:12}}>{u.id}</td>
                           <td style={{padding:'9px 14px'}}><span style={{background:u.id.startsWith('F')?'#e0f2fe':'#eff6ff',color:u.id.startsWith('F')?'#0369a1':'#1d4ed8',fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:20}}>{u.id.startsWith('F')?'Frio':'Ambiente'}</span></td>
                           <td style={{padding:'9px 14px',fontWeight:500,color:'#1a1a1a'}}>{prod?prod.nombre:'Desconocido'}</td>
-                          <td style={{padding:'9px 14px',color:'#6b7280',fontSize:12}}>{u.asignado?new Date(u.asignado).toLocaleDateString('es-UY'):'-'}</td>
+                          <td style={{padding:'9px 14px',color:'#6b7280',fontSize:12}}>{u.asignado?new Date(u.asignado).toLocaleDateString('es'):'-'}</td>
                         </tr>
                       );
                     })}

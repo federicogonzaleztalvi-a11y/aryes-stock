@@ -139,7 +139,7 @@ function RutasTab(){
   // (no captura nada del scope en tiempo de declaración)
   function generarSugerencia() {
     const nvehiculos = Math.max(1, parseInt(vehiculosDisp) || 1);
-    const diaHoy = new Date().toLocaleDateString('es-UY', { weekday: 'long' });
+    const diaHoy = new Date().toLocaleDateString('es', { weekday: 'long' });
     const diaHoyCapitalized = diaHoy.charAt(0).toUpperCase() + diaHoy.slice(1);
     const zonasDeHoy = (zonasConfig || []).filter(z => (z.dias||[]).includes(diaHoyCapitalized));
 
@@ -377,7 +377,7 @@ function RutasTab(){
   };
 
   const marcarEntregado=(rutaId,clienteId,nota='',fotoBase64='',firmaBase64='')=>{
-    const hora=new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"});
+    const hora=new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"});
     const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"entregado",hora,notaEntrega:nota||'',fotoEntrega:fotoBase64||'',firmaEntrega:firmaBase64||''}:ev)}:r);
     setRutas(upd);
     const updRuta=upd.find(r=>r.id===rutaId);
@@ -586,7 +586,7 @@ function RutasTab(){
   };
 
   const marcarNoEntregado=(rutaId,clienteId)=>{
-    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"no_entregado",hora:new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"})}:ev)}:r);
+    const upd=rutas.map(r=>r.id===rutaId?{...r,entregas:r.entregas.map(ev=>ev.clienteId===clienteId?{...ev,estado:"no_entregado",hora:new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"})}:ev)}:r);
     setRutas(upd);
     const updRuta=upd.find(r=>r.id===rutaId);
     if(updRuta) db.upsert('rutas',{
@@ -899,7 +899,7 @@ function RutasTab(){
             {l:"Tiempo/parada",v:avgMin>0?avgMin+' min':'—',c:'#3b82f6',sub:tiempos.length+' mediciones'},
             {l:"On-time",v:pctOnTime!==null?pctOnTime+'%':'—',c:pctOnTime>=80?G:'#f59e0b',sub:conVentana.length>0?onTime+'/'+conVentana.length+' con ventana':'Sin ventanas'},
             {l:"No entregados",v:noEntregadosA.length+'',c:noEntregadosA.length>0?'#dc2626':'#9ca3af',sub:totalA>0?Math.round(noEntregadosA.length/totalA*100)+'% del total':''},
-            {l:"Duración total",v:durTotal?durTotal<60?durTotal+' min':Math.floor(durTotal/60)+'h '+durTotal%60+'m':'—',c:'#6b7280',sub:ruta.salidaEn?'Salió '+new Date(ruta.salidaEn).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}):'No salió aún'},
+            {l:"Duración total",v:durTotal?durTotal<60?durTotal+' min':Math.floor(durTotal/60)+'h '+durTotal%60+'m':'—',c:'#6b7280',sub:ruta.salidaEn?'Salió '+new Date(ruta.salidaEn).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}):'No salió aún'},
           ].map(kpi=>(
             <div key={kpi.l} style={{background:"#fff",borderRadius:10,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
               <div style={{fontSize:11,color:"#888",marginBottom:4}}>{kpi.l}</div>
@@ -1045,7 +1045,7 @@ function RutasTab(){
         {ruta.salidaEn&&(()=>{
           const entregasConHora=ruta.entregas.filter(e=>e.hora);
           if(entregasConHora.length===0&&!ruta.salidaEn) return null;
-          const salidaTime=new Date(ruta.salidaEn).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
+          const salidaTime=new Date(ruta.salidaEn).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
           const ultimaEntrega=entregasConHora[entregasConHora.length-1];
           const duracionMin=ultimaEntrega?Math.round((new Date('2000-01-01T'+ultimaEntrega.hora+':00').getTime()-new Date(ruta.salidaEn).getTime()%86400000)/60000):null;
           return(

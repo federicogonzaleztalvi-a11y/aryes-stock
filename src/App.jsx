@@ -170,7 +170,7 @@ const ALERT_CFG = {
   ok:         {label:"Normal",       dot:T.ok,      bg:T.okBg,    bd:T.okBd,    txt:T.ok,     pri:0},
 };
 
-const fmtDate  = d=>d?new Date(d).toLocaleDateString("es-UY",{day:"2-digit",month:"short",year:"numeric"}):"→";
+const fmtDate  = d=>d?new Date(d).toLocaleDateString("es",{day:"2-digit",month:"short",year:"numeric"}):"→";
 
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 // ATOMS
@@ -276,7 +276,7 @@ const Scanner=({products,suppliers,onUpdate})=>{
   const confirm=()=>{
     if(!found)return;
     onUpdate(found.id,qty);
-    setLog(l=>[{time:new Date().toLocaleTimeString("es-UY",{hour:"2-digit",minute:"2-digit"}),name:found.name,qty,unit:found.unit},...l.slice(0,19)]);
+    setLog(l=>[{time:new Date().toLocaleTimeString("es",{hour:"2-digit",minute:"2-digit"}),name:found.name,qty,unit:found.unit},...l.slice(0,19)]);
     flash(true,`+${qty} ${found.unit} ingresado para ${found.name}`);
     setFound(null);setQty(1);
     if(mode==="usb") setTimeout(()=>ref.current?.focus(),80);
@@ -721,8 +721,8 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
                       <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:13,fontWeight:500}}>{o.productName}</td>
                       <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:13}}>{o.qty} {o.unit}</td>
                       <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:13}}>{supplier.currency||"USD"} {o.totalCost}</td>
-                      <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{new Date(o.orderedAt).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}</td>
-                      <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:12,color:o.status==="pending"?T.watch:T.ok}}>{new Date(o.expectedArrival).toLocaleDateString("es-UY",{day:"2-digit",month:"short"})}</td>
+                      <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{new Date(o.orderedAt).toLocaleDateString("es",{day:"2-digit",month:"short"})}</td>
+                      <td style={{padding:"9px 12px",fontFamily:T.sans,fontSize:12,color:o.status==="pending"?T.watch:T.ok}}>{new Date(o.expectedArrival).toLocaleDateString("es",{day:"2-digit",month:"short"})}</td>
                       <td style={{padding:"9px 12px"}}><AlertPill level={o.status==="pending"?"watch":"ok"}/></td>
                     </tr>
                   ))}
@@ -887,7 +887,7 @@ function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMo
     if (demoMode && demoGuard) { demoGuard('Creá tu cuenta para enviar resúmenes'); return; }
     const ownerPhone = brandCfg?.ownerPhone;
     if (!ownerPhone) { alert('Configurá tu teléfono en Config → Marca y empresa'); return; }
-    const fecha = new Date().toLocaleDateString('es-UY', {weekday:'long',day:'numeric',month:'long'});
+    const fecha = new Date().toLocaleDateString('es', {weekday:'long',day:'numeric',month:'long'});
     const msg = `📊 *Resumen del día — ${fecha}*
 
 Generado desde Pazque.`;
@@ -1101,7 +1101,7 @@ Generado desde Pazque.`;
           const msg=[
             `Hola${sup?.contact?' '+sup.contact.split(' ')[0]:''},`,
             `Confirmamos pedido de *${qty} ${modal.product.unit} de ${modal.product.name}*.`,
-            `Llegada estimada: ${arrival.toLocaleDateString('es-UY',{day:'2-digit',month:'2-digit',year:'numeric'})}`,
+            `Llegada estimada: ${arrival.toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'numeric'})}`,
             `Por favor confirmar disponibilidad y fecha de despacho.`
           ].join('\n');
           setTimeout(()=>{

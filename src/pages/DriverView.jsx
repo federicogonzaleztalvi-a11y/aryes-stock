@@ -35,7 +35,7 @@ function fotoABase64(file) {
 }
 
 function timeNow() {
-  return new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' });
+  return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -479,7 +479,7 @@ export default function DriverView() {
         {ruta.enRuta && ruta.salidaEn && (
           <div style={{ marginTop: 10, fontSize: 11, opacity: 0.8, textAlign: 'center' }}>
             🛰 {gpsActive ? <span style={{color:'#16a34a',fontSize:11,fontWeight:700}}>GPS activo</span> : <span style={{color:'#9ca3af',fontSize:11}}>GPS inactivo</span>}
-              · 🕐 En ruta desde {new Date(ruta.salidaEn).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
+              · 🕐 En ruta desde {new Date(ruta.salidaEn).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
           </div>
         )}
       </div>

@@ -8,7 +8,7 @@ import { getTaxConfig, getTaxRates } from '../lib/taxConfig.js';
 
 // Country code → locale mapping for number formatting
 const LOCALE_MAP = {
-  UY: 'es-UY', AR: 'es-AR', MX: 'es-MX', CO: 'es-CO', CL: 'es-CL',
+  UY: 'es', AR: 'es-AR', MX: 'es-MX', CO: 'es-CO', CL: 'es-CL',
   PE: 'es-PE', EC: 'es-EC', CR: 'es-CR', PA: 'es-PA', PY: 'es-PY',
   BO: 'es-BO', VE: 'es-VE', DO: 'es-DO', SV: 'es-SV', GT: 'es-GT',
   HN: 'es-HN', NI: 'es-NI', BR: 'pt-BR', OTHER: 'es',

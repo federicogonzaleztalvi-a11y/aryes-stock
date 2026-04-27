@@ -29,7 +29,7 @@ function TransferenciasTab(){
       origen:         form.origen,
       destino:        form.destino,
       notas:          form.notas,
-      fecha:          new Date().toLocaleDateString("es-UY"),
+      fecha:          new Date().toLocaleDateString("es"),
       creadoEn:       new Date().toISOString(),
     };
     // Optimistic update — reactive LS.set handled by AppContext useEffect

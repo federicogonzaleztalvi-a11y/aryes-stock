@@ -426,7 +426,7 @@ export default function GeneradorRuta({ onClose, onCreada }) {
                 </div>
               ) : (
                 <div style={{ background: '#f9fafb', borderRadius: 12, padding: '20px 24px', textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
-                  Sin ventas {estadosFilt.join('/')} para el {new Date(fechaSel + 'T12:00:00').toLocaleDateString('es-UY')}
+                  Sin ventas {estadosFilt.join('/')} para el {new Date(fechaSel + 'T12:00:00').toLocaleDateString('es')}
                 </div>
               )}
 

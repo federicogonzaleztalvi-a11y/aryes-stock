@@ -292,7 +292,7 @@ export default function TrackingPage() {
           {isPend && (
             <p style={{ fontSize:12, color:'#9a9a98', margin:'0 0 10px' }}>
               Actualizacion automatica cada minuto
-              {lastUpd && ` · ${lastUpd.toLocaleTimeString('es-UY', { hour:'2-digit', minute:'2-digit' })}`}
+              {lastUpd && ` · ${lastUpd.toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit' })}`}
             </p>
           )}
           <button onClick={() => load(true)} style={{ background:'none', border:`1px solid ${G}`, color:G, borderRadius:20, padding:'6px 18px', fontSize:12, fontWeight:600, cursor:'pointer' }}>

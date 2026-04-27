@@ -28,7 +28,7 @@ function PackingTab(){
   const confirmarPacking=()=>{
     if(!todosValidados){setMsg("Debes validar todos los items antes de confirmar");return;}
     const pk={id:crypto.randomUUID(),ventaId:sel.id,nroVenta:sel.nroVenta,clienteNombre:sel.clienteNombre,
-      items:sel.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es-UY"),creadoEn:new Date().toISOString()};
+      items:sel.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es"),creadoEn:new Date().toISOString()};
     const upd=[pk,...packings];
     setPackings(upd);
     setSel(null);
@@ -93,7 +93,7 @@ function PackingTab(){
         <div style={{display:"grid",gap:10}}>
           {pendPacking.map(v=>(
             <div key={v.id} style={{background:"#fff",borderRadius:10,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",alignItems:"center",gap:14}}>
-              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:G}}>{v.nroVenta}</div><div style={{fontSize:12,color:"#666"}}>{v.clienteNombre} · {v.items?.length||0} productos · ${Number(v.total||0).toLocaleString("es-UY")}</div></div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:G}}>{v.nroVenta}</div><div style={{fontSize:12,color:"#666"}}>{v.clienteNombre} · {v.items?.length||0} productos · ${Number(v.total||0).toLocaleString("es")}</div></div>
               <span style={{background:"#fffbeb",color:"#92400e",fontSize:11,fontWeight:700,padding:"2px 10px",borderRadius:20,textTransform:"capitalize"}}>{v.estado}</span>
               <button onClick={()=>iniciarPacking(v)} style={{padding:"8px 18px",background:G,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>Preparar</button>
             </div>

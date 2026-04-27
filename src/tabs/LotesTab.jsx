@@ -100,7 +100,7 @@ function LotesTab(){
         if (it.loteId && matchingLoteIds.has(it.loteId)) {
           results.push({
             nroVenta: v.nroVenta, clienteNombre: v.clienteNombre,
-            fecha: v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es-UY') : '—',
+            fecha: v.creadoEn ? new Date(v.creadoEn).toLocaleDateString('es') : '—',
             cantidad: it.cantidad, unidad: it.unidad,
             loteNro: it.loteNro || '—', productoNombre: it.nombre,
           });

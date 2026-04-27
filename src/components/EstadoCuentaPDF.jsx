@@ -6,12 +6,12 @@ import { useEffect, useRef } from 'react';
 
 function fmtMoney(n) {
   if (n == null || isNaN(n)) return '—';
-  return '$ ' + Number(n).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '$ ' + Number(n).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtFecha(iso) {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+  try { return new Date(iso).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
   catch { return iso; }
 }
 

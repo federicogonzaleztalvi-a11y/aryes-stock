@@ -14,7 +14,7 @@ import { useApp } from '../context/AppContext.tsx';
 const G = '#059669';
 const WA = '#25d366';
 
-  '$' + Number(n || 0).toLocaleString('es-UY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  '$' + Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function isHoy(fechaStr) {
   if (!fechaStr) return false;
@@ -45,7 +45,7 @@ export default function WhatsAppDashboard() {
 
   const [copiado, setCopiado] = useState(false);
 
-  const hoyStr = new Date().toLocaleDateString('es-UY', {
+  const hoyStr = new Date().toLocaleDateString('es', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
@@ -175,7 +175,7 @@ export default function WhatsAppDashboard() {
       lines.push('');
     }
 
-    lines.push(`_Generado desde Pazque · ${new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}_`);
+    lines.push(`_Generado desde Pazque · ${new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}_`);
 
     return lines.join('\n');
   }, [metricas, brandCfg, hoyStr]);

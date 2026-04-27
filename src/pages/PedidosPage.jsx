@@ -448,7 +448,7 @@ function HistorialPedidos({ session, onReordenar }) {
       {pedidos.map(p => {
         const est   = EST[p.estado] || EST.pendiente;
         const isExp = expand === p.id;
-        const fecha = new Date(p.creado_en).toLocaleDateString('es-UY', {
+        const fecha = new Date(p.creado_en).toLocaleDateString('es', {
           day: '2-digit', month: 'short', year: 'numeric',
         });
         return (
@@ -574,7 +574,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   };
 
   const pedidoRef = Math.random().toString(36).slice(2,8).toUpperCase();
-  const fechaHoy  = new Date().toLocaleDateString('es-UY', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const fechaHoy  = new Date().toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
   if (done) return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 999,

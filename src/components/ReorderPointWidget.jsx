@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 const G='#059669';
-const fmt1=n=>Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:1,maximumFractionDigits:1});
+const fmt1=n=>Number(n||0).toLocaleString('es',{minimumFractionDigits:1,maximumFractionDigits:1});
 export default function ReorderPointWidget(){
   const{products,calcReorderPoints}=useApp();
   const[loading,setLoading]=useState(false);
@@ -29,7 +29,7 @@ export default function ReorderPointWidget(){
           <div>
             <span style={{fontSize:14,fontWeight:700,color:'#1a1a1a'}}>Punto de reorden dinámico</span>
             {urgentes.length>0&&<span style={{marginLeft:8,background:'#f97316',color:'#fff',fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:20}}>{urgentes.length} urgente{urgentes.length!==1?'s':''}</span>}
-            {lastRun&&<span style={{marginLeft:8,fontSize:11,color:'#9ca3af'}}>· {lastRun.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}</span>}
+            {lastRun&&<span style={{marginLeft:8,fontSize:11,color:'#9ca3af'}}>· {lastRun.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}</span>}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>

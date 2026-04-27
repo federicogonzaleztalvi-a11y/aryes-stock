@@ -46,7 +46,7 @@ export const daysUntil = d => d ? Math.floor((new Date(d).getTime() - Date.now()
 
 
 
-export const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}) : '—';
+export const fmtDateShort = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es',{day:'2-digit',month:'short'}) : '—';
 
 export const agingBucket = dias => {
   if (dias <= 0)  return { label: 'Al día',   color: '#16a34a', bg: '#f0fdf4', pri: 0 };
@@ -58,5 +58,5 @@ export const agingBucket = dias => {
 
 export function fmtMoney(n, currency = 'USD') {
   if (n == null || isNaN(n)) return '-';
-  return new Intl.NumberFormat('es-UY', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat('es', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
 }

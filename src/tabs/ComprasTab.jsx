@@ -7,9 +7,9 @@ import { db, SB_URL, SKEY } from '../lib/constants.js';
 const G   = '#059669';
 const fmt = (n, cur='USD') => {
   const sym = cur==='USD'?'US$':cur==='EUR'?'€':'$';
-  return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
+  return `${sym} ${Number(n||0).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
 };
-const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es',{day:'2-digit',month:'short',year:'numeric'}) : '—';
 const today   = () => new Date().toISOString().split('T')[0];
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; };
 

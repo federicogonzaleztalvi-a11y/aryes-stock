@@ -529,7 +529,7 @@ function ClientesTab(){
         <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'12px 16px',marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <span style={{fontSize:13,fontWeight:700,color:'#dc2626'}}>⚠ Saldo pendiente de cobro</span>
           <span style={{fontSize:18,fontWeight:800,color:'#dc2626'}}>
-            ${Number(crmMetrics.saldoPendiente).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}
+            ${Number(crmMetrics.saldoPendiente).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}
           </span>
         </div>
       )}
@@ -538,7 +538,7 @@ function ClientesTab(){
       <ClientInsights cliente={sel} metrics={crmMetrics} ventas={ventas} products={products} />
 
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?'USD '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es-UY'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(row=>(
+        {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?'USD '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(row=>(
           <div key={row.l} style={{gridColumn:row.full?'1/-1':'auto'}}>
             <div style={{fontSize:11,fontWeight:600,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>{row.l}</div>
             <div style={{fontSize:14,color:'#1a1a1a'}}>{row.v}</div>
@@ -595,8 +595,8 @@ function ClientesTab(){
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,background:'#e2e2de',borderRadius:10,overflow:'hidden',marginBottom:20}}>
                 {[
                   {l:'Compras totales', v: crmMetrics.ventasCount},
-                  {l:'Total comprado',  v: '$'+Number(crmMetrics.totalComprado).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})},
-                  {l:'Ticket promedio', v: '$'+Number(crmMetrics.ticketPromedio).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})},
+                  {l:'Total comprado',  v: '$'+Number(crmMetrics.totalComprado).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})},
+                  {l:'Ticket promedio', v: '$'+Number(crmMetrics.ticketPromedio).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})},
                   {l:'Última compra',   v: crmMetrics.diasDesdeUltima === 0 ? 'Hoy' : crmMetrics.diasDesdeUltima === 1 ? 'Ayer' : `Hace ${crmMetrics.diasDesdeUltima}d`,
                    accent: crmMetrics.diasDesdeUltima > 30 ? '#dc2626' : crmMetrics.diasDesdeUltima > 14 ? '#d97706' : G},
                 ].map(k => (
@@ -615,9 +615,9 @@ function ClientesTab(){
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:12}}>
                     {[
-                      { l:'Ingresos', v:'$'+Number(crmMetrics.ingresosBrutos).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#1a1a18' },
-                      { l:'Costo', v:'$'+Number(crmMetrics.costoTotal).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#dc2626' },
-                      { l:'Ganancia', v:'$'+Number(crmMetrics.ganancia).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0}), c:crmMetrics.ganancia>=0?G:'#dc2626' },
+                      { l:'Ingresos', v:'$'+Number(crmMetrics.ingresosBrutos).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#1a1a18' },
+                      { l:'Costo', v:'$'+Number(crmMetrics.costoTotal).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#dc2626' },
+                      { l:'Ganancia', v:'$'+Number(crmMetrics.ganancia).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:crmMetrics.ganancia>=0?G:'#dc2626' },
                     ].map(m=>(
                       <div key={m.l} style={{textAlign:'center'}}>
                         <div style={{fontSize:11,color:'#9a9a98',marginBottom:4}}>{m.l}</div>
@@ -660,7 +660,7 @@ function ClientesTab(){
                       <div key={p.nombre} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:i<crmMetrics.topProductos.length-1?'1px solid #f3f4f6':'none'}}>
                         <span style={{width:20,height:20,borderRadius:'50%',background:G+'22',color:G,fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{i+1}</span>
                         <span style={{flex:1,fontSize:13,color:'#1a1a1a'}}>{p.nombre}</span>
-                        <span style={{fontSize:12,color:'#888'}}>{Number(p.cantidad).toLocaleString('es-UY')} u.</span>
+                        <span style={{fontSize:12,color:'#888'}}>{Number(p.cantidad).toLocaleString('es')} u.</span>
                       </div>
                     ))}
                   </div>
@@ -684,9 +684,9 @@ function ClientesTab(){
                     const lista = verTodasVentas ? crmMetrics.allVentas : crmMetrics.ultimasVentas;
                     return(
                       <div key={v.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:i<lista.length-1?'1px solid #f3f4f6':'none'}}>
-                        <span style={{fontSize:12,color:'#888',minWidth:56}}>{v.creadoEn?new Date(v.creadoEn).toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):'—'}</span>
+                        <span style={{fontSize:12,color:'#888',minWidth:56}}>{v.creadoEn?new Date(v.creadoEn).toLocaleDateString('es',{day:'2-digit',month:'short'}):'—'}</span>
                         <span style={{fontSize:11,fontWeight:700,color:'#888',minWidth:60}}>{v.nroVenta}</span>
-                        <span style={{flex:1,fontSize:13,fontWeight:700,color:G}}>${Number(v.total||0).toLocaleString('es-UY',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                        <span style={{flex:1,fontSize:13,fontWeight:700,color:G}}>${Number(v.total||0).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
                         <span style={{fontSize:10,fontWeight:700,color:ECOL[v.estado]||'#888',background:(ECOL[v.estado]||'#888')+'18',padding:'2px 8px',borderRadius:20}}>{v.estado}</span>
                       </div>
                     );

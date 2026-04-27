@@ -8,7 +8,7 @@ import { fmtMoney } from '../tabs/facturacion/constants.js';
 
 function fmtFecha(iso) {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleDateString('es-UY', { day:'2-digit', month:'2-digit', year:'numeric' }); }
+  try { return new Date(iso).toLocaleDateString('es', { day:'2-digit', month:'2-digit', year:'numeric' }); }
   catch { return iso; }
 }
 

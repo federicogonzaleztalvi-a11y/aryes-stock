@@ -47,7 +47,7 @@ function useEtiquetaPrintStyles() {
 
 function fmtFecha(iso) {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+  try { return new Date(iso).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
   catch { return iso; }
 }
 
@@ -78,7 +78,7 @@ function EtiquetaProducto({ producto, brandCfg }) {
         </div>
       </div>
       <div style={{ background: '#f9f9f7', padding: '5px 12px', fontSize: 9, color: '#bbb', textAlign: 'center' }}>
-        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Pazque'}
+        {new Date().toLocaleDateString('es')} · {brandCfg?.name || 'Pazque'}
       </div>
     </div>
   );
@@ -124,7 +124,7 @@ function EtiquetaPallet({ recepcion, brandCfg }) {
         </div>
       )}
       <div style={{ background: '#f9f9f7', padding: '5px 12px', fontSize: 9, color: '#bbb', textAlign: 'center' }}>
-        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Pazque'}
+        {new Date().toLocaleDateString('es')} · {brandCfg?.name || 'Pazque'}
       </div>
     </div>
   );
@@ -175,7 +175,7 @@ function EtiquetaDespacho({ venta, brandCfg }) {
         </div>
       </div>
       <div style={{ background: '#f9f9f7', padding: '5px 12px', fontSize: 9, color: '#bbb', textAlign: 'center' }}>
-        {new Date().toLocaleDateString('es-UY')} · {brandCfg?.name || 'Pazque'}
+        {new Date().toLocaleDateString('es')} · {brandCfg?.name || 'Pazque'}
       </div>
     </div>
   );
