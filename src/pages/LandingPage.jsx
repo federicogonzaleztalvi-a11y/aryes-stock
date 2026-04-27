@@ -469,11 +469,11 @@ export default function LandingPage() {
             }}>14 días gratis · Oferta de lanzamiento</div>
 
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: '#1a1a18' }}>$5.990</span>
+              <span style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: '#1a1a18' }}>USD 149</span>
               <span style={{ fontSize: 15, color: '#9a9a96' }}>/mes</span>
             </div>
             <p style={{ fontSize: 13, color: G, fontWeight: 500, margin: '0 0 4px' }}>Precio de lanzamiento por 3 meses</p>
-            <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 24px' }}>Luego $11.990/mes</p>
+            <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 24px' }}>Luego USD 299/mes</p>
 
             <div style={{ borderTop: '1px solid #f0eeeb', paddingTop: 20, textAlign: 'left', fontSize: 14, color: '#4b4b48', lineHeight: 2.2 }}>
               {['Inventario ilimitado', 'Ventas y facturación', 'Rutas con GPS y tracking', 'Portal B2B para tus clientes',
@@ -495,6 +495,7 @@ export default function LandingPage() {
               Empezar 14 días gratis
             </button>
             <p style={{ fontSize: 12, color: '#9a9a96', marginTop: 12, marginBottom: 0 }}>Sin tarjeta de crédito</p>
+            <p style={{ fontSize: 11, color: '#b0b0a8', marginTop: 8, marginBottom: 0 }}>Se cobra en moneda local vía MercadoPago. Tu banco convierte automáticamente.</p>
           </div>
         </FadeIn>
       </section>
