@@ -1,3 +1,4 @@
+import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import ReorderPointWidget from '../components/ReorderPointWidget.jsx';
 import { fmt } from '../lib/constants.js';
 import React from 'react';
@@ -124,7 +125,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   const generarResumenWA = React.useCallback(() => {
     const hoy    = new Date();
     const ayer   = new Date(hoy - 86400000);
-    const fechaStr = hoy.toLocaleDateString('es-UY', { weekday:'long', day:'numeric', month:'long' });
+    const fechaStr = hoy.toLocaleDateString((getOrgConfigStatic(brandCfg).locale), { weekday:'long', day:'numeric', month:'long' });
     const ventasAyer = ventas.filter(v => {
       const d = new Date(v.creadoEn);
       return d >= ayer && d < hoy && v.estado !== 'cancelada';
@@ -137,7 +138,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     const lines = [
       `📊 *Resumen ${fechaStr}*`,
       ``,
-      `💰 Ventas ayer: *${ventasAyer.length} órdenes* · U$S ${totalAyer.toLocaleString('es-UY',{minimumFractionDigits:0})}`,
+      `💰 Ventas ayer: *${ventasAyer.length} órdenes* · ${getOrgConfigStatic(brandCfg).currencySymbol} ${totalAyer.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}`,
       enCero.length   > 0 ? `🔴 Stock en cero: *${enCero.length} productos*` : `✅ Sin productos en cero`,
       bajMin.length   > 0 ? `🟡 Bajo mínimo: *${bajMin.length} productos*` : null,
       (() => {
@@ -150,9 +151,9 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
         const uniqueClients = [...new Set(ds.map(v => v.clienteId))].length;
         return uniqueClients > 0 ? `📞 Clientes a contactar: *${uniqueClients}*` : null;
       })(),
-      deuda           > 0 ? `💳 Deuda pendiente: *U$S ${deuda.toLocaleString('es-UY',{minimumFractionDigits:0})}*` : null,
+      deuda           > 0 ? `💳 Deuda pendiente: *${getOrgConfigStatic(brandCfg).currencySymbol} ${deuda.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}*` : null,
       ``,
-      `_Pazque · ${hoy.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})}_`
+      `_Pazque · ${hoy.toLocaleTimeString((getOrgConfigStatic(brandCfg).locale),{hour:'2-digit',minute:'2-digit'})}_`
     ].filter(Boolean).join('\n');
     const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
     if (!tel) { alert('Configurá tu número en Configuración → Marca y empresa'); return; }
@@ -324,7 +325,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           ratio,
           urgencia:      ratio >= 1.2 ? 'alta' : 'media',
           telefono:      cli.telefono || '',
-          ultimaCompra:  lastOrder.toLocaleDateString('es-UY', { day: '2-digit', month: '2-digit' }),
+          ultimaCompra:  lastOrder.toLocaleDateString((getOrgConfigStatic(brandCfg).locale), { day: '2-digit', month: '2-digit' }),
         };
       })
       .filter(Boolean)
@@ -415,7 +416,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     const months = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
-      const label = d.toLocaleDateString('es-UY', { month: 'short' });
+      const label = d.toLocaleDateString((getOrgConfigStatic(brandCfg).locale), { month: 'short' });
       const total = ventasActivas
         .filter(v => { const vd = new Date(v.creadoEn); return vd.getMonth() === d.getMonth() && vd.getFullYear() === d.getFullYear(); })
         .reduce((s, v) => s + Number(v.total || 0), 0);
@@ -495,7 +496,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
           <h1 style={{fontFamily:F.serif,fontSize:28,fontWeight:500,color:'#1a1a18',
             margin:0,letterSpacing:'-.02em',lineHeight:1}}>
-            {today.toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long'})}
+            {today.toLocaleDateString((getOrgConfigStatic(brandCfg).locale),{weekday:'long',day:'numeric',month:'long'})}
           </h1>
           <div style={{fontFamily:F.sans,fontSize:13,color:'#6a6a68',marginTop:4}}>
             Buenos días, {session?.name?.split(' ')[0]||session?.email?.split('@')[0]||'Admin'}
@@ -659,7 +660,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                       </div>
                       {s.costo > 0 && (
                         <div style={{fontFamily:F.sans,fontSize:11,color:'#6a6a68'}}>
-                          USD {s.costo.toLocaleString('es-UY',{minimumFractionDigits:0})}
+                          {getOrgConfigStatic(brandCfg).currencySymbol} {s.costo.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}
                         </div>
                       )}
                     </div>

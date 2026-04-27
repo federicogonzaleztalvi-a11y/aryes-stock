@@ -1,3 +1,4 @@
+import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import BackButton from '../components/BackButton.jsx';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
@@ -105,8 +106,8 @@ function VentasTab(){
         .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
       const saldoTras = Math.max(0, saldoPend - cobro.monto);
       const nombre    = (cobro.clienteNombre || cli?.nombre || '').split(' ')[0];
-      const fecha     = new Date().toLocaleDateString('es-UY', {day:'2-digit',month:'2-digit',year:'numeric'});
-      const montoStr  = cobro.monto.toLocaleString('es-UY', {minimumFractionDigits:2});
+      const fecha     = new Date().toLocaleDateString((getOrgConfigStatic(brandCfg).locale), {day:'2-digit',month:'2-digit',year:'numeric'});
+      const montoStr  = cobro.monto.toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:2});
       const msg = [
         `Hola ${nombre}, confirmamos recepcion del pago:`,
         ``,
@@ -114,7 +115,7 @@ function VentasTab(){
         `Forma de pago: ${cobro.metodo || 'Efectivo'}`,
         `Fecha: ${fecha}`,
         saldoTras > 0
-          ? `Saldo pendiente: *U$S ${saldoTras.toLocaleString('es-UY',{minimumFractionDigits:2})}*`
+          ? `Saldo pendiente: *${getOrgConfigStatic(brandCfg).currencySymbol} ${saldoTras.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:2})}*`
           : `Cuenta al dia \u2705`,
         ``,
         `Gracias por su pago. ${brandCfg?.name || ''}`
@@ -234,13 +235,13 @@ function VentasTab(){
           .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
         const totalVenta = Number(form.total || 0);
         if(deudaActual + totalVenta > limite){
-          const exceso = (deudaActual + totalVenta - limite).toLocaleString('es-UY', {minimumFractionDigits:0});
-          const deudaStr = deudaActual.toLocaleString('es-UY', {minimumFractionDigits:0});
-          const limiteStr = limite.toLocaleString('es-UY', {minimumFractionDigits:0});
+          const exceso = (deudaActual + totalVenta - limite).toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
+          const deudaStr = deudaActual.toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
+          const limiteStr = limite.toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
           const proceed = window.confirm(
             `⚠️ Límite de crédito excedido para ${cli.nombre}\n\n` +
             `Deuda actual: U$S ${deudaStr}\n` +
-            `Esta venta: U$S ${totalVenta.toLocaleString('es-UY',{minimumFractionDigits:0})}\n` +
+            `Esta venta: U$S ${totalVenta.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}\n` +
             `Límite configurado: U$S ${limiteStr}\n` +
             `Exceso: U$S ${exceso}\n\n` +
             `¿Confirmar venta de todas formas?`
@@ -463,7 +464,7 @@ function VentasTab(){
       const cl=clientes.find(c=>c.id===venta?.clienteId);
       const tel=cl?.telefono||'';
       if(tel){
-        const det=`su pedido ${venta?.nroVenta} fue entregado hoy ${new Date().toLocaleDateString('es-UY')}`;
+        const det=`su pedido ${venta?.nroVenta} fue entregado hoy ${new Date().toLocaleDateString((getOrgConfigStatic(brandCfg).locale))}`;
         const link=waLink(tel,waMensaje(venta?.clienteNombre||cl?.nombre,'entrega',det));
         setMsg({text:'ENTREGADA:'+link+':'+venta?.clienteNombre,type:'wa'});
       } else {
@@ -582,7 +583,7 @@ function VentasTab(){
                     .sort((a,b)=>new Date(a.fechaVenc||'9999')-new Date(b.fechaVenc||'9999'))
                     .map(l=>(
                       <option key={l.id} value={l.id}>
-                        {l.lote||'Sin nro'} · {Number(l.cantidad)} {l.unidad||'u'}{l.fechaVenc?' · '+new Date(l.fechaVenc+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short'}):''}
+                        {l.lote||'Sin nro'} · {Number(l.cantidad)} {l.unidad||'u'}{l.fechaVenc?' · '+new Date(l.fechaVenc+'T12:00:00').toLocaleDateString((getOrgConfigStatic(brandCfg).locale),{day:'2-digit',month:'short'}):''}
                       </option>
                     ))}
                 </select>
@@ -604,20 +605,20 @@ function VentasTab(){
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
                     <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#059669':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
-                    <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString('es-UY')}</td>
+                    <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                     <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
                   </tr>
                 ))}
                 {Number(form.descuento)>0&&(
                   <tr style={{borderTop:'1px solid #e5e7eb',background:'#fffbeb'}}>
                     <td colSpan='3' style={{padding:'8px 12px',textAlign:'right',color:'#92400e',fontWeight:600}}>Descuento {form.descuento}%</td>
-                    <td style={{padding:'8px 12px',color:'#92400e',fontWeight:700}}>-${(form.items.reduce((a,it)=>a+(Number(it.cantidad)||1)*(Number(it.precioUnit)||0),0)*form.descuento/100).toLocaleString('es-UY')}</td>
+                    <td style={{padding:'8px 12px',color:'#92400e',fontWeight:700}}>-${(form.items.reduce((a,it)=>a+(Number(it.cantidad)||1)*(Number(it.precioUnit)||0),0)*form.descuento/100).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                     <td></td>
                   </tr>
                 )}
                 <tr style={{borderTop:'2px solid #e5e7eb',background:'#f0fdf4'}}>
                   <td colSpan='5' style={{padding:'10px 12px',textAlign:'right',fontWeight:700}}>TOTAL</td>
-                  <td style={{padding:'10px 12px',fontWeight:800,color:G,fontSize:16}}>${totalVenta(form.items,form.descuento).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'10px 12px',fontWeight:800,color:G,fontSize:16}}>${totalVenta(form.items,form.descuento).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                   <td></td>
                 </tr>
               </tbody>
@@ -675,7 +676,7 @@ function VentasTab(){
                 const colors={pendiente:'#9ca3af',confirmada:'#3b82f6',preparada:'#8b5cf6',en_ruta:'#f59e0b',entregada:G,cancelada:'#dc2626'};
                 const labels={pendiente:'Pendiente',confirmada:'Confirmada',preparada:'Preparada',en_ruta:'En ruta',entregada:'Entregada',cancelada:'Cancelada'};
                 const color=colors[entry.to]||'#9ca3af';
-                const ts=entry.ts?new Date(entry.ts).toLocaleString('es-UY',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+                const ts=entry.ts?new Date(entry.ts).toLocaleString((getOrgConfigStatic(brandCfg).locale),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
                 return (
                   <div key={i} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
                     <div style={{display:'flex',flexDirection:'column',alignItems:'center',flexShrink:0}}>
@@ -703,19 +704,19 @@ function VentasTab(){
                 <tr key={i} style={{borderBottom:'1px solid #f3f4f6'}}>
                   <td style={{padding:'10px 14px',fontWeight:500}}>{it.nombre}</td>
                   <td style={{padding:'10px 14px'}}>{it.cantidad} {it.unidad}</td>
-                  <td style={{padding:'10px 14px',color:'#6b7280'}}>${(Number(it.precioUnit)||0).toLocaleString('es-UY')}</td>
-                  <td style={{padding:'10px 14px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'10px 14px',color:'#6b7280'}}>${(Number(it.precioUnit)||0).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
+                  <td style={{padding:'10px 14px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                 </tr>
               ))}
               {Number(v.descuento)>0&&(
                 <tr style={{background:'#fffbeb',borderTop:'1px solid #e5e7eb'}}>
                   <td colSpan='3' style={{padding:'8px 14px',textAlign:'right',color:'#92400e',fontWeight:600}}>Descuento {v.descuento}%</td>
-                  <td style={{padding:'8px 14px',color:'#92400e',fontWeight:700}}>-${(v.items?.reduce((a,it)=>a+(Number(it.cantidad)||1)*(Number(it.precioUnit)||0),0)*v.descuento/100).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'8px 14px',color:'#92400e',fontWeight:700}}>-${(v.items?.reduce((a,it)=>a+(Number(it.cantidad)||1)*(Number(it.precioUnit)||0),0)*v.descuento/100).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                 </tr>
               )}
               <tr style={{borderTop:'2px solid #e5e7eb',background:'#f0fdf4'}}>
                 <td colSpan='3' style={{padding:'12px 14px',textAlign:'right',fontWeight:700}}>TOTAL</td>
-                <td style={{padding:'12px 14px',fontWeight:800,color:G,fontSize:18}}>${Number(v.total).toLocaleString('es-UY')}</td>
+                <td style={{padding:'12px 14px',fontWeight:800,color:G,fontSize:18}}>${Number(v.total).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
               </tr>
             </tbody>
           </table>
@@ -789,7 +790,7 @@ function VentasTab(){
           {l:'Total ventas',v:ventas.length,c:'#6b7280'},
           {l:'Pendientes',v:ventas.filter(v=>v.estado==='pendiente').length,c:'#f59e0b'},
           {l:'En preparación',v:ventas.filter(v=>v.estado==='preparada'||v.estado==='confirmada').length,c:'#8b5cf6'},
-          {l:'Facturado este mes',v:'$'+totalMes.toLocaleString('es-UY'),c:G},
+          {l:'Facturado este mes',v:'$'+totalMes.toLocaleString((getOrgConfigStatic(brandCfg).locale)),c:G},
         ].map(s=>(
           <div key={s.l} style={{background:'#fff',borderRadius:10,padding:'14px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
             <div style={{fontSize:11,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{s.l}</div>
@@ -834,7 +835,7 @@ function VentasTab(){
                   <td style={{padding:'11px 14px',fontWeight:600}}>{v.clienteNombre}</td>
                   <td style={{padding:'11px 14px',color:'#6b7280'}}>{v.fecha}</td>
                   <td style={{padding:'11px 14px',color:'#6b7280'}}>{v.items?.length||0} prod.</td>
-                  <td style={{padding:'11px 14px',fontWeight:700,color:G}}>${Number(v.total||0).toLocaleString('es-UY')}</td>
+                  <td style={{padding:'11px 14px',fontWeight:700,color:G}}>${Number(v.total||0).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                   <td style={{padding:'11px 14px'}}><span style={{background:ESTADOS[v.estado]||'#6b7280',color:'#fff',fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,textTransform:'capitalize'}}>{v.estado}</span></td>
                   <td style={{padding:'11px 10px'}}><button onClick={e=>{e.stopPropagation();setVentaSel(v);setVista('detalle');}} style={{background:G,color:'#fff',border:'none',padding:'5px 12px',borderRadius:6,cursor:'pointer',fontSize:11,fontWeight:700}}>Ver</button></td>
                 </tr>

@@ -36,7 +36,7 @@ export const CFE_STATUS = {
 };
 
 export const IVA_RATES = [22, 10, 0];
-export const MONEDAS   = ['UYU', 'USD', 'EUR'];
+export const MONEDAS   = ['USD','UYU','MXN','COP','ARS','CLP','PEN','BRL','EUR','CRC','PYG','BOB','GTQ','HNL','NIO','DOP'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 export const newId     = () => crypto.randomUUID();

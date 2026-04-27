@@ -114,10 +114,10 @@ function StepCompany({ data, setData, onNext, onSkip }) {
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Distribuidora Gourmet S.A." />
       </Field>
       <Field label="País">
-        <input style={inp} value={data.country} onChange={e => setData(d => ({ ...d, country: e.target.value }))} placeholder="Ej: Uruguay" />
+        <input style={inp} value={data.country} onChange={e => setData(d => ({ ...d, country: e.target.value }))} placeholder="Ej: México, Colombia, Uruguay..." />
       </Field>
       <Field label="Ciudad">
-        <input style={inp} value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))} placeholder="Ej: Montevideo" />
+        <input style={inp} value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))} placeholder="Ej: Ciudad de México, Bogotá..." />
       </Field>
       <Field label="Email de contacto">
         <input style={inp} type="email" value={data.email} onChange={e => setData(d => ({ ...d, email: e.target.value }))} placeholder="admin@empresa.com" />
@@ -170,7 +170,7 @@ function StepSupplier({ data, setData, onBack, onNext, onSkip }) {
         </Field>
         <Field label="Moneda">
           <select style={inp} value={data.currency} onChange={e => setData(d => ({ ...d, currency: e.target.value }))}>
-            {['USD', 'EUR', 'UYU', 'ARS', 'BRL'].map(c => <option key={c}>{c}</option>)}
+            {['USD','UYU','MXN','COP','ARS','CLP','PEN','BRL','EUR','CRC','PYG','BOB','GTQ','HNL','NIO','DOP'].map(c => <option key={c}>{c}</option>)}
           </select>
         </Field>
       </div>

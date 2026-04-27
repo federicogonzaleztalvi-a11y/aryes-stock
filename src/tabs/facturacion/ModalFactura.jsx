@@ -15,7 +15,7 @@ function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
     : COND_DEFAULT;
 
   const [tipo,       setTipo]       = useState('e-Factura');
-  const [moneda,     setMoneda]     = useState('UYU');
+  const [moneda,     setMoneda]     = useState(brandCfg?.moneda || 'UYU');
   const [fecha,      setFecha]      = useState(today());
   const [fechaVenc,  setFechaVenc]  = useState(
     condCliente.dias > 0 ? addDays(today(), condCliente.dias) : ''

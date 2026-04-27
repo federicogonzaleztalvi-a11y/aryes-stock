@@ -6,7 +6,7 @@ import { db, SB_URL, SKEY } from '../lib/constants.js';
 // ── helpers ───────────────────────────────────────────────────────────────────
 const G   = '#059669';
 const fmt = (n, cur='USD') => {
-  const sym = cur==='UYU'?'$':cur==='USD'?'US$':'€';
+  const sym = cur==='USD'?'US$':cur==='EUR'?'€':'$';
   return `${sym} ${Number(n||0).toLocaleString('es-UY',{minimumFractionDigits:0,maximumFractionDigits:0})}`;
 };
 const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-UY',{day:'2-digit',month:'short',year:'numeric'}) : '—';
@@ -293,7 +293,7 @@ function ComprasTab() {
           </F>
           <F label="Moneda">
             <select value={form.moneda} onChange={e=>setForm(f=>({...f,moneda:e.target.value}))} style={{...inp,background:'#fff'}}>
-              {['USD','UYU','EUR'].map(m=><option key={m}>{m}</option>)}
+              {['USD','UYU','MXN','COP','ARS','CLP','PEN','BRL','EUR'].map(m=><option key={m}>{m}</option>)}
             </select>
           </F>
           <F label="Fecha factura" req>

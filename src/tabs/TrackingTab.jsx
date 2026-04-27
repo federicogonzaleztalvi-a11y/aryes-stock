@@ -263,7 +263,7 @@ function TrackingTab({ session }) {
             {miPosicion.velocidad!==null&&<div><span style={{ color:'#9ca3af', fontSize:11 }}>VELOCIDAD</span><br/>{miPosicion.velocidad} km/h</div>}
             {miPosicion.precision_m!==null&&<div><span style={{ color:'#9ca3af', fontSize:11 }}>PRECISIÓN</span><br/>±{Math.round(miPosicion.precision_m)} m</div>}
           </div>
-          <div style={{ fontSize:11, color:'#6b7280', marginTop:8 }}>{new Date(miPosicion.ts).toLocaleTimeString('es-UY')} · sincronizado</div>
+          <div style={{ fontSize:11, color:'#6b7280', marginTop:8 }}>{new Date(miPosicion.ts).toLocaleTimeString('es')} · sincronizado</div>
         </div>
       )}
       {tracking&&rutaActivaId&&(()=>{
@@ -320,7 +320,7 @@ function TrackingTab({ session }) {
             style={{ padding:'7px 16px', background:G, color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:700 }}>
             ↻ Actualizar
           </button>
-          {lastUpdate&&<div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Última: {lastUpdate.toLocaleTimeString('es-UY')}</div>}
+          {lastUpdate&&<div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Última: {lastUpdate.toLocaleTimeString('es')}</div>}
         </div>
       </div>
 

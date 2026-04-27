@@ -16,7 +16,7 @@ const fmtPct = n => `${Number(n||0).toFixed(1)}%`;
 
 // Month label: 'mar 25'
 const monthLabel = (year, month) =>
-  new Date(year, month, 1).toLocaleDateString('es-UY',{month:'short',year:'2-digit'});
+  new Date(year, month, 1).toLocaleDateString('es',{month:'short',year:'2-digit'});
 
 // Build YYYY-MM key
 const monthKey = (date) =>

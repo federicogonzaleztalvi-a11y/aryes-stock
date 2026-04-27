@@ -227,7 +227,7 @@ export const fmt = {
   currency: (n, currency = 'UYU') => {
     const num = Number(n || 0);
     const sym = currency === 'UYU' ? '$' : currency === 'USD' ? 'US$' : currency === 'EUR' ? '€' : currency;
-    return `${sym} ${num.toLocaleString('es-UY', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${sym} ${num.toLocaleString('es', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   },
 
   // Moneda compacta — $1.2k / US$34k
@@ -250,7 +250,7 @@ export const fmt = {
   },
 
   // Número entero con separador de miles — 1.234
-  int: (n) => Math.round(Number(n || 0)).toLocaleString('es-UY'),
+  int: (n) => Math.round(Number(n || 0)).toLocaleString('es'),
 
   // Decimal con n lugares — 1.23
   decimal: (n, places = 2) => Number(n || 0).toFixed(places),
