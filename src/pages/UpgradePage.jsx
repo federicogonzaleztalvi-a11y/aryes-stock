@@ -140,7 +140,10 @@ export default function UpgradePage({ session, reason = 'trial_expired' }) {
         <p style={{ marginTop: 20, fontFamily: F.sans, fontSize: 13, color: '#dc2626' }}>{err}</p>
       )}
 
-      <p style={{ marginTop: 32, fontFamily: F.sans, fontSize: 12, color: '#9a9a98', textAlign: 'center' }}>
+      <p style={{ marginTop: 20, fontFamily: F.sans, fontSize: 11, color: '#b0b0a8', textAlign: 'center' }}>
+        El cobro se realiza en pesos uruguayos (UYU) vía MercadoPago. Tu banco convierte automáticamente.
+      </p>
+      <p style={{ marginTop: 8, fontFamily: F.sans, fontSize: 12, color: '#9a9a98', textAlign: 'center' }}>
         Pago seguro con MercadoPago · Cancelá cuando quieras · Soporte en {' '}
         <a href="mailto:contacto@pazque.com" style={{ color: G }}>contacto@pazque.com</a>
       </p>
