@@ -5,7 +5,7 @@ function ItemSearchRow({ productos, onAdd }) {
   const [query,    setQuery]    = React.useState('');
   const [cant,     setCant]     = React.useState('1');
   const [precio,   setPrecio]   = React.useState('');
-  const [iva,      setIva]      = React.useState(22);
+  const [iva,      setIva]      = React.useState(brandCfg?.iva_default || 22);
   const [open,     setOpen]     = React.useState(false);
   const [cursor,   setCursor]   = React.useState(0);
   const [override, setOverride] = React.useState(false); // true = price manually edited

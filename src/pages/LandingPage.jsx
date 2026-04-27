@@ -175,7 +175,7 @@ export default function LandingPage() {
             <div style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
               <span onClick={() => scrollTo('producto')} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>Producto</span>
               <span onClick={() => scrollTo('precios')} style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
-              <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
+              <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
                 style={{ fontSize: 14, color: '#6b7280', cursor: 'pointer', textDecoration: 'none' }}>Contacto</a>
               <span onClick={() => window.location.href = '/app'} style={{
                 fontSize: 13, color: '#4b4b48', cursor: 'pointer', fontWeight: 500,
@@ -204,7 +204,7 @@ export default function LandingPage() {
           }}>
             <span onClick={() => scrollTo('producto')} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Producto</span>
             <span onClick={() => scrollTo('precios')} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Precios</span>
-            <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
+            <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
               style={{ fontSize: 15, color: '#6b7280', textDecoration: 'none' }}>Contacto</a>
             <span onClick={() => window.location.href = '/app'} style={{ fontSize: 15, color: '#6b7280', cursor: 'pointer' }}>Iniciar sesión</span>
             <button onClick={() => { setMenuOpen(false); window.location.href = '/register'; }}
@@ -516,7 +516,7 @@ export default function LandingPage() {
               }}>
               Empezar gratis
             </button>
-            <a href="https://wa.me/59899123456?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
+            <a href="https://wa.me/59897951154?text=Hola%2C%20me%20interesa%20Pazque" target="_blank" rel="noreferrer"
               style={{
                 padding: '14px 32px', background: '#fff', color: '#1a1a18',
                 border: '1px solid #e5e5e3', borderRadius: 10, fontSize: 15,

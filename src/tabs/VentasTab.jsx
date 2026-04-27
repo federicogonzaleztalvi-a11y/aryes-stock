@@ -284,12 +284,12 @@ function VentasTab(){
         const upd = [venta, ...ventas];
         setVentas(upd);
         // Generate demo CFE
-        const demoIva = Math.round(venta.total * 0.22);
+        const demoIva = Math.round(venta.total * ((brandCfg?.iva_default || 22) / 100));
         const demoCfe = {
           id: 'demo-cfe-' + venta.id,
           numero: venta.nroVenta.replace('V-', 'E-'),
           tipo: 'e-Factura',
-          moneda: 'UYU',
+          moneda: brandCfg?.moneda || 'UYU',
           fecha: venta.fecha || venta.creadoEn?.split('T')[0] || new Date().toISOString().split('T')[0],
           fecha_venc: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
           clienteId: venta.clienteId,

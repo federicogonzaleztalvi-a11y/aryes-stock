@@ -2,6 +2,7 @@
 // Renderiza un CFE/factura como HTML imprimible via window.print()
 // Uso: <FacturaPDF cfe={cfe} brandCfg={brandCfg} onClose={fn} />
 
+import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import { useEffect, useRef } from 'react';
 import { fmtMoney } from '../tabs/facturacion/constants.js';
 
@@ -12,6 +13,8 @@ function fmtFecha(iso) {
 }
 
 export default function FacturaPDF({ cfe, brandCfg, onClose }) {
+  const orgCfg = getOrgConfigStatic(brandCfg);
+  const _defaultRate = orgCfg.defaultTaxRate;
   const printRef = useRef(null);
 
   useEffect(() => {
@@ -52,7 +55,7 @@ export default function FacturaPDF({ cfe, brandCfg, onClose }) {
   const subtotal = items.reduce((s, it) => s + (it.cant * it.precio), 0);
   const descPct = cfe.descuento || 0;
   const descMonto = subtotal * (descPct / 100);
-  const ivaTotal = items.reduce((s, it) => s + (it.cant * it.precio * (1 - descPct/100)) * ((it.iva || 22) / 100), 0);
+  const ivaTotal = items.reduce((s, it) => s + (it.cant * it.precio * (1 - descPct/100)) * ((it.iva || _defaultRate) / 100), 0);
   const total = cfe.total || (subtotal - descMonto + ivaTotal);
   const moneda = cfe.moneda || 'USD';
 
@@ -163,7 +166,7 @@ export default function FacturaPDF({ cfe, brandCfg, onClose }) {
             {items.map((it, i) => {
               const lineBase = it.cant * it.precio;
               const lineDesc = lineBase * (1 - descPct/100);
-              const lineIva  = lineDesc * ((it.iva || 22) / 100);
+              const lineIva  = lineDesc * ((it.iva || _defaultRate) / 100);
               const lineTotal = lineDesc + lineIva;
               return (
                 <tr key={i} style={{ background: i%2===0?'#fff':'#f9f9f7', borderBottom:'1px solid #f0f0ec' }}>

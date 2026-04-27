@@ -33,7 +33,7 @@ export default function RecommendedProducts({ recommended, onAdd, onRemove, carr
                   </span>
                   <span style={{ fontSize: 11, color: '#9a9a98', marginLeft: 4 }}>{'/ ' + (p.unit || p.unidad || 'un')}</span>
                   <div style={{ fontSize: 10, color: '#a0a098' }}>
-                    {'$' + Math.round(Number(p.precio || 0) / 1.22) + ' + IVA ' + (p.iva_rate || 22) + '%'}
+                    {(brandCfg?.currencySymbol || '$') + ' ' + Math.round(Number(p.precio || 0) / (1 + (p.iva_rate || brandCfg?.iva_default || 22) / 100)) + ' + ' + (brandCfg?.tax_name || 'IVA') + ' ' + (p.iva_rate || brandCfg?.iva_default || 22) + '%'}
                   </div>
                 </div>
                 {inCart > 0 ? (

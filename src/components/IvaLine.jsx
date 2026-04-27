@@ -2,7 +2,7 @@
 import React from 'react';
 
 export default function IvaLine({ precio, iva_rate }) {
-  const iva = Number(iva_rate || 22);
+  const iva = Number(iva_rate || 0);
   if (precio <= 0) return null;
   const sinIva = Math.round(precio / (1 + iva / 100));
   const label = iva > 0

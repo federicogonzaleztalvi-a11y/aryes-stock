@@ -82,7 +82,7 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
                       <td style={{padding:"11px 13px"}}><AlertPill level={p.alert.level}/></td>
                       <td style={{padding:"11px 13px"}}>
                         <div style={{display:"flex",gap:6}}>
-                          <Btn small variant="ghost" onClick={()=>{{const found=products.find(x=>x.id===p.id);if(found)setEditProd({name:'',barcode:'',supplierId:'',unit:'kg',stock:0,unitCost:0,precioVenta:0,iva_rate:22,imagen_url:'',descripcion:'',history:[],...found});setModal({type:"product"});}}}>Editar</Btn>
+                          <Btn small variant="ghost" onClick={()=>{{const found=products.find(x=>x.id===p.id);if(found)setEditProd({name:'',barcode:'',supplierId:'',unit:'kg',stock:0,unitCost:0,precioVenta:0,iva_rate:(brandCfg?.iva_default||22),imagen_url:'',descripcion:'',history:[],...found});setModal({type:"product"});}}}>Editar</Btn>
                           {setEtiquetaProd&&<Btn small variant="ghost" onClick={()=>setEtiquetaProd(products.find(x=>x.id===p.id))}>🏷️</Btn>}
                           <Btn small onClick={()=>setModal({type:"order",product:products.find(x=>x.id===p.id)})}>Pedir</Btn>
                           {isAdmin&&<Btn small variant="danger" onClick={()=>handleDelete(p.id)} title="Eliminar producto">✕</Btn>}

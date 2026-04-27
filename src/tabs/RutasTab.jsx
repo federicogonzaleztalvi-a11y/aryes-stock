@@ -98,7 +98,7 @@ function RutasTab(){
 
     // Clean phone: keep only digits, add 598 if no country code
     const digitsOnly = tel.replace(/\D/g, '');
-    const num = digitsOnly.startsWith('598') ? digitsOnly : digitsOnly.startsWith('0') ? '598' + digitsOnly.slice(1) : '598' + digitsOnly;
+    const num = digitsOnly.length > 10 ? digitsOnly : digitsOnly; // Multi-country: phone stored as-is with country code
 
     const etaStr = etaMin !== null
       ? (etaMin <= 5 ? 'en pocos minutos' : `en aproximadamente ${etaMin} minutos`)

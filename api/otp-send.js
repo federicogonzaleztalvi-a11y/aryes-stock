@@ -22,11 +22,11 @@ async function sha256(text) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function toE164Uruguay(tel) {
+function toE164(tel) {
   const digits = tel.replace(/\D/g, '');
-  if (digits.startsWith('598')) return digits;
-  if (digits.startsWith('0'))   return '598' + digits.slice(1);
-  if (digits.length === 8)      return '598' + digits;
+  // Already has country code (10+ digits starting with valid prefix)
+  if (digits.length >= 10) return digits;
+  // Short number without country code — return as-is, WhatsApp API handles it
   return digits;
 }
 
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
 
   // Buscar en tabla principal de clientes
   const cliRes = await fetch(
-    `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.eq.0${encodeURIComponent(telClean.slice(-8))},phone.eq.598${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
+    `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   let clients = await cliRes.json();
@@ -160,7 +160,7 @@ export default async function handler(req, res) {
 
   if (WA_TOKEN && WA_PHONE_ID) {
     try {
-      const telE164 = toE164Uruguay(telClean);
+      const telE164 = toE164(telClean);
       await sendViaWhatsApp(telE164, code);
       return res.status(200).json({ ok: true, clienteNombre: clients[0].name });
     } catch (err) {
