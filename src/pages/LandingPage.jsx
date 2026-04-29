@@ -538,7 +538,7 @@ export default function LandingPage() {
               Todo en un solo lugar
             </h2>
             <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 520, margin: '12px auto 0' }}>
-              Otras herramientas resuelven una parte. Pazque conecta todo el flujo de tu distribuidora.
+              Otras herramientas resuelven una parte. Pazque conecta todo el flujo de tu negocio.
             </p>
           </div>
           <div style={{ overflowX: 'auto' }}>
@@ -664,7 +664,7 @@ export default function LandingPage() {
               <img src="/pazque-logo.png" alt="Pazque" style={{ height: 24, objectFit: 'contain' }} onError={e => e.target.style.display='none'} />
             </div>
             <p style={{ fontSize: 13, color: '#9a9a96', lineHeight: 1.6, margin: '0 0 16px' }}>
-              Plataforma de gestión para distribuidoras B2B.<br />
+              Plataforma de gestión comercial y logística.<br />
               Inventario, ventas, rutas y portal de pedidos.
             </p>
             {/* Social icons — official FA SVG paths inline */}
