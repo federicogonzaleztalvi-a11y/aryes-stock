@@ -45,7 +45,7 @@ async function callRpc(fnName, params = {}) {
     headers,
     body:    JSON.stringify(params),
   });
-  if (r.ok) return { data: await r.json() };
+  if (r.ok) { const txt = await r.text(); return { data: txt ? JSON.parse(txt) : null }; }
   const err = await r.json().catch(() => ({}));
   // Postgres RAISE EXCEPTION messages come through as err.message
   throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
