@@ -67,14 +67,22 @@ function saveSession(s) { localStorage.setItem(SK, JSON.stringify(s)); }
 const PAISES = [
   { code: 'UY', label: 'UY', prefix: '598', flag: '🇺🇾' },
   { code: 'AR', label: 'AR', prefix: '54',  flag: '🇦🇷' },
-  { code: 'CL', label: 'CL', prefix: '56',  flag: '🇨🇱' },
-  { code: 'BR', label: 'BR', prefix: '55',  flag: '🇧🇷' },
-  { code: 'CO', label: 'CO', prefix: '57',  flag: '🇨🇴' },
   { code: 'MX', label: 'MX', prefix: '52',  flag: '🇲🇽' },
+  { code: 'CO', label: 'CO', prefix: '57',  flag: '🇨🇴' },
+  { code: 'CL', label: 'CL', prefix: '56',  flag: '🇨🇱' },
   { code: 'PE', label: 'PE', prefix: '51',  flag: '🇵🇪' },
-  { code: 'PY', label: 'PY', prefix: '595', flag: '🇵🇾' },
-  { code: 'BO', label: 'BO', prefix: '591', flag: '🇧🇴' },
+  { code: 'BR', label: 'BR', prefix: '55',  flag: '🇧🇷' },
   { code: 'EC', label: 'EC', prefix: '593', flag: '🇪🇨' },
+  { code: 'PY', label: 'PY', prefix: '595', flag: '🇵🇾' },
+  { code: 'CR', label: 'CR', prefix: '506', flag: '🇨🇷' },
+  { code: 'PA', label: 'PA', prefix: '507', flag: '🇵🇦' },
+  { code: 'DO', label: 'DO', prefix: '1',   flag: '🇩🇴' },
+  { code: 'SV', label: 'SV', prefix: '503', flag: '🇸🇻' },
+  { code: 'GT', label: 'GT', prefix: '502', flag: '🇬🇹' },
+  { code: 'HN', label: 'HN', prefix: '504', flag: '🇭🇳' },
+  { code: 'BO', label: 'BO', prefix: '591', flag: '🇧🇴' },
+  { code: 'VE', label: 'VE', prefix: '58',  flag: '🇻🇪' },
+  { code: 'NI', label: 'NI', prefix: '505', flag: '🇳🇮' },
 ];
 
 function PhoneInput({ value, onChange, placeholder = '9X XXX XXX', style = {} }) {

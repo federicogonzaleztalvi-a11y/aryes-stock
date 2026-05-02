@@ -28,7 +28,7 @@ export default function TermsPage() {
         <p style={S.p}>Al registrarte, acceder o utilizar Pazque (en adelante, "el Servicio"), aceptás estos Términos de Servicio. Si no estás de acuerdo, no utilices el Servicio. Pazque es operado por Pazque S.R.L. (en adelante, "nosotros").</p>
 
         <h2 style={S.h2}>2. Descripción del servicio</h2>
-        <p style={S.p}>Pazque es una plataforma SaaS de gestión comercial para distribuidoras B2B. Incluye módulos de inventario, ventas, rutas, facturación, portal B2B para clientes, seguimiento de entregas y reportes. El Servicio se provee "tal cual" y está sujeto a mejoras continuas.</p>
+        <p style={S.p}>Pazque es una plataforma SaaS de gestión comercial y logística para empresas con inventario. Incluye módulos de inventario, ventas, rutas, facturación, portal B2B para clientes, seguimiento de entregas y reportes. El Servicio se provee "tal cual" y está sujeto a mejoras continuas.</p>
 
         <h2 style={S.h2}>3. Registro y cuenta</h2>
         <p style={S.p}>Para usar el Servicio debés crear una cuenta con información veraz. Sos responsable de mantener la confidencialidad de tus credenciales de acceso y de todas las actividades que ocurran bajo tu cuenta. Debés notificarnos inmediatamente de cualquier uso no autorizado.</p>
