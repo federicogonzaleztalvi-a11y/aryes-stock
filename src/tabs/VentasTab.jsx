@@ -54,7 +54,8 @@ async function callRpc(fnName, params = {}) {
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
-          cfes, setCfes, cobros, setCobros, brandCfg , isDemoMode} = useApp();
+          cfes, setCfes, cobros, setCobros, brandCfg , isDemoMode, session} = useApp();
+  const isAdmin = session?.role === 'admin';
   const G="#059669";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#059669',cancelada:'#ef4444'};
 
