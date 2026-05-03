@@ -38,16 +38,16 @@ function MovimientosTab(){
     setMovs(updMovs);
     // Supabase: persist movement server-side
     try{
+      const prod = prods.find(p=>p.id===form.productoId);
       await db.insert('stock_movements',{
         id: nuevo.id,
-        tipo: nuevo.tipo,
-        producto_id: nuevo.productoId,
-        producto_nombre: nuevo.productoNombre,
-        cantidad: nuevo.cantidad,
-        referencia: nuevo.referencia||null,
-        notas: nuevo.notas||null,
-        fecha: nuevo.fecha||null,
-        timestamp: nuevo.timestamp,
+        type: nuevo.tipo,
+        product_id: prod?.uuid||nuevo.productoId,
+        product_name: nuevo.productoNombre,
+        qty: nuevo.cantidad,
+        note: nuevo.notas||null,
+        org_id: getOrgId(),
+        ts: nuevo.timestamp,
       });
     }catch(e){ console.warn('[MovimientosTab] movement insert failed:', e?.message); }
     // Update stock in Supabase via RPC
