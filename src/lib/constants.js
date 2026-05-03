@@ -88,9 +88,16 @@ export const db = {
     // Demo mode guard — skip Supabase when no session exists (demo mode)
     const _s = getSession();
     if (!_s?.access_token) return null;
+    // Support both contracts:
+    //   db.get('app_config', 'key=eq.x')        → /rest/v1/app_config?key=eq.x
+    //   db.get('app_config?key=eq.x&org_id=eq.y') → /rest/v1/app_config?key=eq.x&org_id=eq.y
+    // Without this guard, the second contract appended a stray '?' that broke Supabase filters.
+    const url = table.includes('?')
+      ? `${SB_URL}/rest/v1/${table}${query ? '&' + query : ''}`
+      : `${SB_URL}/rest/v1/${table}?${query}`;
     let r;
     try {
-      r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+      r = await fetch(url, {
         headers: getAuthHeaders({ 'Prefer': 'return=representation' }),
       });
     } catch (networkErr) {
