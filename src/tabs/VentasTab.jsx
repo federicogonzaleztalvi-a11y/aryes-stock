@@ -378,7 +378,9 @@ function VentasTab(){
     }
 
     // Call state machine RPC (validates transition server-side)
-    try{
+    // For cancelada: skip transition RPC — cancel_venta handles state + stock restore atomically
+    if (nuevoEstado === 'cancelada') { /* handled below by cancel_venta RPC */ }
+    else try{
       const {SB_URL,SKEY}=await import('../lib/constants.js');
       const r=await fetch(SB_URL+'/rest/v1/rpc/transition_venta_state',{
         method:'POST',
