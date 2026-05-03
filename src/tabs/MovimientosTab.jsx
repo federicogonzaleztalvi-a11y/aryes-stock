@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db , getSession} from '../lib/constants.js';
+import { db, getSession, getOrgId, SB_URL, getAuthHeaders } from '../lib/constants.js';
 import { downloadCSV } from '../lib/ui.jsx';
 
 function MovimientosTab(){
