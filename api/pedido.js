@@ -298,10 +298,7 @@ async function handler(req, res) {
     }
 
     log.error('pedido', 'RPC error', { status: rpcRes.status, errMsg, errBody });
-    return res.status(502).json({ 
-      error: 'Error al procesar el pedido. Intentá de nuevo.',
-      _diag: { status: rpcRes.status, errMsg, errBody }
-    });
+    return res.status(502).json({ error: 'Error al procesar el pedido. Intentá de nuevo.' });
   }
 
   const result = await rpcRes.json();
