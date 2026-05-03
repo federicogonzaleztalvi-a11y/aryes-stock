@@ -96,8 +96,12 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   const [syncToast,      setSyncToast]      = useState<SyncToast | null>(null);
   const [emailCfg,       setEmailCfg]       = useState<EmailCfg>({ serviceId:'', templateId:'', publicKey:'', toEmail:'', enabled:false });
   const [brandCfg,       setBrandCfg]       = useState(() => {
-    try { return JSON.parse(localStorage.getItem('aryes-brand') || 'null') || { name:'', logoUrl:'', color:'#059669' }; }
-    catch { return { name:'', logoUrl:'', color:'#059669' }; }
+    // Hydrate from LS only if cached entry belongs to the current org (prevent cross-org data leak)
+    try {
+      const raw = JSON.parse(localStorage.getItem('aryes-brand') || 'null');
+      if (raw && raw._org === getOrgId()) return raw;
+    } catch { /* fall through to defaults */ }
+    return { name:'', logoUrl:'', color:'#059669' };
   });
 
   // ── Persist to localStorage on every change ────────────────────────────────
@@ -189,7 +193,7 @@ const describeAction = (action: string, detail: string): string => {
         if (brandRows?.[0]?.value) {
           const b = brandRows[0].value;
           setBrandCfg(b);
-          localStorage.setItem('aryes-brand', JSON.stringify(b));
+          localStorage.setItem('aryes-brand', JSON.stringify({ ...b, _org: getOrgId() }));
           if (b.name) document.title = b.name + ' · Stock';
         }
       } catch { /* offline */ }

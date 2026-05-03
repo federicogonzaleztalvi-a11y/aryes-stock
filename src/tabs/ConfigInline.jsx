@@ -240,7 +240,7 @@ export default function ConfigInline({
         'key,org_id'
       );
       setBrandCfg(localBrand);
-      localStorage.setItem('aryes-brand', JSON.stringify(localBrand));
+      localStorage.setItem('aryes-brand', JSON.stringify({ ...localBrand, _org: getOrgId() }));
       setBrandSaved(true);
       setTimeout(() => setBrandSaved(false), 3000);
     } catch(e) {

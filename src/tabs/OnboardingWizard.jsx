@@ -316,7 +316,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
     // Save brand to app_config
     const brandToSave = { ...brand, name: brand.name || company.name };
     // Update localStorage for immediate sidebar update
-    localStorage.setItem('aryes-brand', JSON.stringify(brandToSave));
+    localStorage.setItem('aryes-brand', JSON.stringify({ ...brandToSave, _org: getOrgId() }));
     try {
       await db.upsert('app_config',
         { key: 'brandcfg', value: brandToSave, org_id: getOrgId(), updated_at: new Date().toISOString() },
