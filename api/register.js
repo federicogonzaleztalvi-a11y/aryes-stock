@@ -124,6 +124,23 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'Error al crear la organización. Intentá de nuevo.' });
   }
 
+  // ── Step 2.5: Initialize app_config with brand defaults ───────────
+  // Non-blocking: if it fails, user can still set brand from Config later.
+  try {
+    await fetch(`${SB_URL}/rest/v1/app_config`, {
+      method:  'POST',
+      headers: { ...headers, Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        key:        'brandcfg',
+        org_id:     orgId,
+        value:      { name: empresa.trim(), email: email.trim().toLowerCase(), color: '#059669' },
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    log.warn('register', 'app_config brandcfg init failed (non-fatal)', { orgId, msg: e?.message });
+  }
+
   // ── Step 3: Insert into public.users table ────────────────────────
   const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
   const userRes = await fetch(`${SB_URL}/rest/v1/users`, {

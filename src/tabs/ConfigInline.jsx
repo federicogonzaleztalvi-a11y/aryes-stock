@@ -236,8 +236,8 @@ export default function ConfigInline({
     setBrandSaving(true);
     try {
       await db.upsert('app_config',
-        { key: 'brandcfg', value: localBrand, updated_at: new Date().toISOString() },
-        'key'
+        { key: 'brandcfg', value: localBrand, org_id: getOrgId(), updated_at: new Date().toISOString() },
+        'key,org_id'
       );
       setBrandCfg(localBrand);
       localStorage.setItem('aryes-brand', JSON.stringify(localBrand));

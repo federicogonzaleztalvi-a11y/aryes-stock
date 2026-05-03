@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db, LS, SB_URL, SKEY } from '../lib/constants.js';
+import { db, LS, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
 
 const G = '#059669';
 const ONBOARDING_KEY = 'stock-onboarding-done';
@@ -319,15 +319,15 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
     localStorage.setItem('aryes-brand', JSON.stringify(brandToSave));
     try {
       await db.upsert('app_config',
-        { key: 'brandcfg', value: brandToSave, updated_at: new Date().toISOString() },
-        'key'
+        { key: 'brandcfg', value: brandToSave, org_id: getOrgId(), updated_at: new Date().toISOString() },
+        'key,org_id'
       );
     } catch { /* non-blocking */ }
     // Also save company info to app_config
     try {
       await db.upsert('app_config',
-        { key: 'companycfg', value: company, updated_at: new Date().toISOString() },
-        'key'
+        { key: 'companycfg', value: company, org_id: getOrgId(), updated_at: new Date().toISOString() },
+        'key,org_id'
       );
     } catch { /* non-blocking */ }
   };
