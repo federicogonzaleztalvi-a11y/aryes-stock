@@ -1,7 +1,9 @@
 import React from 'react';
+import { useApp } from '../../context/AppContext.tsx';
 import { G, F, IVA_RATES, fmtMoney } from './constants.js';
 
 function ItemSearchRow({ productos, onAdd }) {
+  const { brandCfg } = useApp();
   const [query,    setQuery]    = React.useState('');
   const [cant,     setCant]     = React.useState('1');
   const [precio,   setPrecio]   = React.useState('');
