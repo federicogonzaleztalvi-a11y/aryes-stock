@@ -6,6 +6,7 @@
 //   <EtiquetasPDF tipo="despacho"  data={venta}     brandCfg={cfg} onClose={fn} />
 
 import { useEffect, useRef } from 'react';
+import { getOrgId } from '../lib/constants.js';
 
 function QR({ value, size = 120 }) {
   const encoded = encodeURIComponent(value || getOrgId());

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, getAuthHeaders , getSession, getOrgId} from '../lib/constants.js';
+import { db, SB_URL, getAuthHeaders , getSession, getOrgId } from '../lib/constants.js';
 
 
 async function callRpc(fnName, params = {}) {

@@ -1,7 +1,7 @@
 import { sendLowStockAlert } from './EmailConfigTab.jsx';
 import { dbWriteWithRetry } from './catalog-data.js';
 import { useState } from 'react';
-import { LS, db } from '../../lib/constants.js';
+import { LS, db , getOrgId } from '../../lib/constants.js';
 
  
 const MovementsTab=({products,setProducts,session})=>{

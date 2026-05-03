@@ -2,7 +2,7 @@ import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import BackButton from '../components/BackButton.jsx';
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, SKEY, getAuthHeaders, fmt, getSession, getOrgId} from '../lib/constants.js';
+import { db, SB_URL, SKEY, getAuthHeaders, fmt, getSession, getOrgId } from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import RemitoPDF from '../components/RemitoPDF.jsx';

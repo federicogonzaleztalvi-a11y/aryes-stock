@@ -1,6 +1,6 @@
 import React from 'react';
 import { T } from '../lib/ui.jsx';
-import { getSession } from '../lib/constants.js';
+import { getSession , getOrgId } from '../lib/constants.js';
 
 function UserMenuDropdown({ session, userMenuOpen, setUserMenuOpen, canTab, setTab, handleLogout, onResumenWA }) {
   const ref = React.useRef(null);

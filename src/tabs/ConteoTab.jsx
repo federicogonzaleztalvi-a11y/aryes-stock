@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db } from '../lib/constants.js';
+import { db , getOrgId } from '../lib/constants.js';
 
 function ConteoTab(){
   const { products: prods, setProducts: setProds, conteos, setConteos, setHasPendingSync, addMov } = useApp();
