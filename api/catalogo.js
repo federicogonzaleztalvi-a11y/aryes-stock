@@ -5,7 +5,7 @@ import { setCorsHeaders } from './_cors.js';
 // GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
 
 const SB_URL  = process.env.SUPABASE_URL;
-const SB_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 
 
