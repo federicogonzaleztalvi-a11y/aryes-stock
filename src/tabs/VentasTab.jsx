@@ -59,7 +59,7 @@ function VentasTab(){
   const G="#059669";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#059669',cancelada:'#ef4444'};
 
-  // clientes now reactive from AppContext → no focus refresh needed
+  // clientes now reactive from AppContext → no focus refresh needed
 
 
   const [vista,setVista]=useState('lista');
@@ -75,7 +75,7 @@ function VentasTab(){
   const [etiquetaDespacho,setEtiquetaDespacho]=useState(null);
   const [monedaVenta,setMonedaVenta]=useState(brandCfg?.currency||'UYU');
 
-  // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
+  // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
   const handleSaveCobroRapido = (cobro) => {
     const nuevo = { ...cobro, createdAt: new Date().toISOString() };
     setCobros([nuevo, ...cobros]);
@@ -92,7 +92,7 @@ function VentasTab(){
     }, 'id').catch(e => { console.warn('[VentasTab] cobro upsert failed:', e?.message||e); setHasPendingSync(true); });
     // Update CFE saldo if facturas applied
     if (cfes && cobro.facturasAplicar?.length) {
-      // let FacturacionTab handle the saldo update on next render → cobro is persisted
+      // let FacturacionTab handle the saldo update on next render → cobro is persisted
     }
     setShowCobro(false);
     setCobroPrefill(null);
@@ -219,7 +219,7 @@ function VentasTab(){
       const idx=updProds.findIndex(p=>p.id===it.productoId);
       if(idx>-1){
         if(Number(it.cantidad)>Number(updProds[idx].stock||0)){
-          stockErrors.push(`Stock insuficiente: ${it.nombre} → disponible ${updProds[idx].stock||0}, solicitado ${it.cantidad}`);
+          stockErrors.push(`Stock insuficiente: ${it.nombre} → disponible ${updProds[idx].stock||0}, solicitado ${it.cantidad}`);
         }
       }
     });
@@ -267,7 +267,7 @@ function VentasTab(){
 
       // DESCUENTA STOCK INMEDIATAMENTE al crear la venta
       const now=new Date().toISOString();
-      // Capture stock BEFORE deduction → needed as lock value for patchWithLock
+      // Capture stock BEFORE deduction → needed as lock value for patchWithLock
       const stockBefore=Object.fromEntries(
         form.items.map(it=>[it.productoId, Number(updProds.find(p=>p.id===it.productoId)?.stock||0)])
       );
@@ -354,7 +354,7 @@ function VentasTab(){
       const upd=[venta,...ventas];
       setVentas(upd);
       setForm(emptyForm);setVista('lista');
-      showMsg(`→ Venta ${venta.nroVenta} creada → stock descontado`,'ok');
+      showMsg(`→ Venta ${venta.nroVenta} creada → stock descontado`,'ok');
     }finally{setSaving(false);}
   };
 
@@ -522,14 +522,14 @@ function VentasTab(){
       <MsgBanner/>
       <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16}}>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14}}>
-          {/* CLIENTE → siempre desde lista */}
+          {/* CLIENTE → siempre desde lista */}
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Cliente</label>
             <select value={form.clienteId} onChange={e=>{const cl=clientes.find(c=>c.id===e.target.value);setForm(f=>({...f,clienteId:e.target.value,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}} style={inp}>
               <option value=''>Seleccionar cliente</option>
               {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
-            {/* Active price list badge → computed outside JSX */}
+            {/* Active price list badge → computed outside JSX */}
             {activaLista&&(
               <div style={{marginTop:5,fontSize:11,fontWeight:700,color:activaLista.color||G,
                 background:(activaLista.color||G)+'18',padding:'3px 10px',borderRadius:20,display:'inline-block'}}>
@@ -572,10 +572,10 @@ function VentasTab(){
             <div style={{flex:3,minWidth:200}}>
               <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
                 <option value=''>Producto</option>
-                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} → stock: {p.stock} {p.unit||''}</option>)}
+                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} → stock: {p.stock} {p.unit||''}</option>)}
               </select>
             </div>
-            {/* Lot selector → only shown when selected product has available lots */}
+            {/* Lot selector → only shown when selected product has available lots */}
             {itemProd && lotes.filter(l => l.productoId === itemProd && Number(l.cantidad) > 0).length > 0 && (
               <div style={{flex:2,minWidth:140}}>
                 <select value={itemLote} onChange={e=>setItemLote(e.target.value)}
@@ -606,7 +606,7 @@ function VentasTab(){
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
-                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#059669':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
+                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#059669':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
                     <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
                   </tr>
@@ -650,7 +650,7 @@ function VentasTab(){
           <BackButton onBack={() => setVista('lista')} parent="Ventas" current={ventaSel?.nroVenta || 'Detalle'} />
           <div style={{flex:1}}>
             <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>
-              {v.nroVenta} → {v.clienteNombre}
+              {v.nroVenta}  ·  {v.clienteNombre}
               {v.tieneDevolucion&&<span style={{marginLeft:10,fontSize:11,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:20,verticalAlign:'middle'}}>→© Con devolución</span>}
             </h2>
             <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{v.fecha}</p>
@@ -863,7 +863,7 @@ function VentasTab(){
         notas: facturarVenta.notas||'',
       }}
       onSave={(cfe)=>{
-        // Save CFE directly → same logic as FacturacionTab.handleSaveCFE
+        // Save CFE directly → same logic as FacturacionTab.handleSaveCFE
         const CFE_TIPOS={
           'e-Factura':{code:'eFact'},'e-Ticket':{code:'eTick'},
           'e-Remito':{code:'eRem'},'e-N.Créd.':{code:'eNC'},
