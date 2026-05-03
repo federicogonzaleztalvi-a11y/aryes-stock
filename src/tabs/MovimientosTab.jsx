@@ -49,7 +49,19 @@ function MovimientosTab(){
         fecha: nuevo.fecha||null,
         timestamp: nuevo.timestamp,
       });
-    }catch { /* non-blocking */ }
+    }catch(e){ console.warn('[MovimientosTab] movement insert failed:', e?.message); }
+    // Update stock in Supabase via RPC
+    try{
+      const prod = prods.find(p=>p.id===form.productoId);
+      if(prod?.uuid || prod?.id) {
+        const rpcName = esEntrada ? 'stock_recepcion' : 'stock_venta';
+        await fetch(`${SB_URL}/rest/v1/rpc/${rpcName}`, {
+          method:'POST',
+          headers: getAuthHeaders({'Content-Type':'application/json'}),
+          body: JSON.stringify({ p_product_uuid: prod.uuid||prod.id, p_qty: Number(form.cantidad), p_org_id: getOrgId(), p_ref: 'movimiento-'+nuevo.id })
+        });
+      }
+    }catch(e){ console.warn('[MovimientosTab] stock RPC failed:', e?.message); }
     // Audit log
     try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:new Date().toISOString(),user: (getSession()?.email || 'unknown'),action:'movimiento',detail:JSON.stringify({tipo:nuevo.tipo,productoId:nuevo.productoId,productoNombre:nuevo.productoNombre,cantidad:nuevo.cantidad})}); }catch { /* non-blocking */ }
 
