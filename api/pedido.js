@@ -297,8 +297,11 @@ async function handler(req, res) {
     return res.status(200).json({ ok: true, orderId: rpcData.orderId, idempotent: true });
     }
 
-    log.error('pedido', 'RPC error', { status: rpcRes.status, errMsg });
-    return res.status(502).json({ error: 'Error al procesar el pedido. Intentá de nuevo.' });
+    log.error('pedido', 'RPC error', { status: rpcRes.status, errMsg, errBody });
+    return res.status(502).json({ 
+      error: 'Error al procesar el pedido. Intentá de nuevo.',
+      _diag: { status: rpcRes.status, errMsg, errBody }
+    });
   }
 
   const result = await rpcRes.json();

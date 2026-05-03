@@ -33,7 +33,7 @@ export default function PedidosPortalPanel({ onImportar }) {
   const fetchAndAutoImport = useCallback(async () => {
     if (importing) return;
     try {
-      const r = await fetch('/api/pedido?action=pendientes&org=${getOrgId()}');
+      const r = await fetch(`/api/pedido?action=pendientes'/api/pedido?action=pendientes&org=${getOrgId()}'org=${getOrgId()}`);
       const d = await r.json();
       if (!d.ok || !Array.isArray(d.pedidos) || d.pedidos.length === 0) return;
 

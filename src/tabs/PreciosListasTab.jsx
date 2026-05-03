@@ -125,7 +125,7 @@ export default function PreciosListasTab() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await sb('price_lists?org_id=eq.${getOrgId()}&order=created_at.desc');
+      const data = await sb(`price_lists?org_id=eq.${getOrgId()}'price_lists?org_id=eq.${getOrgId()}&order=created_at.desc'order=created_at.desc`);
       setListas(data || []);
       const im = {}, cm = {};
       for (const l of (data || [])) { im[l.id] = await sb(`price_list_items?lista_id=eq.${l.id}`).catch(() => []); cm[l.id] = await sb(`clients?lista_id=eq.${l.id}&select=id,name,phone`).catch(() => []); }
