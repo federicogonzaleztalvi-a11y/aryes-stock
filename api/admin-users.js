@@ -85,8 +85,8 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && action === 'list') {
       // Filter users by org_id — each org only sees their own users
       const usersRes = await fetch(
-        \`\${SB_URL}/rest/v1/users?org_id=eq.\${encodeURIComponent(admin.orgId)}&order=name.asc\`,
-        { headers: { apikey: SERVICE_KEY, Authorization: \`Bearer \${SERVICE_KEY}\`, Accept: 'application/json' } }
+        `${SB_URL}/rest/v1/users?org_id=eq.${encodeURIComponent(admin.orgId)}&order=name.asc`,
+        { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' } }
       );
       const users = usersRes.ok ? await usersRes.json() : [];
       return res.status(200).json(users);
