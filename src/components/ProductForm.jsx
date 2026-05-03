@@ -6,7 +6,7 @@ import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '
 
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
-  const blank={name:"",barcode:"",supplierId:"arg",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[]};
+  const blank={name:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -41,17 +41,19 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
         <Field label="Proveedor / Origen">
           <Sel value={f.supplierId} onChange={e=>set("supplierId",e.target.value)}>
+            <option value="">— Seleccioná un proveedor —</option>
             {suppliers.map(s=><option key={s.id} value={s.id}>[{s.flag}] {s.name} — {totalLead(s)}d</option>)}
           </Sel>
+          {!suppliers.length && <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:4}}>Aún no cargaste proveedores. Creá uno desde la sección Proveedores.</p>}
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
-        <Field label="Costo unitario (USD)">
+        <Field label={"Costo unitario (" + taxCfg.currency + ")"}>
           <Inp type="number" step="0.01" value={f.unitCost} onChange={e=>set("unitCost",+e.target.value)}/>
           {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es',{day:'2-digit',month:'short'}):''}</div>}
         </Field>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-        <Field label="Precio de venta (USD)">
+        <Field label={"Precio de venta (" + taxCfg.currency + ")"}>
           <Inp type="number" step="0.01" value={f.precioVenta||f.precio_venta||0} onChange={e=>set("precioVenta",+e.target.value)}/>
         </Field>
         <Field label={taxCfg.taxName} hint={"Tasa de " + taxCfg.taxName + " (" + taxCfg.country + ")"}>
@@ -94,7 +96,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
             <div style={{fontFamily:T.sans,fontSize:12,color,fontWeight:600}}>Margen estimado</div>
             <div style={{display:'flex',gap:20,alignItems:'center'}}>
               <span style={{fontFamily:T.sans,fontSize:13,color,fontWeight:700}}>{margen.toFixed(1)}%</span>
-              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Ganancia: ${(f.precioVenta-f.unitCost).toFixed(2)} / {f.unit||'u'}</span>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Ganancia: {taxCfg.currencySymbol}{(f.precioVenta-f.unitCost).toFixed(2)} / {f.unit||'u'}</span>
             </div>
           </div>
         );
