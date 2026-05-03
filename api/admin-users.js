@@ -53,8 +53,8 @@ async function verifyAdmin(authHeader) {
   if (!resolvedOrgId) {
     // Fallback: look up org_id from public.users table
     const orgRes = await fetch(
-      \`\${SB_URL}/rest/v1/users?email=eq.\${encodeURIComponent(userData.email)}&select=org_id&limit=1\`,
-      { headers: { apikey: SERVICE_KEY, Authorization: \`Bearer \${SERVICE_KEY}\`, Accept: 'application/json' } }
+      `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(userData.email)}&select=org_id&limit=1`,
+      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' } }
     );
     if (orgRes.ok) {
       const orgRows = await orgRes.json();
