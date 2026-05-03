@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, SKEY, getOrgId, fmt} from '../lib/constants.js';
+import { db, SB_URL, SKEY, getOrgId, fmt, getSession} from '../lib/constants.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const round2  = n => Math.round(Number(n) * 100) / 100;

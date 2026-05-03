@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, fmt} from '../lib/constants.js';
+import { LS, fmt, getOrgId} from '../lib/constants.js';
 
 function BatchPickingTab(){
   const { products: prods, setProducts: setProds } = useApp();

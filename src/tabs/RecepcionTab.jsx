@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import EtiquetasPDF from '../components/EtiquetasPDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, db, SB_URL, getAuthHeaders } from '../lib/constants.js';
+import { LS, db, SB_URL, getAuthHeaders , getSession, getOrgId} from '../lib/constants.js';
 
 
 // ── callRpc — invoca una función Postgres SECURITY DEFINER ───────────────────

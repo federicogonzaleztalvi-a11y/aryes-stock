@@ -73,7 +73,7 @@ function VentasTab(){
   const [facturarVenta,setFacturarVenta]=useState(null);
   const [remitoVenta,setRemitoVenta]=useState(null);
   const [etiquetaDespacho,setEtiquetaDespacho]=useState(null);
-  const [monedaVenta,setMonedaVenta]=useState('USD');
+  const [monedaVenta,setMonedaVenta]=useState(brandCfg?.currency||'UYU');
 
   // Quick-cobro handler → same logic as FacturacionTab.handleSaveCobro
   const handleSaveCobroRapido = (cobro) => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, getAuthHeaders } from '../lib/constants.js';
+import { db, SB_URL, getAuthHeaders , getSession, getOrgId} from '../lib/constants.js';
 
 
 async function callRpc(fnName, params = {}) {
@@ -166,7 +166,7 @@ function DevolucionesTab(){
         id:             crypto.randomUUID(),
         numero:         nroCred,
         tipo:           'e-N.Créd.',
-        moneda:         'USD',
+        moneda:         brandCfg?.currency||'UYU',
         fecha:          new Date().toISOString().slice(0, 10),
         fechaVenc:      null,
         clienteId:      ventaOrig?.clienteId || null,
