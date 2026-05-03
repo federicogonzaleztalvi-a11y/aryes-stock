@@ -17,7 +17,7 @@ async function callRpc(fnName, params = {}) {
 }
 
 function RecepcionTab(){
-  const { products: prods, setProducts: setProds, orders: pedidos, addMov, lotes, setLotes } = useApp();
+  const { products: prods, setProducts: setProds, orders: pedidos, addMov, lotes, setLotes, brandCfg} = useApp();
   const G="#059669";
   const KREC="aryes-recepciones";
   const [recepciones,setRecepciones]=useState([]);

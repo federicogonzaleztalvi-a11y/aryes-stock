@@ -12,7 +12,7 @@ const fmt = { currency: fmtMoney };
 import { Pill, TabBtn, KpiCard, Lbl, Sel } from './facturacion/components.jsx';
 
 function FacturacionTab({ products=[] }) {
-  const { cfes, setCfes, cobros, setCobros, clientes } = useApp();
+  const { cfes, setCfes, cobros, setCobros, clientes, ventas, brandCfg} = useApp();
   // Sync error banner: shown when a DB write fails but local state is safe
   const [syncErr, setSyncErr] = useState('');
   const clearSyncErr = () => setSyncErr('');

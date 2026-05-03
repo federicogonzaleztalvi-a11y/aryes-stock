@@ -26,7 +26,7 @@ function DevolucionesTab(){
   const { products: prods, setProducts: setProds,
           devoluciones, setDevoluciones, ventas, setVentas, lotes, setLotes,
           setCfes, clientes,
-          setHasPendingSync, addMov } = useApp();
+          setHasPendingSync, addMov, cfes, brandCfg} = useApp();
   const G="#059669";
   const [vista,setVista]=useState("lista");
   const [form,setForm]=useState({ventaId:"",clienteNombre:"",motivo:"",items:[],notas:""});

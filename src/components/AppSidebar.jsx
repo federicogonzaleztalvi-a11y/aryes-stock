@@ -183,7 +183,7 @@ const NavItem = ({ item, active, onClick, badge }) => {
 
 // ─── AppSidebar ───────────────────────────────────────────────────────────────
 export default function AppSidebar({ session, tab, setTab }) {
-  const { syncStatus, hasPendingSync, brandCfg, critN, orders, cfes } = useApp();
+  const { syncStatus, hasPendingSync, brandCfg, critN, orders, cfes, clientes, ventas} = useApp();
 
   const role = session?.role || 'admin';
   const nav  = getNavForRole(role, brandCfg);

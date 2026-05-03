@@ -3,9 +3,8 @@ import { useApp } from '../context/AppContext.tsx';
 import { LS, fmt, getOrgId} from '../lib/constants.js';
 
 function BatchPickingTab(){
-  const { products: prods, setProducts: setProds } = useApp();
+  const { products: prods, setProducts: setProds, ventas} = useApp();
   const G="#059669";
-  const { ventas } = useApp();
   const [selIds,setSelIds]=useState([]);
   const [picking,setPicking]=useState(null);
   const [recolectados,setRecolectados]=useState({});

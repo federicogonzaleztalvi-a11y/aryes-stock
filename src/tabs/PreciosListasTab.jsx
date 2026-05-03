@@ -24,7 +24,7 @@ function calcFinal(base, dg, item) {
 }
 
 function EditorPrecios({ lista, onBack, onListaUpdated }) {
-  const { products } = useApp();
+  const { products, clientes, setClientes} = useApp();
   const [items, setItems] = useState([]);
   const [busq, setBusq] = useState('');
   const [saving, setSaving] = useState({});

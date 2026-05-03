@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 
 function DemandaTab(){
-  const { products: prods, movements: movs, ventas, suppliers } = useApp();
+  const { products: prods, movements: movs, ventas, suppliers, clientes} = useApp();
   const G="#059669";
   const [periodo,setPeriodo]=useState(30);
     const pStart=new Date();pStart.setDate(pStart.getDate()-periodo);

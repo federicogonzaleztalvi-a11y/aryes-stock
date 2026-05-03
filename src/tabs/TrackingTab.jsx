@@ -133,7 +133,7 @@ function TrackingMap({ posiciones, historiales, rutasByDriver }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 function TrackingTab({ session }) {
-  const { rutas } = useApp();
+  const { rutas} = useApp();
   const user         = session;
   const orgId        = getOrgId();
   const esRepartidor = user?.role === 'operador';

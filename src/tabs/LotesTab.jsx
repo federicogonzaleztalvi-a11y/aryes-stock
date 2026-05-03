@@ -5,7 +5,7 @@ import { db } from '../lib/constants.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 function LotesTab(){
-  const { products: prods, lotes, setLotes, ventas } = useApp();
+  const { products: prods, lotes, setLotes, ventas, clientes} = useApp();
   const { isAdmin } = useRole();
   const G="#059669";
   const { confirm, ConfirmDialog } = useConfirm();

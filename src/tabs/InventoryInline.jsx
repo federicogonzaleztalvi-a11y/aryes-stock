@@ -6,7 +6,7 @@ import { useRole } from '../hooks/useRole.ts';
 
 export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}) {
   const { isAdmin } = useRole();
-  const { products, enriched, deleteProduct } = useApp();
+  const { products, enriched, deleteProduct, brandCfg } = useApp();
   const { confirm, ConfirmDialog } = useConfirm();
   const handleDelete = async (id) => {
     const ok = await confirm({ title: '¿Eliminar este producto?', description: 'Esta acción no se puede deshacer.', variant: 'danger' });

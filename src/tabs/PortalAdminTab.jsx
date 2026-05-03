@@ -29,7 +29,7 @@ function estadoBadge(estado) {
 }
 
 export default function PortalAdminTab() {
-  const { products, ventas, setVentas, isDemoMode } = useApp();
+  const { products, ventas, setVentas, isDemoMode, clientes} = useApp();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pedidoSel, setPedidoSel] = useState(null);

@@ -66,7 +66,7 @@ function parseCSV(text) {
 const TIPOS = ['Panadería', 'Heladería', 'HORECA', 'Confitería', 'Restaurante', 'Hotel', 'Pastelería', 'Otro'];
 
 export default function ClienteImporter({ onClose, onImported }) {
-  const { setClientes } = useApp();
+  const { setClientes, clientes} = useApp();
   const [file,     setFile]     = useState(null);
   const [preview,  setPreview]  = useState([]);
   const [error,    setError]    = useState('');
