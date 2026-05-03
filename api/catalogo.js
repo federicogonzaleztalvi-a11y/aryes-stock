@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   try {
     // ââ 1. Load products ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     const prodQuery = [
-      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion',
+      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty',
       `org_id=eq.${org}`,
             'order=category.asc,name.asc',
       'limit=500',
@@ -160,6 +160,8 @@ export default async function handler(req, res) {
           stock:          physicalStock,    // physical (unchanged — used by internal ops)
           available_stock: availableStock,  // available for B2B orders (ATP)
           reserved_stock:  reservedStock,   // informational
+          iva_rate:       p.iva_rate != null ? Number(p.iva_rate) : null,
+          min_order_qty:  p.min_order_qty != null ? Number(p.min_order_qty) : 1,
         };
       });
 

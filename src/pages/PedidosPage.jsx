@@ -520,7 +520,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
     .filter(l => l.item);
 
   const lineasConCalc = lineas.map(({ item, qty }) => {
-    const ivaRate = item.iva_rate !== undefined && item.iva_rate !== null ? Number(item.iva_rate) : 22;
+    const ivaRate = item.iva_rate != null ? Number(item.iva_rate) : 0;
     const descPct = item.descGlobal || 0;
     const precioConDto = descPct > 0 ? item.precio * (1 - descPct / 100) : item.precio;
     const netoLinea = precioConDto * qty;
