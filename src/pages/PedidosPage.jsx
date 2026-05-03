@@ -293,7 +293,7 @@ function LoginStep({ onLogin }) {
                 <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '9px 14px',
                   marginBottom: 16, fontSize: 13, color: G, fontWeight: 500,
                   display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {Icon.check} Hola, {nombre.split(' ')[0]}
+                  {Icon.check} Hola, {nombre}
                 </div>
               )}
               {devCode && (
@@ -1011,7 +1011,7 @@ export default function PedidosPage() {
                 {effectiveSession?.nombre?.slice(0,1).toUpperCase()}
               </div>
               {!isMobile && <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
-                {effectiveSession?.nombre?.split(' ')[0]}
+                {effectiveSession?.nombre}
               </span>}
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
