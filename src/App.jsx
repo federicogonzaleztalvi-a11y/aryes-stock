@@ -74,7 +74,7 @@ input[type=range]{accent-color:#059669;}
 // DESIGN TOKENS
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 const T = {
-  // Backgrounds → clean white like Lovable
+  // Backgrounds → clean white like Lovable
   bg:       "#f9f9f7",
   card:     "#ffffff",
   cardWarm: "#fafaf8",
@@ -91,7 +91,7 @@ const T = {
   textSm:   "#6a6a68",
   textXs:   "#9a9a98",
 
-  // Brand → primary green
+  // Brand → primary green
   green:    "#059669",
   greenBg:  "#f0f7ec",
   greenBd:  "#b8d9a8",
@@ -129,7 +129,7 @@ const T = {
 };
 
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-// Generic logo fallback → replaced by brandCfg.logoUrl when configured
+// Generic logo fallback → replaced by brandCfg.logoUrl when configured
 
 const avgDaily   = h => (!h?.length ? 0 : h.reduce((s,x)=>s+x.consumed,0)/h.length/30);
 const stdDev     = h => {
@@ -170,7 +170,7 @@ const ALERT_CFG = {
   ok:         {label:"Normal",       dot:T.ok,      bg:T.okBg,    bd:T.okBd,    txt:T.ok,     pri:0},
 };
 
-const fmtDate  = d=>d?new Date(d).toLocaleDateString("es",{day:"2-digit",month:"short",year:"numeric"}):"→";
+const fmtDate  = d=>d?new Date(d).toLocaleDateString("es",{day:"2-digit",month:"short",year:"numeric"}):"→";
 
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 // ATOMS
@@ -314,7 +314,7 @@ const Scanner=({products,suppliers,onUpdate})=>{
       {/* USB mode */}
       {mode==="usb"&&(
         <div style={{border:`2px dashed ${T.border}`,borderRadius:8,padding:"18px 20px",marginBottom:14,background:T.card}}>
-          <Cap>Campo de escaneo → click aquí antes de escanear</Cap>
+          <Cap>Campo de escaneo → click aquí antes de escanear</Cap>
           <Inp inputRef={ref} value={val} onChange={e=>setVal(e.target.value)} onKeyDown={handleKey}
             placeholder="Esperando escaneo o buscá por nombre..." autoFocus
             style={{fontSize:16,letterSpacing:"0.04em",marginTop:8}}/>
@@ -581,14 +581,14 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
             <div style={{marginTop:10,display:"grid",gap:8}}>
               {[
                 {l:"Moneda",v:supplier.currency},
-                {l:"Plazo de pago",v:`${supplier.paymentTerms||"→"} días`},
-                {l:"Forma de pago",v:supplier.paymentMethod||"→"},
+                {l:"Plazo de pago",v:`${supplier.paymentTerms||"→"} días`},
+                {l:"Forma de pago",v:supplier.paymentMethod||"→"},
                 {l:"Pedido mínimo",v:supplier.minOrder>0?`${supplier.currency||"USD"} ${supplier.minOrder}`:"Sin mínimo"},
                 {l:"Descuento",v:supplier.discount>0?`${supplier.discount}% por volumen`:"Sin descuento"},
               ].map((r,i)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<4?`1px solid ${T.muted}`:"none"}}>
                   <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{r.l}</span>
-                  <span style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{r.v||r[1]||"→"}</span>
+                  <span style={{fontFamily:T.sans,fontSize:12,fontWeight:600,color:T.text}}>{r.v||r[1]||"→"}</span>
                 </div>
               ))}
             </div>
@@ -743,7 +743,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
 
 
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-// PLANNING MODULE → Proyección 6 meses + temporadas + cuánto pedir
+// PLANNING MODULE → Proyección 6 meses + temporadas + cuánto pedir
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 
 // Months helper
@@ -846,7 +846,7 @@ function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMo
   const [cmdOpen,        setCmdOpen]        = useState(false);
   // →→ URL-based tab routing (react-router-dom) →→→→→→→→→→→→→→→→→→→→→→→→→→→→→
   // URL pattern: /app/:tab  →  /app/dashboard, /app/inventory, etc.
-  // setTab() is still passed as a prop everywhere → callers don't change.
+  // setTab() is still passed as a prop everywhere → callers don't change.
   const navigate = useNavigate();
   const { tab: urlTab } = useParams();
   const tab = urlTab || 'dashboard';
@@ -868,8 +868,8 @@ function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMo
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         // Refresh LS-backed data when palette opens so clientes/cfes are current
-        // clientes now reactive from AppContext → no manual refresh needed
-        // cfes now reactive from AppContext → no manual refresh needed
+        // clientes now reactive from AppContext → no manual refresh needed
+        // cfes now reactive from AppContext → no manual refresh needed
         setCmdOpen(o => !o);
       }
     };
@@ -895,7 +895,7 @@ Generado desde Pazque.`;
   };
   const { confirm, ConfirmDialog } = useConfirm();
 
-  // confirmedDeleteProduct removed → InventoryInline now handles its own confirm
+  // confirmedDeleteProduct removed → InventoryInline now handles its own confirm
 
   const confirmedDeleteSupplier = async (id) => {
     if (demoMode && demoGuard) { demoGuard('Creá tu cuenta para eliminar proveedores'); return; }
@@ -919,7 +919,7 @@ Generado desde Pazque.`;
   };
 
 
-  // saveProduct → data logic lives in AppContext; App.jsx only handles layout cleanup
+  // saveProduct → data logic lives in AppContext; App.jsx only handles layout cleanup
   const saveProduct=async f=>{
     const isEdit = !!editProd;
     const id = isEdit ? editProd.id : crypto.randomUUID();
@@ -950,12 +950,12 @@ Generado desde Pazque.`;
       await db.upsert('suppliers', supplierData);
     } catch(e) {
       console.warn('[Stock] saveSupplier SB failed:',e);
-      setSyncToast({msg:'Error al guardar proveedor. Cambio guardado localmente → se sincronizará al reconectar.', type:'error'});
+      setSyncToast({msg:'Error al guardar proveedor. Cambio guardado localmente → se sincronizará al reconectar.', type:'error'});
       setTimeout(()=>setSyncToast(null), 6000);
       setHasPendingSync(true);
     }
     // Audit log
-    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch{return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch{ /* safe to ignore → audit log is non-critical */ }
+    try{ await db.insert('audit_log',{id:crypto.randomUUID(),timestamp:now,user:(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.email||'unknown';}catch{return 'unknown';}})(),action:'proveedor_guardado',detail:JSON.stringify({isEdit,id,nombre:supplierData.name})}); }catch{ /* safe to ignore → audit log is non-critical */ }
   };
 
 
@@ -1027,7 +1027,7 @@ Generado desde Pazque.`;
       </div>}
       {hasPendingSync&&<div style={{background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:16}}>→ ï¸</span>
-        <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización → reconectando...</span>
+        <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización → reconectando...</span>
       </div>}
       {/* →→ DASHBOARD →→ */}
         {activeTab==="dashboard"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DashboardInline demoMode={demoMode} products={products} suppliers={suppliers} orders={orders} movements={movements} session={session} setTab={setTab} critN={critN} alerts={alerts} enriched={enriched} setModal={setModal} tfCols={tfCols} cfes={cfes} cobros={cobros} confirmOrder={confirmOrder} showMsg={showMsg}/></Suspense></ErrorBoundary>}
@@ -1154,7 +1154,7 @@ Generado desde Pazque.`;
 
 
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
-// AI CHAT FLOAT → inline (no separate file, no circular dep)
+// AI CHAT FLOAT → inline (no separate file, no circular dep)
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 
 
@@ -1222,7 +1222,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   const endRef=React.useRef(null);
   const inRef=React.useRef(null);
   const role=session?.role||'admin';
-  // AI chat proxied via /api/chat → no key in frontend
+  // AI chat proxied via /api/chat → no key in frontend
 
   React.useEffect(()=>{if(open){setUnread(0);setTimeout(()=>inRef.current?.focus(),80);}}, [open]);
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
