@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useApp } from '../../context/AppContext.tsx';
 import ItemSearchRow from './ItemSearchRow.jsx';
 import ItemsTable from './ItemsTable.jsx';
 import { G, F, COND_PAGO, CFE_TIPOS, MONEDAS, today, addDays, fmtMoney } from './constants.js';
@@ -6,6 +7,7 @@ const fmt = { currency: fmtMoney };
 import { Inp, Sel, Lbl } from './components.jsx';
 
 function ModalFactura({ clientes, productos, prefill=null, onSave, onClose }) {
+  const { brandCfg } = useApp();
   const prefCliente = prefill?.clienteId
     ? clientes.find(c=>c.id===prefill.clienteId) : null;
 
