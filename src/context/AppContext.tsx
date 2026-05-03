@@ -405,7 +405,7 @@ const describeAction = (action: string, detail: string): string => {
       try {
         const prods = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null }));
           setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', `org_id=eq.${getOrgId()}&order=name.asc`);
