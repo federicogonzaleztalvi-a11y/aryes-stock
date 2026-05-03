@@ -187,8 +187,8 @@ async function handler(req, res) {
   const orderId = crypto.randomUUID();
 
   const rpcHeaders = {
-    apikey:          SB_ANON,
-    Authorization:  `Bearer ${SB_ANON}`,
+    apikey:          SB_SVC || SB_ANON,
+    Authorization:  \`Bearer \${SB_SVC || SB_ANON}\`,
     'Content-Type': 'application/json',
     Accept:         'application/json',
   };
