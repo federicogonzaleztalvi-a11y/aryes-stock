@@ -794,7 +794,7 @@ function VentasTab(){
           {l:'Total ventas',v:ventas.length,c:'#6b7280'},
           {l:'Pendientes',v:ventas.filter(v=>v.estado==='pendiente').length,c:'#f59e0b'},
           {l:'En preparación',v:ventas.filter(v=>v.estado==='preparada'||v.estado==='confirmada').length,c:'#8b5cf6'},
-          {l:'Facturado este mes',v:'$'+totalMes.toLocaleString((getOrgConfigStatic(brandCfg).locale)),c:G},
+          {l:'Facturado este mes',v:fmt.currency(totalMes),c:G},
         ].map(s=>(
           <div key={s.l} style={{background:'#fff',borderRadius:10,padding:'14px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
             <div style={{fontSize:11,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{s.l}</div>

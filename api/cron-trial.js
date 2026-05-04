@@ -60,7 +60,10 @@ export default async function handler(req, res) {
         await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + org.id, {
           method: 'PATCH',
           headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ subscription_status: 'expired' }),
+          // Don't change status — main.jsx already detects trial+past_date as expired.
+          // Setting 'expired' would break the bloqueo because main.jsx doesn't handle that state.
+          // We just send the email here. The status stays 'trial' with trial_ends_at in the past.
+          body: JSON.stringify({ trial_expired_email_sent_at: new Date().toISOString() }),
         });
       } catch (e) {
         console.error('[cron-trial] expired email failed:', org.id, e.message);
