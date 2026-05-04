@@ -58,7 +58,7 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   // ── Core data ──────────────────────────────────────────────────────────────
   const [products,  setProducts]  = useState<Product[]>([]) // SB source of truth — loaded in sync effect;
 
-  const [suppliers, setSuppliers] = useState<Supplier[]>(DEFAULT_SUPPLIERS) // SB overrides on load;
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]) // SB overrides on load — DEFAULT_SUPPLIERS used only in demo mode below;
   const [movements, setMovements] = useState<Movement[]>([]) // SB source of truth — loaded in batch-B;
   const [orders,    setOrders]    = useState<Order[]>([]); // SB source of truth — loaded in batch-C
   const [ventas,    setVentas]    = useState<Venta[]>([]) // SB source of truth — loaded in batch-A;

@@ -19,17 +19,18 @@ function readLS(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
 }
 
-function SetupChecklist({ products = [], setTab }) {
+function SetupChecklist({ products = [], suppliers = [], clientes = [], ventas = [], rutas = [], cfes = [], brandCfg = null, setTab }) {
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(LS_DISMISSED) === 'true');
   const [expanded, setExpanded]   = useState(false);
 
-  const brand    = (() => { try { return JSON.parse(localStorage.getItem('aryes-brand') || 'null'); } catch { return null; } })();
-  const clientes = readLS('aryes-clients');
-  const cfes     = readLS('aryes-cfe');
-
-  const suppliers = readLS('aryes-suppliers');
-  const ventas    = readLS('aryes-ventas');
-  const rutas     = readLS('aryes-rutas');
+  // Read from props (live data from AppContext) instead of stale localStorage
+  // brandCfg comes from props; fallback to LS only if not provided (for backwards compat)
+  const brand = brandCfg && brandCfg.name ? brandCfg : (() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('aryes-brand') || 'null');
+      return raw && raw.name ? raw : null;
+    } catch { return null; }
+  })();
 
   const steps = STEPS.map(s => {
     let done = false;

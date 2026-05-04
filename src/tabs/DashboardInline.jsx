@@ -488,7 +488,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       {/* ── WhatsApp resumen diario ─────────────────────────────────── */}
 
       {/* ── Setup Progress Checklist — full width banner ── */}
-      {!demoMode && <SetupChecklist products={products} setTab={setTab} />}
+      {!demoMode && <SetupChecklist products={products} suppliers={suppliers} clientes={clientes} ventas={ventas} rutas={rutas} cfes={cfes} brandCfg={brandCfg} setTab={setTab} />}
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>
