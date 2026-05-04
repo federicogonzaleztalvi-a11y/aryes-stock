@@ -40,20 +40,23 @@ export default function TrackingPage() {
     }
     if (!silent) setLoading(true);
     try {
+      // Use public API endpoint instead of direct Supabase access (RLS hardening)
       const r = await fetch(
-        `${SB_URL}/rest/v1/rutas?id=eq.${rutaId}&org_id=eq.${orgId}&select=id,vehiculo,zona,dia,entregas&limit=1`,
-        { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }
+        `/api/tracking-public?ruta=${encodeURIComponent(rutaId)}&org=${encodeURIComponent(orgId)}&cliente=${encodeURIComponent(clienteId)}`,
+        { headers: { Accept: 'application/json' } }
       );
-      if (!r.ok) throw new Error('fetch_failed');
-      const rows = await r.json();
-      const ruta = rows?.[0];
-      if (!ruta) { setError('Ruta no encontrada.'); return; }
+      if (!r.ok) {
+        if (r.status === 404) { setError('No encontramos tu entrega.'); return; }
+        throw new Error('fetch_failed');
+      }
+      const data = await r.json();
+      // Backend returns { id, vehiculo, zona, dia, salidaEn, enRuta, entrega, aheadPend, myIdx }
+      const ruta = data;
+      if (!ruta || !ruta.entrega) { setError('No encontramos tu entrega en esta ruta.'); return; }
 
-      const entrega = (ruta.entregas || []).find(e => e.clienteId === clienteId);
-      if (!entrega) { setError('No encontramos tu entrega en esta ruta.'); return; }
-
-      const myIdx     = ruta.entregas.findIndex(e => e.clienteId === clienteId);
-      const aheadPend = ruta.entregas.slice(0, myIdx).filter(e => e.estado === 'pendiente').length;
+      const entrega = ruta.entrega;
+      const myIdx   = ruta.myIdx;
+      const aheadPend = ruta.aheadPend;
 
       // ETA calculation
       let etaMins = null;

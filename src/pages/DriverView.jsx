@@ -119,13 +119,17 @@ export default function DriverView() {
     const session = getSession();
     const token   = session?.access_token || SB_ANON;
 
-    fetch(`${SB_URL}/rest/v1/rutas?id=eq.${rutaId}&org_id=eq.${orgId}&limit=1`, {
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${token}`, Accept: 'application/json' }
+    // Use public API endpoint instead of direct Supabase access (RLS hardening)
+    fetch(`/api/tracking-public?ruta=${encodeURIComponent(rutaId)}&org=${encodeURIComponent(orgId)}`, {
+      headers: { Accept: 'application/json' }
     })
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error('fetch_failed');
+      return r.json();
+    })
     .then(data => {
-      if (!data?.[0]) { setError('Ruta no encontrada.'); return; }
-      const r = data[0];
+      if (!data || !data.id) { setError('Ruta no encontrada.'); return; }
+      const r = data;
       setRuta({
         ...r,
         entregas: (r.entregas || []).map(e => ({ ...e })),
@@ -271,28 +275,25 @@ export default function DriverView() {
     const token   = session?.access_token || SB_ANON;
 
     if (!navigator.onLine) {
-      // Queue for sync when back online
+      // Queue for sync when back online — uses public API now
       queueOffline(
-        SB_URL + '/rest/v1/rutas?id=eq.' + updatedRuta.id,
-        { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ entregas: updatedRuta.entregas, updated_at: new Date().toISOString() }) }
+        `/api/tracking-public?ruta=${encodeURIComponent(updatedRuta.id)}&org=${encodeURIComponent(orgId)}`,
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entregas: updatedRuta.entregas }) }
       );
       setSaving(false);
       return;
     }
 
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/rutas?id=eq.${updatedRuta.id}`, {
+      // Use public API endpoint instead of direct Supabase access (RLS hardening)
+      const r = await fetch(`/api/tracking-public?ruta=${encodeURIComponent(updatedRuta.id)}&org=${encodeURIComponent(orgId)}`, {
         method:  'PATCH',
         headers: {
-          apikey:          SB_ANON,
-          Authorization:  `Bearer ${token}`,
           'Content-Type': 'application/json',
-          Prefer:         'return=minimal',
         },
         body: JSON.stringify({
-          entregas:   updatedRuta.entregas,
-          updated_at: new Date().toISOString(),
+          entregas: updatedRuta.entregas,
         }),
       });
       if (!r.ok) throw new Error('save failed');
