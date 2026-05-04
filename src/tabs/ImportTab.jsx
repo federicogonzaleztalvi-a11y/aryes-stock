@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LS, db, getOrgId } from '../lib/constants.js';
+import { getTaxConfig } from '../lib/taxConfig.js';
 
 function ImportTab(){
   const G="#059669";
@@ -149,7 +150,7 @@ function ImportTab(){
                     <td style={{padding:'7px 12px',fontWeight:500,color:'#1a1a1a'}}>{p.nombre}</td>
                     <td style={{padding:'7px 12px',fontWeight:700,color:G}}>{p.stock}</td>
                     <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.unidad}</td>
-                    <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.precio>0?'$'+p.precio:'-'}</td>
+                    <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.precio>0?(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:'$')+p.precio:'-'}</td>
                     <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.rop}</td>
                     <td style={{padding:'7px 12px',color:'#6b7280'}}>{p.proveedor||'-'}</td>
                   </tr>

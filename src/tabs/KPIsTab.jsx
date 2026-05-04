@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { fmt } from '../lib/constants.js';
+import { getTaxConfig } from '../lib/taxConfig.js';
 import { useApp } from '../context/AppContext.tsx';
 
 function KPIsTab(){
-  const { products: prods, movements: movs , ventas, lotes, rutas} = useApp();
+  const { products: prods, movements: movs , ventas, lotes, rutas, brandCfg = {}} = useApp();
   const G="#059669";
   const [periodo,setPeriodo]=useState("mes");
   const hoy=new Date();
@@ -50,7 +51,7 @@ function KPIsTab(){
             {p==="semana"?"7 dias":p==="mes"?"30 dias":"90 dias"}</button>))}</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-        <CARD icon="💰" label={"Ventas ("+periodo+")"} value={ventasP.length} sub={"$"+totalVentas.toLocaleString("es")} color={G} />
+        <CARD icon="💰" label={"Ventas ("+periodo+")"} value={ventasP.length} sub={(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+totalVentas.toLocaleString("es")} color={G} />
         {costoVentas>0&&<CARD icon="📈" label="Margen bruto" value={fmt.percent(margenBruto)} sub={"Ganancia: $"+gananciaTotal.toLocaleString("es",{minimumFractionDigits:2,maximumFractionDigits:2})} color={margenBruto>=15?"#059669":"#d97706"} />}
         <CARD icon="📦" label="Stock critico" value={stockCrit+sinStock} sub={stockCrit+" criticos · "+sinStock+" sin stock"} alert={sinStock>0||stockCrit>5} color={sinStock>0?"#dc2626":stockCrit>0?"#f59e0b":G} />
         <CARD icon="📅" label="Venc. proximos" value={vencProx} sub={vencidos+" ya vencidos"} alert={vencidos>0} color={vencidos>0?"#dc2626":"#f59e0b"} />
@@ -125,7 +126,7 @@ function KPIsTab(){
               {icon:"📋",label:"Ítems / venta",value:itemsXVenta,sub:"promedio de líneas por orden",color:G},
               {icon:"🗺",label:"Rutas completadas",value:rutasComp+"/"+rutasTotal,sub:entregasOk+" entregas efectivas",color:efectividad>=90?G:efectividad>=70?"#f59e0b":"#dc2626"},
               {icon:"📥",label:"Recepciones",value:movEntradas,sub:"entradas de stock en el período",color:G},
-              {icon:"💵",label:"Ticket promedio",value:"$"+(totalV>0?(totalVentas/totalV).toLocaleString("es",{maximumFractionDigits:0}):"0"),sub:"por venta en el período",color:G},
+              {icon:"💵",label:"Ticket promedio",value:(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+(totalV>0?(totalVentas/totalV).toLocaleString("es",{maximumFractionDigits:0}):"0"),sub:"por venta en el período",color:G},
             ].map((k,i)=>(
               <div key={i} style={{background:"#f9f9f7",borderRadius:10,padding:"14px 16px"}}>
                 <div style={{fontSize:20,marginBottom:6}}>{k.icon}</div>

@@ -600,8 +600,8 @@ function ClientesTab(){
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:1,background:'#e2e2de',borderRadius:10,overflow:'hidden',marginBottom:20}}>
                 {[
                   {l:'Compras totales', v: crmMetrics.ventasCount},
-                  {l:'Total comprado',  v: '$'+Number(crmMetrics.totalComprado).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})},
-                  {l:'Ticket promedio', v: '$'+Number(crmMetrics.ticketPromedio).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})},
+                  {l:'Total comprado',  v: (brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+Number(crmMetrics.totalComprado).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})},
+                  {l:'Ticket promedio', v: (brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+Number(crmMetrics.ticketPromedio).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})},
                   {l:'Última compra',   v: crmMetrics.diasDesdeUltima === 0 ? 'Hoy' : crmMetrics.diasDesdeUltima === 1 ? 'Ayer' : `Hace ${crmMetrics.diasDesdeUltima}d`,
                    accent: crmMetrics.diasDesdeUltima > 30 ? '#dc2626' : crmMetrics.diasDesdeUltima > 14 ? '#d97706' : G},
                 ].map(k => (
@@ -620,9 +620,9 @@ function ClientesTab(){
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:12}}>
                     {[
-                      { l:'Ingresos', v:'$'+Number(crmMetrics.ingresosBrutos).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#1a1a18' },
-                      { l:'Costo', v:'$'+Number(crmMetrics.costoTotal).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#dc2626' },
-                      { l:'Ganancia', v:'$'+Number(crmMetrics.ganancia).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:crmMetrics.ganancia>=0?G:'#dc2626' },
+                      { l:'Ingresos', v:(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+Number(crmMetrics.ingresosBrutos).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#1a1a18' },
+                      { l:'Costo', v:(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+Number(crmMetrics.costoTotal).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:'#dc2626' },
+                      { l:'Ganancia', v:(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+Number(crmMetrics.ganancia).toLocaleString('es',{minimumFractionDigits:0,maximumFractionDigits:0}), c:crmMetrics.ganancia>=0?G:'#dc2626' },
                     ].map(m=>(
                       <div key={m.l} style={{textAlign:'center'}}>
                         <div style={{fontSize:11,color:'#9a9a98',marginBottom:4}}>{m.l}</div>

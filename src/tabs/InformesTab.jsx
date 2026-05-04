@@ -1,4 +1,5 @@
 import { LS } from '../lib/constants.js';
+import { getTaxConfig } from '../lib/taxConfig.js';
 import { useState } from 'react';
 import ReportePDF from '../components/ReportePDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
@@ -17,7 +18,7 @@ function InformesTab(){
   const downloadCSV=(content,filename)=>{const blob=new Blob(["﻿"+content],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);setMsg("Descargando "+filename);setTimeout(()=>setMsg(""),3000);};
   const exportStock=()=>{const h=["Producto","Stock","Unidad","Precio","Stock Min","Proveedor","Estado"];const rows=prods.map(p=>[p.nombre||p.name||"",p.stock||0,p.unidad||p.unit||"u",p.precio||p.price||0,p.rop||5,p.proveedor||"",Number(p.stock||0)===0?"Sin stock":Number(p.stock||0)<=(p.rop||5)?"Critico":"OK"]);downloadCSV(toCSV(h,rows),"stock-"+hoy.toISOString().split("T")[0]+".csv");};
   const exportMovimientos=()=>{const h=["Fecha","Tipo","Producto","Cantidad","Notas"];const rows=movsP.map(m=>[m.timestamp?new Date(m.timestamp).toLocaleDateString("es"):"",m.tipo||"",m.productoNombre||m.nombre||"",m.cantidad||0,m.notas||""]);downloadCSV(toCSV(h,rows),"movimientos-"+periodo+".csv");};
-  const exportVentas=()=>{const h=["N Venta","Fecha","Cliente","Productos","Total","Estado"];const rows=ventasP.map(v=>[v.nroVenta||"",v.fecha||"",v.clienteNombre||"",v.items?.length||0,"$"+(v.total||0),v.estado||""]);downloadCSV(toCSV(h,rows),"ventas-"+periodo+".csv");};
+  const exportVentas=()=>{const h=["N Venta","Fecha","Cliente","Productos","Total","Estado"];const rows=ventasP.map(v=>[v.nroVenta||"",v.fecha||"",v.clienteNombre||"",v.items?.length||0,(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currencySymbol:"$")+(v.total||0),v.estado||""]);downloadCSV(toCSV(h,rows),"ventas-"+periodo+".csv");};
   const exportLotes=()=>{const h=["Producto","Lote","Cantidad","Vencimiento","Dias","Estado"];const rows=lotes.map(l=>{const d=l.fechaVenc?diasVenc(l.fechaVenc):null;return[l.productoNombre||"",l.lote||"",l.cantidad||0,l.fechaVenc||"",d!==null?d:"",!l.fechaVenc?"Sin fecha":d<0?"VENCIDO":d<=7?"URGENTE":d<=30?"PROXIMO":"OK"];});downloadCSV(toCSV(h,rows),"lotes.csv");};
   const exportClientes=()=>{const h=["Nombre","Tipo","Ciudad","Telefono","Email"];const rows=clientes.map(c=>[c.nombre||"",c.tipo||"",c.ciudad||"",c.telefono||"",c.email||""]);downloadCSV(toCSV(h,rows),"clientes.csv");};
   const exportEntregas=()=>{const h=["Vehiculo","Zona","Dia","Cliente","Estado","Hora"];const rows=rutas.flatMap(r=>(r.entregas||[]).map(e=>[r.vehiculo||"",r.zona||"",r.dia||"",e.clienteNombre||"",e.estado||"",e.hora||""]));downloadCSV(toCSV(h,rows),"entregas.csv");};
