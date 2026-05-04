@@ -65,7 +65,7 @@ export default async function handler(req, res) {
 
   // ───────── GET: Tracking (cliente) o Driver (full ruta) ─────────
   if (req.method === 'GET') {
-    const url = `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=id,vehiculo,zona,dia,entregas,salidaEn,enRuta,repartidor_id&limit=1`;
+    const url = `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=*&limit=1`;
     const r = await fetch(url, { headers });
     if (!r.ok) {
       console.error('[tracking-public] DB error:', await r.text());
@@ -88,8 +88,6 @@ export default async function handler(req, res) {
         vehiculo:   rutaRow.vehiculo,
         zona:       rutaRow.zona,
         dia:        rutaRow.dia,
-        salidaEn:   rutaRow.salidaEn,
-        enRuta:     rutaRow.enRuta,
         entrega,
         aheadPend,
         myIdx,
@@ -107,10 +105,10 @@ export default async function handler(req, res) {
     })();
 
     // Whitelist allowed fields — driver cannot change vehiculo, org_id, repartidor, etc
+    // salidaEn/enRuta are NOT columns in the table — they live inside the entregas JSONB or localStorage
     const update = {};
     if (Array.isArray(body.entregas)) update.entregas = body.entregas;
-    if (typeof body.salidaEn === 'string' || body.salidaEn === null) update.salidaEn = body.salidaEn;
-    if (typeof body.enRuta === 'boolean') update.enRuta = body.enRuta;
+    if (typeof body.notas === 'string') update.notas = body.notas;
     update.updated_at = new Date().toISOString();
 
     if (Object.keys(update).length === 1) {
