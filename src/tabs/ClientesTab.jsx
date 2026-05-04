@@ -194,7 +194,7 @@ function PhonesPanel({ clientId, orgId }) {
 }
 
 function ClientesTab(){
-  const { clientes: items, setClientes: setItems, ventas, cfes, priceListas, session, products } = useApp();
+  const { clientes: items, setClientes: setItems, ventas, cfes, priceListas, session, products, brandCfg = {} } = useApp();
   const { isAdmin } = useRole();
   const navigate = useNavigate();
   const G="#3a7d1e";
