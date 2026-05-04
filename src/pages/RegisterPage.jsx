@@ -39,6 +39,19 @@ export default function RegisterPage() {
       });
       const data = await r.json();
       if (!r.ok) { setErr(data.error || 'Error al registrarse'); setLoading(false); return; }
+      // CRITICAL SECURITY: Clear any existing session from a previous user in this browser
+      // to prevent cross-org leak when the new user clicks "Ingresar a mi cuenta".
+      // The registered user must explicitly authenticate with their new credentials.
+      try {
+        localStorage.removeItem('aryes-session');
+        // Also clear any org-tagged caches that could leak data from previous org
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('aryes-')) keysToRemove.push(key);
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch (e) { /* non-fatal */ }
       setOrgId(data.orgId);
       setOk(true);
     } catch {
@@ -73,6 +86,12 @@ export default function RegisterPage() {
           Podés ingresar ahora con tu email y contraseña.
         </p>
         <a href="/app"
+          onClick={(e) => {
+            e.preventDefault();
+            // Hard navigation to /app — forces full page reload so React state
+            // and any in-memory session from a prior user is fully cleared.
+            window.location.href = '/app';
+          }}
           style={{ display: 'inline-block', background: G, color: '#fff', fontFamily: F.sans, fontSize: 13, fontWeight: 600, padding: '12px 28px', borderRadius: 8, textDecoration: 'none', letterSpacing: '0.04em' }}>
           Ingresar a mi cuenta →
         </a>
