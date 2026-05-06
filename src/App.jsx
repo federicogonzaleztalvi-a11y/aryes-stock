@@ -1091,7 +1091,7 @@ Generado desde Pazque.`;
         {ConfirmDialog}
         {/* →→ MODALS →→ */}
       {modal?.type==="product"&&<Modal title={editProd?"Editar producto":"Nuevo producto"} sub="Inventario" onClose={()=>{setModal(null);setEditProd(null);}}><ProductForm product={editProd} suppliers={suppliers} brandCfg={brandCfg} onSave={saveProduct} onClose={()=>{setModal(null);setEditProd(null);}}/>{editProd&&<div style={{padding:'0 16px 16px'}}><button onClick={()=>{setModal(null);setEtiquetaProd(editProd);}} style={{width:'100%',background:'#f5f5f7',border:'1px solid #e0e0dc',borderRadius:8,padding:'10px',fontSize:13,cursor:'pointer',color:'#4a4a48'}}>🏷️ Imprimir etiqueta de producto</button></div>}</Modal>}
-      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} onConfirm={async (qty)=>{
+      {modal?.type==="order"&&<OrderModal product={modal.product} supplier={getSup(modal.product.supplierId)} suppliers={suppliers} onConfirm={async (qty)=>{
         await confirmOrder(modal.product, qty);
         const sup=getSup(modal.product.supplierId);
         const tel=(sup?.whatsapp||sup?.phone||'').replace(/[^0-9]/g,'');

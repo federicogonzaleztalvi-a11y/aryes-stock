@@ -2,7 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { T, totalLead, avgDaily, rop, safetyStock, eoq, alertLevel, ALERT_CFG,
          Modal, Inp, Btn, Cap, StockBar, fmtDate, fmtShort } from '../lib/ui.jsx';
 
-const OrderModal=({product,supplier,onConfirm,onClose,suggestedQty})=>{
+const OrderModal=({product,supplier,suppliers,onConfirm,onClose,suggestedQty})=>{
+  // Defense: if product has no supplier assigned, show helpful empty state
+  if (!supplier) {
+    const noSuppliers = !suppliers || suppliers.length === 0;
+    return (
+      <Modal title={product.name} sub="No se puede generar pedido" onClose={onClose}>
+        <div style={{display:"grid",gap:16,padding:"4px 0"}}>
+          <div style={{background:"#fef3c7",border:"1px solid #fcd34d",padding:"14px 16px",borderRadius:6,fontFamily:T.sans,fontSize:13,color:"#92400e",lineHeight:1.6}}>
+            {noSuppliers ? (
+              <>Este producto no tiene un proveedor asignado, y todavía no creaste ningún proveedor en tu cuenta.<br/><br/>Para poder pedir reabastecimiento, primero creá un proveedor desde la sección <strong>Proveedores</strong>, después editá este producto y asignáselo.</>
+            ) : (
+              <>Este producto no tiene un proveedor asignado.<br/><br/>Para poder pedir reabastecimiento, editá el producto desde la sección <strong>Inventario</strong> y asignale un proveedor de tu lista.</>
+            )}
+          </div>
+          <Btn onClick={onClose} variant="ghost" full>Entendido</Btn>
+        </div>
+      </Modal>
+    );
+  }
   const lead=totalLead(supplier);
   const daily=avgDaily(product.history);
   const r=rop(product.history,lead);
