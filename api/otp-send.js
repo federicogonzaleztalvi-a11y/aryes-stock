@@ -41,8 +41,11 @@ async function sendViaWhatsApp(to, code) {
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       to: to,
-      type: 'text',
-      text: { body: msg },
+      type: 'template',
+      template: {
+        name: 'hello_world',
+        language: { code: 'en_US' },
+      },
     }),
   });
   if (!res.ok) {
