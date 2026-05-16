@@ -206,7 +206,17 @@ function DescuentosPanel({ clientId, orgId }) {
 
   const URL = import.meta.env.VITE_SUPABASE_URL;
   const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const HDR = { apikey: KEY, Authorization: 'Bearer ' + KEY };
+  // Use the logged-in user's JWT so RLS allows access to products/clients
+  const getHdr = () => {
+    try {
+      const ses = JSON.parse(localStorage.getItem('aryes-session') || '{}');
+      const token = ses?.access_token || KEY;
+      return { apikey: KEY, Authorization: 'Bearer ' + token };
+    } catch {
+      return { apikey: KEY, Authorization: 'Bearer ' + KEY };
+    }
+  };
+  const HDR = getHdr();
 
   const cargar = React.useCallback(async () => {
     if (!clientId || !orgId) return;
