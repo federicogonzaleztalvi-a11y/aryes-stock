@@ -346,7 +346,7 @@ function LoginStep({ onLogin }) {
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ item, qty, onAdd, onRemove }) {
+function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
 
@@ -1141,7 +1141,7 @@ export default function PedidosPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
                 {filtered.map(item => (
-                  <ProductCard key={item.id} item={item}
+                  <ProductCard key={item.id} item={item} brandCfg={brandCfg}
                     qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} />
                 ))}
               </div>
