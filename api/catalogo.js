@@ -63,10 +63,20 @@ export default async function handler(req, res) {
       `expires_at=gte.${now}`,
     ].join('&');
 
-    const [prodRes, resRes] = await Promise.all([
+    // Fetch overrides for this client if provided
+    const ovQuery = clienteId
+      ? `select=producto_uuid,descuento_pct,precio_override&org_id=eq.${org}&cliente_id=eq.${clienteId}`
+      : null;
+
+    const promises = [
       fetch(`${SB_URL}/rest/v1/products?${prodQuery}`, { headers }),
       fetch(`${SB_URL}/rest/v1/stock_reservations?${resQuery}`, { headers }),
-    ]);
+    ];
+    if (ovQuery) {
+      promises.push(fetch(`${SB_URL}/rest/v1/client_product_overrides?${ovQuery}`, { headers }));
+    }
+
+    const [prodRes, resRes, ovRes] = await Promise.all(promises);
 
     if (!prodRes.ok) return res.status(502).json({ error: 'Database error' });
     const products = await prodRes.json();
@@ -77,6 +87,18 @@ export default async function handler(req, res) {
       const reservations = await resRes.json();
       for (const r of (reservations || [])) {
         reservedMap[r.product_id] = (reservedMap[r.product_id] || 0) + Number(r.quantity);
+      }
+    }
+
+    // Build overrides map: producto_uuid -> { descuento_pct, precio_override }
+    const overrideMap = {};
+    if (ovRes && ovRes.ok) {
+      const overrides = await ovRes.json();
+      for (const o of (overrides || [])) {
+        overrideMap[o.producto_uuid] = {
+          descuento_pct: o.descuento_pct != null ? Number(o.descuento_pct) : null,
+          precio_override: o.precio_override != null ? Number(o.precio_override) : null,
+        };
       }
     }
 
@@ -142,6 +164,16 @@ export default async function handler(req, res) {
           } else if (descGlobal > 0) {
             // Apply global list discount
             precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100;
+          }
+        }
+
+        // Apply client-product override (highest priority — wins over list)
+        if (clienteId && overrideMap[p.uuid]) {
+          const ov = overrideMap[p.uuid];
+          if (ov.precio_override != null) {
+            precio = ov.precio_override;
+          } else if (ov.descuento_pct != null) {
+            precio = Math.round(precio * (1 - ov.descuento_pct / 100) * 100) / 100;
           }
         }
 

@@ -214,7 +214,7 @@ function DescuentosPanel({ clientId, orgId }) {
     try {
       const [r1, r2] = await Promise.all([
         fetch(URL + '/rest/v1/client_product_overrides?cliente_id=eq.' + clientId + '&org_id=eq.' + orgId + '&select=*&order=created_at.desc', { headers: HDR }),
-        fetch(URL + '/rest/v1/products?org_id=eq.' + orgId + '&select=id,nombre,precio&order=nombre.asc', { headers: HDR }),
+        fetch(URL + '/rest/v1/products?org_id=eq.' + orgId + '&select=uuid,name,precio_venta&order=name.asc', { headers: HDR }),
       ]);
       const overrides = await r1.json();
       const prods = await r2.json();
@@ -237,7 +237,7 @@ function DescuentosPanel({ clientId, orgId }) {
     const body = {
       org_id: orgId,
       cliente_id: clientId,
-      producto_id: parseInt(formProd, 10),
+      producto_uuid: formProd,
       descuento_pct: formTipo === 'pct' ? v : null,
       precio_override: formTipo === 'precio' ? v : null,
       notas: formNotas || null,
@@ -276,10 +276,10 @@ function DescuentosPanel({ clientId, orgId }) {
   };
 
   const filtrados = busqueda
-    ? products.filter(p => p.nombre?.toLowerCase().includes(busqueda.toLowerCase()))
+    ? products.filter(p => p.name?.toLowerCase().includes(busqueda.toLowerCase()))
     : products;
 
-  const prodNombre = (id) => products.find(p => p.id === id)?.nombre || ('Producto #' + id);
+  const prodNombre = (uuid) => products.find(p => p.uuid === uuid)?.name || ('Producto');
 
   return (
     <div>
@@ -303,7 +303,7 @@ function DescuentosPanel({ clientId, orgId }) {
               <select value={formProd} onChange={e => setFormProd(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}}>
                 <option value="">Elegir producto...</option>
                 {filtrados.slice(0,50).map(p => (
-                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                  <option key={p.uuid} value={p.uuid}>{p.name}</option>
                 ))}
               </select>
             </div>
@@ -341,7 +341,7 @@ function DescuentosPanel({ clientId, orgId }) {
           {items.map(it => (
             <div key={it.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'#fafafa',borderRadius:8,border:'1px solid #eee'}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:600,color:'#1a1a1a',marginBottom:2}}>{prodNombre(it.producto_id)}</div>
+                <div style={{fontSize:14,fontWeight:600,color:'#1a1a1a',marginBottom:2}}>{prodNombre(it.producto_uuid)}</div>
                 <div style={{fontSize:12,color:'#666'}}>
                   {it.descuento_pct ? (Number(it.descuento_pct) + '% off sobre lista') : ('Precio fijo: $' + Number(it.precio_override).toFixed(2))}
                   {it.notas ? ' · ' + it.notas : ''}
