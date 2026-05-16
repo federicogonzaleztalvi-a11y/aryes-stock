@@ -2,7 +2,7 @@ import React from 'react';
 
 var G = '#059669';
 
-export default function RecommendedProducts({ recommended, onAdd, onRemove, carrito }) {
+export default function RecommendedProducts({ recommended, onAdd, onRemove, carrito, brandCfg }) {
   if (!recommended || recommended.length === 0) return null;
 
   return (

@@ -1134,7 +1134,7 @@ export default function PedidosPage() {
           ) : (
             <>
                         {recommended.length > 0 && (
-            <RecommendedProducts recommended={recommended} onAdd={addItem} onRemove={removeItem} carrito={carrito} />
+            <RecommendedProducts recommended={recommended} onAdd={addItem} onRemove={removeItem} carrito={carrito} brandCfg={brandCfg} />
           )}
 <div style={{ fontSize: 11, color: '#a0a098', marginBottom: 14 }}>
                 {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
