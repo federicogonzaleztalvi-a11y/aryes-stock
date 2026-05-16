@@ -43,8 +43,20 @@ async function sendViaWhatsApp(to, code) {
       to: to,
       type: 'template',
       template: {
-        name: 'hello_world',
-        language: { code: 'en_US' },
+        name: 'pazque_otp',
+        language: { code: 'es_AR' },
+        components: [
+          {
+            type: 'body',
+            parameters: [{ type: 'text', text: code }],
+          },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [{ type: 'text', text: code }],
+          },
+        ],
       },
     }),
   });
