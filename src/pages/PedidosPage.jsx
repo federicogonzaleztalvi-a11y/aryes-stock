@@ -819,6 +819,7 @@ export default function PedidosPage() {
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
+  const [brandCfg, setBrandCfg] = useState(null);
   const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');
   const [busq,     setBusq]     = useState('');
@@ -870,6 +871,7 @@ export default function PedidosPage() {
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
         if (d.brandCfg?.nombre) setBrandNombre(d.brandCfg.nombre);
+        if (d.brandCfg) setBrandCfg(d.brandCfg);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
