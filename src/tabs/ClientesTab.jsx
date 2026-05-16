@@ -193,6 +193,169 @@ function PhonesPanel({ clientId, orgId }) {
   );
 }
 
+function DescuentosPanel({ clientId, orgId }) {
+  const [items, setItems] = React.useState([]);
+  const [products, setProducts] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [showForm, setShowForm] = React.useState(false);
+  const [formProd, setFormProd] = React.useState('');
+  const [formTipo, setFormTipo] = React.useState('pct');
+  const [formValor, setFormValor] = React.useState('');
+  const [formNotas, setFormNotas] = React.useState('');
+  const [busqueda, setBusqueda] = React.useState('');
+
+  const URL = import.meta.env.VITE_SUPABASE_URL;
+  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const HDR = { apikey: KEY, Authorization: 'Bearer ' + KEY };
+
+  const cargar = React.useCallback(async () => {
+    if (!clientId || !orgId) return;
+    setLoading(true);
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch(URL + '/rest/v1/client_product_overrides?cliente_id=eq.' + clientId + '&org_id=eq.' + orgId + '&select=*&order=created_at.desc', { headers: HDR }),
+        fetch(URL + '/rest/v1/products?org_id=eq.' + orgId + '&select=id,nombre,precio&order=nombre.asc', { headers: HDR }),
+      ]);
+      const overrides = await r1.json();
+      const prods = await r2.json();
+      setItems(Array.isArray(overrides) ? overrides : []);
+      setProducts(Array.isArray(prods) ? prods : []);
+    } catch (e) {
+      console.error('[DescuentosPanel]', e);
+    }
+    setLoading(false);
+  }, [clientId, orgId, URL, KEY]);
+
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const agregar = async () => {
+    if (!formProd || !formValor) return alert('Completá producto y valor');
+    const v = parseFloat(formValor);
+    if (isNaN(v) || v <= 0) return alert('Valor inválido');
+    if (formTipo === 'pct' && v > 100) return alert('El descuento no puede ser mayor a 100%');
+
+    const body = {
+      org_id: orgId,
+      cliente_id: clientId,
+      producto_id: parseInt(formProd, 10),
+      descuento_pct: formTipo === 'pct' ? v : null,
+      precio_override: formTipo === 'precio' ? v : null,
+      notas: formNotas || null,
+    };
+
+    try {
+      const res = await fetch(URL + '/rest/v1/client_product_overrides', {
+        method: 'POST',
+        headers: { ...HDR, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        if (err.includes('duplicate')) return alert('Ya existe un descuento para este producto. Editá el existente o eliminalo primero.');
+        throw new Error(err);
+      }
+      setShowForm(false);
+      setFormProd(''); setFormValor(''); setFormNotas(''); setFormTipo('pct');
+      cargar();
+    } catch (e) {
+      alert('Error al guardar: ' + e.message);
+    }
+  };
+
+  const eliminar = async (id) => {
+    if (!confirm('¿Eliminar este descuento?')) return;
+    try {
+      await fetch(URL + '/rest/v1/client_product_overrides?id=eq.' + id, {
+        method: 'DELETE',
+        headers: { ...HDR, Prefer: 'return=minimal' },
+      });
+      cargar();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  const filtrados = busqueda
+    ? products.filter(p => p.nombre?.toLowerCase().includes(busqueda.toLowerCase()))
+    : products;
+
+  const prodNombre = (id) => products.find(p => p.id === id)?.nombre || ('Producto #' + id);
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+        <div style={{fontFamily:'Playfair Display,serif',fontSize:18,color:'#1a1a1a'}}>
+          Descuentos especiales
+        </div>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)} style={{padding:'8px 16px',background:'#1a1a1a',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600}}>
+            + Agregar descuento
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <div style={{background:'#fafafa',padding:16,borderRadius:10,marginBottom:16,border:'1px solid #e5e5e5'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:10,marginBottom:10}}>
+            <div>
+              <label style={{fontSize:11,color:'#666',display:'block',marginBottom:4,fontWeight:600}}>Producto</label>
+              <input type="text" placeholder="Buscar producto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13,marginBottom:4}} />
+              <select value={formProd} onChange={e => setFormProd(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}}>
+                <option value="">Elegir producto...</option>
+                {filtrados.slice(0,50).map(p => (
+                  <option key={p.id} value={p.id}>{p.nombre}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:11,color:'#666',display:'block',marginBottom:4,fontWeight:600}}>Tipo</label>
+              <select value={formTipo} onChange={e => setFormTipo(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}}>
+                <option value="pct">% descuento</option>
+                <option value="precio">Precio fijo</option>
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:11,color:'#666',display:'block',marginBottom:4,fontWeight:600}}>{formTipo === 'pct' ? '% (ej: 10)' : 'Precio'}</label>
+              <input type="number" step="0.01" value={formValor} onChange={e => setFormValor(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}} />
+            </div>
+          </div>
+          <div style={{marginBottom:10}}>
+            <label style={{fontSize:11,color:'#666',display:'block',marginBottom:4,fontWeight:600}}>Notas (opcional)</label>
+            <input type="text" placeholder="Ej: acuerdo desde mar/2026" value={formNotas} onChange={e => setFormNotas(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}} />
+          </div>
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button onClick={() => { setShowForm(false); setFormProd(''); setFormValor(''); setFormNotas(''); }} style={{padding:'8px 16px',background:'#fff',color:'#666',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:13}}>Cancelar</button>
+            <button onClick={agregar} style={{padding:'8px 16px',background:'#1a1a1a',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:13,fontWeight:600}}>Guardar</button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{padding:'20px 0',textAlign:'center',color:'#888',fontSize:13}}>Cargando...</div>
+      ) : items.length === 0 ? (
+        <div style={{padding:'20px 0',textAlign:'center',color:'#888',fontSize:13}}>
+          Sin descuentos especiales. Los precios se calculan según la lista asignada al cliente.
+        </div>
+      ) : (
+        <div style={{display:'grid',gap:8}}>
+          {items.map(it => (
+            <div key={it.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:'#fafafa',borderRadius:8,border:'1px solid #eee'}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:600,color:'#1a1a1a',marginBottom:2}}>{prodNombre(it.producto_id)}</div>
+                <div style={{fontSize:12,color:'#666'}}>
+                  {it.descuento_pct ? (Number(it.descuento_pct) + '% off sobre lista') : ('Precio fijo: $' + Number(it.precio_override).toFixed(2))}
+                  {it.notas ? ' · ' + it.notas : ''}
+                </div>
+              </div>
+              <button onClick={() => eliminar(it.id)} style={{padding:'6px 12px',background:'#fff',color:'#dc2626',border:'1px solid #fecaca',borderRadius:6,cursor:'pointer',fontSize:12}}>Eliminar</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientesTab(){
   const { clientes: items, setClientes: setItems, ventas, cfes, priceListas, session, products, brandCfg = {} } = useApp();
   const { isAdmin } = useRole();
@@ -581,6 +744,11 @@ function ClientesTab(){
       {/* ── Direcciones de entrega ────────────────────────────── */}
       <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
         <AddressesPanel clientId={sel.id} orgId={getOrgId()} />
+      </div>
+
+      {/* ── Descuentos especiales ─────────────────────────────── */}
+      <div style={{background:'#fff',borderRadius:12,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:16}}>
+        <DescuentosPanel clientId={sel.id} orgId={getOrgId()} />
       </div>
 
       {/* ── Actividad comercial ───────────────────────────────── */}
