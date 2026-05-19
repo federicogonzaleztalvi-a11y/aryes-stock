@@ -125,10 +125,12 @@ async function mpSubscription(req, res) {
       });
       if (existingRes.ok) {
         const existingPlan = await existingRes.json();
-        if (existingPlan.status === 'active' && existingPlan.init_point) {
-          log.info('payments', 'reusing existing MP plan', { orgId: org_id, planId: org.mp_plan_id });
+        if (existingPlan.init_point) {
+          log.info('payments', 'reusing existing MP plan', { orgId: org_id, planId: org.mp_plan_id, status: existingPlan.status });
           return res.status(200).json({ url: existingPlan.init_point, planId: org.mp_plan_id });
         }
+        log.warn('payments', 'existing plan has no init_point, NOT creating new one', { orgId: org_id, planId: org.mp_plan_id, status: existingPlan.status });
+        return res.status(500).json({ error: 'Plan existe pero sin init_point. Contacta soporte.' });
       }
     } catch (e) { log.warn('payments', 'could not fetch existing plan, creating new', { error: e.message }); }
   }
