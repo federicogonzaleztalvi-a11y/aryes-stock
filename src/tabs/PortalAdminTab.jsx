@@ -139,13 +139,13 @@ export default function PortalAdminTab() {
     showMsg(`Estado actualizado a "${nuevoEstado}"`);
   };
 
-  const filtrados = filtro === 'todos' ? pedidos : pedidos.filter(p => p.status === filtro);
+  const filtrados = filtro === 'todos' ? pedidos : pedidos.filter(p => p.estado === filtro);
   const counts = {
     todos: pedidos.length,
-    pendiente: pedidos.filter(p => p.status === 'pendiente').length,
-    confirmado: pedidos.filter(p => p.status === 'confirmado').length,
-    importado: pedidos.filter(p => p.status === 'importado').length,
-    cancelado: pedidos.filter(p => p.status === 'cancelado').length,
+    pendiente: pedidos.filter(p => p.estado === 'pendiente').length,
+    confirmado: pedidos.filter(p => p.estado === 'confirmada').length,
+    importado: pedidos.filter(p => p.estado === 'importado').length,
+    cancelado: pedidos.filter(p => p.estado === 'cancelada').length,
   };
 
   return (
@@ -168,7 +168,7 @@ export default function PortalAdminTab() {
 
       {/* Filtros */}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-        {[['todos','Todos'],['pendiente','Pendientes'],['confirmado','Confirmados'],['importado','Importados'],['cancelado','Cancelados']].map(([key, label]) => (
+        {[['todos','Todos'],['pendiente','Pendientes'],['confirmada','Confirmados'],['importado','Importados'],['cancelada','Cancelados']].map(([key, label]) => (
           <button key={key} onClick={() => setFiltro(key)} style={{
             padding:'6px 14px', borderRadius:20, fontSize:12, fontWeight:600, cursor:'pointer',
             background: filtro === key ? G : T.muted,
@@ -212,8 +212,8 @@ export default function PortalAdminTab() {
                     <td style={{ padding:'11px 13px', fontSize:13, fontWeight:500, color:T.text }}>{p.cliente_nombre || p.cliente_id || '—'}</td>
                     <td style={{ padding:'11px 13px', fontSize:13, color:T.textSm }}>{items.length} ítem{items.length !== 1 ? 's' : ''}</td>
                     <td style={{ padding:'11px 13px', fontSize:13, fontWeight:600, color:G }}>${Number(p.total || 0).toFixed(2)}</td>
-                    <td style={{ padding:'11px 13px', fontSize:12, color:T.textSm, whiteSpace:'nowrap' }}>{fmtFecha(p.created_at)}</td>
-                    <td style={{ padding:'11px 13px' }}>{estadoBadge(p.status)}</td>
+                    <td style={{ padding:'11px 13px', fontSize:12, color:T.textSm, whiteSpace:'nowrap' }}>{fmtFecha(p.creado_en)}</td>
+                    <td style={{ padding:'11px 13px' }}>{estadoBadge(p.estado)}</td>
                     <td style={{ padding:'11px 13px' }}>
                       <button onClick={e => { e.stopPropagation(); setPedidoSel(p); }}
                         style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:6, padding:'4px 10px', fontSize:11, cursor:'pointer', color:T.textSm }}>
@@ -238,7 +238,7 @@ export default function PortalAdminTab() {
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
               <div>
                 <div style={{ fontSize:18, fontWeight:700, color:T.text }}>Pedido del portal</div>
-                <div style={{ fontSize:12, color:T.textSm, marginTop:2 }}>#{String(pedidoSel.id).slice(0,8)} · {fmtFecha(pedidoSel.created_at)}</div>
+                <div style={{ fontSize:12, color:T.textSm, marginTop:2 }}>#{String(pedidoSel.id).slice(0,8)} · {fmtFecha(pedidoSel.creado_en)}</div>
               </div>
               <button onClick={() => setPedidoSel(null)} style={{ background:'none', border:'none', fontSize:20, cursor:'pointer', color:T.textSm }}>×</button>
             </div>
@@ -275,18 +275,18 @@ export default function PortalAdminTab() {
             {/* Estado actual */}
             <div style={{ marginBottom:16 }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Estado</div>
-              {estadoBadge(pedidoSel.status)}
+              {estadoBadge(pedidoSel.estado)}
             </div>
 
             {/* Acciones */}
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {(pedidoSel.status === 'pendiente' || pedidoSel.status === 'confirmado') && pedidoSel.status !== 'importado' && (
+              {(pedidoSel.estado === 'pendiente' || pedidoSel.estado === 'confirmado') && pedidoSel.estado !== 'importado' && (
                 <button onClick={() => importarAVenta(pedidoSel)} disabled={importando}
                   style={{ flex:1, background:'#1e40af', color:'#fff', border:'none', borderRadius:8, padding:'11px', fontSize:13, fontWeight:700, cursor: importando ? 'wait' : 'pointer', opacity: importando ? 0.7 : 1 }}>
                   {importando ? '⏳ Importando...' : '📥 Importar a venta'}
                 </button>
               )}
-              {pedidoSel.status === 'pendiente' && (
+              {pedidoSel.estado === 'pendiente' && (
                 <>
                   <button onClick={() => cambiarEstado(pedidoSel.id, 'confirmado')}
                     style={{ flex:1, background:G, color:'#fff', border:'none', borderRadius:8, padding:'11px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
@@ -298,7 +298,7 @@ export default function PortalAdminTab() {
                   </button>
                 </>
               )}
-              {pedidoSel.status === 'confirmado' && (
+              {pedidoSel.estado === 'confirmado' && (
                 <button onClick={() => cambiarEstado(pedidoSel.id, 'pendiente')}
                   style={{ background:'none', border:`1px solid ${T.border}`, borderRadius:8, padding:'10px 16px', fontSize:13, cursor:'pointer', color:T.textSm }}>
                   ↩ Volver a pendiente
