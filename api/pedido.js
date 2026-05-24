@@ -371,14 +371,14 @@ async function handler(req, res) {
     // ── Email notification to org (solo si la org tiene casilla configurada) ──
     try {
       const orgRes = await fetch(
-        SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org) + '&select=order_notify_email,nombre,brand_cfg',
+        SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org) + '&select=order_notify_email,name,brand_cfg',
         { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
       );
       if (orgRes.ok) {
         const orgRows = await orgRes.json();
         const notifyEmail = orgRows?.[0]?.order_notify_email;
         if (notifyEmail) {
-          const empresa = orgRows[0].nombre || 'Pazque';
+          const empresa = orgRows[0].name || 'Pazque';
           const currencySymbol = orgRows[0]?.brand_cfg?.currencySymbol || '$';
           const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
           await sendEmail({ to: notifyEmail, subject: tpl.subject, html: tpl.html });
