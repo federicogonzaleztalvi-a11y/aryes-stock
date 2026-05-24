@@ -11,6 +11,7 @@ import { checkRateLimit } from './_rate-limit.js';
 import webpush from 'web-push';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
+import { sendEmail, templates } from './_email.js';
 
 
 const SB_URL  = process.env.SUPABASE_URL;
@@ -365,6 +366,27 @@ async function handler(req, res) {
       }
     } catch (pushErr) {
       log.warn('pedido', 'push notification failed (non-fatal)', { error: pushErr.message });
+    }
+
+    // ── Email notification to org (solo si la org tiene casilla configurada) ──
+    try {
+      const orgRes = await fetch(
+        SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org) + '&select=order_notify_email,nombre,brand_cfg',
+        { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
+      );
+      if (orgRes.ok) {
+        const orgRows = await orgRes.json();
+        const notifyEmail = orgRows?.[0]?.order_notify_email;
+        if (notifyEmail) {
+          const empresa = orgRows[0].nombre || 'Pazque';
+          const currencySymbol = orgRows[0]?.brand_cfg?.currencySymbol || '$';
+          const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
+          await sendEmail({ to: notifyEmail, subject: tpl.subject, html: tpl.html });
+          log.info('pedido', 'order email sent', { org, to: notifyEmail });
+        }
+      }
+    } catch (mailErr) {
+      log.warn('pedido', 'order email failed (non-fatal)', { error: mailErr.message });
     }
 
     return res.status(200).json({ ok: true, orderId: result.orderId || orderId });
