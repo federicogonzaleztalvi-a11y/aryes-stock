@@ -49,8 +49,10 @@ export const templates = {
               </tr>`).join('')}
           </tbody>
         </table>
-        <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18;margin-top:16px;padding-top:12px;border-top:2px solid #efefeb">
-          Total: ${currencySymbol || '$'} ${Math.round(Number(total || 0))}
+        <div style="margin-top:16px;padding-top:12px;border-top:2px solid #efefeb;font-size:14px;color:#4b4b48">
+          <div style="text-align:right;margin-bottom:4px">Subtotal: ${currencySymbol || '$'} ${Math.round((items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
+          <div style="text-align:right;margin-bottom:8px">IVA: ${currencySymbol || '$'} ${Math.round(Number(total || 0) - (items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
+          <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18">Total: ${currencySymbol || '$'} ${Math.round(Number(total || 0))}</div>
         </div>
         <a href="https://pazque.com/app/pedidos" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
           Ver pedido en Pazque
