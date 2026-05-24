@@ -1070,7 +1070,6 @@ Generado desde Pazque.`;
         {activeTab==="tracking"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><TrackingTab session={session} /></Suspense></ErrorBoundary>}
         
         {activeTab==="devoluciones"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DevolucionesTab /></Suspense></ErrorBoundary>}
-        {activeTab==="precios"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PreciosTab /></Suspense></ErrorBoundary>}
         {activeTab==="demanda"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DemandaTab /></Suspense></ErrorBoundary>}
         {activeTab==="audit"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><AuditTab /></Suspense></ErrorBoundary>}
         </div>
