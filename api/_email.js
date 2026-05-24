@@ -54,7 +54,7 @@ export const templates = {
           <div style="text-align:right;margin-bottom:8px">IVA: ${currencySymbol || '$'} ${Math.round(Number(total || 0) - (items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
           <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18">Total: ${currencySymbol || '$'} ${Math.round(Number(total || 0))}</div>
         </div>
-        <a href="https://pazque.com/app/pedidos" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
+        <a href="https://pazque.com/app/portal" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
           Ver pedido en Pazque
         </a>
         <p style="font-size:12px;color:#9a9a98;margin-top:28px">Pazque - Notificacion automatica de pedido.</p>
