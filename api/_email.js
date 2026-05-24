@@ -26,6 +26,39 @@ export async function sendEmail({ to, subject, html }) {
 }
 
 export const templates = {
+  nuevoPedido: (clienteNombre, items, total, empresa, currencySymbol) => ({
+    subject: 'Nuevo pedido de ' + clienteNombre + ' - ' + (empresa || 'Pazque'),
+    html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
+        <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 4px">Nuevo pedido recibido</h1>
+        <p style="font-size:14px;color:#6a6a68;margin:0 0 20px">Cliente: <strong>${clienteNombre}</strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;color:#1a1a18">
+          <thead>
+            <tr style="border-bottom:2px solid #efefeb;text-align:left">
+              <th style="padding:8px 0">Producto</th>
+              <th style="padding:8px 0;text-align:center">Cant.</th>
+              <th style="padding:8px 0;text-align:right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(items || []).map(it => `
+              <tr style="border-bottom:1px solid #f4f4f0">
+                <td style="padding:8px 0">${it.nombre || it.productName || ''}</td>
+                <td style="padding:8px 0;text-align:center">${it.cantidad || it.qty || 0} ${it.unidad || it.unit || ''}</td>
+                <td style="padding:8px 0;text-align:right">${currencySymbol || '$'} ${Math.round(Number(it.subtotal || 0))}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18;margin-top:16px;padding-top:12px;border-top:2px solid #efefeb">
+          Total: ${currencySymbol || '$'} ${Math.round(Number(total || 0))}
+        </div>
+        <a href="https://pazque.com/app/pedidos" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
+          Ver pedido en Pazque
+        </a>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px">Pazque - Notificacion automatica de pedido.</p>
+      </div>`,
+  }),
+
   welcome: (empresa) => ({
     subject: 'Bienvenido a Pazque',
     html: `
