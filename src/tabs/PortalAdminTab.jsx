@@ -114,7 +114,7 @@ export default function PortalAdminTab() {
     setLoading(true);
     try {
       const r = await fetch(
-        `${SB_URL}/rest/v1/b2b_orders?order=created_at.desc&limit=100`,
+        `${SB_URL}/rest/v1/b2b_orders?order=creado_en.desc&limit=100`,
         { headers: getAuthHeaders() }
       );
       const data = await r.json();
