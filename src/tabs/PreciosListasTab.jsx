@@ -24,7 +24,7 @@ function calcFinal(base, dg, item) {
   return dg > 0 ? Math.round(base * (1 - dg / 100) * 100) / 100 : base;
 }
 
-function EditorPrecios({ lista, onBack, onListaUpdated }) {
+function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
   const { products, clientes, setClientes} = useApp();
   const [items, setItems] = useState([]);
   const [busq, setBusq] = useState('');
@@ -32,6 +32,8 @@ function EditorPrecios({ lista, onBack, onListaUpdated }) {
   const [msg, setMsg] = useState('');
   const [dtoGlobal, setDtoGlobal] = useState(String(lista.descuento || 0));
   const [soloSpec, setSoloSpec] = useState(false);
+  const [copiarUuid, setCopiarUuid] = useState(null);
+  const [copiarSel, setCopiarSel] = useState({});
   const flash = t => { setMsg(t); setTimeout(() => setMsg(''), 2500); };
   useEffect(() => { sb(`price_list_items?lista_id=eq.${lista.id}`).then(d => setItems(d || [])).catch(() => {}); }, [lista.id]);
   const saveGlobal = async val => {
@@ -54,6 +56,28 @@ function EditorPrecios({ lista, onBack, onListaUpdated }) {
     setSaving(s => ({ ...s, [uuid]: false }));
   };
   const clearItem = async uuid => { const ex = items.find(it => it.product_uuid === uuid); if (!ex) return; await sb(`price_list_items?id=eq.${ex.id}`, { method: 'DELETE' }); setItems(prev => prev.filter(it => it.id !== ex.id)); };
+  const copiarAListas = async (uuid, destinos) => {
+    const ex = items.find(it => it.product_uuid === uuid);
+    if (!ex) { flash('❌ El producto no tiene precio en esta lista'); return; }
+    setSaving(s => ({ ...s, [uuid]: true }));
+    let ok = 0;
+    try {
+      for (const destId of destinos) {
+        // ver si ya existe en la lista destino para sobreescribir
+        const existentes = await sb(`price_list_items?lista_id=eq.${destId}&product_uuid=eq.${uuid}&select=id`).catch(() => []);
+        const payload = { precio: ex.precio || 0, descuento: ex.descuento || 0 };
+        if (existentes && existentes.length) {
+          await sb(`price_list_items?id=eq.${existentes[0].id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
+        } else {
+          await sb('price_list_items', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: destId, org_id: getOrgId(), product_uuid: uuid, ...payload }) });
+        }
+        ok++;
+      }
+      flash(`✅ Precio copiado a ${ok} lista${ok !== 1 ? 's' : ''}`);
+    } catch (e) { flash('❌ ' + e.message); }
+    setSaving(s => ({ ...s, [uuid]: false }));
+    setCopiarUuid(null); setCopiarSel({});
+  };
   const dg = parseFloat(dtoGlobal) || 0;
   const overrides = items.filter(it => it.precio > 0 || (it.descuento || 0) > 0).length;
   const prods = (products || []).filter(p => { const nm = (p.name || p.nombre || '').toLowerCase(); if (busq && !nm.includes(busq.toLowerCase())) return false; if (soloSpec) { const it = items.find(i => i.product_uuid === (p.uuid || p.id)); if (!it || (it.precio === 0 && (it.descuento || 0) === 0)) return false; } return true; });
@@ -75,6 +99,32 @@ function EditorPrecios({ lista, onBack, onListaUpdated }) {
         <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 'auto' }}>{prods.length} de {(products || []).length}</span>
       </div>
       <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 14px', marginBottom: 14, fontSize: 12, color: '#92400e' }}>💡 <strong>Precio fijo</strong> = precio exacto. <strong>Dto. %</strong> = descuento individual sobre precio base. El precio fijo tiene prioridad.</div>
+      {copiarUuid && (() => {
+        const prodCopiar = (products || []).find(p => (p.uuid || p.id) === copiarUuid);
+        const otras = (listas || []).filter(l => l.id !== lista.id);
+        const seleccionadas = Object.keys(copiarSel).filter(k => copiarSel[k]);
+        return (
+          <div onClick={() => setCopiarUuid(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 24, width: 380, maxWidth: '90vw', boxShadow: '0 20px 50px rgba(0,0,0,0.25)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Copiar precio a otras listas</div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 16 }}>{prodCopiar?.name || prodCopiar?.nombre || 'Producto'} — se copiará el precio de <strong>{lista.nombre}</strong></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                {otras.length === 0 && <div style={{ fontSize: 13, color: '#9ca3af' }}>No hay otras listas a las que copiar.</div>}
+                {otras.map(l => (
+                  <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: `1.5px solid ${copiarSel[l.id] ? G : '#e5e7eb'}`, borderRadius: 10, cursor: 'pointer', background: copiarSel[l.id] ? '#f0fdf4' : '#fff' }}>
+                    <input type="checkbox" checked={!!copiarSel[l.id]} onChange={e => setCopiarSel(s => ({ ...s, [l.id]: e.target.checked }))} />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{l.nombre}</span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button onClick={() => setCopiarUuid(null)} style={{ padding: '9px 16px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancelar</button>
+                <button disabled={seleccionadas.length === 0 || saving[copiarUuid]} onClick={() => copiarAListas(copiarUuid, seleccionadas)} style={{ padding: '9px 18px', background: seleccionadas.length === 0 ? '#d1d5db' : G, color: '#fff', border: 'none', borderRadius: 8, cursor: seleccionadas.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13 }}>{saving[copiarUuid] ? '...' : `Copiar a ${seleccionadas.length || ''} lista${seleccionadas.length !== 1 ? 's' : ''}`}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0ec', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead><tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
@@ -99,7 +149,7 @@ function EditorPrecios({ lista, onBack, onListaUpdated }) {
                 <td style={{ padding: '6px 12px', textAlign: 'center' }}><input key={`pf-${uuid}-${item?.id}`} type="number" min={0} step="0.01" placeholder={base > 0 ? base.toFixed(2) : '—'} defaultValue={item?.precio > 0 ? item.precio : ''} onBlur={e => saveItem(uuid, 'precio', e.target.value)} style={{ width: 90, padding: '5px 8px', border: `1.5px solid ${item?.precio > 0 ? '#fbbf24' : '#e5e7eb'}`, borderRadius: 8, fontSize: 13, textAlign: 'right', background: item?.precio > 0 ? '#fffbeb' : '#fafafa' }} /></td>
                 <td style={{ padding: '6px 12px', textAlign: 'center' }}><div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><input key={`dto-${uuid}-${item?.id}`} type="number" min={0} max={100} step="0.5" placeholder={dg > 0 ? String(dg) : '0'} defaultValue={(item?.descuento || 0) > 0 ? item.descuento : ''} onBlur={e => saveItem(uuid, 'descuento', e.target.value)} style={{ width: 58, padding: '5px 8px', border: `1.5px solid ${(item?.descuento || 0) > 0 ? '#c4b5fd' : '#e5e7eb'}`, borderRadius: 8, fontSize: 13, textAlign: 'center', background: (item?.descuento || 0) > 0 ? '#faf5ff' : '#fafafa' }} /><span style={{ fontSize: 11, color: '#9ca3af' }}>%</span></div></td>
                 <td style={{ padding: '8px 16px', textAlign: 'right' }}>{base > 0 ? (<div><span style={{ fontSize: 14, fontWeight: 800, color: tieneOverride ? (item?.precio > 0 ? '#d97706' : '#7c3aed') : (dg > 0 ? G : '#374151') }}>{fmt.currencyCompact(final)}</span>{ahorro > 0 && <span style={{ fontSize: 10, color: '#16a34a', marginLeft: 6 }}>-{ahorro}%</span>}</div>) : <span style={{ color: '#e5e7eb', fontSize: 12 }}>sin precio</span>}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center' }}>{tieneOverride && <button onClick={() => clearItem(uuid)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✕</button>}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>{tieneOverride && (listas || []).length > 1 && <button title="Copiar precio a otras listas" onClick={() => { setCopiarUuid(uuid); setCopiarSel({}); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>⧉</button>}{tieneOverride && <button title="Quitar de esta lista" onClick={() => clearItem(uuid)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✕</button>}</td>
               </tr>);
             })}
           </tbody>
@@ -153,7 +203,7 @@ export default function PreciosListasTab() {
   const asignarCliente = async (cid, lid) => {
     try { await sb(`clients?id=eq.${cid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: lid || null }) }); setClientes(cs => cs.map(c => c.id === cid ? { ...c, lista_id: lid || null } : c)); await loadAll(); } catch (e) { flash('❌ ' + e.message); }
   };
-  if (vistaEditar) return <EditorPrecios lista={vistaEditar} onBack={() => { setVistaEditar(null); loadAll(); }} onListaUpdated={u => { setListas(ls => ls.map(l => l.id === u.id ? u : l)); setVistaEditar(u); }} />;
+  if (vistaEditar) return <EditorPrecios lista={vistaEditar} listas={listas} onBack={() => { setVistaEditar(null); loadAll(); }} onListaUpdated={u => { setListas(ls => ls.map(l => l.id === u.id ? u : l)); setVistaEditar(u); }} />;
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
