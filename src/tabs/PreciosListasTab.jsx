@@ -16,12 +16,13 @@ async function sb(path, opts = {}) {
   if (opts.method === 'DELETE') return null;
   return r.json();
 }
-function calcFinal(base, dg, item) {
-  if (!item) return dg > 0 ? Math.round(base * (1 - dg / 100) * 100) / 100 : base;
-  if (item.precio > 0) return item.precio;
-  const dto = item.descuento || 0;
-  if (dto > 0) return Math.round(base * (1 - dto / 100) * 100) / 100;
-  return dg > 0 ? Math.round(base * (1 - dg / 100) * 100) / 100 : base;
+function calcFinal(base, dg, item, dtoCat) {
+  // Jerarquía: precio fijo producto > dto producto > dto categoría > dto global > base
+  if (item && item.precio > 0) return item.precio;
+  if (item && (item.descuento || 0) > 0) return Math.round(base * (1 - item.descuento / 100) * 100) / 100;
+  if (dtoCat > 0) return Math.round(base * (1 - dtoCat / 100) * 100) / 100;
+  if (dg > 0) return Math.round(base * (1 - dg / 100) * 100) / 100;
+  return base;
 }
 
 function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
@@ -34,12 +35,26 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
   const [soloSpec, setSoloSpec] = useState(false);
   const [copiarUuid, setCopiarUuid] = useState(null);
   const [copiarSel, setCopiarSel] = useState({});
+  const [dtosCat, setDtosCat] = useState(lista.descuentos_categoria || {});
   const flash = t => { setMsg(t); setTimeout(() => setMsg(''), 2500); };
   useEffect(() => { sb(`price_list_items?lista_id=eq.${lista.id}`).then(d => setItems(d || [])).catch(() => {}); }, [lista.id]);
   const saveGlobal = async val => {
     const v = parseFloat(val); if (isNaN(v) || v < 0 || v > 100) return;
     await sb(`price_lists?id=eq.${lista.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ descuento: v }) });
     onListaUpdated({ ...lista, descuento: v }); flash('✅ Descuento global guardado');
+  };
+  const saveDtoCat = async (categoria, valStr) => {
+    const v = parseFloat(valStr);
+    const nuevos = { ...dtosCat };
+    if (valStr === '' || isNaN(v) || v <= 0) { delete nuevos[categoria]; }
+    else if (v > 100) { return; }
+    else { nuevos[categoria] = v; }
+    setDtosCat(nuevos);
+    try {
+      await sb(`price_lists?id=eq.${lista.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ descuentos_categoria: nuevos }) });
+      onListaUpdated({ ...lista, descuentos_categoria: nuevos });
+      flash('✅ Descuento de categoría guardado');
+    } catch (e) { flash('❌ ' + e.message); }
   };
   const saveItem = async (uuid, tipo, valStr) => {
     const val = parseFloat(valStr); setSaving(s => ({ ...s, [uuid]: true }));
@@ -89,6 +104,25 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
         </div>
       </div>
       {msg && <div style={{ background: msg.startsWith('❌') ? '#fef2f2' : '#f0fdf4', border: `1px solid ${msg.startsWith('❌') ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: msg.startsWith('❌') ? '#dc2626' : G, fontWeight: 600 }}>{msg}</div>}
+      {(() => {
+        const catsDisponibles = [...new Set((products || []).map(p => p.category || p.categoria).filter(Boolean))].sort();
+        if (catsDisponibles.length === 0) return null;
+        return (
+          <div style={{ background: '#fff', border: '1px solid #f0f0ec', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Descuentos por categoría</div>
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Se aplica a todos los productos de la categoría. Tiene prioridad sobre el descuento global, pero un precio fijo o descuento por producto lo pisa.</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {catsDisponibles.map(cat => (
+                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 6, background: (dtosCat[cat] || 0) > 0 ? '#f0fdf4' : '#f9fafb', border: `1px solid ${(dtosCat[cat] || 0) > 0 ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: 9, padding: '6px 10px' }}>
+                  <span style={{ fontSize: 12, color: '#374151', fontWeight: 600 }}>{cat}</span>
+                  <input type="number" min={0} max={100} step="0.5" defaultValue={(dtosCat[cat] || 0) > 0 ? dtosCat[cat] : ''} placeholder="0" onBlur={e => saveDtoCat(cat, e.target.value)} style={{ width: 52, padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, textAlign: 'center', fontWeight: 700 }} />
+                  <span style={{ fontSize: 11, color: '#9ca3af' }}>%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <input placeholder="Buscar producto..." value={busq} onChange={e => setBusq(e.target.value)} style={{ flex: 1, minWidth: 200, maxWidth: 320, padding: '8px 14px', border: '1px solid #e5e7eb', borderRadius: 20, fontSize: 13, outline: 'none' }} />
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280', cursor: 'pointer', userSelect: 'none' }}><input type="checkbox" checked={soloSpec} onChange={e => setSoloSpec(e.target.checked)} />Solo con precio especial</label>
@@ -136,7 +170,9 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
               const uuid = p.uuid || p.id, base = Number(p.precio_venta || p.precioVenta || 0);
               const item = items.find(it => it.product_uuid === uuid);
               const tieneOverride = item && (item.precio > 0 || (item.descuento || 0) > 0);
-              const final = calcFinal(base, dg, item);
+              const catProd = p.category || p.categoria || '';
+              const dtoCatProd = Number(dtosCat[catProd] || 0);
+              const final = calcFinal(base, dg, item, dtoCatProd);
               const ahorro = base > 0 && final < base ? Math.round((1 - final / base) * 100) : 0;
               const rowBg = item?.precio > 0 ? '#fffdf0' : (item?.descuento || 0) > 0 ? '#fdf8ff' : 'transparent';
               return (<tr key={uuid} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', background: rowBg, opacity: saving[uuid] ? 0.6 : 1 }}>
