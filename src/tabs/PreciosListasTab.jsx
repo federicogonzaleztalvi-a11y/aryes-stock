@@ -61,20 +61,16 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
     if (!ex) { flash('❌ El producto no tiene precio en esta lista'); return; }
     setSaving(s => ({ ...s, [uuid]: true }));
     let ok = 0;
-    try {
-      for (const destId of destinos) {
-        // ver si ya existe en la lista destino para sobreescribir
-        const existentes = await sb(`price_list_items?lista_id=eq.${destId}&product_uuid=eq.${uuid}&select=id`).catch(() => []);
-        const payload = { precio: ex.precio || 0, descuento: ex.descuento || 0 };
-        if (existentes && existentes.length) {
-          await sb(`price_list_items?id=eq.${existentes[0].id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(payload) });
-        } else {
-          await sb('price_list_items', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: destId, org_id: getOrgId(), product_uuid: uuid, ...payload }) });
-        }
+    let errores = 0;
+    for (const destId of destinos) {
+      try {
+        // borrar fila previa del producto en la lista destino (si existe), luego insertar limpia
+        await sb(`price_list_items?lista_id=eq.${destId}&product_uuid=eq.${uuid}`, { method: 'DELETE' });
+        await sb('price_list_items', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: destId, org_id: getOrgId(), product_uuid: uuid, precio: ex.precio || 0, descuento: ex.descuento || 0 }) });
         ok++;
-      }
-      flash(`✅ Precio copiado a ${ok} lista${ok !== 1 ? 's' : ''}`);
-    } catch (e) { flash('❌ ' + e.message); }
+      } catch (e) { errores++; console.error('[copiarAListas] fallo en lista', destId, e.message); }
+    }
+    flash(errores > 0 ? `⚠️ Copiado a ${ok} de ${destinos.length} listas (${errores} con error)` : `✅ Precio copiado a ${ok} lista${ok !== 1 ? 's' : ''}`);
     setSaving(s => ({ ...s, [uuid]: false }));
     setCopiarUuid(null); setCopiarSel({});
   };
