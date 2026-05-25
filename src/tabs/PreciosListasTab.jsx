@@ -47,7 +47,7 @@ function EditorPrecios({ lista, onBack, onListaUpdated }) {
       else {
         const patch = tipo === 'precio' ? { precio: val, descuento: 0 } : { descuento: val, precio: 0 };
         if (ex) { const u = await sb(`price_list_items?id=eq.${ex.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(patch) }); setItems(prev => prev.map(it => it.id === ex.id ? (u?.[0] || { ...it, ...patch }) : it)); }
-        else { const n = await sb('price_list_items', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ lista_id: lista.id, product_uuid: uuid, precio: tipo === 'precio' ? val : 0, descuento: tipo === 'descuento' ? val : 0 }) }); setItems(prev => [...prev, n?.[0] || {}]); }
+        else { const n = await sb('price_list_items', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ lista_id: lista.id, org_id: getOrgId(), product_uuid: uuid, precio: tipo === 'precio' ? val : 0, descuento: tipo === 'descuento' ? val : 0 }) }); setItems(prev => [...prev, n?.[0] || {}]); }
       }
     } catch (e) { flash('❌ ' + e.message); }
     setSaving(s => ({ ...s, [uuid]: false }));
@@ -125,7 +125,7 @@ export default function PreciosListasTab() {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await sb(`price_lists?org_id=eq.${getOrgId()}&order=created_at.desc`);
+      const data = await sb(`price_lists?org_id=eq.${getOrgId()}&order=creado_en.desc`);
       setListas(data || []);
       const im = {}, cm = {};
       for (const l of (data || [])) { im[l.id] = await sb(`price_list_items?lista_id=eq.${l.id}`).catch(() => []); cm[l.id] = await sb(`clients?lista_id=eq.${l.id}&select=id,name,phone`).catch(() => []); }
@@ -138,7 +138,7 @@ export default function PreciosListasTab() {
     if (!fNombre.trim()) { flash('❌ Nombre requerido'); return; }
     setSaving(true);
     try {
-      const n = await sb('price_lists', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ org_id: getOrgId(), nombre: fNombre.trim(), descripcion: fDesc.trim(), descuento: Number(fDto) || 0, activa: true }) });
+      const n = await sb('price_lists', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ id: 'lista_' + Math.random().toString(36).slice(2, 10), org_id: getOrgId(), nombre: fNombre.trim(), descuento: Number(fDto) || 0, activa: true }) });
       const lista = n?.[0]; if (!lista) throw new Error('Sin respuesta');
       setListas(ls => [lista, ...ls]); setListItems(m => ({ ...m, [lista.id]: [] })); setCliMap(m => ({ ...m, [lista.id]: [] }));
       setFNombre(''); setFDesc(''); setFDto('0'); setShowForm(false); flash(`✅ Lista "${lista.nombre}" creada`);
