@@ -10,7 +10,8 @@ const SKEY   = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 function H(extra = {}) { return getAuthHeaders({ Accept: 'application/json', ...extra }); }
 async function sb(path, opts = {}) {
-  const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H(opts.headers || {}), ...opts });
+  const { headers: _h, ...rest } = opts;
+  const r = await fetch(`${SB_URL}/rest/v1/${path}`, { ...rest, headers: H(_h || {}) });
   if (!r.ok) { const e = await r.text(); throw new Error(e); }
   if (opts.method === 'DELETE') return null;
   return r.json();
