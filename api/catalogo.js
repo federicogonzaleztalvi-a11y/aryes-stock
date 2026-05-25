@@ -108,6 +108,7 @@ export default async function handler(req, res) {
   let horarioHasta = null;
   let portalActivo = true;
     let descGlobal = 0;       // % global discount for the list
+    let dtosCategoria = {};   // { categoria: % } discount per category
     let itemMap   = {};       // productUuid â precio especÃ­fico
 
     if (clienteId) {
@@ -126,12 +127,13 @@ export default async function handler(req, res) {
 
           // Get the list's global discount
           const listRes = await fetch(
-            `${SB_URL}/rest/v1/price_lists?id=eq.${listaId}&select=id,descuento&limit=1`,
+            `${SB_URL}/rest/v1/price_lists?id=eq.${listaId}&select=id,descuento,descuentos_categoria&limit=1`,
             { headers }
           );
           if (listRes.ok) {
             const listData = await listRes.json();
             descGlobal = Number(listData?.[0]?.descuento || 0);
+            dtosCategoria = listData?.[0]?.descuentos_categoria || {};
           }
 
           // Get per-product prices for this list
@@ -158,11 +160,16 @@ export default async function handler(req, res) {
         let precio = base;
 
         if (clienteId && listaId) {
+          const catProd = p.category || '';
+          const dtoCat = Number(dtosCategoria[catProd] || 0);
           if (itemMap[p.uuid] !== undefined) {
-            // Specific per-product price for this client
+            // 1. Specific per-product price for this list (highest)
             precio = itemMap[p.uuid];
+          } else if (dtoCat > 0) {
+            // 2. Category discount for this list
+            precio = Math.round(base * (1 - dtoCat / 100) * 100) / 100;
           } else if (descGlobal > 0) {
-            // Apply global list discount
+            // 3. Global list discount
             precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100;
           }
         }
