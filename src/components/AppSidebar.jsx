@@ -116,7 +116,7 @@ function getNavRoles(brandCfg) {
 const NAV_GROUPS = [
   { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers'] },
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
-  { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion'] },
+  { label: 'Comercial',   ids: ['clientes','precios','ventas','portal','facturacion'] },
   { label: 'Análisis',    ids: ['kpis','resultados','informes','demanda','audit'] },
   { label: 'Sistema',     ids: ['importar','config'] },
 ];
