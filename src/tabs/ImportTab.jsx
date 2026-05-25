@@ -21,6 +21,8 @@ function ImportTab(){
       return{
         id:crypto.randomUUID()+i,
         nombre:obj.nombre||obj.name||obj.producto||obj.descripcion||'Producto '+(i+1),
+        codigo:obj.codigo||obj.sku||obj.code||obj.cdigo||'',
+        categoria:obj.categoria||obj.category||obj.rubro||obj.categora||'',
         stock:Number(obj.stock||obj.cantidad||obj.qty||0),
         unidad:obj.unidad||obj.unit||obj.um||'u',
         precio:Number(obj.precio||obj.price||obj.costo||0),
@@ -49,7 +51,9 @@ function ImportTab(){
     const existing=[...prods];
     let added=0,updated=0;
     preview.forEach(p=>{
-      const idx=existing.findIndex(e=>e.nombre?.toLowerCase()===p.nombre?.toLowerCase());
+      const idx=p.codigo
+        ? existing.findIndex(e=>(e.codigo||'').toLowerCase()===p.codigo.toLowerCase())
+        : existing.findIndex(e=>e.nombre?.toLowerCase()===p.nombre?.toLowerCase());
       if(idx>-1){existing[idx]={...existing[idx],...p,id:existing[idx].id};updated++;}
       else{existing.push(p);added++;}
     });
@@ -64,9 +68,11 @@ function ImportTab(){
         await db.upsert('products', {
           uuid: p.id,
           name: p.nombre || p.name || '',
+          codigo: p.codigo || '',
+          category: p.categoria || '',
           stock: Number(p.stock) || 0,
           unit: p.unidad || p.unit || 'u',
-          unit_cost: Number(p.precio) || 0,
+          precio_venta: Number(p.precio) || 0,
           min_stock: Number(p.rop) || 5,
           brand: p.proveedor || '',
           org_id: getOrgId(),
@@ -105,12 +111,12 @@ function ImportTab(){
         <div style={{fontSize:13,color:'#78350f',lineHeight:1.7}}>
           1. Abre Excel o Google Sheets<br/>
           2. La primera fila debe tener los encabezados:<br/>
-          <code style={{background:'#fef3c7',padding:'2px 8px',borderRadius:4,fontFamily:'monospace',fontSize:12}}>nombre, stock, unidad, precio, rop, proveedor</code><br/>
+          <code style={{background:'#fef3c7',padding:'2px 8px',borderRadius:4,fontFamily:'monospace',fontSize:12}}>nombre, codigo, categoria, precio, stock, unidad</code><br/>
           3. Guarda como CSV (separado por comas)<br/>
           4. Sube el archivo abajo
         </div>
         <div style={{marginTop:10,fontSize:12,color:'#92400e'}}>
-          Columnas reconocidas: <strong>nombre/name/producto/descripcion, stock/cantidad/qty, unidad/unit/um, precio/price/costo, rop/stockmin/minimo, proveedor/supplier/marca</strong>
+          Columnas reconocidas: <strong>nombre/name/producto, codigo/sku, categoria/category/rubro, precio/price, stock/cantidad, unidad/unit, rop/stockmin, proveedor/supplier/marca</strong>
         </div>
       </div>
 
