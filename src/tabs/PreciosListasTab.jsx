@@ -1,5 +1,5 @@
 import BackButton from '../components/BackButton.jsx';
-import { fmt , getOrgId } from '../lib/constants.js';
+import { fmt , getOrgId, getAuthHeaders } from '../lib/constants.js';
 // src/tabs/PreciosListasTab.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext.tsx';
@@ -8,7 +8,7 @@ const G = '#059669';
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SKEY   = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-function H(extra = {}) { return { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json', ...extra }; }
+function H(extra = {}) { return getAuthHeaders({ Accept: 'application/json', ...extra }); }
 async function sb(path, opts = {}) {
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: H(opts.headers || {}), ...opts });
   if (!r.ok) { const e = await r.text(); throw new Error(e); }
