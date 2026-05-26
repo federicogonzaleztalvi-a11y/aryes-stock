@@ -55,14 +55,7 @@ function GridCard({ item, onAbrirModal }) {
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           : <ImgPlaceholder marca={item.marca} categoria={item.categoria} />
         }
-        {item.marca && !hasImg && (
-          <div style={{
-            position: 'absolute', top: 8, left: 8,
-            background: 'rgba(255,255,255,.92)', borderRadius: 6,
-            padding: '2px 7px', fontSize: 9, fontWeight: 700,
-            color: '#5a5a52', letterSpacing: .5,
-          }}>{item.marca.toUpperCase()}</div>
-        )}
+
       </div>
 
       {/* Cuerpo */}
