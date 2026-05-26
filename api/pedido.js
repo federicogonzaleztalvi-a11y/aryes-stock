@@ -413,7 +413,7 @@ async function handler(req, res) {
             const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
             const iva = Math.round(Number(total) - subtotal);
             const pdfBuf = await generarOrdenPDF({
-              nroOrden: result.orderId || orderId,
+              nroOrden: 'OC-' + String(result.orderId || orderId).slice(0, 8).toUpperCase(),
               fecha: new Date().toISOString(),
               empresa, currencySymbol,
               cliente: {
@@ -425,7 +425,7 @@ async function handler(req, res) {
               lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
               notas: notas || '',
             });
-            attachments = [{ filename: 'orden-' + (result.orderId || orderId) + '.pdf', content: pdfBuf.toString('base64'), content_type: 'application/pdf' }];
+            attachments = [{ filename: 'orden-' + (result.orderId || orderId) + '.pdf', content: pdfBuf.toString('base64') }];
           } catch (pdfErr) {
             log.warn('pedido', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
           }
