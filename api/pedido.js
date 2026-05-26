@@ -12,6 +12,7 @@ import webpush from 'web-push';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
 import { sendEmail, templates } from './_email.js';
+import { generarOrdenPDF } from './_pedido-pdf.js';
 
 
 const SB_URL  = process.env.SUPABASE_URL;
@@ -381,8 +382,55 @@ async function handler(req, res) {
           const empresa = orgRows[0].name || 'Pazque';
           const currencySymbol = '$';
           const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
-          await sendEmail({ to: notifyEmail, subject: tpl.subject, html: tpl.html });
-          log.info('pedido', 'order email sent', { org, to: notifyEmail });
+
+          // Generar orden de compra en PDF (uso interno) y adjuntar. Si falla, el mail va igual.
+          let attachments;
+          try {
+            const k = SB_SVC || SB_ANON;
+            const hdr = { headers: { apikey: k, Authorization: 'Bearer ' + k, Accept: 'application/json' } };
+            // datos fiscales del cliente
+            const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(clienteId) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
+            const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
+            // precios base de los productos del pedido
+            const ids = items.map(i => i.id || i.productId).filter(Boolean);
+            let baseMap = {};
+            if (ids.length) {
+              const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta', hdr);
+              if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = Number(p.precio_venta) || 0; });
+            }
+            const lineas = items.map(i => {
+              const unit = Number(i.precioUnit) || 0;
+              return {
+                nombre: i.nombre || i.productName || '',
+                unidad: i.unidad || i.unit || '',
+                qty: Number(i.cantidad || i.qty) || 0,
+                precioBase: baseMap[i.id || i.productId] || unit,
+                precioUnit: unit,
+                subtotal: Number(i.subtotal) || (unit * (Number(i.cantidad || i.qty) || 0)),
+              };
+            });
+            const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
+            const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+            const iva = Math.round(Number(total) - subtotal);
+            const pdfBuf = await generarOrdenPDF({
+              nroOrden: result.orderId || orderId,
+              fecha: new Date().toISOString(),
+              empresa, currencySymbol,
+              cliente: {
+                nombre: cli.name || clienteNombre, codigo: cli.codigo, rut: cli.rut,
+                direccion: cli.address, ciudad: cli.ciudad,
+                horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
+                zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
+              },
+              lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
+            });
+            attachments = [{ filename: 'orden-' + (result.orderId || orderId) + '.pdf', content: pdfBuf.toString('base64') }];
+          } catch (pdfErr) {
+            log.warn('pedido', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
+          }
+
+          await sendEmail({ to: notifyEmail, subject: tpl.subject, html: tpl.html, attachments });
+          log.info('pedido', 'order email sent', { org, to: notifyEmail, pdf: !!attachments });
         }
       }
     } catch (mailErr) {

@@ -2,7 +2,7 @@
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = 'Pazque <noreply@pazque.com>';
 
-export async function sendEmail({ to, subject, html }) {
+export async function sendEmail({ to, subject, html, attachments }) {
   if (!RESEND_KEY) {
     console.warn('[email] RESEND_API_KEY not configured — skipping email');
     return null;
@@ -11,7 +11,7 @@ export async function sendEmail({ to, subject, html }) {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to, subject, html }),
+      body: JSON.stringify({ from: FROM, to, subject, html, ...(attachments ? { attachments } : {}) }),
     });
     if (!r.ok) {
       const err = await r.text();
