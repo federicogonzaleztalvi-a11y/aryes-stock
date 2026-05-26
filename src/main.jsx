@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useState, lazy, Suspense } from 'react'
+import { lazyWithRetry } from './lib/lazyWithRetry.js'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ReactDOM from 'react-dom/client'
 import PazqueApp from './App.jsx';
@@ -8,17 +9,17 @@ import { SB_URL, SKEY as SB_KEY, getOrgId} from './lib/constants.js';
 import { useErrorReporting } from './hooks/useErrorReporting.ts';
 import { setSentryUser, Sentry } from './lib/sentry.js';
 // sentry.js se auto-inicializa al importarse
-const OnboardingWizard = lazy(() => import('./tabs/OnboardingWizard.jsx'));
-const CatalogoPage     = lazy(() => import('./pages/CatalogoPage.jsx'));
-const PedidosPage      = lazy(() => import('./pages/PedidosPage.jsx'));
-const RegisterPage     = lazy(() => import('./pages/RegisterPage.jsx'));
-const LandingPage      = lazy(() => import('./pages/LandingPage.jsx'));
-const UpgradePage      = lazy(() => import('./pages/UpgradePage.jsx'));
-const DriverView       = lazy(() => import('./pages/DriverView.jsx'));
-const TrackingPage     = lazy(() => import('./pages/TrackingPage.jsx'));
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
-const TermsPage   = lazy(() => import('./pages/TermsPage.jsx'));
-const PrivacyPage = lazy(() => import('./pages/PrivacyPage.jsx'));
+const OnboardingWizard = lazyWithRetry(() => import('./tabs/OnboardingWizard.jsx'));
+const CatalogoPage     = lazyWithRetry(() => import('./pages/CatalogoPage.jsx'));
+const PedidosPage      = lazyWithRetry(() => import('./pages/PedidosPage.jsx'));
+const RegisterPage     = lazyWithRetry(() => import('./pages/RegisterPage.jsx'));
+const LandingPage      = lazyWithRetry(() => import('./pages/LandingPage.jsx'));
+const UpgradePage      = lazyWithRetry(() => import('./pages/UpgradePage.jsx'));
+const DriverView       = lazyWithRetry(() => import('./pages/DriverView.jsx'));
+const TrackingPage     = lazyWithRetry(() => import('./pages/TrackingPage.jsx'));
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage.jsx'));
+const TermsPage   = lazyWithRetry(() => import('./pages/TermsPage.jsx'));
+const PrivacyPage = lazyWithRetry(() => import('./pages/PrivacyPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 // ── Demo mode ─────────────────────────────────────────────────────
