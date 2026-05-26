@@ -52,7 +52,7 @@ function GridCard({ item, onAbrirModal }) {
       }}>
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', padding: '12px', boxSizing: 'border-box' }} />
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           : <ImgPlaceholder marca={item.marca} categoria={item.categoria} />
         }
         {item.marca && (
