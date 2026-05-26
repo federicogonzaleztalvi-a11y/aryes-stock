@@ -3,7 +3,7 @@ import React, {
   createContext, useContext,
   useState, useEffect, useMemo,
 } from 'react';
-import { LS, db, SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
+import { LS, db, SB_URL, SKEY, getOrgId, getSession, getAuthHeaders } from '../lib/constants.js';
 
 // Multi-user filter: vendedor/repartidor only see their own data
 const getUserFilter = (session: any, field: string = 'vendedor_id'): string => {
@@ -338,8 +338,8 @@ const describeAction = (action: string, detail: string): string => {
         db.get<Record<string, any>[]>(`audit_log?org_id=eq.${getOrgId()}&order=timestamp.desc&limit=500`),
         db.get<Record<string, any>[]>(`purchase_invoices?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=300`),
         db.get<Record<string, any>[]>(`transfers?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=200`),
-        fetch(`${SB_URL}/rest/v1/price_lists?order=creado_en.desc&org_id=eq.${getOrgId()}`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
-        fetch(`${SB_URL}/rest/v1/price_list_items?org_id=eq.${getOrgId()}&order=updated_at.desc`, { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}`, Accept: 'application/json' } }).then(r => r.ok ? r.json() : []),
+        fetch(`${SB_URL}/rest/v1/price_lists?order=creado_en.desc&org_id=eq.${getOrgId()}`, { headers: getAuthHeaders({ Accept: 'application/json' }) }).then(r => r.ok ? r.json() : []),
+        fetch(`${SB_URL}/rest/v1/price_list_items?org_id=eq.${getOrgId()}&order=updated_at.desc`, { headers: getAuthHeaders({ Accept: 'application/json' }) }).then(r => r.ok ? r.json() : []),
         db.get<Record<string, any>[]>(`recepciones?org_id=eq.${getOrgId()}&order=creado_en.desc&limit=500`),
       ]);
 
