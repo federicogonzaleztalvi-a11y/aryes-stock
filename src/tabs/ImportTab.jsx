@@ -110,30 +110,10 @@ function ImportTab(){
   };
 
   const descargarPlantilla=()=>{
-    const headers=['nombre','codigo','categoria','precio','stock','unidad'];
-    const ejemplos=[
-      {nombre:'Queso Colonia x 4kg',codigo:'QUE-001',categoria:'Quesos',precio:580,stock:24,unidad:'unidad'},
-      {nombre:'Jamon cocido x 1kg',codigo:'FIA-014',categoria:'Fiambres',precio:410,stock:60,unidad:'kg'},
-      {nombre:'Aceite girasol 900ml',codigo:'ALM-220',categoria:'Almacen',precio:95,stock:120,unidad:'unidad'},
-    ];
-    const wsProd=XLSX.utils.json_to_sheet(ejemplos,{header:headers});
-    wsProd['!cols']=[{wch:28},{wch:14},{wch:16},{wch:12},{wch:10},{wch:12}];
-    const instr=[
-      ['Como completar esta plantilla'],
-      [],
-      ['1.','Borra las 3 filas de ejemplo y carga tus productos debajo del encabezado.'],
-      ['2.','No cambies los nombres de las columnas ni el orden. El sistema los lee tal cual.'],
-      ['3.','El codigo es la llave unica. Si subis dos veces el mismo codigo, se actualiza el producto.'],
-      ['4.','El precio es el precio base. Los descuentos por lista o categoria se configuran dentro de Pazque.'],
-      ['5.','Precio y stock van solo con numeros: 580, no $580 ni 580,00.'],
-      ['6.','Guarda el archivo y subilo en Pazque desde esta misma pantalla.'],
-    ];
-    const wsInst=XLSX.utils.aoa_to_sheet(instr);
-    wsInst['!cols']=[{wch:6},{wch:90}];
-    const wb=XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb,wsProd,'Productos');
-    XLSX.utils.book_append_sheet(wb,wsInst,'Instrucciones');
-    XLSX.writeFile(wb,'Pazque_plantilla_productos.xlsx');
+    const a=document.createElement('a');
+    a.href='/Pazque_plantilla_productos.xlsx';
+    a.download='Pazque_plantilla_productos.xlsx';
+    a.click();
   };
 
   const exportCSV=()=>{
