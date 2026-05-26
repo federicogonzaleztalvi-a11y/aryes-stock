@@ -7,6 +7,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
 import ClienteImporter from '../components/ClienteImporter.jsx';
 import ClientInsights from '../components/ClientInsights.jsx';
+const HORAS_DIA = Array.from({length:48},(_, i)=>String(Math.floor(i/2)).padStart(2,'0')+':'+(i%2?'30':'00'));
 
 // ── Panel de teléfonos adicionales ───────────────────────────────────────
 function AddressesPanel({ clientId, orgId }) {
@@ -632,7 +633,7 @@ function ClientesTab(){
             {fld.sel?<select value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={{...inp,background:'#fff'}}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select>
             :fld.sel2?<select value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={{...inp,background:'#fff'}}><option value='contado'>Contado</option><option value='credito_15'>Crédito 15 días</option><option value='credito_30'>Crédito 30 días</option><option value='credito_60'>Crédito 60 días</option><option value='credito_90'>Crédito 90 días</option></select>
             :fld.sel3?<select value={form[fld.k]||''} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value||null}))} style={{...inp,background:'#fff'}}><option value=''>Sin lista asignada</option>{priceListas.filter(l=>l.activa!==false).map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}</select>
-            :fld.type==='time'?<input type='time' value={form[fld.k]||''} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value||null}))} style={{...inp,width:'auto'}} />
+            :fld.type==='time'?<select value={form[fld.k]||''} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value||null}))} style={{...inp,background:'#fff'}}><option value=''>--:--</option>{HORAS_DIA.map(h=><option key={h} value={h}>{h}</option>)}</select>
             :fld.ta?<textarea value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} rows={3} style={{...inp,resize:'vertical'}} />
             :<input value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={inp} />}
           </div>
