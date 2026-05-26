@@ -423,8 +423,9 @@ async function handler(req, res) {
                 zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
               },
               lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
+              notas: notas || '',
             });
-            attachments = [{ filename: 'orden-' + (result.orderId || orderId) + '.pdf', content: pdfBuf.toString('base64') }];
+            attachments = [{ filename: 'orden-' + (result.orderId || orderId) + '.pdf', content: pdfBuf.toString('base64'), content_type: 'application/pdf' }];
           } catch (pdfErr) {
             log.warn('pedido', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
           }
