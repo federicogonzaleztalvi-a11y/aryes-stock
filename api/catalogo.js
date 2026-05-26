@@ -200,6 +200,7 @@ export default async function handler(req, res) {
           available_stock: availableStock,  // available for B2B orders (ATP)
           reserved_stock:  reservedStock,   // informational
           iva_rate:       p.iva_rate != null ? Number(p.iva_rate) : null,
+          imagen_url:     p.imagen_url || null,
           min_order_qty:  p.min_order_qty != null ? Number(p.min_order_qty) : 1,
         };
       });
