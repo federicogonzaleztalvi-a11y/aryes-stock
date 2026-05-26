@@ -55,7 +55,7 @@ function GridCard({ item, onAbrirModal }) {
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
           : <ImgPlaceholder marca={item.marca} categoria={item.categoria} />
         }
-        {item.marca && (
+        {item.marca && !hasImg && (
           <div style={{
             position: 'absolute', top: 8, left: 8,
             background: 'rgba(255,255,255,.92)', borderRadius: 6,
