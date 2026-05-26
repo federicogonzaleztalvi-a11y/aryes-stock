@@ -6,7 +6,7 @@ import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '
 
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
-  const blank={name:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[]};
+  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[]};
   const [f,setF]=useState(product?{...product}:blank);
 
   // WA template in localStorage
@@ -31,6 +31,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
     <div style={{display:"grid",gap:16}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Field label="Nombre del producto"><Inp value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ej: Harina 000"/></Field>
+        <Field label="Código / SKU"><Inp value={f.codigo||""} onChange={e=>set("codigo",e.target.value)} placeholder="Ej: QCO-001"/></Field>
         <Field label="Código de barras (EAN)">
           <div style={{display:"flex",gap:6}}>
             <Inp inputRef={bRef} value={f.barcode} onChange={e=>set("barcode",e.target.value)} placeholder="Escanear o tipear"/>

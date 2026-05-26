@@ -41,7 +41,7 @@ export default function ImageUpload({ value, onChange, orgId }) {
       if (ext === 'heif') ext = 'heic';
       var filename = (orgId || 'default') + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
 
-      var token = getSessionToken();
+      var token = SB_KEY; // bucket product-images es publico, anon key alcanza para upload
       var res = await fetch(SB_URL + '/storage/v1/object/product-images/' + filename, {
         method: 'POST',
         headers: {
