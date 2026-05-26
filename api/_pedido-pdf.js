@@ -81,6 +81,11 @@ export function generarOrdenPDF(data) {
         const unit = Number(l.precioUnit) || 0;
         const dtoPct = base > 0 && unit < base ? Math.round((base - unit) / base * 100) : 0;
         doc.fontSize(9).font('Helvetica').fillColor(OSCURO);
+        if (l.codigo) {
+          doc.fontSize(7).font('Helvetica').fillColor(GRIS).text(l.codigo, cols.prod, y, { width: 200 });
+          y += 9;
+        }
+        doc.fontSize(9).font('Helvetica').fillColor(OSCURO);
         doc.text(l.nombre || '', cols.prod, y, { width: 200 });
         doc.fillColor(GRIS).text((l.qty || 0) + ' ' + (l.unidad || ''), cols.cant, y, { width: 50, align: 'right' });
         doc.text(base ? money(sym, base) : '-', cols.base, y, { width: 60, align: 'right' });

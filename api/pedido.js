@@ -395,16 +395,18 @@ async function handler(req, res) {
             const ids = items.map(i => i.id || i.productId).filter(Boolean);
             let baseMap = {};
             if (ids.length) {
-              const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta', hdr);
-              if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = Number(p.precio_venta) || 0; });
+              const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
+              if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
             }
             const lineas = items.map(i => {
               const unit = Number(i.precioUnit) || 0;
+              const pid = i.id || i.productId;
               return {
+                codigo: baseMap[pid]?.codigo || '',
                 nombre: i.nombre || i.productName || '',
                 unidad: i.unidad || i.unit || '',
                 qty: Number(i.cantidad || i.qty) || 0,
-                precioBase: baseMap[i.id || i.productId] || unit,
+                precioBase: (baseMap[pid]?.precio) || unit,
                 precioUnit: unit,
                 subtotal: Number(i.subtotal) || (unit * (Number(i.cantidad || i.qty) || 0)),
               };
