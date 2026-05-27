@@ -21,6 +21,7 @@ const DevolucionesTab = lazyWithRetry(() => import('./tabs/DevolucionesTab.jsx')
 const ClientesTab = lazyWithRetry(() => import('./tabs/ClientesTab.jsx'));
 const PackingTab = lazyWithRetry(() => import('./tabs/PackingTab.jsx'));
 const ImportTab = lazyWithRetry(() => import('./tabs/ImportTab.jsx'));
+const ImportClientesTab = lazyWithRetry(() => import('./tabs/ImportClientesTab.jsx'));
 const TransferenciasTab = lazyWithRetry(() => import('./tabs/TransferenciasTab.jsx'));
 const ComprasTab        = lazyWithRetry(() => import('./tabs/ComprasTab.jsx'));
 const ResultadosTab     = lazyWithRetry(() => import('./tabs/ResultadosTab.jsx'));
@@ -1057,6 +1058,7 @@ Generado desde Pazque.`;
         {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products}/></Suspense></ErrorBoundary>}
         
         {activeTab==="importar"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ImportTab /></Suspense></ErrorBoundary>}
+        {activeTab==="importar-clientes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ImportClientesTab /></Suspense></ErrorBoundary>}
         
         {activeTab==="informes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InformesTab /></Suspense></ErrorBoundary>}
         
