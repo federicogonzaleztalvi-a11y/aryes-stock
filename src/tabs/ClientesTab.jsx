@@ -896,7 +896,7 @@ function ClientesTab(){
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Clientes <span style={{fontSize:16,color:'#888',fontWeight:400}}>({filtered.length})</span></h2>
         {isAdmin&&<div style={{display:'flex',gap:8}}>
         <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>
-        <button onClick={()=>setShowImporter(true)} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>↑ Importar clientes</button>
+        <button onClick={()=>window.location.href='/app/importar-clientes'} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>↑ Importar clientes</button>
       </div>}
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
