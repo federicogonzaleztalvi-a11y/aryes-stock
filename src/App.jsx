@@ -1184,7 +1184,7 @@ function _buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes
     productos:(products||[]).map(function(p){return{n:p.nombre||p.name,m:p.marca,s:p.stock,min:p.minStock,p:p.precioVenta||p.precio,c:p.unitCost||0};}).slice(0,100),
     criticos:zero.map(function(p){return p.nombre||p.name;}),
     ventas:{total:ventasArr.length,hoy:ventasHoy.length,hoy_monto:ventasHoy.reduce(function(s,v){return s+Number(v.total||0);},0),mes:ventasMes.length,mes_monto:ventasMes.reduce(function(s,v){return s+Number(v.total||0);},0),pendientes:ventasArr.filter(function(v){return v.estado==='pendiente';}).length,ultimas:ventasArr.slice(0,10).map(function(v){return{nro:v.nroVenta,cl:v.clienteNombre,t:v.total,e:v.estado};})},
-    clientes:{total:(clientes||[]).length,lista:(clientes||[]).map(function(c){return{n:c.nombre,tipo:c.tipo};}).slice(0,50)},
+    clientes:{total:(clientes||[]).length,lista:(clientes||[]).map(function(c){return{id:c.id,n:c.nombre,tipo:c.tipo,vendedor:c.vendedorId||'',lista_id:c.listaId||''};}).slice(0,100)},
     finanzas:{deuda_total:deudaTotal,facturas_vencidas:vencidas.length,monto_vencido:vencidas.reduce(function(s,f){return s+(f.saldoPendiente||f.total||0);},0),cobros_mes:(cobros||[]).filter(function(c){return(c.fecha||'').startsWith(mes);}).reduce(function(s,c){return s+Number(c.monto||0);},0),top_deudores:topDeudores},
     movimientos:(movements||[]).slice(0,15),pedidos:(orders||[]).filter(function(o){return o.estado==='pendiente';}).slice(0,10)};
 }();
