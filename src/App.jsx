@@ -1357,7 +1357,7 @@ const S={
             <ChatIcon size={14} stroke={G} strokeWidth={2.5}/>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontWeight:600,fontSize:13,color:'#1a1a18',lineHeight:1.2}}>Asistente de stock</div>
+            <div style={{fontWeight:600,fontSize:13,color:'#1a1a18',lineHeight:1.2}}>Pazque AI</div>
             <div style={{fontSize:11,color:'#9a9a98',marginTop:3,display:'flex',alignItems:'center',gap:5}}>
               <span style={{width:6,height:6,borderRadius:'50%',background:G,flexShrink:0}}/>
               Activo
