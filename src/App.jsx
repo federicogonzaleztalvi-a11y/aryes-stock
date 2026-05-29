@@ -1230,9 +1230,10 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
     if(open&&msgs.length===0){const _u=JSON.parse(localStorage.getItem('aryes-users')||'[]');
-    const uName=_u.find(u=>u.username===session?.email)?.name||session?.email?.split('@')[0]||'';
-    const uRole=_u.find(u=>u.username===session?.email)?.role||role||'operador';
-    setMsgs([{r:'a',t:'Hola '+uName+'! Soy Pazque AI, tu copiloto de negocio. '+(uRole==='vendedor'?'Puedo ayudarte con tu cartera de clientes, sus pedidos y tu rendimiento de ventas.':uRole==='contador'?'Puedo ayudarte con reportes financieros, deuda y análisis de rentabilidad.':uRole==='operador'?'Puedo ayudarte con stock, pedidos y operaciones del día.':'Preguntame sobre stock, ventas, clientes, deuda, o pedime un informe. Como admin puedo proponerte cambios masivos y los ejecutamos juntos.')}]);}
+    const _uData=_u.find(u=>u.username===session?.email);
+    const uName=_uData?.name||(session?.email?.split('@')[0]||'').split('.').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ')||'';
+    const uRole=_uData?.role||role||'operador';
+    setMsgs([{r:'a',t:'Hola '+uName+'! Soy Pazque AI, tu copiloto de negocio. '+(uRole==='vendedor'?'Puedo ayudarte con tu cartera de clientes, sus pedidos y tu rendimiento de ventas.':uRole==='contador'?'Puedo ayudarte con reportes financieros, deuda y análisis de rentabilidad.':uRole==='operador'?'Puedo ayudarte con stock, pedidos y operaciones del día.':'Preguntame lo que necesites — stock, ventas, clientes, deuda — o pedime que haga cambios y lo resolvemos juntos.')}]);}
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: init greeting once per open, msgs.length read on purpose
   },[open]);
 
