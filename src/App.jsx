@@ -1256,7 +1256,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
         : chatUserRole==='contador'
         ? 'SOLO podes consultar datos financieros, generar reportes y exportar Excel. NO podes proponer ni ejecutar cambios en clientes, productos o configuracion.'
         : 'Podes consultar stock, ventas y clientes. Podes sugerir acciones operativas pero NO podes proponer cambios masivos en datos maestros.';
-      const sys='Sos Pazque AI, el copiloto inteligente de esta distribuidora.\n\nUSUARIO ACTUAL: '+chatUserName+' (Rol: '+chatUserRole+')\n\nPERMISOS:\n'+permisosCambios+'\n\nREGLAS:\n1. Llama siempre al usuario por su nombre ('+chatUserName+').\n2. Responde en espanol rioplatense, conciso y directo. Max 200 palabras salvo informes.\n3. Usa SOLO los datos del contexto. Si no tenes un dato, decilo.\n4. Se proactivo: si ves stock critico, deuda alta, o oportunidades, mencionalas aunque no te pregunten.\n5. Siempre termina con una pregunta o sugerencia de accion concreta.\n6. Si el usuario pide algo fuera de sus permisos, explicale amablemente que no tenes autorizacion para eso con su rol.\n\nPUEDES GENERAR ARCHIVOS EXCEL respondiendo EXACTAMENTE con este formato:\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nContexto:\n'+JSON.stringify(ctx,null,1);
+      const sys='Sos Pazque AI, el copiloto inteligente de esta distribuidora.\n\nUSUARIO ACTUAL: '+chatUserName+' (Rol: '+chatUserRole+')\n\nPERMISOS:\n'+permisosCambios+'\n\nREGLAS:\n1. Llama siempre al usuario por su nombre ('+chatUserName+').\n2. Responde en espanol rioplatense, conciso y directo. Max 200 palabras salvo informes.\n3. Usa SOLO los datos del contexto. Si no tenes un dato, decilo.\n4. Se proactivo: si ves stock critico, deuda alta, o oportunidades, mencionalas aunque no te pregunten.\n5. Siempre termina con una pregunta o sugerencia de accion concreta.\n6. Si el usuario pide algo fuera de sus permisos, explicale amablemente que no tenes autorizacion para eso con su rol.\n\nPUEDES GENERAR ARCHIVOS EXCEL respondiendo EXACTAMENTE con este formato:\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nSi el usuario pide ejecutar un cambio masivo y tenes permiso, responde EXACTAMENTE con este formato (sin nada antes ni despues del bloque, pero podes agregar texto explicativo ANTES del bloque):\n[ACCION:{"tipo":"asignar_lista|asignar_vendedor|asignar_cond_pago|asignar_zona|asignar_tipo","campo_bd":"lista_id|vendedor_id|cond_pago|zona_entrega|type","valor":"el_valor_a_asignar","valor_nombre":"nombre_legible","filtro_descripcion":"descripcion de que clientes se afectan","clientes_ids":["id1","id2"]}]\n\nREGLAS DEL PROTOCOLO ACCION:\n- SIEMPRE describe primero en texto natural que vas a hacer y cuantos clientes afecta.\n- Incluye EXACTAMENTE los IDs de los clientes del contexto que matchean el filtro.\n- Si el filtro no esta claro o no hay clientes que matcheen, pregunta antes de generar el bloque.\n- NUNCA generes el bloque ACCION si el rol del usuario no es admin.\n- Para asignar_lista: valor debe ser el id de la lista (ej lista_minor01). Para asignar_cond_pago: valores validos son contado/credito_15/credito_30/credito_60/credito_90.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
       const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
       const r=await fetch('/api/chat',{
         method:'POST',
@@ -1279,7 +1279,19 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
           setMsgs(p=>[...p,{r:'a',t:'Hubo un error al generar el Excel. Intentá de nuevo.'}]);
         }
       } else {
-        setMsgs(p=>[...p,{r:'a',t:raw}]);
+        const accionMatch=raw.match(/\[ACCION:(\{[\s\S]*?\})\]/);
+        if(accionMatch){
+          try{
+            const accion=JSON.parse(accionMatch[1]);
+            const textoAntes=raw.slice(0,raw.indexOf('[ACCION:')).trim();
+            if(textoAntes) setMsgs(p=>[...p,{r:'a',t:textoAntes}]);
+            setAccionPendiente(accion);
+          }catch(e){
+            setMsgs(p=>[...p,{r:'a',t:raw}]);
+          }
+        } else {
+          setMsgs(p=>[...p,{r:'a',t:raw}]);
+        }
       }
       if(!open) setUnread(n=>n+1);
     }catch{
@@ -1288,7 +1300,23 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   };
 
   const G='#059669';
-  const S={
+  
+  const ejecutarAccion = async () => {
+    if(!accionPendiente) return;
+    const {campo_bd, valor, valor_nombre, clientes_ids, filtro_descripcion} = accionPendiente;
+    if(!clientes_ids?.length){setMsgs(p=>[...p,{r:'a',t:'No encontré clientes que matcheen ese filtro.'}]);setAccionPendiente(null);return;}
+    let ok=0,fail=0;
+    for(const cid of clientes_ids){
+      try{
+        await db.patch('clients',{[campo_bd]:valor||null},{id:cid});
+        ok++;
+      }catch(e){fail++;}
+    }
+    setAccionPendiente(null);
+    setMsgs(p=>[...p,{r:'a',t:'✅ '+ok+' cliente'+(ok!==1?'s':'')+' actualizados con '+valor_nombre+(fail?' · ❌ '+fail+' con error':'')+'.'}]);
+  };
+
+const S={
     btn:{position:'fixed',bottom:28,right:28,zIndex:9999,width:44,height:44,borderRadius:22,background:open?'#ffffff':G,border:open?'1.5px solid #e8e4de':'none',cursor:'pointer',boxShadow:open?'0 2px 8px rgba(0,0,0,.08)':'0 4px 16px rgba(26,138,60,.35)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s cubic-bezier(.34,1.56,.64,1)',flexShrink:0},
     panel:{position:'fixed',bottom:84,right:28,zIndex:9998,width:360,height:500,background:'#ffffff',borderRadius:20,boxShadow:'0 12px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06)',display:'flex',flexDirection:'column',fontFamily:'Inter,system-ui,sans-serif',overflow:'hidden',border:'1px solid #ede9e3'},
     header:{background:'#ffffff',borderBottom:'0.5px solid #e2e2de',padding:'14px 16px',display:'flex',alignItems:'center',gap:11,flexShrink:0},
@@ -1367,6 +1395,16 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
               onMouseLeave={e=>e.currentTarget.style.background='#f9f9f7'}
             >{q}</button>
           ))}
+        </div>}
+
+        {/* Tarjeta confirmacion accion */}
+        {accionPendiente&&<div style={{margin:'8px 14px 4px',background:'#f0fdf4',border:'1px solid #059669',borderRadius:10,padding:'12px 14px'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#059669',letterSpacing:.4,marginBottom:4}}>PAZQUE AI PROPONE:</div>
+          <div style={{fontSize:12,color:'#1a1a18',marginBottom:10,lineHeight:1.5}}>{accionPendiente.filtro_descripcion}<br/><strong>{accionPendiente.valor_nombre}</strong> · {accionPendiente.clientes_ids?.length} cliente{accionPendiente.clientes_ids?.length!==1?'s':''}</div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={ejecutarAccion} style={{flex:1,padding:'7px 0',background:'#059669',color:'#fff',border:'none',borderRadius:7,cursor:'pointer',fontWeight:600,fontSize:12}}>✓ Confirmar</button>
+            <button onClick={()=>{setAccionPendiente(null);setMsgs(p=>[...p,{r:'a',t:'Acción cancelada.'}]);}} style={{flex:1,padding:'7px 0',background:'#fff',border:'1px solid #e2e2de',borderRadius:7,cursor:'pointer',fontSize:12,color:'#666'}}>✕ Cancelar</button>
+          </div>
         </div>}
 
         {/* Input */}
