@@ -1230,7 +1230,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
     if(open&&msgs.length===0){const _u=JSON.parse(localStorage.getItem('aryes-users')||'[]');
-    const _uData=_u.find(u=>u.username===session?.email);
+    const _uData=_u.find(u=>u.username===session?.email||u.username===session?.email?.split('@')[0]);
     const uName=_uData?.name||(session?.email?.split('@')[0]||'').split('.').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ')||'';
     const uRole=_uData?.role||role||'operador';
     setMsgs([{r:'a',t:'Hola '+uName+'! Soy Pazque AI, tu copiloto de negocio. '+(uRole==='vendedor'?'Puedo ayudarte con tu cartera de clientes, sus pedidos y tu rendimiento de ventas.':uRole==='contador'?'Puedo ayudarte con reportes financieros, deuda y análisis de rentabilidad.':uRole==='operador'?'Puedo ayudarte con stock, pedidos y operaciones del día.':'Preguntame lo que necesites — stock, ventas, clientes, deuda — o pedime que haga cambios y lo resolvemos juntos.')}]);}
