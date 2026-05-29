@@ -1166,7 +1166,7 @@ const _QUICK = {
   vendedor: ['¿Qué hay disponible?','Precios de productos','Mis ventas recientes','¿Qué puedo vender?'],
 };
 
-function _buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes,cobros){
+function _buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes,cobros,priceListas){
   const low=(products||[]).filter(p=>Number(p.stock)<=Number(p.minStock)).slice(0,20);
   const zero=(products||[]).filter(p=>Number(p.stock)===0).slice(0,10);
   if(role==='vendedor') return {rol:'Vendedor',disponibles:(products||[]).map(p=>({n:p.nombre,m:p.marca,s:p.stock,p:p.precioVenta||p.precio})).slice(0,80),bajo_stock:low.map(p=>p.nombre)};
@@ -1184,7 +1184,7 @@ function _buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes
     productos:(products||[]).map(function(p){return{n:p.nombre||p.name,m:p.marca,s:p.stock,min:p.minStock,p:p.precioVenta||p.precio,c:p.unitCost||0};}).slice(0,100),
     criticos:zero.map(function(p){return p.nombre||p.name;}),
     ventas:{total:ventasArr.length,hoy:ventasHoy.length,hoy_monto:ventasHoy.reduce(function(s,v){return s+Number(v.total||0);},0),mes:ventasMes.length,mes_monto:ventasMes.reduce(function(s,v){return s+Number(v.total||0);},0),pendientes:ventasArr.filter(function(v){return v.estado==='pendiente';}).length,ultimas:ventasArr.slice(0,10).map(function(v){return{nro:v.nroVenta,cl:v.clienteNombre,t:v.total,e:v.estado};})},
-    clientes:{total:(clientes||[]).length,lista:(clientes||[]).map(function(c){return{id:c.id,n:c.nombre,tipo:c.tipo,vendedor:c.vendedorId||'',lista_id:c.listaId||''};}).slice(0,100)},
+    clientes:{total:(clientes||[]).length,lista:(clientes||[]).map(function(c){return{id:c.id,n:c.nombre,tipo:c.tipo,vendedor:c.vendedorId||'',lista_id:c.listaId||''};}).slice(0,100)},listas_precios:(priceListas||[]).map(function(l){return{id:l.id,nombre:l.nombre};}),
     finanzas:{deuda_total:deudaTotal,facturas_vencidas:vencidas.length,monto_vencido:vencidas.reduce(function(s,f){return s+(f.saldoPendiente||f.total||0);},0),cobros_mes:(cobros||[]).filter(function(c){return(c.fecha||'').startsWith(mes);}).reduce(function(s,c){return s+Number(c.monto||0);},0),top_deudores:topDeudores},
     movimientos:(movements||[]).slice(0,15),pedidos:(orders||[]).filter(function(o){return o.estado==='pendiente';}).slice(0,10)};
 }();
@@ -1246,7 +1246,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
     const next=[...msgs,{r:'u',t:text}];
     setMsgs(next);setBusy(true);
     try{
-      const ctx=_buildCtx(role,products,suppliers,orders,movements,(clientes||[]).slice(0,100),(ventas||[]).slice(0,100),cfes,cobros);
+      const ctx=_buildCtx(role,products,suppliers,orders,movements,(clientes||[]).slice(0,100),(ventas||[]).slice(0,100),cfes,cobros,priceListas);
       const _chatUsers = JSON.parse(localStorage.getItem('aryes-users')||'[]');
       const chatUserName = _chatUsers.find(u=>u.username===session?.email)?.name || session?.email?.split('@')[0] || 'usuario';
       const chatUserRole = _chatUsers.find(u=>u.username===session?.email)?.role || role || 'operador';
