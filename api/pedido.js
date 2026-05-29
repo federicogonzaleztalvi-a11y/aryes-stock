@@ -427,7 +427,8 @@ async function handler(req, res) {
               lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
               notas: notas || '',
             });
-            attachments = [{ filename: 'orden-' + (result.orderId || orderId) + '.pdf', content: pdfBuf.toString('base64') }];
+            const nombreLimpio = (clienteNombre || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,30);
+            attachments = [{ filename: 'orden-' + nombreLimpio + '-OC-' + String(result.orderId || orderId).slice(0,8).toUpperCase() + '.pdf', content: pdfBuf.toString('base64') }];
           } catch (pdfErr) {
             log.warn('pedido', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
           }
