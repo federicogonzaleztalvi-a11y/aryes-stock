@@ -1229,7 +1229,9 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   React.useEffect(()=>{if(open){setUnread(0);setTimeout(()=>inRef.current?.focus(),80);}}, [open]);
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
-    if(open&&msgs.length===0) setMsgs([{r:'a',t:'Hola'+(session?.email?' '+session.email.split('@')[0]:'')+'! Soy Pazque AI, tu copiloto de negocio. Preguntame sobre stock, ventas, clientes, deuda, o pedime un informe. También puedo sugerirte qué hacer hoy.'}]);
+    if(open&&msgs.length===0){const uName=users?.find(u=>u.username===session?.email)?.name||session?.email?.split('@')[0]||'';
+    const uRole=users?.find(u=>u.username===session?.email)?.role||role||'operador';
+    setMsgs([{r:'a',t:'Hola '+uName+'! Soy Pazque AI, tu copiloto de negocio. '+(uRole==='vendedor'?'Puedo ayudarte con tu cartera de clientes, sus pedidos y tu rendimiento de ventas.':uRole==='contador'?'Puedo ayudarte con reportes financieros, deuda y análisis de rentabilidad.':uRole==='operador'?'Puedo ayudarte con stock, pedidos y operaciones del día.':'Preguntame sobre stock, ventas, clientes, deuda, o pedime un informe. Como admin puedo proponerte cambios masivos y los ejecutamos juntos.')}]);}
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: init greeting once per open, msgs.length read on purpose
   },[open]);
 
@@ -1242,7 +1244,16 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
     setMsgs(next);setBusy(true);
     try{
       const ctx=_buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes,cobros);
-      const sys='Sos Pazque AI, el copiloto inteligente de esta distribuidora. Tu rol es como SOFIA de Despegar: no solo respondes preguntas, sino que orientas al usuario hacia soluciones concretas con INTENCIONALIDAD.\n\nREGLAS:\n1. Responde en espanol rioplatense, conciso y directo. Max 200 palabras salvo informes.\n2. Usa SOLO los datos del contexto. Si no tenes un dato, decilo.\n3. Se proactivo: si ves stock critico, deuda alta, o oportunidades, mencionalas aunque no te pregunten.\n4. Siempre termina con una pregunta o sugerencia de accion concreta.\n5. Cuando el contexto revele algo urgente (stock en cero, factura vencida, cliente sin pedir hace mucho), alerta al usuario.\n\nPUEDES GENERAR ARCHIVOS EXCEL. Cuando el usuario pida un Excel, exportar datos o descargar, responde EXACTAMENTE con este formato (sin nada antes ni despues):\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nCuando generes Excel, inclui TODOS los datos del contexto relevantes (no solo ejemplos).\nEjemplos: inventario -> todos los productos, ventas -> todas las ventas, clientes -> todos los clientes.\nSi piden analisis en texto, responde normal. Solo usa [EXCEL:...] cuando pidan archivo/Excel/exportar.\n\nCAPACIDADES:\n- Calcular margen por producto (precio venta - costo)\n- Identificar los clientes mas rentables\n- Detectar patrones de compra\n- Sugerir a quien contactar hoy basado en frecuencia de compra\n- Analizar deuda por cliente y antiguedad\n- Top deudores y facturas vencidas\n- Cobros del mes vs deuda total\n\nContexto:\n'+JSON.stringify(ctx,null,1);
+      const chatUserName = users?.find(u=>u.username===session?.email)?.name || session?.email?.split('@')[0] || 'usuario';
+      const chatUserRole = users?.find(u=>u.username===session?.email)?.role || role || 'operador';
+      const permisosCambios = chatUserRole==='admin'
+        ? 'Podes proponer cambios masivos (asignar listas, vendedores, condicion de pago, zona). SIEMPRE describe exactamente que vas a cambiar y cuantos registros afecta, y espera confirmacion explicita antes de indicar que ejecute. Nunca ejecutes sin confirmacion.'
+        : chatUserRole==='vendedor'
+        ? 'SOLO podes consultar y sugerir acciones sobre los clientes asignados a este vendedor. NO podes proponer cambios masivos ni modificar datos de otros vendedores.'
+        : chatUserRole==='contador'
+        ? 'SOLO podes consultar datos financieros, generar reportes y exportar Excel. NO podes proponer ni ejecutar cambios en clientes, productos o configuracion.'
+        : 'Podes consultar stock, ventas y clientes. Podes sugerir acciones operativas pero NO podes proponer cambios masivos en datos maestros.';
+      const sys='Sos Pazque AI, el copiloto inteligente de esta distribuidora.\n\nUSUARIO ACTUAL: '+chatUserName+' (Rol: '+chatUserRole+')\n\nPERMISOS:\n'+permisosCambios+'\n\nREGLAS:\n1. Llama siempre al usuario por su nombre ('+chatUserName+').\n2. Responde en espanol rioplatense, conciso y directo. Max 200 palabras salvo informes.\n3. Usa SOLO los datos del contexto. Si no tenes un dato, decilo.\n4. Se proactivo: si ves stock critico, deuda alta, o oportunidades, mencionalas aunque no te pregunten.\n5. Siempre termina con una pregunta o sugerencia de accion concreta.\n6. Si el usuario pide algo fuera de sus permisos, explicale amablemente que no tenes autorizacion para eso con su rol.\n\nPUEDES GENERAR ARCHIVOS EXCEL respondiendo EXACTAMENTE con este formato:\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nContexto:\n'+JSON.stringify(ctx,null,1);
       const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
       const r=await fetch('/api/chat',{
         method:'POST',
