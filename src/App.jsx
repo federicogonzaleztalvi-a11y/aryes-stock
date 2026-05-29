@@ -1366,7 +1366,7 @@ const S={
             </div>
           </div>
           <button onClick={()=>setOpen(false)} style={{width:28,height:28,borderRadius:8,border:'0.5px solid #e2e2de',background:'#f4f4f1',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
-            <span style={{fontSize:13,color:'#6a6a68',lineHeight:1}}>→</span>
+            <span style={{fontSize:15,color:'#6a6a68',lineHeight:1,fontWeight:400}}>&#x2715;</span>
           </button>
         </div>
 
