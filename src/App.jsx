@@ -1221,6 +1221,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   const [input,setInput]=React.useState('');
   const [busy,setBusy]=React.useState(false);
   const [unread,setUnread]=React.useState(0);
+  const [accionPendiente,setAccionPendiente]=React.useState(null);
   const endRef=React.useRef(null);
   const inRef=React.useRef(null);
   const role=session?.role||'admin';
