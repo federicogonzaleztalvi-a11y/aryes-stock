@@ -418,7 +418,7 @@ const describeAction = (action: string, detail: string): string => {
           setSuppliers(mapped);
         }
         const usrs = await db.get<Record<string, any>[]>('users', `org_id=eq.${getOrgId()}&order=id.asc`);
-        if (usrs?.length > 0) LS.set('aryes-users', usrs.map(u => ({ username:u.username, name:u.name, role:u.role, active:u.active })));
+        if (usrs?.length > 0) LS.set('aryes-users', usrs.map(u => ({ username:u.username, name:u.name, role:u.role, active:u.active, codigo:u.codigo||'' })));
         const sbOrders = await db.get<Record<string, any>[]>('orders', `org_id=eq.${getOrgId()}&order=ordered_at.desc&limit=500`);
         if (sbOrders?.length > 0) {
           const mapped = sbOrders.map(o => ({ id:o.id, productId:o.product_id, productName:o.product_name, supplierId:o.supplier_id, supplierName:o.supplier_name, qty:Number(o.qty), unit:o.unit, status:o.status, orderedAt:o.ordered_at, expectedArrival:o.expected_arrival, totalCost:o.total_cost, leadBreakdown:o.lead_breakdown||{} }));

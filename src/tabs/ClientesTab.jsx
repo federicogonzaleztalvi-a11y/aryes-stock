@@ -507,6 +507,11 @@ function ClientesTab(){
   
   const [q,setQ]=useState('');
   const [filtro,setFiltro]=useState('Todos');
+  const [filtroVendedor,setFiltroVendedor]=useState('');
+  const [filtroLista,setFiltroLista]=useState('');
+  const [seleccionados,setSeleccionados]=useState([]);
+  const [accionMasiva,setAccionMasiva]=useState({lista:'',vendedor:'',condPago:''});
+  const [aplicando,setAplicando]=useState(false);
   const [vista,setVista]=useState('lista');
   const [showImporter, setShowImporter] = useState(false);
   const [msg,setMsg]=useState('');
@@ -583,7 +588,12 @@ function ClientesTab(){
   };
 
   const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||''});setEditId(x.id);setVista('form');};
-  const filtered=items.filter(x=>(!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase()))&&(filtro==='Todos'||x.tipo===filtro));
+  const filtered=items.filter(x=>
+    (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase()))
+    &&(filtro==='Todos'||x.tipo===filtro)
+    &&(!filtroVendedor||(filtroVendedor==='sin-asignar'?!x.vendedorId:x.vendedorId===filtroVendedor))
+    &&(!filtroLista||(filtroLista==='sin-lista'?!x.listaId:x.listaId===filtroLista))
+  );
   const inp={width:'100%',padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',boxSizing:'border-box'};
   const backBtn=<button onClick={()=>{setVista('lista');setEditId(null);setForm(emptyForm);}} style={{background:'none',border:'none',cursor:'pointer',fontSize:20,color:'#666',marginRight:8}}>←</button>;
   if(vista==='form')return(
@@ -900,12 +910,79 @@ function ClientesTab(){
       </div>}
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
-      <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap'}}>
+      <div style={{display:'flex',gap:10,marginBottom:seleccionados.length>0?8:20,flexWrap:'wrap',alignItems:'center'}}>
         <input placeholder="Buscar nombre o ciudad..." value={q} onChange={e=>setQ(e.target.value)} style={{flex:1,minWidth:200,padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit'}} />
         <select value={filtro} onChange={e=>setFiltro(e.target.value)} style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
           <option>Todos</option>{TIPOS.map(t=><option key={t}>{t}</option>)}
         </select>
+        <select value={filtroVendedor} onChange={e=>setFiltroVendedor(e.target.value)} style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
+          <option value=''>Todos los vendedores</option>
+          <option value='sin-asignar'>Sin asignar</option>
+          {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.username||u.name)).map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name||u.username}{u.codigo?' ('+u.codigo+')':''}</option>)}
+        </select>
+        <select value={filtroLista} onChange={e=>setFiltroLista(e.target.value)} style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
+          <option value=''>Todas las listas</option>
+          <option value='sin-lista'>Sin lista asignada</option>
+          {priceListas.filter(l=>l.activa!==false).map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}
+        </select>
+        {filtered.length>0&&<label style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#6a6a68',cursor:'pointer',whiteSpace:'nowrap'}}>
+          <input type='checkbox' checked={seleccionados.length===filtered.length&&filtered.length>0} onChange={e=>{setSeleccionados(e.target.checked?filtered.map(x=>x.id):[]);}} style={{cursor:'pointer'}}/>
+          {seleccionados.length===0?'Seleccionar todos':seleccionados.length+' seleccionados'}
+        </label>}
       </div>
+      {seleccionados.length>0&&<div style={{background:'#1a1a18',borderRadius:10,padding:'12px 16px',marginBottom:16,display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <span style={{fontSize:12,color:'#fff',fontWeight:600,marginRight:4}}>{seleccionados.length} cliente{seleccionados.length!==1?'s':''} seleccionado{seleccionados.length!==1?'s':''}</span>
+        <select value={accionMasiva.lista} onChange={e=>setAccionMasiva(a=>({...a,lista:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
+          <option value=''>Lista de precios...</option>
+          <option value='__quitar__'>Quitar lista</option>
+          {priceListas.filter(l=>l.activa!==false).map(l=><option key={l.id} value={l.id}>{l.nombre}</option>)}
+        </select>
+        <select value={accionMasiva.vendedor} onChange={e=>setAccionMasiva(a=>({...a,vendedor:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
+          <option value=''>Vendedor...</option>
+          <option value='__quitar__'>Sin asignar</option>
+          {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.username||u.name)).map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name||u.username}</option>)}
+        </select>
+        <select value={accionMasiva.condPago} onChange={e=>setAccionMasiva(a=>({...a,condPago:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
+          <option value=''>Condición de pago...</option>
+          <option value='contado'>Contado</option>
+          <option value='credito_15'>Crédito 15d</option>
+          <option value='credito_30'>Crédito 30d</option>
+          <option value='credito_60'>Crédito 60d</option>
+          <option value='credito_90'>Crédito 90d</option>
+        </select>
+        <button disabled={aplicando||(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago)} onClick={async()=>{
+          if(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago)return;
+          const cant=seleccionados.length;
+          if(!window.confirm('Vas a modificar '+cant+' cliente'+(cant!==1?'s':'')+'. ¿Confirmar?'))return;
+          setAplicando(true);
+          let ok=0,fail=0;
+          for(const cid of seleccionados){
+            try{
+              const patch={};
+              if(accionMasiva.lista)patch.lista_id=accionMasiva.lista==='__quitar__'?null:accionMasiva.lista;
+              if(accionMasiva.vendedor)patch.vendedor_id=accionMasiva.vendedor==='__quitar__'?null:accionMasiva.vendedor;
+              if(accionMasiva.condPago)patch.cond_pago=accionMasiva.condPago;
+              await db.upsert('clients',{id:cid,...patch},'id');
+              ok++;
+            }catch(e){fail++;}
+          }
+          setItems(prev=>prev.map(x=>{
+            if(!seleccionados.includes(x.id))return x;
+            const upd={...x};
+            if(accionMasiva.lista)upd.listaId=accionMasiva.lista==='__quitar__'?null:accionMasiva.lista;
+            if(accionMasiva.vendedor)upd.vendedorId=accionMasiva.vendedor==='__quitar__'?null:accionMasiva.vendedor;
+            if(accionMasiva.condPago)upd.condPago=accionMasiva.condPago;
+            return upd;
+          }));
+          setSeleccionados([]);
+          setAccionMasiva({lista:'',vendedor:'',condPago:''});
+          setAplicando(false);
+          setMsg('✅ '+ok+' cliente'+(ok!==1?'s':'')+' actualizados'+(fail?' · ❌ '+fail+' con error':''));
+        }} style={{padding:'6px 16px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:aplicando?'wait':'pointer',fontWeight:600,fontSize:12,opacity:(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago)?0.5:1}}>
+          {aplicando?'Aplicando...':'Aplicar'}
+        </button>
+        <button onClick={()=>{setSeleccionados([]);setAccionMasiva({lista:'',vendedor:'',condPago:''}); }} style={{padding:'6px 12px',background:'#444',color:'#ccc',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>Cancelar</button>
+      </div>}
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
           <div style={{fontSize:40,marginBottom:12}}>👥</div>
@@ -915,7 +992,9 @@ function ClientesTab(){
       ):(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
           {filtered.map(x=>(
-            <div key={x.id} onClick={()=>{setSelId(x.id);setVista('detalle');}} style={{background:'#fff',borderRadius:10,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',cursor:'pointer',border:'1px solid #f3f4f6'}} onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'} onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'}>
+            <div key={x.id} style={{background:seleccionados.includes(x.id)?'#f0fdf4':'#fff',borderRadius:10,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',cursor:'pointer',border:seleccionados.includes(x.id)?'1px solid #059669':'1px solid #f3f4f6',position:'relative'}} onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'}}>
+              <input type='checkbox' checked={seleccionados.includes(x.id)} onChange={e=>{e.stopPropagation();setSeleccionados(prev=>e.target.checked?[...prev,x.id]:prev.filter(id=>id!==x.id));}} onClick={e=>e.stopPropagation()} style={{position:'absolute',top:10,right:10,cursor:'pointer',width:15,height:15}}/>
+              <div onClick={()=>{setSelId(x.id);setVista('detalle');}} style={{display:'flex',flexDirection:'column',gap:0}}>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
                 <div style={{fontWeight:600,fontSize:15,color:'#1a1a1a',lineHeight:1.3}}>{x.nombre}{x.vendedorId?<span style={{fontSize:9,background:'#dbeafe',color:'#2563eb',padding:'1px 6px',borderRadius:8,marginLeft:6,fontWeight:500}}>{x.vendedorId.split('@')[0]}</span>:<span style={{fontSize:9,background:'#fef3c7',color:'#92400e',padding:'1px 6px',borderRadius:8,marginLeft:6,fontWeight:500}}>Sin asignar</span>}</div>
                 <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0,marginLeft:8}}>
@@ -928,6 +1007,7 @@ function ClientesTab(){
               {x.ciudad&&<div style={{fontSize:12,color:'#666',marginBottom:4}}>📍 {x.ciudad}</div>}
               {x.telefono&&<div style={{fontSize:12,color:'#666',marginBottom:4}}>📞 {x.telefono}</div>}
               {x.contacto&&<div style={{fontSize:12,color:'#666'}}>👤 {x.contacto}</div>}
+              </div>
             </div>
           ))}
         </div>
