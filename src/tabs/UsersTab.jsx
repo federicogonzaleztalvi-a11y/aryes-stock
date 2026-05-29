@@ -36,7 +36,7 @@ export default function UsersTab({ session }) {
   const [selected, setSelected] = useState(null);
 
   // Create form
-  const emptyForm = { email: '', password: '', name: '', role: 'operador' };
+  const emptyForm = { email: '', password: '', name: '', role: 'operador', codigo: '' };
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
@@ -155,6 +155,7 @@ export default function UsersTab({ session }) {
       <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 1px 4px rgba(0,0,0,.06)', display: 'grid', gap: 14 }}>
         {[
           { label: 'Nombre completo', key: 'name', type: 'text', placeholder: 'Juan García' },
+          { label: 'Código vendedor', key: 'codigo', type: 'text', placeholder: 'VEN-01' },
           { label: 'Email', key: 'email', type: 'email', placeholder: 'juan@empresa.com' },
           { label: 'Contraseña inicial', key: 'password', type: 'password', placeholder: 'Mínimo 6 caracteres' },
         ].map(f => (
