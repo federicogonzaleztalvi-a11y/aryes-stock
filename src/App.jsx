@@ -1245,7 +1245,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
     const next=[...msgs,{r:'u',t:text}];
     setMsgs(next);setBusy(true);
     try{
-      const ctx=_buildCtx(role,products,suppliers,orders,movements,clientes,ventas,cfes,cobros);
+      const ctx=_buildCtx(role,products,suppliers,orders,movements,(clientes||[]).slice(0,100),(ventas||[]).slice(0,100),cfes,cobros);
       const _chatUsers = JSON.parse(localStorage.getItem('aryes-users')||'[]');
       const chatUserName = _chatUsers.find(u=>u.username===session?.email)?.name || session?.email?.split('@')[0] || 'usuario';
       const chatUserRole = _chatUsers.find(u=>u.username===session?.email)?.role || role || 'operador';
@@ -1264,6 +1264,8 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))})
       });
       const d=await r.json();
+      if(r.status===401){setMsgs(p=>[...p,{r:'a',t:'Tu sesión expiró. Por favor recargá la página e ingresá de nuevo.'}]);setBusy(false);return;}
+      if(!r.ok||d.error){setMsgs(p=>[...p,{r:'a',t:'Error al conectar con el asistente: '+(d.error||r.status)+'. Intentá de nuevo.'}]);setBusy(false);return;}
       const raw=d.content?.[0]?.text||'No pude procesar la respuesta.';
       // Detectar si la respuesta es un Excel
       const excelMatch=raw.match(/\[EXCEL:(\{[\s\S]*\})\]/);
