@@ -510,7 +510,7 @@ function ClientesTab(){
   const [filtroVendedor,setFiltroVendedor]=useState('');
   const [filtroLista,setFiltroLista]=useState('');
   const [seleccionados,setSeleccionados]=useState([]);
-  const [accionMasiva,setAccionMasiva]=useState({lista:'',vendedor:'',condPago:''});
+  const [accionMasiva,setAccionMasiva]=useState({lista:'',vendedor:'',condPago:'',zona:'',tipo:''});
   const [aplicando,setAplicando]=useState(false);
   const [vista,setVista]=useState('lista');
   const [showImporter, setShowImporter] = useState(false);
@@ -950,8 +950,8 @@ function ClientesTab(){
           <option value='credito_60'>Crédito 60d</option>
           <option value='credito_90'>Crédito 90d</option>
         </select>
-        <button disabled={aplicando||(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago)} onClick={async()=>{
-          if(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago)return;
+        <button disabled={aplicando||(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago&&!accionMasiva.zona&&!accionMasiva.tipo)} onClick={async()=>{
+          if(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago&&!accionMasiva.zona&&!accionMasiva.tipo)return;
           const cant=seleccionados.length;
           if(!window.confirm('Vas a modificar '+cant+' cliente'+(cant!==1?'s':'')+'. ¿Confirmar?'))return;
           setAplicando(true);
@@ -962,7 +962,9 @@ function ClientesTab(){
               if(accionMasiva.lista)patch.lista_id=accionMasiva.lista==='__quitar__'?null:accionMasiva.lista;
               if(accionMasiva.vendedor)patch.vendedor_id=accionMasiva.vendedor==='__quitar__'?null:accionMasiva.vendedor;
               if(accionMasiva.condPago)patch.cond_pago=accionMasiva.condPago;
-              await db.upsert('clients',{id:cid,...patch},'id');
+              if(accionMasiva.zona)patch.zona_entrega=accionMasiva.zona==='__quitar__'?'':accionMasiva.zona;
+              if(accionMasiva.tipo)patch.type=accionMasiva.tipo;
+              if(Object.keys(patch).length>0) await db.patch('clients',patch,{id:cid});
               ok++;
             }catch(e){fail++;}
           }
@@ -972,16 +974,27 @@ function ClientesTab(){
             if(accionMasiva.lista)upd.listaId=accionMasiva.lista==='__quitar__'?null:accionMasiva.lista;
             if(accionMasiva.vendedor)upd.vendedorId=accionMasiva.vendedor==='__quitar__'?null:accionMasiva.vendedor;
             if(accionMasiva.condPago)upd.condPago=accionMasiva.condPago;
+            if(accionMasiva.zona)upd.zonaEntrega=accionMasiva.zona==='__quitar__'?'':accionMasiva.zona;
+            if(accionMasiva.tipo)upd.tipo=accionMasiva.tipo;
             return upd;
           }));
           setSeleccionados([]);
-          setAccionMasiva({lista:'',vendedor:'',condPago:''});
+          setAccionMasiva({lista:'',vendedor:'',condPago:'',zona:'',tipo:''});
           setAplicando(false);
           setMsg('✅ '+ok+' cliente'+(ok!==1?'s':'')+' actualizados'+(fail?' · ❌ '+fail+' con error':''));
-        }} style={{padding:'6px 16px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:aplicando?'wait':'pointer',fontWeight:600,fontSize:12,opacity:(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago)?0.5:1}}>
+        }} style={{padding:'6px 16px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:aplicando?'wait':'pointer',fontWeight:600,fontSize:12,opacity:(!accionMasiva.lista&&!accionMasiva.vendedor&&!accionMasiva.condPago&&!accionMasiva.zona&&!accionMasiva.tipo)?0.5:1}}>
           {aplicando?'Aplicando...':'Aplicar'}
         </button>
-        <button onClick={()=>{setSeleccionados([]);setAccionMasiva({lista:'',vendedor:'',condPago:''}); }} style={{padding:'6px 12px',background:'#444',color:'#ccc',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>Cancelar</button>
+        <select value={accionMasiva.zona} onChange={e=>setAccionMasiva(a=>({...a,zona:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
+          <option value=''>Zona de entrega...</option>
+          <option value='__quitar__'>Sin zona</option>
+          {[...new Set(items.map(c=>c.zonaEntrega).filter(Boolean))].map(z=><option key={z} value={z}>{z}</option>)}
+        </select>
+        <select value={accionMasiva.tipo} onChange={e=>setAccionMasiva(a=>({...a,tipo:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
+          <option value=''>Tipo de cliente...</option>
+          {TIPOS.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+        <button onClick={()=>{setSeleccionados([]);setAccionMasiva({lista:'',vendedor:'',condPago:'',zona:'',tipo:''}); }} style={{padding:'6px 12px',background:'#444',color:'#ccc',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>Cancelar</button>
       </div>}
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
@@ -992,8 +1005,10 @@ function ClientesTab(){
       ):(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
           {filtered.map(x=>(
-            <div key={x.id} onClick={()=>{if(seleccionados.length>0)setSeleccionados(prev=>prev.includes(x.id)?prev.filter(id=>id!==x.id):[...prev,x.id]);}} style={{background:seleccionados.includes(x.id)?'#f0fdf4':'#fff',borderRadius:10,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',cursor:'pointer',border:seleccionados.includes(x.id)?'2px solid #059669':'1px solid #f3f4f6',position:'relative'}} onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,.1)'}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'}}>
-              {seleccionados.includes(x.id)&&<div style={{position:'absolute',top:8,left:8,width:18,height:18,borderRadius:'50%',background:'#059669',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2,pointerEvents:'none'}}><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></div>}
+            <div key={x.id} style={{background:seleccionados.includes(x.id)?'#f0fdf4':'#fff',borderRadius:10,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',cursor:'pointer',border:seleccionados.includes(x.id)?'2px solid #059669':'1px solid #f3f4f6',position:'relative'}} onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,.1)';const chk=e.currentTarget.querySelector('.chk-hover');if(chk)chk.style.opacity='1';}} onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,.06)';const chk=e.currentTarget.querySelector('.chk-hover');if(chk&&!seleccionados.includes(x.id))chk.style.opacity='0';}}>
+              <div className='chk-hover' onClick={e=>{e.stopPropagation();setSeleccionados(prev=>prev.includes(x.id)?prev.filter(id=>id!==x.id):[...prev,x.id]);}} style={{position:'absolute',top:8,left:8,width:18,height:18,borderRadius:'50%',background:seleccionados.includes(x.id)?'#059669':'rgba(0,0,0,0.15)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2,opacity:seleccionados.includes(x.id)?1:0,transition:'opacity .15s',cursor:'pointer'}}>
+                {seleccionados.includes(x.id)&&<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
               <div onClick={e=>{if(seleccionados.length>0){e.stopPropagation();setSeleccionados(prev=>prev.includes(x.id)?prev.filter(id=>id!==x.id):[...prev,x.id]);}else{setSelId(x.id);setVista('detalle');}}} style={{display:'flex',flexDirection:'column',gap:0}}>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
                 <div style={{fontWeight:600,fontSize:15,color:'#1a1a1a',lineHeight:1.3}}>{x.nombre}{x.vendedorId?<span style={{fontSize:9,background:'#dbeafe',color:'#2563eb',padding:'1px 6px',borderRadius:8,marginLeft:6,fontWeight:500}}>{x.vendedorId.split('@')[0]}</span>:<span style={{fontSize:9,background:'#fef3c7',color:'#92400e',padding:'1px 6px',borderRadius:8,marginLeft:6,fontWeight:500}}>Sin asignar</span>}</div>
