@@ -13,7 +13,7 @@ async function sb(path, opts = {}) {
   const { headers: _h, ...rest } = opts;
   const r = await fetch(`${SB_URL}/rest/v1/${path}`, { ...rest, headers: H(_h || {}) });
   if (!r.ok) { const e = await r.text(); throw new Error(e); }
-  if (opts.method === 'DELETE') return null;
+  if (opts.method === 'DELETE' || opts.method === 'PATCH' || r.status === 204) return null;
   return r.json();
 }
 function calcFinal(base, dg, item, dtoCat) {
