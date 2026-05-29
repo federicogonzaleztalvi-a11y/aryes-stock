@@ -30,7 +30,7 @@ function rowToClient(raw, priceListas) {
     email: o.email||'', emailFacturacion: o.emailfacturacion||o.emailfact||'',
     contacto: o.contacto||o.contact||'', listaId,
     horarioDesde: o.horariodesde||o.desde||'', horarioHasta: o.horariohasta||o.hasta||'',
-    notas: o.notas||o.notes||o.observaciones||'', codigo: o.codigo||o.code||'',
+    notas: o.notas||o.notes||o.observaciones||'', codigo: o.codigo||o.code||'', vendedorNombre: o.vendedor||o.vendedornombre||'', codigoVendedor: o.codigovendedor||o.vendedorcodigo||o.codvendedor||'',
   };
 }
 
@@ -77,6 +77,7 @@ export default function ImportClientesTab() {
           limite_credito: c.limiteCredito||null, lista_id: c.listaId||null, codigo: c.codigo||null,
           horario_desde: c.horarioDesde||null, horario_hasta: c.horarioHasta||null,
           zona_entrega: c.zonaEntrega||'', notes: c.notas||'',
+          vendedor_id: (()=>{ const vu=JSON.parse(localStorage.getItem('aryes-users')||'[]'); const m=vu.find(u=>(c.codigoVendedor&&u.codigo===c.codigoVendedor)||(c.vendedorNombre&&(u.name||'').toLowerCase()===c.vendedorNombre.toLowerCase())); return m?(m.username||m.name||null):null; })(),
           org_id: getOrgId(), created_at: new Date().toISOString(),
         }, 'id');
         ok++;
