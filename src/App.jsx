@@ -1231,7 +1231,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
   React.useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
   React.useEffect(()=>{
     if(open&&msgs.length===0){const _u=JSON.parse(localStorage.getItem('aryes-users')||'[]');
-    const _uData=_u.find(u=>u.username===session?.email||u.username===session?.email?.split('@')[0]);
+    const _email=session?.email||'';const _uData=_u.find(u=>u.username===_email||u.username===_email.split('@')[0]||_email===u.username+'@'+_email.split('@')[1]);
     const uName=_uData?.name||(session?.email?.split('@')[0]||'').split('.').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ')||'';
     const uRole=_uData?.role||role||'operador';
     setMsgs([{r:'a',t:'Hola '+uName+'! Soy Pazque AI, tu copiloto de negocio. '+(uRole==='vendedor'?'Puedo ayudarte con tu cartera de clientes, sus pedidos y tu rendimiento de ventas.':uRole==='contador'?'Puedo ayudarte con reportes financieros, deuda y análisis de rentabilidad.':uRole==='operador'?'Puedo ayudarte con stock, pedidos y operaciones del día.':'Preguntame lo que necesites — stock, ventas, clientes, deuda — o pedime que haga cambios y lo resolvemos juntos.')}]);}
@@ -1248,8 +1248,10 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
     try{
       const ctx=_buildCtx(role,products,suppliers,orders,movements,(clientes||[]).slice(0,100),(ventas||[]).slice(0,100),cfes,cobros,priceListas);
       const _chatUsers = JSON.parse(localStorage.getItem('aryes-users')||'[]');
-      const chatUserName = _chatUsers.find(u=>u.username===session?.email)?.name || session?.email?.split('@')[0] || 'usuario';
-      const chatUserRole = _chatUsers.find(u=>u.username===session?.email)?.role || role || 'operador';
+      const _ce=session?.email||'';
+      const _cu=_chatUsers.find(u=>u.username===_ce||u.username===_ce.split('@')[0]||_ce===u.username+'@'+_ce.split('@')[1]);
+      const chatUserName = _cu?.name || (_ce.split('@')[0]).split('.').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ') || 'usuario';
+      const chatUserRole = _cu?.role || role || 'operador';
       const permisosCambios = chatUserRole==='admin'
         ? 'Podes proponer cambios masivos (asignar listas, vendedores, condicion de pago, zona). SIEMPRE describe exactamente que vas a cambiar y cuantos registros afecta, y espera confirmacion explicita antes de indicar que ejecute. Nunca ejecutes sin confirmacion.'
         : chatUserRole==='vendedor'
