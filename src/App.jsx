@@ -1246,7 +1246,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
     const next=[...msgs,{r:'u',t:text}];
     setMsgs(next);setBusy(true);
     try{
-      const ctx=_buildCtx(role,products,suppliers,orders,movements,(clientes||[]).slice(0,100),(ventas||[]).slice(0,100),cfes,cobros,priceListas);
+      const ctx=_buildCtx(role,products,suppliers,orders,movements,(clientes||[]).slice(0,50),(ventas||[]).slice(0,50),(cfes||[]).slice(0,30),(cobros||[]).slice(0,20),priceListas);
       const _chatUsers = JSON.parse(localStorage.getItem('aryes-users')||'[]');
       const _ce=session?.email||'';
       const _cu=_chatUsers.find(u=>u.username===_ce||u.username===_ce.split('@')[0]||_ce===u.username+'@'+_ce.split('@')[1]);
@@ -1261,11 +1261,17 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
         : 'Podes consultar stock, ventas y clientes. Podes sugerir acciones operativas pero NO podes proponer cambios masivos en datos maestros.';
       const sys='Sos Pazque AI, el copiloto inteligente de esta distribuidora.\n\nUSUARIO ACTUAL: '+chatUserName+' (Rol: '+chatUserRole+')\n\nPERMISOS:\n'+permisosCambios+'\n\nREGLAS:\n1. Llama siempre al usuario por su nombre ('+chatUserName+').\n2. Responde en espanol rioplatense, conciso y directo. Max 200 palabras salvo informes.\n3. Usa SOLO los datos del contexto. Si no tenes un dato, decilo.\n4. Se proactivo: si ves stock critico, deuda alta, o oportunidades, mencionalas aunque no te pregunten.\n5. Siempre termina con una pregunta o sugerencia de accion concreta.\n6. Si el usuario pide algo fuera de sus permisos, explicale amablemente que no tenes autorizacion para eso con su rol.\n\nPUEDES GENERAR ARCHIVOS EXCEL respondiendo EXACTAMENTE con este formato:\n[EXCEL:{"titulo":"nombre","columnas":["Col1","Col2"],"filas":[["v1","v2"]]}]\n\nSi el usuario pide ejecutar un cambio masivo y tenes permiso, responde EXACTAMENTE con este formato (sin nada antes ni despues del bloque, pero podes agregar texto explicativo ANTES del bloque):\n[ACCION:{"tipo":"asignar_lista|asignar_vendedor|asignar_cond_pago|asignar_zona|asignar_tipo","campo_bd":"lista_id|vendedor_id|cond_pago|zona_entrega|type","valor":"el_valor_a_asignar","valor_nombre":"nombre_legible","filtro_descripcion":"descripcion de que clientes se afectan","clientes_ids":["id1","id2"]}]\n\nREGLAS DEL PROTOCOLO ACCION:\n- SIEMPRE describe primero en texto natural que vas a hacer y cuantos clientes afecta.\n- Incluye EXACTAMENTE los IDs de los clientes del contexto que matchean el filtro.\n- Si el filtro no esta claro o no hay clientes que matcheen, pregunta antes de generar el bloque.\n- NUNCA generes el bloque ACCION si el rol del usuario no es admin.\n- Para asignar_lista: valor debe ser el id de la lista (ej lista_minor01). Para asignar_cond_pago: valores validos son contado/credito_15/credito_30/credito_60/credito_90.\n\nContexto:\n'+JSON.stringify(ctx,null,1);
       const sessionToken=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
-      const r=await fetch('/api/chat',{
+      // Verificar tamaño del contexto antes de enviar
+      const ctxStr = JSON.stringify(ctx);
+      console.log('[chat] ctx size:', ctxStr.length, 'chars');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      const r=await fetch('/api/chat',{signal: controller.signal,
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))})
       });
+      clearTimeout(timeout);
       const d=await r.json();
       if(r.status===401){setMsgs(p=>[...p,{r:'a',t:'Tu sesión expiró. Por favor recargá la página e ingresá de nuevo.'}]);setBusy(false);return;}
       if(!r.ok||d.error){setMsgs(p=>[...p,{r:'a',t:'Error al conectar con el asistente: '+(d.error||r.status)+'. Intentá de nuevo.'}]);setBusy(false);return;}
