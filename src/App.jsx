@@ -830,6 +830,7 @@ function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMo
     deleteSupplier, deleteProduct: _deleteProduct, applyExcel,
     saveProduct: saveProductCtx,
     sendAlertEmail, dbWriteWithRetry: _dbWriteWithRetry,
+    priceListas,
   } = useApp();
 
   // →→ Layout-only UI state (stays in App) →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
