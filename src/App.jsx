@@ -1144,7 +1144,7 @@ Generado desde Pazque.`;
         />
       )}
     
-      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements} clientes={clientes} ventas={_ventas} cfes={cfes} cobros={cobros}/>
+      <AIChatFloat session={session} products={products} suppliers={suppliers} orders={orders} movements={movements} clientes={clientes} ventas={_ventas} cfes={cfes} cobros={cobros} priceListas={priceListas}/>
       </div>}
     </>
   );
@@ -1215,7 +1215,7 @@ function generateExcel({titulo='Informe', columnas=[], filas=[]}) {
   URL.revokeObjectURL(url);
 }
 
-function AIChatFloat({session,products,suppliers,orders,movements,clientes,ventas,cfes,cobros}){
+function AIChatFloat({session,products,suppliers,orders,movements,clientes,ventas,cfes,cobros,priceListas}){
   const [open,setOpen]=React.useState(false);
   const [msgs,setMsgs]=React.useState([]);
   const [input,setInput]=React.useState('');
