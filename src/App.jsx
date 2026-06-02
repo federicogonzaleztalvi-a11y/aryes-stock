@@ -1265,7 +1265,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
       const ctxStr = JSON.stringify(ctx);
       console.log('[chat] ctx size:', ctxStr.length, 'chars');
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
       const r=await fetch('/api/chat',{signal: controller.signal,
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionToken},
@@ -1303,7 +1303,8 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
         }
       }
       if(!open) setUnread(n=>n+1);
-    }catch{
+    }catch(e){
+      console.error('[chat] catch error:', e?.message, e?.name);
       setMsgs(p=>[...p,{r:'a',t:'Error de conexión. Verificá tu internet e intentá de nuevo.'}]);
     }finally{setBusy(false);}
   };
