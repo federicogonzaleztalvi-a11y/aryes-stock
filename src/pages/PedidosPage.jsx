@@ -853,7 +853,7 @@ export default function PedidosPage() {
       unidad: p.unit || 'un', marca: p.brand || p.category,
       imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22,
       stock: p.stock || 100,
-    })).filter(p => p.precio > 0);
+    })); // precio 0 = consultar precio, se muestra igual
     setItems(prods);
     const categories = ['Todos', ...new Set(prods.map(p => p.categoria).filter(Boolean))];
     setCats(categories);
