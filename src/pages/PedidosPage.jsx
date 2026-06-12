@@ -360,7 +360,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              style={{ maxHeight: 110, maxWidth: '85%', objectFit: 'contain' }} />
           : <div style={{ textAlign: 'center' }}>
               <div style={{ width: 40, height: 40, borderRadius: 8, background: G + '18',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
