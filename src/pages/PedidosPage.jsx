@@ -867,7 +867,7 @@ export default function PedidosPage() {
       const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`);
       const d = await r.json();
       if (d.items) {
-        const prods = d.items.filter(i => i.precio > 0);
+        const prods = d.items;
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
         if (d.brandCfg?.nombre) setBrandNombre(d.brandCfg.nombre);
