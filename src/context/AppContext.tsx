@@ -698,6 +698,7 @@ const describeAction = (action: string, detail: string): string => {
       iva_rate: Number(f.iva_rate) ?? 22,
       imagen_url: (f.imagen_url || '') as string,
       descripcion: (f.descripcion || '') as string,
+      codigo: (f.codigo || '') as string,
       updated_at: now,
     };
     // Optimistic update
