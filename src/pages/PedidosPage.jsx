@@ -356,7 +356,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
       transition: 'border-color .15s' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = '#c8c8c0'}
       onMouseLeave={e => e.currentTarget.style.borderColor = '#efefeb'}>
-      <div style={{ height: 140, background: hasImg ? '#fff' : '#f4f4f0',
+      <div style={{ height: 160, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
         display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
