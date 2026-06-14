@@ -1,4 +1,5 @@
 import BackButton from '../components/BackButton.jsx';
+import ImportadorPrecios from './ImportadorPrecios.jsx';
 import { fmt , getOrgId, getAuthHeaders } from '../lib/constants.js';
 // src/tabs/PreciosListasTab.jsx
 import { useState, useEffect, useCallback } from 'react';
@@ -192,12 +193,13 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
 }
 
 export default function PreciosListasTab() {
-  const { clientes, setClientes } = useApp();
+  const { clientes, setClientes, products } = useApp();
   const [listas, setListas] = useState([]);
   const [listItems, setListItems] = useState({});
   const [cliMap, setCliMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [vistaEditar, setVistaEditar] = useState(null);
+  const [vistaImportar, setVistaImportar] = useState(false);
   const [msg, setMsg] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -236,11 +238,18 @@ export default function PreciosListasTab() {
     try { await sb(`clients?id=eq.${cid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: lid || null }) }); setClientes(cs => cs.map(c => c.id === cid ? { ...c, lista_id: lid || null } : c)); await loadAll(); } catch (e) { flash('❌ ' + e.message); }
   };
   if (vistaEditar) return <EditorPrecios lista={vistaEditar} listas={listas} onBack={() => { setVistaEditar(null); loadAll(); }} onListaUpdated={u => { setListas(ls => ls.map(l => l.id === u.id ? u : l)); setVistaEditar(u); }} />;
+  if (vistaImportar) return (
+    <div style={{ padding: '28px 36px', maxWidth: 1000, margin: '0 auto' }}>
+      <button onClick={() => setVistaImportar(false)} style={{ marginBottom: 20, padding: '6px 14px', border: '1px solid #d1d5db', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 13 }}>← Volver</button>
+      <ImportadorPrecios products={products} onPreciosGuardados={() => { flash('✅ Precios actualizados'); setVistaImportar(false); }} />
+    </div>
+  );
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div><h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Listas de precios</h2><p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>Precios personalizados por cliente en el portal B2B.</p></div>
         <button onClick={() => setShowForm(true)} style={{ background: G, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>+ Nueva lista</button>
+        <button onClick={() => setVistaImportar(true)} style={{ background: '#fff', color: G, border: '2px solid ' + G, padding: '10px 20px', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>📋 Importar precios</button>
       </div>
       {msg && <div style={{ background: msg.startsWith('❌') ? '#fef2f2' : '#f0fdf4', border: `1px solid ${msg.startsWith('❌') ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: msg.startsWith('❌') ? '#dc2626' : G, fontWeight: 600 }}>{msg}</div>}
       {showForm && (
