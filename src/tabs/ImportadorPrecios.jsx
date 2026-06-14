@@ -13,9 +13,11 @@ function norm(s) {
 
 function extractSize(name) {
   const n = name.toLowerCase();
-  let m = n.match(/(\d+[,.]?\d*)\s*kgs?\.?/);
+  // Match kg with comma decimal: 2,5 kgs or 2.5 kg
+  let m = n.match(/(\d+[,.]\d+|\d+)\s*kgs?\.?/);
   if (m) return parseFloat(m[1].replace(',', '.')) + 'kg';
-  m = n.match(/(\d+[,.]?\d*)\s*(?:grs?|gramas?)\.?/);
+  // Match grams
+  m = n.match(/(\d+[,.]?\d*)\s*(?:grs?|gramas?|g\.(?:\s|$)|g(?:\s|$))/);
   if (m) return (parseFloat(m[1].replace(',', '.')) / 1000) + 'kg';
   m = n.match(/(\d+[,.]?\d*)\s*(?:lt?s?|litros?)\.?/);
   if (m) return m[1] + 'lt';
@@ -41,7 +43,7 @@ function similarity(a, b) {
 
 function extractWeightKg(name) {
   const n = name.toLowerCase();
-  let m = n.match(/(\d+[,.]?\d*)\s*kgs?\.?/);
+  let m = n.match(/(\d+[,.]\d+|\d+)\s*kgs?\.?/);
   if (m) return parseFloat(m[1].replace(',', '.'));
   m = n.match(/(\d+[,.]?\d*)\s*(?:grs?|gramas?|g\.(?:\s|$)|g(?:\s|$))/);
   if (m) return parseFloat(m[1].replace(',', '.')) / 1000;
