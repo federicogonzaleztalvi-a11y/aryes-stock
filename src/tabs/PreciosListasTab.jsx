@@ -241,7 +241,7 @@ export default function PreciosListasTab() {
   if (vistaImportar) return (
     <div style={{ padding: '28px 36px', maxWidth: 1000, margin: '0 auto' }}>
       <button onClick={() => setVistaImportar(false)} style={{ marginBottom: 20, padding: '6px 14px', border: '1px solid #d1d5db', borderRadius: 7, background: '#fff', cursor: 'pointer', fontSize: 13 }}>← Volver</button>
-      <ImportadorPrecios products={products} onPreciosGuardados={() => { flash('✅ Precios actualizados'); setVistaImportar(false); }} />
+      <ImportadorPrecios products={products} listas={listas} onPreciosGuardados={() => { flash('✅ Precios actualizados'); setVistaImportar(false); loadAll(); }} />
     </div>
   );
   return (

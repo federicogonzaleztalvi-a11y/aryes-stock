@@ -36,11 +36,12 @@ function calcPrecioUnit(precioKg, nombreExcel, unidad) {
   return precioKg;
 }
 
-export default function ImportadorPrecios({ products = [], onPreciosGuardados }) {
+export default function ImportadorPrecios({ products = [], listas = [], onPreciosGuardados }) {
   const [rows, setRows] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [step, setStep] = useState('upload');
+  const [listaId, setListaId] = useState('');
   const fileRef = useRef();
 
   const parseExcel = (arrayBuffer) => {
@@ -104,17 +105,25 @@ export default function ImportadorPrecios({ products = [], onPreciosGuardados })
   const guardar = async () => {
     const toSave = rows.filter(r => r.incluir && r.productoId);
     if (toSave.length === 0) { setMsg('No hay productos seleccionados.'); return; }
+    if (!listaId) { setMsg('Seleccioná una lista de precios primero.'); return; }
     setSaving(true);
     let ok = 0, err = 0;
+    const SB_URL = import.meta.env.VITE_SUPABASE_URL;
+    const headers = { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + import.meta.env.VITE_SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' };
     for (const row of toSave) {
       try {
-        await db.patch('products', { precio_venta: Number(row.precioFinal), updated_at: new Date().toISOString() }, `uuid=eq.${row.productoId}`);
+        const res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ lista_id: listaId, product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: 0 }),
+        });
+        if (!res.ok) throw new Error(await res.text());
         ok++;
-      } catch(e) { err++; }
+      } catch(e) { console.warn(e); err++; }
     }
     setSaving(false);
     setStep('done');
-    setMsg(`${ok} precios guardados${err > 0 ? `, ${err} errores` : ''}.`);
+    setMsg(`${ok} precios guardados en la lista${err > 0 ? `, ${err} errores` : ''}.`);
     if (onPreciosGuardados) onPreciosGuardados();
   };
 
@@ -127,6 +136,14 @@ export default function ImportadorPrecios({ products = [], onPreciosGuardados })
       <p style={{ margin: '0 0 20px', fontSize: 13, color: '#6b7280' }}>
         Subí la lista de precios. El sistema calcula el precio por unidad automáticamente y muestra los matches para confirmar.
       </p>
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Lista de precios destino</label>
+        <select value={listaId} onChange={e => setListaId(e.target.value)}
+          style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, width: '100%', maxWidth: 320 }}>
+          <option value="">— Seleccioná una lista —</option>
+          {listas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+        </select>
+      </div>
       {msg && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{msg}</div>}
       <div style={{ border: '2px dashed #d1d5db', borderRadius: 12, padding: 32, textAlign: 'center', cursor: 'pointer', background: '#fafafa' }}
         onClick={() => fileRef.current?.click()}>
