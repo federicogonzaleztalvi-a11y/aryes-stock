@@ -68,9 +68,47 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
   const parseExcel = (arrayBuffer) => {
     const wb = XLSX.read(arrayBuffer, { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    // Detect template format: has 'Nombre Pazque' column
+    if (raw.length > 0) {
+      const keys = Object.keys(raw[0]).map(k => k.toLowerCase());
+      const hasNombrePazque = keys.some(k => k.includes('nombre pazque') || k.includes('nombre_pazque'));
+      if (hasNombrePazque) {
+        // New template format — match by exact name
+        const items = [];
+        for (const row of raw) {
+          const nombreKey = Object.keys(row).find(k => k.toLowerCase().includes('nombre pazque') || k.toLowerCase().includes('nombre_pazque'));
+          const precioKey = Object.keys(row).find(k => k.toLowerCase().includes('precio/kg') || k.toLowerCase().includes('precio_kg') || k.toLowerCase().includes('precio/kg o'));
+          const finalKey = Object.keys(row).find(k => k.toLowerCase().includes('precio final') || k.toLowerCase().includes('precio_final'));
+          const dtoKey = Object.keys(row).find(k => k.toLowerCase().includes('descuento') || k.toLowerCase().includes('dto'));
+          const unidadKey = Object.keys(row).find(k => k.toLowerCase() === 'unidad');
+          const pesoKey = Object.keys(row).find(k => k.toLowerCase().includes('peso'));
+
+          if (!nombreKey) continue;
+          const nombre = String(row[nombreKey] || '').trim();
+          if (!nombre || nombre.includes('NO EDITAR') || nombre.includes('INSTRUCCIONES')) continue;
+
+          const precioFinal = finalKey ? parseFloat(String(row[finalKey]).replace(',','.')) || 0 : 0;
+          const precioKg = precioKey ? parseFloat(String(row[precioKey]).replace(',','.')) || 0 : 0;
+          const descuento = dtoKey ? parseFloat(String(row[dtoKey]).replace(',','.')) || 0 : 0;
+          const unidad = unidadKey ? String(row[unidadKey]).trim() : 'kg';
+          const peso = pesoKey ? parseFloat(String(row[pesoKey]).replace(',','.')) || 1 : 1;
+
+          if (precioFinal <= 0 && precioKg <= 0) continue;
+
+          const precioUnit = precioFinal > 0 ? precioFinal : calcPrecioUnit(precioKg, nombre, unidad === 'un' ? '/un' : '/kg');
+
+          items.push({ nombreExcel: nombre, precioKg, unidad, descuento, precioUnit, exactMatch: true });
+        }
+        return items;
+      }
+    }
+
+    // Legacy format: Producto | $ | Precio | /kg
+    const rawArr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     const items = [];
-    for (const rowArr of raw) {
+    for (const rowArr of rawArr) {
       const vals = rowArr.map(v => String(v || '').trim()).filter(v => v && v !== '');
       if (vals.length >= 3 && vals[1] === '$') {
         try {
@@ -93,11 +131,24 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         const items = parseExcel(ev.target.result);
         if (items.length === 0) { setMsg('No se encontraron productos con precio en el archivo.'); return; }
         const matched = items.map(item => {
-          const precioUnit = calcPrecioUnit(item.precioKg, item.nombreExcel, item.unidad);
+          const precioUnit = item.precioUnit || calcPrecioUnit(item.precioKg, item.nombreExcel, item.unidad);
           let bestMatch = null, bestScore = 0;
-          for (const p of products) {
-            const score = similarity(item.nombreExcel, p.name);
-            if (score > bestScore) { bestScore = score; bestMatch = p; }
+          if (item.exactMatch) {
+            // Template format: exact name match
+            const exact = products.find(p => p.name === item.nombreExcel);
+            if (exact) { bestMatch = exact; bestScore = 1.0; }
+            else {
+              // Fallback to similarity
+              for (const p of products) {
+                const score = similarity(item.nombreExcel, p.name);
+                if (score > bestScore) { bestScore = score; bestMatch = p; }
+              }
+            }
+          } else {
+            for (const p of products) {
+              const score = similarity(item.nombreExcel, p.name);
+              if (score > bestScore) { bestScore = score; bestMatch = p; }
+            }
           }
           return {
             nombreExcel: item.nombreExcel,
