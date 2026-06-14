@@ -11,13 +11,32 @@ function norm(s) {
     .replace(/[^a-z0-9]/g, ' ').trim();
 }
 
+function extractSize(name) {
+  const n = name.toLowerCase();
+  let m = n.match(/(\d+[,.]?\d*)\s*kgs?\.?/);
+  if (m) return parseFloat(m[1].replace(',', '.')) + 'kg';
+  m = n.match(/(\d+[,.]?\d*)\s*(?:grs?|gramas?)\.?/);
+  if (m) return (parseFloat(m[1].replace(',', '.')) / 1000) + 'kg';
+  m = n.match(/(\d+[,.]?\d*)\s*(?:lt?s?|litros?)\.?/);
+  if (m) return m[1] + 'lt';
+  return null;
+}
+
 function similarity(a, b) {
   const wa = new Set(norm(a).split(/\s+/).filter(w => w.length > 2));
   const wb = new Set(norm(b).split(/\s+/).filter(w => w.length > 2));
   if (wa.size === 0 || wb.size === 0) return 0;
   let matches = 0;
   wa.forEach(w => { if (wb.has(w)) matches++; });
-  return matches / Math.max(wa.size, wb.size);
+  let score = matches / Math.max(wa.size, wb.size);
+  // Bonus if same size, penalty if different size
+  const sa = extractSize(a);
+  const sb = extractSize(b);
+  if (sa && sb) {
+    if (sa === sb) score = Math.min(1, score + 0.3);
+    else score = score * 0.5;
+  }
+  return score;
 }
 
 function extractWeightKg(name) {
