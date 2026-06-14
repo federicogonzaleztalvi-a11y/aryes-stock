@@ -55,7 +55,8 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         try {
           const precio = parseFloat(vals[2]);
           if (isNaN(precio) || precio <= 0) continue;
-          items.push({ nombreExcel: vals[0], precioKg: precio, unidad: vals[3] || '/kg.' });
+          const descuento = vals[4] ? parseFloat(vals[4]) || 0 : 0;
+          items.push({ nombreExcel: vals[0], precioKg: precio, unidad: vals[3] || '/kg.', descuento });
         } catch(e) { /* skip */ }
       }
     }
@@ -82,6 +83,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
             precioKg: item.precioKg,
             precioUnit,
             unidad: item.unidad,
+            descuento: item.descuento || 0,
             matchScore: bestScore,
             productoId: bestScore >= 0.4 ? bestMatch?.id : null,
             productoNombre: bestScore >= 0.4 ? bestMatch?.name : '',
@@ -115,7 +117,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         const res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ lista_id: listaId, product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: 0 }),
+          body: JSON.stringify({ lista_id: listaId, product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: Number(row.descuento) || 0 }),
         });
         if (!res.ok) throw new Error(await res.text());
         ok++;
@@ -193,7 +195,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: '#f9fafb' }}>
-              {['✓', 'Nombre en Excel', '$/kg', 'Producto Pazque', 'Precio unit.', 'Match'].map(h => (
+              {['✓', 'Nombre en Excel', '$/kg', 'Dto%', 'Producto Pazque', 'Precio unit.', 'Match'].map(h => (
                 <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: 11, borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -207,6 +209,11 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
                 </td>
                 <td style={{ padding: '6px 12px', color: '#374151', maxWidth: 200 }}>{row.nombreExcel}</td>
                 <td style={{ padding: '6px 12px', color: '#6b7280', whiteSpace: 'nowrap' }}>${row.precioKg}</td>
+                <td style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>
+                  <input type="number" value={row.descuento} min="0" max="100" step="1"
+                    onChange={e => updateRow(i, 'descuento', parseFloat(e.target.value) || 0)}
+                    style={{ width: 55, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12 }} />%
+                </td>
                 <td style={{ padding: '6px 12px', minWidth: 180 }}>
                   {row.productoId
                     ? <span style={{ color: '#1a1a1a', fontWeight: 500 }}>{row.productoNombre}</span>
