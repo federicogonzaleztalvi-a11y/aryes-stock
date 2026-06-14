@@ -43,7 +43,7 @@ function extractWeightKg(name) {
   const n = name.toLowerCase();
   let m = n.match(/(\d+[,.]?\d*)\s*kgs?\.?/);
   if (m) return parseFloat(m[1].replace(',', '.'));
-  m = n.match(/(\d+[,.]?\d*)\s*(?:grs?|gramas?)\.?/);
+  m = n.match(/(\d+[,.]?\d*)\s*(?:grs?|gramas?|g\.(?:\s|$)|g(?:\s|$))/);
   if (m) return parseFloat(m[1].replace(',', '.')) / 1000;
   return null;
 }
