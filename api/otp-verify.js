@@ -36,7 +36,7 @@ export default async function handler(req, res) {
   // Rate limit por IP además del MAX_ATTEMPTS por-OTP: frena fuerza bruta que rota
   // entre múltiples OTPs/teléfonos desde una misma IP.
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-  if (!(await checkRateLimit('otp-verify:' + _ip, 600, 30)))
+  if (!(await checkRateLimit('otp-verify:' + _ip, 600, 30, { failClosed: true })))
     return res.status(429).json({ error: 'Demasiados intentos. Esperá un momento.' });
 
   const { tel, code } = req.body || {};
@@ -48,11 +48,13 @@ export default async function handler(req, res) {
   if (telClean.length < 8) return res.status(400).json({ error: 'Teléfono inválido' });
 
   const key = SB_SVC_KEY || SB_ANON;
-  const codeHash = await sha256(code + telClean);
+  // SECURITY: el org entra al hash y al filtro → un OTP sólo es válido para la
+  // org que lo emitió (evita reuso cross-tenant del mismo teléfono).
+  const codeHash = await sha256(code + telClean + org);
 
-  // 1. Buscar OTP activo
+  // 1. Buscar OTP activo (scoped al org)
   const otpRes = await fetch(
-    `${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&used=eq.false&expires_at=gte.${new Date().toISOString()}&order=created_at.desc&limit=1`,
+    `${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&org_id=eq.${encodeURIComponent(org)}&used=eq.false&expires_at=gte.${new Date().toISOString()}&order=created_at.desc&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   if (!otpRes.ok) return res.status(500).json({ error: 'Error al verificar código' });
@@ -97,7 +99,6 @@ export default async function handler(req, res) {
     }
   }
 
-  console.log('[otp-verify] clients:', JSON.stringify(clients).slice(0, 100));
   if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
 
   const cliente = clients[0];

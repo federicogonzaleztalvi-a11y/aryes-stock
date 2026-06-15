@@ -11,10 +11,13 @@ const METODOS = ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta', 'Otro'];
 
 // ── Recibo HTML (string) para imprimir / compartir ───────────────────────────
 function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
+  // SECURITY (A1): este HTML se inyecta vía document.write en la ventana de
+  // impresión. Escapar todo valor controlado por el usuario evita XSS.
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const lineaFacturas = facturas.length > 0
     ? facturas.map(f =>
         `<tr>
-          <td style="padding:4px 8px;font-size:12px;border-bottom:1px solid #f0f0ec">${f.numero} (${f.tipo||''})</td>
+          <td style="padding:4px 8px;font-size:12px;border-bottom:1px solid #f0f0ec">${esc(f.numero)} (${esc(f.tipo||'')})</td>
           <td style="padding:4px 8px;font-size:12px;text-align:right;border-bottom:1px solid #f0f0ec">${fmt.currency(f.total, f.moneda)}</td>
         </tr>`
       ).join('')
@@ -24,7 +27,7 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Recibo de Cobro — ${cobro.nroRecibo}</title>
+  <title>Recibo de Cobro — ${esc(cobro.nroRecibo)}</title>
   <style>
     @media print { body { margin: 0; } .no-print { display: none; } }
     body { font-family: 'Arial', sans-serif; color: #1a1a1a; background: #fff; }
@@ -43,18 +46,18 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
 </head>
 <body>
   <div class="recibo">
-    <h1>${empresa?.nombre || 'Pazque'}</h1>
-    <p class="sub">${empresa?.direccion || ''} — ${empresa?.telefono || ''}</p>
+    <h1>${esc(empresa?.nombre || 'Pazque')}</h1>
+    <p class="sub">${esc(empresa?.direccion || '')} — ${esc(empresa?.telefono || '')}</p>
     <hr class="divider">
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;margin-bottom:16px;text-align:center">
       <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">Recibo de Cobro</div>
-      <div style="font-size:22px;font-weight:800;color:${G};margin:4px 0">${cobro.nroRecibo}</div>
+      <div style="font-size:22px;font-weight:800;color:${G};margin:4px 0">${esc(cobro.nroRecibo)}</div>
     </div>
-    <div class="row"><span class="label">Cliente</span><span class="value">${cliente?.nombre || cobro.clienteNombre || '—'}</span></div>
-    <div class="row"><span class="label">RUT</span><span class="value">${cliente?.rut || '—'}</span></div>
-    <div class="row"><span class="label">Fecha</span><span class="value">${cobro.fecha}</span></div>
-    <div class="row"><span class="label">Método</span><span class="value">${cobro.metodo}</span></div>
-    ${cobro.fechaCheque ? `<div class="row"><span class="label">Depósito cheque</span><span class="value">${cobro.fechaCheque}</span></div>` : ''}
+    <div class="row"><span class="label">Cliente</span><span class="value">${esc(cliente?.nombre || cobro.clienteNombre || '—')}</span></div>
+    <div class="row"><span class="label">RUT</span><span class="value">${esc(cliente?.rut || '—')}</span></div>
+    <div class="row"><span class="label">Fecha</span><span class="value">${esc(cobro.fecha)}</span></div>
+    <div class="row"><span class="label">Método</span><span class="value">${esc(cobro.metodo)}</span></div>
+    ${cobro.fechaCheque ? `<div class="row"><span class="label">Depósito cheque</span><span class="value">${esc(cobro.fechaCheque)}</span></div>` : ''}
     <hr class="divider">
     ${facturas.length > 0 ? `
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#9ca3af;letter-spacing:.05em;margin-bottom:8px">Comprobantes cancelados</div>
@@ -64,7 +67,7 @@ function buildReciboHtml({ cobro, cliente, facturas, empresa }) {
       <span style="font-size:16px;font-weight:700">TOTAL COBRADO</span>
       <span class="total">${fmt.currency(cobro.monto)}</span>
     </div>
-    ${cobro.notas ? `<p style="font-size:12px;color:#6b7280;margin-top:12px">Notas: ${cobro.notas}</p>` : ''}
+    ${cobro.notas ? `<p style="font-size:12px;color:#6b7280;margin-top:12px">Notas: ${esc(cobro.notas)}</p>` : ''}
     <p class="footer">Documento no fiscal · Comprobante interno de cobro<br>${new Date().toLocaleString('es')}</p>
   </div>
   <div class="no-print" style="text-align:center;margin-top:16px">

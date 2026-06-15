@@ -13,6 +13,10 @@ import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
 import { sendEmail, templates } from './_email.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
+// SECURITY (A3): usar la validación compartida que además exige revoked=false.
+// La copia local no chequeaba `revoked`, así un token revocado (logout / baja de
+// cliente) seguía autenticando hasta expirar por TTL.
+import { validatePortalSession } from './_session.js';
 
 
 const SB_URL  = process.env.SUPABASE_URL;
@@ -25,21 +29,6 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-
-async function validatePortalSession(token) {
-  if (!token) return null;
-  const key = SB_SVC || SB_ANON;
-  const r = await fetch(
-    `${SB_URL}/rest/v1/portal_sessions` +
-    `?token=eq.${encodeURIComponent(token)}` +
-    `&expires_at=gte.${new Date().toISOString()}` +
-    `&limit=1`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-  );
-  if (!r.ok) return null;
-  const rows = await r.json();
-  return rows?.[0] || null;
-}
 
 async function handler(req, res) {
   await setCorsHeaders(req, res);

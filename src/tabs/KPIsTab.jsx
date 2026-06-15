@@ -18,7 +18,7 @@ function KPIsTab(){
   const costoVentas=ventasP.reduce((a,v)=>a+(v.items||[]).reduce((s,it)=>s+Number(it.cantidad||0)*Number(it.costoUnit||0),0),0);
   const margenBruto=totalVentas>0?((totalVentas-costoVentas)/totalVentas*100):0;
   const gananciaTotal=totalVentas-costoVentas;
-  const stockCrit=prods.filter(p=>Number(p.stock||0)>0&&Number(p.stock||0)<=(p.rop||5)).length;
+  const stockCrit=prods.filter(p=>Number(p.stock||0)>0&&Number(p.stock||0)<=Number(p.minStock??p.rop??5)).length;
   const sinStock=prods.filter(p=>Number(p.stock||0)===0).length;
   const diasVenc=(f)=>Math.ceil((new Date(f)-hoy)/(1000*60*60*24));
   const vencProx=lotes.filter(l=>l.fechaVenc&&diasVenc(l.fechaVenc)>=0&&diasVenc(l.fechaVenc)<=30).length;

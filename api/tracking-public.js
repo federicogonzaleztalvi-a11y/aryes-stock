@@ -13,9 +13,18 @@
 //  - Rate limited 60 req/min per IP
 //
 import { setCorsHeaders } from './_cors.js';
+import { timingSafeEqual } from 'node:crypto';
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Comparación en tiempo constante de dos strings (evita timing attacks sobre el token).
+function safeEq(a, b) {
+  const ba = Buffer.from(String(a || ''), 'utf8');
+  const bb = Buffer.from(String(b || ''), 'utf8');
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ORG_RE  = /^[a-z0-9_-]{1,64}$/i;
@@ -95,7 +104,10 @@ export default async function handler(req, res) {
     }
 
     // No cliente filter → driver view (full ruta)
-    return res.status(200).json(rutaRow);
+    // SECURITY (C4): nunca devolver el secreto driver_token en la respuesta —
+    // el repartidor ya lo trae en el link (&t=...), exponerlo acá lo filtraría.
+    const { driver_token: _dt, ...safeRuta } = rutaRow;
+    return res.status(200).json(safeRuta);
   }
 
   // ───────── PATCH: Driver updates entregas/salidaEn/enRuta ─────────
@@ -117,11 +129,26 @@ export default async function handler(req, res) {
 
     // Verify ruta exists & belongs to org BEFORE patching (anti spoof)
     const verify = await fetch(
-      `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=id&limit=1`,
+      `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=id,driver_token&limit=1`,
       { headers }
     );
     const verifyRows = await verify.json();
     if (!verifyRows?.length) return res.status(404).json({ error: 'Ruta no encontrada' });
+
+    // SECURITY (C4): el UUID de la ruta se expone a TODOS los clientes en su link
+    // de tracking, así que validar solo ruta+org dejaba que cualquier cliente
+    // reescribiera el array `entregas`. Exigimos el secreto por-ruta del repartidor.
+    // Compat: rutas viejas sin driver_token (NULL) se dejan pasar con warning para
+    // no romper repartos en curso; las rutas nuevas siempre traen token.
+    const dbToken = verifyRows[0].driver_token;
+    if (dbToken) {
+      const reqToken = req.headers['x-driver-token'] || '';
+      if (!safeEq(dbToken, reqToken)) {
+        return res.status(403).json({ error: 'Token de repartidor inválido' });
+      }
+    } else {
+      console.warn('[tracking-public] PATCH sin driver_token (ruta legacy):', ruta);
+    }
 
     // Patch
     const r = await fetch(`${SB_URL}/rest/v1/rutas?id=eq.${ruta}`, {

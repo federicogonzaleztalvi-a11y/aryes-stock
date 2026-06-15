@@ -17,6 +17,11 @@
     <meta name="apple-mobile-web-app-title" content="Pazque">
     <link rel="apple-touch-icon" href="/pazque-logo.png">
     <meta name="description" content="Sistema de gestión para distribuidoras — inventario, ventas, rutas y portal B2B">
+    <!-- Fuentes web — sin esto todo caía a system-ui (la marca/portal se veían genéricos).
+         display=swap evita FOIT: muestra fallback y cambia al cargar. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700;800&display=swap">
     <style>
       /* Accesibilidad: respetar a quienes piden menos movimiento (WCAG 2.3.3) */
       @media (prefers-reduced-motion: reduce) {

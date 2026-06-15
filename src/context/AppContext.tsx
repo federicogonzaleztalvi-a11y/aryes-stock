@@ -309,6 +309,7 @@ const describeAction = (action: string, detail: string): string => {
             id: r.id, vehiculo: r.vehiculo||'', zona: r.zona||'',
             dia: r.dia||'', notas: r.notas||'', entregas: r.entregas||[],
             creadoEn: r.creado_en||'',
+            driverToken: r.driver_token||'',
             capacidadKg:     r.capacidad_kg     ? Number(r.capacidad_kg)     : undefined,
             capacidadBultos: r.capacidad_bultos ? Number(r.capacidad_bultos) : undefined,
           }));
@@ -500,9 +501,12 @@ const describeAction = (action: string, detail: string): string => {
         }
         if (eventType === 'UPDATE') {
           return ps.map(p => p.id === row.uuid
+            // A6: usar null-coalescing sobre el campo crudo. Con `Number(x)||fallback`
+            // un precio/costo actualizado a 0 (valor legítimo) caía al fallback y la
+            // actualización se perdía silenciosamente.
             ? { ...p, stock: Number(row.stock)||0, nombre: row.nombre||row.name||p.nombre,
-                unitCost: Number(row.unit_cost)||p.unitCost,
-                precioVenta: Number(row.precio_venta)||p.precioVenta, imagen_url: row.imagen_url||p.imagen_url||'',
+                unitCost: row.unit_cost != null ? Number(row.unit_cost) : p.unitCost,
+                precioVenta: row.precio_venta != null ? Number(row.precio_venta) : p.precioVenta, imagen_url: row.imagen_url||p.imagen_url||'',
                 updatedAt: row.updated_at||'' }
             : p);
         }
@@ -526,7 +530,7 @@ const describeAction = (action: string, detail: string): string => {
         if (eventType === 'UPDATE') {
           return vs.map(v => v.id === row.id
             ? { ...v, estado: row.estado||v.estado, estadoLog: row.estado_log||v.estadoLog,
-                total: Number(row.total)||v.total }
+                total: row.total != null ? Number(row.total) : v.total }
             : v);
         }
         if (eventType === 'DELETE') return vs.filter(v => v.id !== (oldRow?.id || row?.id));

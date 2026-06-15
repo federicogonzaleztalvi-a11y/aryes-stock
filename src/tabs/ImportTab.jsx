@@ -85,7 +85,13 @@ function ImportTab(){
       const idx=p.codigo
         ? existing.findIndex(e=>(e.codigo||'').toLowerCase()===p.codigo.toLowerCase())
         : existing.findIndex(e=>e.nombre?.toLowerCase()===p.nombre?.toLowerCase());
-      if(idx>-1){existing[idx]={...existing[idx],...p,id:existing[idx].id};updated++;}
+      if(idx>-1){
+        // Producto ya existe: conservar su uuid para que el upsert ACTUALICE la
+        // fila existente en vez de insertar un duplicado con un uuid nuevo.
+        p.id=existing[idx].id;
+        existing[idx]={...existing[idx],...p,id:existing[idx].id};
+        updated++;
+      }
       else{existing.push(p);added++;}
     });
 

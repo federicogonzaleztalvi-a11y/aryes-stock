@@ -30,8 +30,15 @@ function readRawBody(req) {
 // Sin esto, cualquiera podría POSTear mensajes falsos al webhook (inyección en wa_messages).
 function verifyMetaSignature(rawBody, signatureHeader) {
   if (!WA_APP_SECRET) {
-    console.warn('[whatsapp] WA_APP_SECRET no configurado — se omite verificación de firma');
-    return true; // fail-open sólo si no hay secret (igual que el webhook de pagos)
+    // SECURITY (A2): sin secret, cualquiera podría POSTear mensajes falsos al
+    // webhook (inyección en wa_messages). Fail-closed en prod; sólo dev lo omite.
+    const IS_PROD = (process.env.VERCEL_ENV || process.env.NODE_ENV) === 'production';
+    if (IS_PROD) {
+      console.error('[whatsapp] WA_APP_SECRET no configurado en producción — rechazando webhook');
+      return false;
+    }
+    console.warn('[whatsapp] WA_APP_SECRET no configurado — se omite verificación de firma (dev)');
+    return true;
   }
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
   const expected = 'sha256=' + crypto.createHmac('sha256', WA_APP_SECRET).update(rawBody).digest('hex');

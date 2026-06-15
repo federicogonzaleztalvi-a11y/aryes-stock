@@ -44,6 +44,9 @@ export default function DriverView() {
   const params  = new URLSearchParams(window.location.search);
   const rutaId  = params.get('ruta');
   const orgId   = params.get('org');
+  // SECURITY (C4): secreto por-ruta que sólo está en el link del repartidor.
+  // Se envía en el header X-Driver-Token de cada PATCH para autenticar al chofer.
+  const driverToken = params.get('t') || '';
 
   const [ruta,    setRuta]    = useState(null);
   const [loading, setLoading] = useState(true);
@@ -277,7 +280,7 @@ export default function DriverView() {
       // Queue for sync when back online — uses public API now
       queueOffline(
         `/api/tracking-public?ruta=${encodeURIComponent(updatedRuta.id)}&org=${encodeURIComponent(orgId)}`,
-        { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'X-Driver-Token': driverToken },
           body: JSON.stringify({ entregas: updatedRuta.entregas }) }
       );
       setSaving(false);
@@ -290,6 +293,7 @@ export default function DriverView() {
         method:  'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-Driver-Token': driverToken,
         },
         body: JSON.stringify({
           entregas: updatedRuta.entregas,

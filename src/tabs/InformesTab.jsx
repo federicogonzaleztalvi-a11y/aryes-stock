@@ -35,7 +35,7 @@ function InformesTab(){
     const html="<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Remito "+nro+"</title><style>body{font-family:Arial,sans-serif;margin:40px;color:#1a1a1a;}.hdr{display:flex;justify-content:space-between;border-bottom:2px solid #059669;padding-bottom:16px;margin-bottom:24px;}.emp{font-size:22px;font-weight:700;color:#059669;}table{width:100%;border-collapse:collapse;margin:16px 0;}th{background:#059669;color:#fff;padding:9px;text-align:left;font-size:13px;}td{padding:8px 9px;border-bottom:1px solid #eee;font-size:13px;}.tot{text-align:right;font-size:18px;font-weight:700;color:#059669;margin-top:8px;}.ftr{margin-top:40px;border-top:1px solid #eee;padding-top:12px;font-size:11px;color:#aaa;text-align:center;}</style></head><body><div class='hdr'><div><div class='emp'>"+emp+"</div></div><div style='text-align:right'><b>REMITO "+nro+"</b><br>"+esc(venta.fecha)+"<br><span style='font-size:11px;padding:2px 8px;background:#f0fdf4;border-radius:4px;color:#059669;font-weight:700'>"+esc((venta.estado||"").toUpperCase())+"</span></div></div><p><b>Cliente:</b> "+esc(venta.clienteNombre)+"</p><table><thead><tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Subtotal</th></tr></thead><tbody>"+rows+"</tbody></table>"+desc+"<div class='tot'>TOTAL: $"+Number(venta.total||0).toLocaleString("es")+"</div><div class='ftr'>"+emp+" · "+new Date().toLocaleDateString("es")+"</div><script>window.onload=function(){window.print();}<" + "/script></body></html>";
     const w=window.open("","_blank","noopener,noreferrer");if(w){w.document.write(html);w.document.close();}
   };
-  const stockCritico=prods.filter(p=>Number(p.stock||0)<=Number(p.rop||5)&&Number(p.stock||0)>0).length;
+  const stockCritico=prods.filter(p=>Number(p.stock||0)<=Number(p.minStock??p.rop??5)&&Number(p.stock||0)>0).length;
   const sinStock=prods.filter(p=>Number(p.stock||0)===0).length;
   const vencidosCount=lotes.filter(l=>l.fechaVenc&&diasVenc(l.fechaVenc)<0).length;
   const proxCount=lotes.filter(l=>l.fechaVenc&&diasVenc(l.fechaVenc)>=0&&diasVenc(l.fechaVenc)<=30).length;
@@ -108,11 +108,11 @@ function InformesTab(){
             {ventas.length>12&&<div style={{padding:"8px 14px",fontSize:12,color:"#888",textAlign:"center"}}>...y {ventas.length-12} mas</div>}
           </div>)}
           <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",margin:"20px 0 12px"}}>Stock critico</h3>
-          {prods.filter(p=>Number(p.stock||0)<=(p.rop||5)).length===0?(
+          {prods.filter(p=>Number(p.stock||0)<=Number(p.minStock??p.rop??5)).length===0?(
             <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:10,padding:16,fontSize:13,color:"#059669",textAlign:"center"}}>Todo el stock esta OK ✓</div>
           ):(
             <div style={{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-              {prods.filter(p=>Number(p.stock||0)<=(p.rop||5)).slice(0,8).map((p,i)=>(
+              {prods.filter(p=>Number(p.stock||0)<=Number(p.minStock??p.rop??5)).slice(0,8).map((p,i)=>(
                 <div key={p.id} style={{display:"flex",alignItems:"center",padding:"9px 14px",borderBottom:"1px solid #f3f4f6",background:Number(p.stock||0)===0?"#fef2f2":i%2===0?"#fff":"#fafafa"}}>
                   <span style={{flex:1,fontSize:13,fontWeight:500}}>{p.nombre||p.name}</span>
                   <span style={{fontWeight:800,fontSize:14,color:Number(p.stock||0)===0?"#dc2626":"#f59e0b"}}>{p.stock||0}</span>

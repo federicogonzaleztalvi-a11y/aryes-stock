@@ -24,8 +24,15 @@ import { setCorsHeaders } from './_cors.js';
 
 function verifyMPSignature(req) {
   if (!MP_WEBHOOK_SECRET) {
-    // If no secret configured, log warning but allow (for development)
-    console.warn('[payments] MP_WEBHOOK_SECRET not configured — skipping signature validation');
+    // SECURITY (A2): sin secret no se puede confiar en el webhook. En prod un
+    // webhook forjado podría confirmar pagos falsos (upgrade gratis). Fail-closed
+    // en producción; sólo en dev se omite para poder probar localmente.
+    const IS_PROD = (process.env.VERCEL_ENV || process.env.NODE_ENV) === 'production';
+    if (IS_PROD) {
+      console.error('[payments] MP_WEBHOOK_SECRET no configurado en producción — rechazando webhook');
+      return false;
+    }
+    console.warn('[payments] MP_WEBHOOK_SECRET not configured — skipping signature validation (dev)');
     return true;
   }
   const xSignature = req.headers['x-signature'] || '';
@@ -162,6 +169,10 @@ async function mpSubscription(req, res) {
     },
     body: JSON.stringify({
       reason:           planData.title,
+      // SECURITY/RELIABILITY (A5): external_reference identifica al org. MP lo
+      // propaga del plan → suscripción → cada pago recurrente, así el webhook de
+      // 'payment' puede resolver el org sin depender sólo de mp_plan_id.
+      external_reference: org_id + '|' + plan,
       auto_recurring: {
         frequency:        1,
         frequency_type:   'months',
@@ -275,6 +286,7 @@ async function mpWebhook(req, res) {
             headers: { Authorization: 'Bearer ' + MP_TOKEN, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               reason: fullPlan.title,
+              external_reference: orgId + '|pro', // A5: org resoluble desde el pago recurrente
               auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: fullPlan.amount, currency_id: fullPlan.currency },
               back_url: APP_URL + '/app?upgraded=1',
               status: 'active',
@@ -317,6 +329,26 @@ async function mpWebhook(req, res) {
       const payment = await payRes.json();
       const ref = payment.external_reference || '';
       [orgId, plan] = ref.split('|');
+
+      // A5: fallback si el pago recurrente llega sin external_reference. MP expone
+      // el plan de la suscripción en metadata.preapproval_id / preapproval_plan_id.
+      if (!orgId) {
+        const planRef = payment.metadata?.preapproval_plan_id
+          || payment.metadata?.preapproval_id
+          || payment.preapproval_plan_id
+          || '';
+        if (planRef) {
+          const orgLookup = await fetch(
+            SB_URL + '/rest/v1/organizations?mp_plan_id=eq.' + encodeURIComponent(planRef) + '&select=id&limit=1',
+            { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC } }
+          );
+          const orgsFound = await orgLookup.json().catch(() => []);
+          if (orgsFound?.[0]?.id) {
+            orgId = orgsFound[0].id;
+            log.info('payments', 'payment org found by plan id fallback', { orgId, planRef });
+          }
+        }
+      }
 
       if (payment.status === 'approved' && orgId) {
         await updateOrg({ id: orgId }, {

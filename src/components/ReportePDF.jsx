@@ -51,6 +51,12 @@ function getPeriodoRange(id) {
 }
 
 function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes }) {
+  // SECURITY (A1): el HTML se inyecta vía document.write en una ventana nueva.
+  // Cualquier valor controlado por el usuario (nombres de empresa, cliente,
+  // producto, estado) DEBE escaparse para evitar XSS stored→print.
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const empresaSafe      = esc(empresa);
+  const labelPeriodoSafe = esc(labelPeriodo);
   const totalVentas  = ventas.filter(v => v.estado !== 'cancelada').reduce((a, v) => a + Number(v.total || 0), 0);
   const totalCobrado = cobros.reduce((a, c) => a + Number(c.monto || 0), 0);
   const pendiente    = totalVentas - totalCobrado;
@@ -90,16 +96,16 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
     .slice(0, 50)
     .map(v => `
       <tr>
-        <td>${v.nroVenta || '—'}</td>
+        <td>${esc(v.nroVenta || '—')}</td>
         <td>${fmtDate(v.fecha || v.creadoEn)}</td>
-        <td>${v.clienteNombre || '—'}</td>
+        <td>${esc(v.clienteNombre || '—')}</td>
         <td style="text-align:center">${v.items?.length || 0}</td>
         <td style="text-align:right;font-weight:600">${fmt.currencyCompact(v.total)}</td>
         <td style="text-align:center">
           <span style="padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;
             background:${v.estado === 'entregada' ? '#d1fae5' : v.estado === 'cancelada' ? '#fee2e2' : '#fef3c7'};
             color:${v.estado === 'entregada' ? '#065f46' : v.estado === 'cancelada' ? '#991b1b' : '#92400e'}">
-            ${(v.estado || 'pendiente').toUpperCase()}
+            ${esc((v.estado || 'pendiente').toUpperCase())}
           </span>
         </td>
       </tr>
@@ -108,15 +114,15 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
   const filasTopProds = topProds.map((p, i) => `
     <tr>
       <td style="text-align:center;color:#9ca3af">${i + 1}</td>
-      <td style="font-weight:500">${p.nombre}</td>
-      <td style="text-align:center">${Number(p.cantidad).toLocaleString('es')} ${p.unidad}</td>
+      <td style="font-weight:500">${esc(p.nombre)}</td>
+      <td style="text-align:center">${Number(p.cantidad).toLocaleString('es')} ${esc(p.unidad)}</td>
       <td style="text-align:right;font-weight:700;color:${G}">${fmt.currencyCompact(p.total)}</td>
     </tr>
   `).join('');
 
   const filasDeuda = deudores.map(d => `
     <tr>
-      <td style="font-weight:500">${d.nombre}</td>
+      <td style="font-weight:500">${esc(d.nombre)}</td>
       <td style="text-align:right;font-weight:700;color:#dc2626">${fmt.currencyCompact(d.deuda)}</td>
     </tr>
   `).join('');
@@ -127,7 +133,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Reporte ${labelPeriodo} — ${empresa}</title>
+  <title>Reporte ${labelPeriodoSafe} — ${empresaSafe}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #fff; }
@@ -191,12 +197,12 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
     <!-- Header -->
     <div class="header">
       <div>
-        <div class="empresa">${empresa}</div>
+        <div class="empresa">${empresaSafe}</div>
         <div class="subtitulo">Reporte de Ventas y Cobranzas</div>
       </div>
       <div class="periodo-badge">
         <div class="label">Período</div>
-        <div class="valor">${labelPeriodo}</div>
+        <div class="valor">${labelPeriodoSafe}</div>
         <div class="fecha-gen">Generado: ${hoy}</div>
       </div>
     </div>
@@ -269,7 +275,7 @@ function generarHTML({ empresa, periodo, labelPeriodo, ventas, cobros, clientes 
 
     <!-- Footer -->
     <div class="footer">
-      <span>${empresa} · Pazque · Sistema de gestión comercial</span>
+      <span>${empresaSafe} · Pazque · Sistema de gestión comercial</span>
       <span>Página 1 · ${hoy}</span>
     </div>
   </div>

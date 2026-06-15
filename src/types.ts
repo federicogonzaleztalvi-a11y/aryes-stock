@@ -234,6 +234,7 @@ export interface Ruta {
   updatedAt?:      string;
   capacidadKg?:    number;    // max load kg (0 = unlimited)
   capacidadBultos?: number;   // max packages (0 = unlimited)
+  driverToken?:    string;    // secreto por-ruta para auth del PATCH del repartidor
 }
 
 // ── Conteo / Inventario físico ───────────────────────────────────────────────

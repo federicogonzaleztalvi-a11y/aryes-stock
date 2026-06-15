@@ -965,8 +965,19 @@ function RutasTab(){
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button
-              onClick={()=>{
-                const url=`${window.location.origin}/driver?ruta=${ruta.id}&org=${ruta.org_id||getOrgId()}`;
+              onClick={async()=>{
+                // SECURITY (C4): el link del repartidor lleva un secreto por-ruta
+                // (driver_token) que NO viaja en el link de tracking del cliente.
+                // El endpoint /api/tracking-public exige este token en el PATCH,
+                // así un cliente con su link de seguimiento no puede reescribir la ruta.
+                let token=ruta.driverToken;
+                if(!token){
+                  token=crypto.randomUUID();
+                  // Persistir el token en la ruta (admin autenticado → RLS por org)
+                  await db.patch('rutas',{driver_token:token},{id:ruta.id});
+                  setRutas(rs=>rs.map(r=>r.id===ruta.id?{...r,driverToken:token}:r));
+                }
+                const url=`${window.location.origin}/driver?ruta=${ruta.id}&org=${ruta.org_id||getOrgId()}&t=${token}`;
                 navigator.clipboard?.writeText(url).then(()=>setMsg('📱 Link copiado! Mandáselo al repartidor')).catch(()=>window.open(url,'_blank'));
               }}
               style={{padding:"7px 14px",background:"#1a1a18",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,display:"flex",alignItems:"center",gap:5}}>

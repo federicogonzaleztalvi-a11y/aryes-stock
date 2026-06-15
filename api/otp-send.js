@@ -80,7 +80,7 @@ export default async function handler(req, res) {
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
   // Rate limit persistente (Supabase RPC) — efectivo en serverless multi-instancia.
   // El Map en memoria anterior no servía: cada lambda tenía su propio Map.
-  if (!(await checkRateLimit('otp-send:' + _ip, 600, 5)))
+  if (!(await checkRateLimit('otp-send:' + _ip, 600, 5, { failClosed: true })))
     return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
 
 
@@ -140,8 +140,11 @@ export default async function handler(req, res) {
 
   // Rate limit: bloquear si ya existe un OTP activo en los últimos 60 segundos
   const since = new Date(Date.now() - 60000).toISOString();
+  // SECURITY: scope por org_id. Un mismo teléfono puede ser cliente de varias
+  // orgs (un comercio que compra a dos distribuidoras en Pazque). Sin el scope,
+  // un OTP de la org A serviría para autenticar en la org B (cross-tenant).
   const recentRes = await fetch(
-    `${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&used=eq.false&expires_at=gte.${new Date().toISOString()}&created_at=gte.${encodeURIComponent(since)}&limit=1`,
+    `${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&org_id=eq.${encodeURIComponent(org)}&used=eq.false&expires_at=gte.${new Date().toISOString()}&created_at=gte.${encodeURIComponent(since)}&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   const recent = await recentRes.json();
@@ -149,8 +152,8 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Ya enviamos un código. Esperá 1 minuto antes de pedir otro.' });
   }
 
-  // Invalidar OTPs anteriores del mismo tel antes de generar uno nuevo
-  await fetch(`${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&used=eq.false`, {
+  // Invalidar OTPs anteriores del mismo tel+org antes de generar uno nuevo
+  await fetch(`${SB_URL}/rest/v1/otp_sessions?tel=eq.${encodeURIComponent(telClean)}&org_id=eq.${encodeURIComponent(org)}&used=eq.false`, {
     method: 'PATCH',
     headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify({ used: true }),
@@ -158,8 +161,9 @@ export default async function handler(req, res) {
 
   // Código de 6 dígitos con CSPRNG (randomInt sin sesgo de módulo). Antes eran 4
   // dígitos con Math.random() → 10.000 combinaciones predecibles, brute-forceable.
+  // El org entra al hash → el código sólo es válido para la org que lo emitió.
   const code     = String(randomInt(0, 1000000)).padStart(6, '0');
-  const codeHash = await sha256(code + telClean);
+  const codeHash = await sha256(code + telClean + org);
   const expires  = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
   const otpRes = await fetch(`${SB_URL}/rest/v1/otp_sessions`, {

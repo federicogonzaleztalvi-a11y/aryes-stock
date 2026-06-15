@@ -87,10 +87,12 @@ function GridCard({ item, onAbrirModal }) {
 function PedidoModal({ carrito, onClose, whatsapp, showPrice }) {
   const [nombre, setNombre] = useState('');
   const [nota, setNota] = useState('');
+  const [err, setErr] = useState('');
   const total = carrito.reduce((s, it) => s + (it.precio || 0) * it.qty, 0);
 
   const enviar = () => {
-    if (!nombre.trim()) { alert('Ingresá tu nombre o empresa'); return; }
+    if (!nombre.trim()) { setErr('Ingresá tu nombre o empresa'); return; }
+    setErr('');
     const lineas = carrito.map(it =>
       showPrice && it.precio > 0
         ? `• ${it.nombre} × ${it.qty} ${it.unidad} = ${fmt.currency(it.precio * it.qty)}`
@@ -129,12 +131,19 @@ function PedidoModal({ carrito, onClose, whatsapp, showPrice }) {
           </div>
         )}
 
+        {err && (
+          <div role="alert" style={{ marginTop: 16, background: '#fef2f2', border: '1px solid #fecaca',
+            borderRadius: 8, padding: '9px 12px', fontSize: 12, color: '#dc2626' }}>
+            {err}
+          </div>
+        )}
+
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input value={nombre} onChange={e => setNombre(e.target.value)}
-            placeholder="Tu nombre o empresa *"
+            placeholder="Tu nombre o empresa *" aria-label="Tu nombre o empresa"
             style={{ padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8, fontSize: 13, fontFamily: SANS }} />
           <textarea value={nota} onChange={e => setNota(e.target.value)}
-            placeholder="Notas (día de entrega, observaciones...)"
+            placeholder="Notas (día de entrega, observaciones...)" aria-label="Notas del pedido"
             rows={2} style={{ padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8, fontSize: 13, fontFamily: SANS, resize: 'none' }} />
         </div>
 
@@ -223,6 +232,7 @@ function SolicitarAcceso({ ownerPhone, distribuidora, onEnviado }) {
   const [tel,     setTel]     = useState('');
   const [mensaje, setMensaje] = useState('');
   const [enviado, setEnviado] = useState(false);
+  const [err, setErr] = useState('');
 
   const enviar = () => {
     if (!nombre.trim() || !tel.trim()) return;
@@ -235,7 +245,8 @@ function SolicitarAcceso({ ownerPhone, distribuidora, onEnviado }) {
       mensaje.trim() ? `*Consulta:* ${mensaje.trim()}` : '',
     ].filter(Boolean).join('\n');
     const phone = (ownerPhone || '').replace(/\D/g, '');
-    if (!phone) { alert('El distribuidor no tiene número configurado.'); return; }
+    if (!phone) { setErr('El distribuidor no tiene número de contacto configurado. Intentá más tarde.'); return; }
+    setErr('');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
     setEnviado(true);
     if (onEnviado) setTimeout(onEnviado, 2500);
@@ -284,6 +295,12 @@ function SolicitarAcceso({ ownerPhone, distribuidora, onEnviado }) {
           placeholder="Ej: chocolates, bases para helado..."
           rows={2} style={{ ...inp, resize: 'none' }} />
       </div>
+      {err && (
+        <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca',
+          borderRadius: 8, padding: '9px 12px', fontSize: 12, color: '#dc2626' }}>
+          {err}
+        </div>
+      )}
       <button onClick={enviar} disabled={!nombre.trim() || !tel.trim()}
         style={{
           padding: '11px 0', borderRadius: 10, border: 'none',
@@ -386,7 +403,7 @@ export default function CatalogoPage() {
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
               <input value={q} onChange={e => setQ(e.target.value)}
-                placeholder="Buscar producto o marca..."
+                placeholder="Buscar producto o marca..." aria-label="Buscar producto o marca"
                 style={{ width: '100%', padding: '9px 16px 9px 36px',
                   border: '1.5px solid #e0e0d8', borderRadius: 28,
                   fontSize: 13, fontFamily: SANS, boxSizing: 'border-box',

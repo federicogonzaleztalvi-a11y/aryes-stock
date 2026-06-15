@@ -165,7 +165,7 @@ function PortalDemoSelector({ onSelect }) {
           <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>
             Explorá el portal de pedidos
           </div>
-          <div style={{ fontSize: 13, color: '#9a9a92', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#6a6a68', lineHeight: 1.5 }}>
             Elegí una industria para ver cómo tus clientes<br/>van a hacer pedidos en tu plataforma
           </div>
         </div>
@@ -181,13 +181,13 @@ function PortalDemoSelector({ onSelect }) {
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#efefeb'; e.currentTarget.style.boxShadow = 'none'; }}>
               <div style={{ marginBottom: 10, color: G, display: 'flex', justifyContent: 'center' }}>{DEMO_ICONS[key]}</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
+              <div style={{ fontSize: 11, color: '#6a6a68' }}>{desc}</div>
             </button>
           ))}
         </div>
         <div style={{ textAlign: 'center', marginTop: 20 }}>
           <button onClick={() => window.history.back()}
-            style={{ background: 'none', border: 'none', color: '#9a9a92', fontSize: 13,
+            style={{ background: 'none', border: 'none', color: '#6a6a68', fontSize: 13,
               cursor: 'pointer', fontFamily: SANS, textDecoration: 'underline', textUnderlineOffset: 3 }}>
             ← Volver
           </button>
@@ -251,7 +251,7 @@ function LoginStep({ onLogin }) {
           <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>
             Portal de pedidos
           </div>
-          <div style={{ fontSize: 13, color: '#9a9a92' }}>
+          <div style={{ fontSize: 13, color: '#6a6a68' }}>
             {step === 'tel' ? 'Ingresa tu numero para recibir un codigo' : `Enviamos un codigo a ${tel}`}
           </div>
         </div>
@@ -266,7 +266,7 @@ function LoginStep({ onLogin }) {
 
           {step === 'tel' ? (
             <>
-              <div style={{ marginBottom: 8, fontSize: 12, color: '#9a9a92', letterSpacing: '0.1px' }}>
+              <div style={{ marginBottom: 8, fontSize: 12, color: '#6a6a68', letterSpacing: '0.1px' }}>
                 Numero de WhatsApp
               </div>
               <PhoneInput value={tel} onChange={setTel} placeholder="9X XXX XXX"
@@ -353,7 +353,7 @@ function LoginStep({ onLogin }) {
               <button onClick={() => { setStep('tel'); setCode(''); setErr(''); setDevCode(''); }}
                 style={{ width: '100%', padding: '9px 0', background: 'transparent',
                   border: 'none', borderRadius: 50, fontSize: 13,
-                  color: '#9a9a92', cursor: 'pointer', fontFamily: SANS,
+                  color: '#6a6a68', cursor: 'pointer', fontFamily: SANS,
                   textDecoration: 'underline', textUnderlineOffset: 3 }}>
                 Cambiar numero
               </button>
@@ -455,7 +455,9 @@ function HistorialPedidos({ session, onReordenar }) {
   };
 
   useEffect(() => {
-    if (!session?.token || session?.token === 'demo-token') return;
+    // MEDIO: sin token (o demo) cortábamos el effect sin apagar loading → el
+    // historial quedaba en "Cargando..." para siempre. Apagar loading al salir.
+    if (!session?.token || session?.token === 'demo-token') { setLoading(false); return; }
     fetch(`${API}/api/pedido?action=historial`, {
       headers: { Authorization: `Bearer ${session.token}` }
     })
@@ -466,7 +468,7 @@ function HistorialPedidos({ session, onReordenar }) {
   }, [session]);
 
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 48, color: '#9a9a92', fontSize: 14 }}>
+    <div style={{ textAlign: 'center', padding: 48, color: '#6a6a68', fontSize: 14 }}>
       Cargando historial...
     </div>
   );
@@ -474,7 +476,7 @@ function HistorialPedidos({ session, onReordenar }) {
   if (!pedidos.length) return (
     <div style={{ textAlign: 'center', padding: 60 }}>
       <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>Sin pedidos aun</div>
-      <div style={{ fontSize: 13, color: '#9a9a92' }}>Tus pedidos confirmados apareceran aca</div>
+      <div style={{ fontSize: 13, color: '#6a6a68' }}>Tus pedidos confirmados apareceran aca</div>
     </div>
   );
 
@@ -493,7 +495,7 @@ function HistorialPedidos({ session, onReordenar }) {
             <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', marginBottom: 3 }}>{fecha}</div>
-                <div style={{ fontSize: 11, color: '#9a9a92' }}>
+                <div style={{ fontSize: 11, color: '#6a6a68' }}>
                   {Array.isArray(p.items) ? p.items.length : 0} producto{p.items?.length !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -559,6 +561,15 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
   const total = subtotalNeto + ivaTotal;
 
+  // A7: idempotencyKey ESTABLE por carrito. Antes se generaba con Date.now()+random
+  // en cada click → un doble-tap o un retry de red creaba pedidos duplicados. Atada
+  // a la identidad del carrito: mismo carrito = misma key (el server deduplica),
+  // cambia el carrito = key nueva.
+  const idempotencyKey = useMemo(
+    () => `${session?.tel || 'anon'}-${crypto.randomUUID()}`,
+    [carrito, session?.tel]
+  );
+
   // Direcciones de entrega del cliente
   const [addresses, setAddresses] = React.useState([]);
   const [selectedAddress, setSelectedAddress] = React.useState(null);
@@ -600,7 +611,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
           })),
           total, notas,
           direccion_entrega: addresses.find(a => a.id === selectedAddress)?.direccion || null,
-          idempotencyKey: `${session.tel}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          idempotencyKey,
         }),
       });
       if (r.ok) { track('pedido_confirmado', { items: lineas.length, total }); setDone(true); onConfirm(); }
@@ -651,7 +662,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
 
         {/* Detalle de productos */}
         <div style={{ padding: '16px 24px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#9a9a92', letterSpacing: .5, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 10 }}>
             DETALLE DEL PEDIDO
           </div>
           {lineasConCalc.map(({ item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
@@ -659,7 +670,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
               padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
-                <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
                   {qty} × {fmt.currency(item.precio)}
                   {descPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descPct}%</span>}
                   <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
@@ -677,14 +688,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
           <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '12px 16px',
             display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: '#9a9a92' }}>Subtotal neto</span>
+              <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
               <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
             </div>
             {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
               const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
               return (
                 <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#9a9a92' }}>IVA {rate}%</span>
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
                   <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaDeRate)}</span>
                 </div>
               );
@@ -709,7 +720,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
 
         {/* CTA */}
         <div style={{ padding: '0 24px 32px' }}>
-          <p style={{ fontSize: 12, color: '#9a9a92', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 12, color: '#6a6a68', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
             Tu distribuidor recibio el pedido. Te avisamos cuando este confirmado.
           </p>
           <button onClick={onClose} style={{
@@ -738,7 +749,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18' }}>Tu pedido</div>
-            <div style={{ fontSize: 12, color: '#9a9a92', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>
               {lineas.length} producto{lineas.length !== 1 ? 's' : ''}
             </div>
           </div>
@@ -756,7 +767,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
-                  <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <span>{qty} x {fmt.currency(item.precio)}</span>
                     {descPct > 0 && <span style={{ color: '#dc2626' }}>-{descPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
@@ -791,7 +802,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
                 ))}
               </select>
               {addresses.find(a => a.id === selectedAddress)?.referencia && (
-                <div style={{ fontSize: 11, color: '#9a9a92', marginTop: 4, fontStyle: 'italic' }}>
+                <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 4, fontStyle: 'italic' }}>
                   {addresses.find(a => a.id === selectedAddress).referencia}
                 </div>
               )}
@@ -811,14 +822,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
         <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: '#9a9a92' }}>Subtotal neto</span>
+              <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
               <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
             </div>
             {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
               const ivaRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
               return (
                 <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#9a9a92' }}>IVA {rate}%</span>
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
                   <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaRate)}</span>
                 </div>
               );
@@ -871,7 +882,14 @@ export default function PedidosPage() {
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
   const [udOpen,   setUdOpen]   = useState(false);
+  const [reorderMsg, setReorderMsg] = useState(''); // toast al reordenar (items no disponibles)
   const NAV_MAX = 10;
+
+  useEffect(() => {
+    if (!reorderMsg) return;
+    const t = setTimeout(() => setReorderMsg(''), 4000);
+    return () => clearTimeout(t);
+  }, [reorderMsg]);
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -1061,7 +1079,7 @@ export default function PedidosPage() {
             display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
             borderRadius: 24, border: 'none', cursor: 'pointer',
             background: totalItems > 0 ? G : '#f0f0ec',
-            color: totalItems > 0 ? '#fff' : '#9a9a92',
+            color: totalItems > 0 ? '#fff' : '#6a6a68',
             fontFamily: SANS, fontSize: 13, fontWeight: 500, flexShrink: 0,
           }}>
             {Icon.cart}
@@ -1081,12 +1099,12 @@ export default function PedidosPage() {
               {!isMobile && <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
                 {effectiveSession?.nombre}
               </span>}
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5" style={{ transform: udOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><polyline points="6 9 12 15 18 9"/></svg>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6a6a68" strokeWidth="2.5" style={{ transform: udOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div className="udd" onClick={e => e.stopPropagation()} style={{ display: udOpen ? 'block' : 'none', position: 'absolute', right: 0, top: '100%',
               background: '#fff', border: '0.5px solid #e0e0d8', borderRadius: 10,
               padding: '6px 0', minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: Z.dropdown }}>
-              <div style={{ padding: '8px 16px 6px', fontSize: 11, color: '#9a9a92', letterSpacing: .3 }}>
+              <div style={{ padding: '8px 16px 6px', fontSize: 11, color: '#6a6a68', letterSpacing: .3 }}>
                 {effectiveSession?.nombre}
               </div>
               <div style={{ borderTop: '0.5px solid #f0f0ec', margin: '4px 0' }} />
@@ -1245,16 +1263,36 @@ export default function PedidosPage() {
         <main style={{ maxWidth: 700, margin: '0 auto', padding: '20px 24px 60px' }}>
           <h1 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a18', marginBottom: 16 }}>Mis pedidos</h1>
           <HistorialPedidos session={session} onReordenar={order => {
+            // MEDIO: validar contra el catálogo ACTUAL. Un pedido viejo puede tener
+            // productos discontinuados / sin stock; antes se metían igual al carrito
+            // y fallaba recién al confirmar. Sólo agregamos los disponibles y avisamos.
             const nc = {};
+            let omitidos = 0;
             (order.items || []).forEach(it => {
               const id = it.id || it.productId;
-              if (id) nc[id] = it.cantidad || 1;
+              const prod = id && items.find(p => p.id === id);
+              if (prod && (prod.stock == null || prod.stock > 0)) nc[id] = it.cantidad || 1;
+              else omitidos++;
             });
+            if (Object.keys(nc).length === 0) {
+              setReorderMsg('Ninguno de esos productos está disponible ahora.');
+              return;
+            }
             setCarrito(nc);
             setVista('catalogo');
+            if (omitidos > 0) setReorderMsg(`${omitidos} producto${omitidos !== 1 ? 's' : ''} ya no está${omitidos !== 1 ? 'n' : ''} disponible${omitidos !== 1 ? 's' : ''} y no se agregó${omitidos !== 1 ? 'aron' : ''}.`);
             setTimeout(() => setShowCart(true), 200);
           }} />
         </main>
+      )}
+
+      {reorderMsg && (
+        <div role="status" style={{ position: 'fixed', bottom: 84, left: '50%', transform: 'translateX(-50%)',
+          zIndex: Z.fab + 1, background: '#1a1a18', color: '#fff', padding: '11px 18px',
+          borderRadius: 10, fontSize: 13, fontFamily: SANS, fontWeight: 500, maxWidth: 'calc(100% - 40px)',
+          boxShadow: '0 6px 20px rgba(0,0,0,.25)', textAlign: 'center' }}>
+          {reorderMsg}
+        </div>
       )}
 
       {totalItems > 0 && !showCart && (

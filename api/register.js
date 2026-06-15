@@ -37,7 +37,7 @@ async function handler(req, res) {
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   // Rate limit check
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || 'unknown';
-  if (!(await checkRateLimit('register:' + clientIp, 3600, 3))) {
+  if (!(await checkRateLimit('register:' + clientIp, 3600, 3, { failClosed: true }))) {
     log.warn('register', 'rate limited', { ip: clientIp });
     return res.status(429).json({ error: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.' });
   }

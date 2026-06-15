@@ -91,21 +91,45 @@ export default function PortalAdminTab() {
       setVentas(v => [newVenta, ...v]);
 
       if (!isDemoMode) {
-        // Persist venta to Supabase
-        await db.upsert('ventas', {
-          id: newVenta.id, nro_venta: newVenta.nroVenta,
-          cliente_id: newVenta.clienteId, cliente_nombre: newVenta.clienteNombre,
-          items: newVenta.items, total: newVenta.total, descuento: 0,
-          estado: 'pendiente', fecha: newVenta.fecha, notas: newVenta.notas,
-          b2b_order_id: order.id,
-        }, 'id').catch(e => console.warn('[PortalAdmin] venta upsert failed:', e));
+        // Importar B2B → venta de forma ATÓMICA vía RPC: descuenta stock físico,
+        // consume la reserva (stock_reservations), crea la venta y marca el pedido
+        // importado, todo en una transacción. Antes se hacía un INSERT directo en
+        // `ventas` sin tocar stock ni reserva → sobreventa (auditoría C1).
+        let rpcOk = false;
+        try {
+          const r = await fetch(`${SB_URL}/rest/v1/rpc/confirm_b2b_order_to_venta`, {
+            method: 'POST',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              p_order_id:  order.id,
+              p_venta_id:  newVenta.id,
+              p_nro_venta: newVenta.nroVenta,
+              p_items:     newVenta.items,
+              p_total:     newVenta.total,
+              p_descuento: 0,
+              p_notas:     newVenta.notas || '',
+            }),
+          });
+          if (r.ok) rpcOk = true;
+          else console.warn('[PortalAdmin] confirm_b2b_order_to_venta RPC error:', r.status, await r.text().catch(()=>''));
+        } catch (e) { console.warn('[PortalAdmin] confirm RPC failed:', e); }
 
-        // Mark b2b_order as importado
-        await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${order.id}`, {
-          method: 'PATCH',
-          headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ estado: 'importado', venta_id: ventaId }),
-        }).catch(() => {});
+        if (!rpcOk) {
+          // Fallback legacy (hasta correr supabase-confirm-b2b-order.sql): crea la
+          // venta pero NO ajusta stock/reserva server-side. Avisamos para QA manual.
+          await db.upsert('ventas', {
+            id: newVenta.id, nro_venta: newVenta.nroVenta,
+            cliente_id: newVenta.clienteId, cliente_nombre: newVenta.clienteNombre,
+            items: newVenta.items, total: newVenta.total, descuento: 0,
+            estado: 'pendiente', fecha: newVenta.fecha, notas: newVenta.notas,
+            b2b_order_id: order.id,
+          }, 'id').catch(e => console.warn('[PortalAdmin] venta upsert failed:', e));
+          await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${order.id}`, {
+            method: 'PATCH',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ estado: 'importado', venta_id: ventaId }),
+          }).catch(() => {});
+        }
       }
 
       // Update local state
