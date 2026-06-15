@@ -20,6 +20,10 @@ const DEMO_DATASETS = {
 
 const G    = '#059669';
 const SANS = "'DM Sans','Inter',system-ui,sans-serif";
+// Escala de z-index definida — evita colisiones y números mágicos (200 vs 999)
+const Z = { dropdown: 20, header: 30, fab: 40, overlay: 50 };
+// Gris secundario accesible (≈4.6:1 sobre blanco) — reemplaza #a0a098/#b0b0a8 (fallan WCAG)
+const GRAY = '#6b6b66';
 const API  = import.meta.env.VITE_API_BASE || '';
 // Detectar org desde hostname (CNAME por cliente) o query param
 const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -383,18 +387,21 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
                 margin: '0 auto 6px', fontSize: 13, fontWeight: 700, color: G }}>
                 {(item.marca || item.categoria || '?').slice(0, 2).toUpperCase()}
               </div>
-              {item.marca && <div style={{ fontSize: 9, color: '#b0b0a8', fontWeight: 600, letterSpacing: .4 }}>{item.marca.toUpperCase()}</div>}
+              {item.marca && <div style={{ fontSize: 10, color: GRAY, fontWeight: 600, letterSpacing: .4 }}>{item.marca.toUpperCase()}</div>}
             </div>
         }
       </div>
       <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 9, color: '#a0a098', letterSpacing: .3 }}>{item.categoria}</div>
+        <div style={{ fontSize: 11, color: GRAY, letterSpacing: .3 }}>{item.categoria}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3, flex: 1 }}>
           {item.nombre}
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
-          {item.precio > 0 ? fmt.currency(item.precio) : <span style={{ fontSize: 12, color: '#a0a098' }}>Consultar</span>}
-          {item.precio > 0 && item.unidad && <span style={{ fontSize: 10, color: '#a0a098', fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+          {item.precio > 0 ? fmt.currency(item.precio) : (
+            <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
+              padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
+          )}
+          {item.precio > 0 && item.unidad && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
         {qty > 0 ? (
@@ -415,7 +422,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
           <button onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
             marginTop: 4, padding: '11px 0',
             background: item.precio > 0 ? G : '#f0f0ec',
-            color: item.precio > 0 ? '#fff' : '#b0b0a8',
+            color: item.precio > 0 ? '#fff' : GRAY,
             border: 'none', borderRadius: 8, cursor: item.precio > 0 ? 'pointer' : 'not-allowed',
             fontSize: 12, fontWeight: 600, fontFamily: SANS,
           }}>
@@ -602,7 +609,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   const fechaHoy  = new Date().toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
   if (done) return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 999,
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: Z.overlay,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480,
@@ -610,7 +617,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
         onClick={e => e.stopPropagation()}>
         <button onClick={onClose} aria-label="Cerrar" style={{
           position: 'absolute', top: 12, right: 12, zIndex: 10,
-          width: 28, height: 28, borderRadius: '50%',
+          width: 36, height: 36, borderRadius: '50%',
           background: 'rgba(255,255,255,.25)', border: 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', color: 'white',
@@ -717,7 +724,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 999 }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay }}
       onClick={onClose}>
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0,
         width: Math.min(400, window.innerWidth), background: '#fff',
@@ -732,9 +739,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
             </div>
           </div>
           <button onClick={onClose} aria-label="Cerrar carrito" style={{ background: '#f4f4f0', border: 'none',
-            borderRadius: 8, width: 32, height: 32, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6a6a68',
-            fontSize: 18 }}>x</button>
+            borderRadius: 8, width: 40, height: 40, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6a6a68' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
           {lineasConCalc.map(({ item, qty, ivaRate, descPct, precioConDto, netoLinea }) => (
@@ -1007,7 +1017,7 @@ export default function PedidosPage() {
         </div>
       )}
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
-        position: 'sticky', top: 0, zIndex: 100 }} onClick={() => { setDdOpen(false); setUdOpen(false); }}>
+        position: 'sticky', top: 0, zIndex: Z.header }} onClick={() => { setDdOpen(false); setUdOpen(false); }}>
 
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
@@ -1026,7 +1036,7 @@ export default function PedidosPage() {
           {vista === 'catalogo' ? (
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isMobile ? '4px 0' : '0 16px', ...(isMobile ? { order: 10, flex: '1 1 100%' } : {}) }}>
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
-                <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#a0a098' }}>{Icon.search}</div>
+                <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: GRAY }}>{Icon.search}</div>
                 <input value={busq} onChange={e => setBusq(e.target.value)}
                   placeholder="Buscar producto o marca..." aria-label="Buscar producto o marca"
                   style={{ width: '100%', padding: '9px 16px 9px 36px',
@@ -1071,7 +1081,7 @@ export default function PedidosPage() {
             </button>
             <div className="udd" onClick={e => e.stopPropagation()} style={{ display: udOpen ? 'block' : 'none', position: 'absolute', right: 0, top: '100%',
               background: '#fff', border: '0.5px solid #e0e0d8', borderRadius: 10,
-              padding: '6px 0', minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: 300 }}>
+              padding: '6px 0', minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: Z.dropdown }}>
               <div style={{ padding: '8px 16px 6px', fontSize: 11, color: '#9a9a92', letterSpacing: .3 }}>
                 {effectiveSession?.nombre}
               </div>
@@ -1146,7 +1156,7 @@ export default function PedidosPage() {
               {ddOpen && (
                 <div style={{ position: 'absolute', top: 44, left: 0, background: '#fff',
                   border: '0.5px solid #e0e0d8', borderRadius: 10, padding: '6px 0',
-                  minWidth: 200, boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: 200 }}>
+                  minWidth: 200, boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: Z.dropdown }}>
                   {cats.slice(NAV_MAX).map(cat => (
                     <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
                       display: 'block', width: '100%', padding: '8px 16px', border: 'none',
@@ -1185,19 +1195,35 @@ export default function PedidosPage() {
           ) : loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
               {[...Array(8)].map((_, i) => (
-                <div key={i} style={{ background: '#fff', borderRadius: 14, height: 240, border: '1px solid #efefeb', opacity: 0.5 }} />
+                <div key={i} className="sk-shimmer" style={{ borderRadius: 14, height: 240, border: '1px solid #efefeb' }} />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 60, color: '#a0a098' }}>
-              <p style={{ fontSize: 14 }}>{items.length === 0 ? 'No hay productos disponibles' : `Sin resultados para "${busq}"`}</p>
+            <div style={{ textAlign: 'center', padding: '60px 24px', maxWidth: 420, margin: '0 auto' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f4f4f0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: GRAY }}>
+                {Icon.search}
+              </div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', margin: '0 0 6px' }}>
+                {items.length === 0 ? 'No hay productos disponibles' : 'Sin resultados'}
+              </p>
+              <p style={{ fontSize: 13, color: GRAY, margin: 0, lineHeight: 1.5 }}>
+                {items.length === 0 ? 'Volvé a intentar más tarde.' : `No encontramos nada para "${busq}".`}
+              </p>
+              {(busq || catFil !== 'Todos') && items.length > 0 && (
+                <button onClick={() => { setBusq(''); setCatFil('Todos'); }} style={{
+                  marginTop: 18, padding: '10px 20px', background: G, color: '#fff', border: 'none',
+                  borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>
+                  Limpiar búsqueda
+                </button>
+              )}
             </div>
           ) : (
             <>
                         {recommended.length > 0 && (
             <RecommendedProducts recommended={recommended} onAdd={addItem} onRemove={removeItem} carrito={carrito} brandCfg={brandCfg} />
           )}
-<div style={{ fontSize: 11, color: '#a0a098', marginBottom: 14 }}>
+<div style={{ fontSize: 12, color: GRAY, marginBottom: 14 }}>
                 {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
@@ -1228,7 +1254,7 @@ export default function PedidosPage() {
       )}
 
       {totalItems > 0 && !showCart && (
-        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 200 }}>
+        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: Z.fab }}>
           <button onClick={() => setShowCart(true)} aria-label={`Ver carrito, ${totalItems} ${totalItems !== 1 ? 'items' : 'item'}`} style={{
             background: G, color: '#fff', border: 'none', borderRadius: '50%',
             width: 52, height: 52, cursor: 'pointer',
@@ -1236,9 +1262,10 @@ export default function PedidosPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
           }}>
             {Icon.cart}
-            <span style={{ position: 'absolute', top: -3, right: -3, background: '#dc2626',
-              color: '#fff', borderRadius: '50%', width: 18, height: 18,
-              fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ position: 'absolute', top: -4, right: -4, background: '#dc2626',
+              color: '#fff', borderRadius: '50%', minWidth: 22, height: 22, padding: '0 5px',
+              border: '2px solid #fff', boxSizing: 'border-box',
+              fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {totalItems}
             </span>
           </button>
