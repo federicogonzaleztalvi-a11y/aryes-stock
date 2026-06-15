@@ -224,7 +224,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
     if (toSave.length === 0) { setMsg('No hay productos seleccionados.'); return; }
     if (!listaId) { setMsg('Seleccioná una lista de precios primero.'); return; }
     setSaving(true);
-    let ok = 0, err = 0;
+    let ok = 0, err = 0, firstErr = '';
     const SB_URL = import.meta.env.VITE_SUPABASE_URL;
     const headers = getAuthHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' });
     for (const row of toSave) {
@@ -232,15 +232,15 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         const res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ lista_id: listaId, product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: Number(row.descuento) || 0 }),
+          body: JSON.stringify({ lista_id: listaId, product_uuid: row.productoId, precio: Number(row.precioFinal) }),
         });
         if (!res.ok) throw new Error(await res.text());
         ok++;
-      } catch(e) { console.warn(e); err++; }
+      } catch(e) { console.warn(e); err++; if (!firstErr) firstErr = String(e.message || e).slice(0, 160); }
     }
     setSaving(false);
     setStep('done');
-    setMsg(`${ok} precios guardados en la lista${err > 0 ? `, ${err} errores` : ''}.`);
+    setMsg(`${ok} precios guardados en la lista${err > 0 ? `, ${err} errores — ${firstErr}` : ''}.`);
     if (onPreciosGuardados) onPreciosGuardados();
   };
 
