@@ -88,6 +88,7 @@ const PAISES = [
 function PhoneInput({ value, onChange, placeholder = '9X XXX XXX', style = {} }) {
   const [pais,   setPais]   = useState('UY');
   const [numero, setNumero] = useState('');
+  const [focused, setFocused] = useState(false);
   const selected = PAISES.find(p => p.code === pais) || PAISES[0];
 
   const handleChange = (num) => {
@@ -104,20 +105,23 @@ function PhoneInput({ value, onChange, placeholder = '9X XXX XXX', style = {} })
   };
 
   return (
-    <div style={{ display: 'flex', border: '1px solid #e0e0d8', borderRadius: 8,
-      overflow: 'hidden', background: '#fafaf7', ...style }}>
+    <div style={{ display: 'flex', border: `1px solid ${focused ? G : '#e0e0d8'}`,
+      boxShadow: focused ? `0 0 0 3px ${G}22` : 'none', borderRadius: 8,
+      overflow: 'hidden', background: '#fafaf7', transition: 'border-color .15s, box-shadow .15s', ...style }}>
       <select value={pais} onChange={e => handlePais(e.target.value)}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} aria-label="Código de país"
         style={{ border: 'none', background: 'transparent', padding: '9px 6px 9px 10px',
-          fontSize: 13, fontFamily: SANS, color: '#1a1a18', cursor: 'pointer',
+          fontSize: 16, fontFamily: SANS, color: '#1a1a18', cursor: 'pointer',
           outline: 'none', borderRight: '1px solid #e0e0d8', flexShrink: 0 }}>
         {PAISES.map(p => (
           <option key={p.code} value={p.code}>{p.flag} +{p.prefix}</option>
         ))}
       </select>
       <input type="tel" value={numero} onChange={e => handleChange(e.target.value)}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         placeholder={placeholder}
         style={{ flex: 1, border: 'none', background: 'transparent',
-          padding: '9px 12px', fontSize: 13, fontFamily: SANS,
+          padding: '9px 12px', fontSize: 16, fontFamily: SANS,
           color: '#1a1a18', outline: 'none', minWidth: 0 }} />
     </div>
   );
@@ -130,6 +134,16 @@ const Icon = {
   logo:    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
   check:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>,
   repeat:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>,
+  clock:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  chevDown:<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>,
+};
+
+// Íconos por industria (demo selector) — SVG en vez de emojis
+const DEMO_ICONS = {
+  horeca:       <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 002-2V2"/><path d="M5 2v20"/><path d="M19 2v20"/><path d="M19 11c2 0 3-1.5 3-4s-1-5-3-5"/></svg>,
+  bebidas:      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M5 8h14l-1.2 11a2 2 0 01-2 1.8H8.2a2 2 0 01-2-1.8L5 8z"/><path d="M7 8l1-4h8l1 4"/><line x1="9" y1="12" x2="15" y2="12"/></svg>,
+  limpieza:     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M9 11l4-7 3 2-3 6"/><path d="M5 21h10l1-7H6l-1 7z"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>,
+  construccion: <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><rect x="9" y="13" width="6" height="8"/></svg>,
 };
 
 
@@ -152,16 +166,16 @@ function PortalDemoSelector({ onSelect }) {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {Object.entries(DEMO_DATASETS).map(([key, { label, emoji, desc }]) => (
+          {Object.entries(DEMO_DATASETS).map(([key, { label, desc }]) => (
             <button key={key} onClick={() => onSelect(key)}
               style={{
                 background: '#fff', border: '1px solid #efefeb', borderRadius: 14,
                 padding: '20px 16px', cursor: 'pointer', textAlign: 'center',
-                transition: 'border-color .15s, transform .1s', fontFamily: SANS,
+                transition: 'border-color .15s, box-shadow .15s', fontFamily: SANS,
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = G; e.currentTarget.style.transform = 'scale(1.02)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#efefeb'; e.currentTarget.style.transform = 'scale(1)'; }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>{emoji}</div>
+              onMouseEnter={e => { e.currentTarget.style.borderColor = G; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.06)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#efefeb'; e.currentTarget.style.boxShadow = 'none'; }}>
+              <div style={{ marginBottom: 10, color: G, display: 'flex', justifyContent: 'center' }}>{DEMO_ICONS[key]}</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 11, color: '#9a9a92' }}>{desc}</div>
             </button>
@@ -305,10 +319,12 @@ function LoginStep({ onLogin }) {
               <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#6a6a68' }}>
                 Codigo de 4 digitos
               </div>
-              <input type="text" inputMode="numeric" placeholder="0000"
+              <input type="text" inputMode="numeric" placeholder="0000" aria-label="Código de 4 dígitos"
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
                 onKeyDown={e => e.key === 'Enter' && verifyOTP()} autoFocus
+                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                 style={{ width: '100%', padding: '12px', border: '1px solid #e0e0d8',
                   borderRadius: 10, fontSize: 28, fontFamily: 'monospace', fontWeight: 700,
                   textAlign: 'center', letterSpacing: 12, marginBottom: 16,
@@ -383,21 +399,21 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
         {qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <button onClick={() => onRemove(item)} style={{
-              width: 30, height: 30, border: `1.5px solid ${G}`, borderRadius: 8,
-              background: '#fff', color: G, fontSize: 16, cursor: 'pointer', fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+            <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
+              width: 40, height: 40, border: `1.5px solid ${G}`, borderRadius: 8,
+              background: '#fff', color: G, fontSize: 18, cursor: 'pointer', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>-</button>
-            <input type="number" inputMode="numeric" min="0" value={qty} onChange={e=>{const v=parseInt(e.target.value,10);if(isNaN(v)||v<=0)onRemove(item);else{const d=v-qty;if(d>0)for(let i=0;i<d;i++)onAdd(item);else if(d<0)for(let i=0;i<-d;i++)onRemove(item);}}} onFocus={e=>e.target.select()} style={{width:48,fontSize:15,fontWeight:700,color:'#1a1a18',textAlign:'center',border:'1px solid #e0e0d8',borderRadius:6,padding:'2px 0',outline:'none',background:'#fafaf7'}}/>
-            <button onClick={() => onAdd(item)} style={{
-              width: 30, height: 30, background: G, border: 'none', borderRadius: 8,
-              color: '#fff', fontSize: 16, cursor: 'pointer', fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+            <input type="number" inputMode="numeric" min="0" value={qty} aria-label={`Cantidad de ${item.nombre}`} onChange={e=>{const v=parseInt(e.target.value,10);if(isNaN(v)||v<=0)onRemove(item);else{const d=v-qty;if(d>0)for(let i=0;i<d;i++)onAdd(item);else if(d<0)for(let i=0;i<-d;i++)onRemove(item);}}} onFocus={e=>e.target.select()} style={{flex:1,minWidth:0,height:40,boxSizing:'border-box',fontSize:16,fontWeight:700,color:'#1a1a18',textAlign:'center',border:'1px solid #e0e0d8',borderRadius:6,padding:'0',outline:'none',background:'#fafaf7'}}/>
+            <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
+              width: 40, height: 40, background: G, border: 'none', borderRadius: 8,
+              color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>+</button>
           </div>
         ) : (
           <button onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
-            marginTop: 4, padding: '7px 0',
+            marginTop: 4, padding: '11px 0',
             background: item.precio > 0 ? G : '#f0f0ec',
             color: item.precio > 0 ? '#fff' : '#b0b0a8',
             border: 'none', borderRadius: 8, cursor: item.precio > 0 ? 'pointer' : 'not-allowed',
@@ -477,7 +493,7 @@ function HistorialPedidos({ session, onReordenar }) {
                   {est.label}
                 </span>
               </div>
-              <div style={{ color: '#c0c0b8', fontSize: 11 }}>{isExp ? '▲' : '▼'}</div>
+              <div style={{ color: '#c0c0b8', display: 'flex', transform: isExp ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>{Icon.chevDown}</div>
             </div>
             {isExp && (
               <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f5f5f0' }}>
@@ -513,6 +529,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
+  const [err,     setErr]     = useState('');
 
   const lineas = Object.entries(carrito)
     .filter(([, qty]) => qty > 0)
@@ -558,7 +575,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
         return;
       }
 
-    setLoading(true);
+    setLoading(true); setErr('');
     try {
       const r = await fetch(`${window.location.origin}/api/pedido`, {
         method: 'POST',
@@ -576,8 +593,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
         }),
       });
       if (r.ok) { track('pedido_confirmado', { items: lineas.length, total }); setDone(true); onConfirm(); }
-      else { const d = await r.json(); alert(d.error || 'Error'); }
-    } catch { alert('Error de conexion'); }
+      else { const d = await r.json().catch(() => ({})); setErr(d.error || 'No se pudo confirmar el pedido.'); }
+    } catch { setErr('Error de conexión. Intentá de nuevo.'); }
     finally { setLoading(false); }
   };
 
@@ -591,7 +608,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
       <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480,
         maxHeight: '90vh', overflowY: 'auto', fontFamily: SANS, position: 'relative' }}
         onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{
+        <button onClick={onClose} aria-label="Cerrar" style={{
           position: 'absolute', top: 12, right: 12, zIndex: 10,
           width: 28, height: 28, borderRadius: '50%',
           background: 'rgba(255,255,255,.25)', border: 'none',
@@ -714,7 +731,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
               {lineas.length} producto{lineas.length !== 1 ? 's' : ''}
             </div>
           </div>
-          <button onClick={onClose} style={{ background: '#f4f4f0', border: 'none',
+          <button onClick={onClose} aria-label="Cerrar carrito" style={{ background: '#f4f4f0', border: 'none',
             borderRadius: 8, width: 32, height: 32, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6a6a68',
             fontSize: 18 }}>x</button>
@@ -748,8 +765,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
             <div style={{ marginTop: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Dirección de entrega</div>
               <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
+                aria-label="Dirección de entrega"
+                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                 style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
-                  fontSize: 13, fontFamily: SANS, background: '#fafaf7', outline: 'none' }}>
+                  fontSize: 16, fontFamily: SANS, background: '#fafaf7', outline: 'none' }}>
                 {addresses.map(a => (
                   <option key={a.id} value={a.id}>
                     {a.label}: {a.direccion}{a.ciudad ? ` — ${a.ciudad}` : ''}
@@ -766,9 +786,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
           <div style={{ marginTop: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Notas del pedido</div>
             <textarea value={notas} onChange={e => setNotas(e.target.value)}
-              placeholder="Ej: entregar antes del mediodia..."
+              placeholder="Ej: entregar antes del mediodia..." aria-label="Notas del pedido"
+              onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+              onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
               rows={3} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
-                borderRadius: 8, fontSize: 13, fontFamily: SANS, resize: 'none',
+                borderRadius: 8, fontSize: 16, fontFamily: SANS, resize: 'none',
                 boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
           </div>
         </div>
@@ -793,6 +815,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
               <span style={{ fontSize: 22, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
             </div>
           </div>
+          {err && (
+            <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
+              padding: '9px 12px', marginBottom: 10, fontSize: 12, color: '#dc2626' }}>
+              {err}
+            </div>
+          )}
           <button onClick={confirmar} disabled={loading || lineas.length === 0} style={{
             width: '100%', padding: '13px 0',
             background: loading || lineas.length === 0 ? '#c8c8c0' : G,
@@ -827,6 +855,7 @@ export default function PedidosPage() {
   const [showCart, setShowCart] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
+  const [udOpen,   setUdOpen]   = useState(false);
   const NAV_MAX = 10;
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
@@ -875,7 +904,7 @@ export default function PedidosPage() {
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
-        if (Array.isArray(data.recommended)) setRecommended(data.recommended);
+        if (Array.isArray(d.recommended)) setRecommended(d.recommended);
       }
     } catch {}
     finally { setLoading(false); }
@@ -957,7 +986,7 @@ export default function PedidosPage() {
         </div>
       )}
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
-        position: 'sticky', top: 0, zIndex: 100 }} onClick={() => setDdOpen(false)}>
+        position: 'sticky', top: 0, zIndex: 100 }} onClick={() => { setDdOpen(false); setUdOpen(false); }}>
 
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
@@ -978,9 +1007,9 @@ export default function PedidosPage() {
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#a0a098' }}>{Icon.search}</div>
                 <input value={busq} onChange={e => setBusq(e.target.value)}
-                  placeholder="Buscar producto o marca..."
+                  placeholder="Buscar producto o marca..." aria-label="Buscar producto o marca"
                   style={{ width: '100%', padding: '9px 16px 9px 36px',
-                    border: '1.5px solid #e0e0d8', borderRadius: 28, fontSize: 13,
+                    border: '1.5px solid #e0e0d8', borderRadius: 28, fontSize: 16,
                     fontFamily: SANS, boxSizing: 'border-box', outline: 'none',
                     background: '#f7f7f4', color: '#1a1a18' }}
                   onFocus={e => e.target.style.borderColor = G}
@@ -1004,9 +1033,11 @@ export default function PedidosPage() {
             {totalItems > 0 ? `${totalItems} item${totalItems !== 1 ? 's' : ''}` : 'Carrito'}
           </button>
           <div style={{ position: 'relative', flexShrink: 0 }}
-            onMouseEnter={e => { const d = e.currentTarget.querySelector('.udd'); if(d) d.style.display='block'; }}
-            onMouseLeave={e => { const d = e.currentTarget.querySelector('.udd'); if(d) d.style.display='none'; }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '6px 8px', borderRadius: 8 }}>
+            onMouseEnter={() => !isMobile && setUdOpen(true)}
+            onMouseLeave={() => !isMobile && setUdOpen(false)}>
+            <button type="button" aria-label="Menú de usuario" aria-haspopup="menu" aria-expanded={udOpen}
+              onClick={e => { e.stopPropagation(); setUdOpen(o => !o); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '6px 8px', borderRadius: 8, background: 'transparent', border: 'none', fontFamily: SANS }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#f0fdf4',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 600, color: G, flexShrink: 0, border: '1.5px solid #bbf7d0' }}>
@@ -1015,16 +1046,16 @@ export default function PedidosPage() {
               {!isMobile && <span style={{ fontSize: 13, color: '#1a1a18', fontWeight: 500 }}>
                 {effectiveSession?.nombre}
               </span>}
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-            <div className="udd" style={{ display: 'none', position: 'absolute', right: 0, top: '100%',
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5" style={{ transform: udOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div className="udd" onClick={e => e.stopPropagation()} style={{ display: udOpen ? 'block' : 'none', position: 'absolute', right: 0, top: '100%',
               background: '#fff', border: '0.5px solid #e0e0d8', borderRadius: 10,
               padding: '6px 0', minWidth: 190, boxShadow: '0 4px 20px rgba(0,0,0,.1)', zIndex: 300 }}>
               <div style={{ padding: '8px 16px 6px', fontSize: 11, color: '#9a9a92', letterSpacing: .3 }}>
                 {effectiveSession?.nombre}
               </div>
               <div style={{ borderTop: '0.5px solid #f0f0ec', margin: '4px 0' }} />
-              <button onClick={() => setVista('historial')} style={{
+              <button onClick={() => { setUdOpen(false); setVista('historial'); }} style={{
                 display: 'flex', alignItems: 'center', gap: 9, width: '100%',
                 padding: '9px 16px', border: 'none', background: 'transparent',
                 fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
@@ -1032,7 +1063,7 @@ export default function PedidosPage() {
                 onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                 {Icon.history} Mis pedidos
               </button>
-              <button onClick={() => !isPortalDemo && setShowEstadoCuenta(true)} style={{ ...(isPortalDemo ? {opacity:0.4,pointerEvents:'none'} : {}),
+              <button onClick={() => { if (!isPortalDemo) { setUdOpen(false); setShowEstadoCuenta(true); } }} style={{ ...(isPortalDemo ? {opacity:0.4,pointerEvents:'none'} : {}),
                 display: 'flex', alignItems: 'center', gap: 9, width: '100%',
                 padding: '9px 16px', border: 'none', background: 'transparent',
                 fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
@@ -1057,7 +1088,7 @@ export default function PedidosPage() {
           </div>
         </div>
 
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
+        <nav aria-label="Categorías" style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
           display: 'flex', alignItems: 'center',
           height: 44, position: 'relative', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
           {vista === 'catalogo' && cats.slice(0, NAV_MAX).map(cat => (
@@ -1076,7 +1107,8 @@ export default function PedidosPage() {
             <div style={{ position: 'relative' }}
               onMouseEnter={() => setDdOpen(true)}
               onMouseLeave={() => setDdOpen(false)}>
-              <button style={{
+              <button type="button" aria-haspopup="menu" aria-expanded={ddOpen}
+                onClick={e => { e.stopPropagation(); setDdOpen(o => !o); }} style={{
                 padding: '0 16px', height: 44, border: 'none', background: 'transparent',
                 fontSize: 14, letterSpacing: '0.1px', cursor: 'pointer', fontFamily: SANS,
                 display: 'flex', alignItems: 'center', gap: 4,
@@ -1110,17 +1142,19 @@ export default function PedidosPage() {
             </div>
           )}
 
-        </div>
+        </nav>
       </header>
 
       {horarioInfo && (
-        <div style={{ background:'#fffbeb', borderBottom:'1px solid #fde68a', padding:'6px 24px', textAlign:'center', fontSize:12, color:'#92400e' }}>
-          ⏰ Horario de recepción: <strong>{horarioInfo.desde||'?'} – {horarioInfo.hasta||'?'}</strong>
+        <div style={{ background:'#fffbeb', borderBottom:'1px solid #fde68a', padding:'6px 24px', fontSize:12, color:'#92400e', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+          {Icon.clock} <span>Horario de recepción: <strong>{horarioInfo.desde||'?'} – {horarioInfo.hasta||'?'}</strong></span>
         </div>
       )}
       {vista === 'catalogo' && (
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
-          
+        <main style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
+          <h1 style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+            Catálogo de productos{brandNombre ? ` — ${brandNombre}` : ''}
+          </h1>
           {loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
               {[...Array(8)].map((_, i) => (
@@ -1147,11 +1181,12 @@ export default function PedidosPage() {
               </div>
             </>
           )}
-        </div>
+        </main>
       )}
 
       {vista === 'historial' && (
-        <div style={{ maxWidth: 700, margin: '0 auto', padding: '20px 24px 60px' }}>
+        <main style={{ maxWidth: 700, margin: '0 auto', padding: '20px 24px 60px' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a18', marginBottom: 16 }}>Mis pedidos</h1>
           <HistorialPedidos session={session} onReordenar={order => {
             const nc = {};
             (order.items || []).forEach(it => {
@@ -1162,12 +1197,12 @@ export default function PedidosPage() {
             setVista('catalogo');
             setTimeout(() => setShowCart(true), 200);
           }} />
-        </div>
+        </main>
       )}
 
       {totalItems > 0 && !showCart && (
         <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 200 }}>
-          <button onClick={() => setShowCart(true)} style={{
+          <button onClick={() => setShowCart(true)} aria-label={`Ver carrito, ${totalItems} ${totalItems !== 1 ? 'items' : 'item'}`} style={{
             background: G, color: '#fff', border: 'none', borderRadius: '50%',
             width: 52, height: 52, cursor: 'pointer',
             boxShadow: '0 4px 16px rgba(26,138,60,.35)',
