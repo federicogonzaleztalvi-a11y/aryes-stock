@@ -75,9 +75,19 @@ export default function PedidosPortalPanel({ onImportar }) {
   useEffect(() => {
     // Primera carga inmediata
     fetchAndAutoImport();
-    // Polling cada 30 segundos
-    const iv = setInterval(fetchAndAutoImport, 30_000);
-    return () => clearInterval(iv);
+    // Polling cada 3 minutos, salteado si la pestaña no está visible: evita
+    // pegarle a la base en segundo plano (ahorra Disk IO en Supabase).
+    const iv = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      fetchAndAutoImport();
+    }, 180_000);
+    // Al volver a la pestaña, traer pedidos nuevos al instante.
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchAndAutoImport(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // No renderizar nada visible si no hay historial ni actividad

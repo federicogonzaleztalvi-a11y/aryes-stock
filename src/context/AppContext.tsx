@@ -474,16 +474,11 @@ const describeAction = (action: string, detail: string): string => {
         }
       } catch { /* offline */ }
     };
-    const pollTimer = setInterval(syncFromServer, 300000); // 5 min — Realtime handles live updates
-    const onFocus = () => syncFromServer();
-    const onVisible = () => { if (document.visibilityState === 'visible') syncFromServer(); };
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(pollTimer);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
+    // Solo un poll cada 5 min. Antes refetcheaba products (limit 1000) en cada
+    // focus/visibilitychange → escaneaba la tabla products en loop y quemaba
+    // Disk IO en Supabase. Realtime ya cubre los cambios en vivo.
+    const pollTimer = setInterval(syncFromServer, 300000); // 5 min
+    return () => clearInterval(pollTimer);
   }, [session, dbReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Realtime sync — multi-device (Supabase Realtime) ────────────────────
