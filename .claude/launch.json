@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pazque-dev",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-lc", "export PATH=/usr/local/bin:$PATH && exec npm run dev"],
+      "port": 5173
+    }
+  ]
+}
