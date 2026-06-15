@@ -1045,10 +1045,15 @@ export default function PedidosPage() {
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
           borderBottom: '0.5px solid #f0f0ec', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-            <div style={{ width: 28, height: 28, background: G, borderRadius: 7,
-              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {Icon.logo}
-            </div>
+            {brandCfg?.logoUrl ? (
+              <img src={brandCfg.logoUrl} alt={brandNombre || 'Logo'}
+                style={{ width: 28, height: 28, borderRadius: 7, objectFit: 'contain', background: '#fff' }} />
+            ) : (
+              <div style={{ width: 28, height: 28, background: G, borderRadius: 7,
+                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {Icon.logo}
+              </div>
+            )}
             {brandNombre && (
               <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', whiteSpace: 'nowrap' }}>
                 {brandNombre}
