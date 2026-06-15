@@ -5,6 +5,7 @@ import UsersTab from './UsersTab.jsx';
 import RolesTab from './config/RolesTab.jsx';
 import { db, getOrgId, getAuthHeaders } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
+import ImageUpload from '../components/ImageUpload.jsx';
 
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
 // ── Gestión de zonas del depósito ────────────────────────────────────────
@@ -302,20 +303,13 @@ export default function ConfigInline({
                 </div>
 
                 <div>
-                  <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>URL del logo</label>
-                  <input
+                  <label style={{fontSize:11,fontWeight:600,color:'#6a6a68',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Logo de la empresa</label>
+                  <ImageUpload
                     value={localBrand.logoUrl}
-                    onChange={e=>setLocalBrand(b=>({...b,logoUrl:e.target.value}))}
-                    placeholder='https://mi-empresa.com/logo.png'
-                    style={inp2}
+                    onChange={url=>setLocalBrand(b=>({...b,logoUrl:url}))}
+                    orgId={getOrgId()}
                   />
-                  <div style={{fontSize:11,color:'#9a9a98',marginTop:4}}>Imagen PNG/SVG pública. Si está vacío se usa el logo por defecto.</div>
-                  {localBrand.logoUrl && (
-                    <img src={localBrand.logoUrl} alt='preview'
-                      style={{height:40,marginTop:8,objectFit:'contain',border:'1px solid #e2e2de',borderRadius:4,padding:4}}
-                      onError={e=>e.target.style.display='none'}
-                    />
-                  )}
+                  <div style={{fontSize:11,color:'#9a9a98',marginTop:4}}>Arrastrá o tocá para subir tu logo (JPG, PNG, WebP). Si está vacío se usa el logo por defecto.</div>
                 </div>
 
                 <div>

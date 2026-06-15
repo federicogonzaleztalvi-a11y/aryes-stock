@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, LS, SB_URL, getAuthHeaders, getOrgId } from '../lib/constants.js';
+import ImageUpload from '../components/ImageUpload.jsx';
 
 const G = '#059669';
 const ONBOARDING_KEY = 'stock-onboarding-done';
@@ -135,11 +136,8 @@ function StepBrand({ data, setData, onBack, onNext, onSkip }) {
       <Field label="Nombre visible en el sidebar">
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: GourmetStock" />
       </Field>
-      <Field label="URL del logo (opcional)">
-        <input style={inp} value={data.logoUrl} onChange={e => setData(d => ({ ...d, logoUrl: e.target.value }))} placeholder="https://mi-empresa.com/logo.png" />
-        {data.logoUrl && (
-          <img src={data.logoUrl} alt="preview" onError={e => e.target.style.display = 'none'} style={{ marginTop: 8, height: 40, objectFit: 'contain', display: 'block' }} />
-        )}
+      <Field label="Logo de la empresa (opcional)">
+        <ImageUpload value={data.logoUrl} onChange={url => setData(d => ({ ...d, logoUrl: url }))} orgId={getOrgId()} />
       </Field>
       <Field label="Color principal">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
