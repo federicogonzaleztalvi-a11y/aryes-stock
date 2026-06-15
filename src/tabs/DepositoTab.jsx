@@ -1,15 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS } from '../lib/constants.js';
+import { LS, db, getOrgId } from '../lib/constants.js';
 
 function DepositoTab(){
-  const { products: prods , lotes} = useApp();
+  const { products: prods , lotes, isDemoMode} = useApp();
   const G="#059669";
   const KDEP="aryes-deposito";
   const KUB="aryes-deposito-ubicaciones";
   const ZONAS=[{id:'A',label:'Zona A - Ambiente',color:'#3b82f6'},{id:'F',label:'Zona F - Frio/Freezer',color:'#06b6d4'}];
   const [config,setConfig]=useState(()=>LS.get(KDEP,{pasillos:8,estantes:4,niveles:3,posiciones:6,zonas:['A','F']}));
   const [ubicaciones,setUbicaciones]=useState(()=>LS.get(KUB,[]));
+
+  // Fuente de verdad: Supabase (deposit_locations + deposit_config). LS = cache offline.
+  // En demo (sin sesión) db.* es no-op → quedamos con el estado de LS.
+  useEffect(()=>{
+    if(isDemoMode)return;
+    const org=getOrgId();
+    db.get('deposit_locations',`org_id=eq.${org}`).then(rows=>{
+      if(Array.isArray(rows)){
+        const mapped=rows.map(r=>({id:r.bin_id,productoId:r.producto_id,asignado:r.asignado}));
+        setUbicaciones(mapped); LS.set(KUB,mapped);
+      }
+    }).catch(()=>{});
+    db.get('deposit_config',`org_id=eq.${org}`).then(rows=>{
+      if(Array.isArray(rows)&&rows[0]){
+        const c={pasillos:rows[0].pasillos,estantes:rows[0].estantes,niveles:rows[0].niveles,posiciones:rows[0].posiciones,zonas:rows[0].zonas||['A','F']};
+        setConfig(c); LS.set(KDEP,c);
+      }
+    }).catch(()=>{});
+  },[isDemoMode]);
   const [_vista,_setVista]=useState('mapa');
   const [zonaActiva,setZonaActiva]=useState('A');
   const [prodSelec,setProdSelec]=useState('');
@@ -25,10 +44,14 @@ function DepositoTab(){
 
   const asignar=(ubId,prodId)=>{
     if(!prodId){setMsg('Selecciona un producto');return;}
+    const asignado=new Date().toISOString();
     const upd=ubicaciones.filter(u=>u.id!==ubId);
-    upd.push({id:ubId,productoId:prodId,asignado:new Date().toISOString()});
+    upd.push({id:ubId,productoId:prodId,asignado});
     setUbicaciones(upd);
     LS.set(KUB,upd);
+    // Persist: un bin = un producto (PK org_id,bin_id) → upsert
+    db.upsert('deposit_locations',{org_id:getOrgId(),bin_id:ubId,producto_id:prodId,asignado},'org_id,bin_id')
+      .catch(e=>console.warn('[DepositoTab] upsert location:',e?.message||e));
     setProdSelec('');setUbSelec(null);
     setMsg('Producto asignado a '+ubId);
     setTimeout(()=>setMsg(''),3000);
@@ -38,6 +61,8 @@ function DepositoTab(){
     const upd=ubicaciones.filter(u=>u.id!==ubId);
     setUbicaciones(upd);
     LS.set(KUB,upd);
+    db.del('deposit_locations',{bin_id:ubId})
+      .catch(e=>console.warn('[DepositoTab] del location:',e?.message||e));
     setMsg('Ubicacion liberada');
     setTimeout(()=>setMsg(''),2000);
   };
@@ -118,7 +143,7 @@ function DepositoTab(){
           <div key={f.k}>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{f.l}</label>
             <input type='number' min={f.min} max={f.max} value={config[f.k]}
-              onChange={e=>{const v=Math.max(f.min,Math.min(f.max,Number(e.target.value)));const nc={...config,[f.k]:v};setConfig(nc);LS.set(KDEP,nc);}}
+              onChange={e=>{const v=Math.max(f.min,Math.min(f.max,Number(e.target.value)));const nc={...config,[f.k]:v};setConfig(nc);LS.set(KDEP,nc);db.upsert('deposit_config',{org_id:getOrgId(),pasillos:nc.pasillos,estantes:nc.estantes,niveles:nc.niveles,posiciones:nc.posiciones,zonas:nc.zonas},'org_id').catch(err=>console.warn('[DepositoTab] upsert config:',err?.message||err));}}
               style={{width:'100%',padding:'7px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',boxSizing:'border-box'}} />
           </div>
         ))}

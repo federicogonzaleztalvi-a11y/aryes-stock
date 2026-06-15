@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, db } from '../lib/constants.js';
+import { LS, db, getOrgId } from '../lib/constants.js';
 
 function TransferenciasTab(){
-  const { products: prods, transfers, setTransfers } = useApp();
+  const { products: prods, transfers, setTransfers, isDemoMode } = useApp();
   const G="#059669";
   const KUB="aryes-deposito-ubicaciones"; // mismo store que DepositoTab (mapa producto→bin)
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
@@ -12,6 +12,18 @@ function TransferenciasTab(){
   // Mapa real de ubicaciones del depósito (no hardcode). Stock total NO cambia en
   // un movimiento interno: sólo se reubica el bin que ocupa el producto.
   const [ubicaciones,setUbicaciones]=useState(()=>LS.get(KUB,[]));
+
+  // Fuente de verdad: Supabase deposit_locations (mismo store que DepositoTab).
+  // LS = cache offline; en demo db.* es no-op y quedamos con LS.
+  useEffect(()=>{
+    if(isDemoMode)return;
+    db.get('deposit_locations',`org_id=eq.${getOrgId()}`).then(rows=>{
+      if(Array.isArray(rows)){
+        const mapped=rows.map(r=>({id:r.bin_id,productoId:r.producto_id,asignado:r.asignado}));
+        setUbicaciones(mapped); LS.set(KUB,mapped);
+      }
+    }).catch(()=>{});
+  },[isDemoMode]);
 
   const selProd=prods.find(p=>p.id===form.productoId);
   // Bins reales: los ocupados según el mapa del depósito.
@@ -50,6 +62,11 @@ function TransferenciasTab(){
       .concat([{id:form.destino,productoId:form.productoId,asignado:ts}]);
     setUbicaciones(updUbs);
     LS.set(KUB,updUbs);
+    // Persist reubicación: liberar bin origen, ocupar bin destino (no toca stock)
+    db.del('deposit_locations',{bin_id:form.origen})
+      .catch(e=>console.warn('[TransferenciasTab] del origen:',e?.message||e));
+    db.upsert('deposit_locations',{org_id:getOrgId(),bin_id:form.destino,producto_id:form.productoId,asignado:ts},'org_id,bin_id')
+      .catch(e=>console.warn('[TransferenciasTab] upsert destino:',e?.message||e));
     // Persist to Supabase (non-blocking)
     db.insert('transfers', {
       id:              t.id,
