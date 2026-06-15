@@ -5,15 +5,22 @@ import { LS, db } from '../lib/constants.js';
 function TransferenciasTab(){
   const { products: prods, transfers, setTransfers } = useApp();
   const G="#059669";
-  const [deposito]=useState({});
+  const KUB="aryes-deposito-ubicaciones"; // mismo store que DepositoTab (mapa producto→bin)
   const [form,setForm]=useState({productoId:"",cantidad:"",origen:"",destino:"",notas:""});
   const [msg,setMsg]=useState("");
   const [showForm,setShowForm]=useState(false);
-
-  // Build list of locations from deposito config (LS — device-specific warehouse layout)
-  const locs=Object.values(deposito||{}).filter(l=>l&&l.codigo);
+  // Mapa real de ubicaciones del depósito (no hardcode). Stock total NO cambia en
+  // un movimiento interno: sólo se reubica el bin que ocupa el producto.
+  const [ubicaciones,setUbicaciones]=useState(()=>LS.get(KUB,[]));
 
   const selProd=prods.find(p=>p.id===form.productoId);
+  // Bins reales: los ocupados según el mapa del depósito.
+  const binIds=[...new Set(ubicaciones.map(u=>u.id))].sort((a,b)=>a.localeCompare(b));
+  // Origen sugerido: bins donde HOY está el producto seleccionado.
+  const binsDelProducto=form.productoId
+    ? ubicaciones.filter(u=>u.productoId===form.productoId).map(u=>u.id)
+    : [];
+  const origenOpts=binsDelProducto.length?binsDelProducto:binIds;
 
   const guardarTransfer=()=>{
     if(!form.productoId||!form.cantidad||!form.origen||!form.destino){
@@ -34,6 +41,15 @@ function TransferenciasTab(){
     };
     // Optimistic update — reactive LS.set handled by AppContext useEffect
     setTransfers(prev => [t, ...prev]);
+    // Reubicar el bin del producto: liberar origen, ocupar destino. El stock TOTAL
+    // no se toca — es un movimiento físico interno, no una entrada/salida.
+    const ts=new Date().toISOString();
+    const updUbs=ubicaciones
+      .filter(u=>!(u.id===form.origen&&u.productoId===form.productoId))
+      .filter(u=>u.id!==form.destino) // destino queda asignado al producto movido
+      .concat([{id:form.destino,productoId:form.productoId,asignado:ts}]);
+    setUbicaciones(updUbs);
+    LS.set(KUB,updUbs);
     // Persist to Supabase (non-blocking)
     db.insert('transfers', {
       id:              t.id,
@@ -73,6 +89,11 @@ function TransferenciasTab(){
       {showForm&&(
         <div style={{background:"#fff",borderRadius:12,padding:24,boxShadow:"0 2px 12px rgba(0,0,0,.08)",marginBottom:24}}>
           <h3 style={{fontSize:16,fontWeight:700,color:"#1a1a1a",marginTop:0,marginBottom:16}}>Nueva transferencia</h3>
+          {binIds.length===0&&(
+            <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12.5,color:"#92400e"}}>
+              Todavía no asignaste ubicaciones en el depósito. Andá a <strong>Depósito</strong> y asigná productos a sus posiciones para poder moverlos entre ellas.
+            </div>
+          )}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <div style={{gridColumn:"1 / -1"}}>
               <F label="Producto" req>
@@ -89,15 +110,13 @@ function TransferenciasTab(){
             <F label="Ubicacion origen" req>
               <select value={form.origen} onChange={e=>setForm(f=>({...f,origen:e.target.value}))} style={{...inp}}>
                 <option value="">Seleccionar origen...</option>
-                {locs.length>0?locs.map(l=><option key={l.codigo} value={l.codigo}>{l.codigo}</option>):
-                  ["A-1-1","A-1-2","A-2-1","B-1-1","B-1-2","C-1-1"].map(c=><option key={c} value={c}>{c}</option>)}
+                {origenOpts.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
             </F>
             <F label="Ubicacion destino" req>
               <select value={form.destino} onChange={e=>setForm(f=>({...f,destino:e.target.value}))} style={{...inp}}>
                 <option value="">Seleccionar destino...</option>
-                {locs.length>0?locs.map(l=><option key={l.codigo} value={l.codigo}>{l.codigo}</option>):
-                  ["A-1-1","A-1-2","A-2-1","B-1-1","B-1-2","C-1-1"].map(c=><option key={c} value={c}>{c}</option>)}
+                {binIds.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
             </F>
             <div style={{gridColumn:"1 / -1"}}>

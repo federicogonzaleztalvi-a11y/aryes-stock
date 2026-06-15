@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { LS, fmt, getOrgId} from '../lib/constants.js';
+import { fmt, getOrgId, getSession, SB_URL, SKEY} from '../lib/constants.js';
 
 function BatchPickingTab(){
-  const { products: prods, setProducts: setProds, ventas} = useApp();
+  const { products: prods, ventas, setVentas, isDemoMode} = useApp();
   const G="#059669";
   const [selIds,setSelIds]=useState([]);
   const [picking,setPicking]=useState(null);
@@ -61,34 +61,34 @@ function BatchPickingTab(){
   const pct=picking?Math.round(Object.values(recolectados).filter(Boolean).length/picking.items.length*100):0;
 
   const confirmarBatch=()=>{
-    // Descontar stock
-    const updProds=[...prods];
-    picking.items.forEach(it=>{
-      const idx=updProds.findIndex(p=>(p.nombre||p.name)===it.nombre);
-      if(idx>-1){
-        const nuevo=Math.max(0,Number(updProds[idx].stock||0)-it.cantTotal);
-        updProds[idx]={...updProds[idx],stock:nuevo};
-      }
-    });
-    setProds(updProds);
+    // El stock YA se descontó al crear cada venta (create_venta es atómico).
+    // Picking es solo recolección: avanza el estado confirmada → preparada.
+    // NO tocar stock acá o habría doble descuento.
+    const userEmail=getSession()?.email||'sistema';
+    const sessionToken=getSession()?.access_token||'';
+    const ts=new Date().toISOString();
+    const ventaIds=picking.ventas.map(v=>v.id);
 
-    // Ledger inmutable — RPC por cada ítem del batch
-    const SB_B=import.meta.env.VITE_SUPABASE_URL;
-    const KEY_B=import.meta.env.VITE_SUPABASE_ANON_KEY;
-    picking.items.forEach(it=>{
-      const prod=prods.find(p=>(p.nombre||p.name)===it.nombre);
-      if(prod?.uuid&&it.cantTotal>0){
-        fetch(`${SB_B}/rest/v1/rpc/stock_venta`,{
+    // Optimistic: marcar las ventas confirmada como preparada
+    setVentas(vs=>vs.map(v=>(ventaIds.includes(v.id)&&v.estado==='confirmada')
+      ?{...v,estado:'preparada',estadoLog:[...(v.estadoLog||[]),{from:'confirmada',to:'preparada',ts,user:userEmail}],updatedAt:ts}
+      :v));
+
+    // DEMO: no llamar RPC, el estado optimista ya alcanza
+    if(!isDemoMode){
+      picking.ventas.forEach(v=>{
+        if(v.estado!=='confirmada')return; // ya está preparada o más adelante
+        fetch(`${SB_URL}/rest/v1/rpc/transition_venta_state`,{
           method:'POST',
-          headers:{apikey:KEY_B,Authorization:`Bearer ${KEY_B}`,'Content-Type':'application/json'},
-          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:it.cantTotal,p_org_id:getOrgId(),p_ref:`batch-picking-${picking.id}`})
-        }).catch(e=>console.warn('[BatchPickingTab] stock_venta RPC:',e));
-      }
-    });
+          headers:{apikey:SKEY,Authorization:`Bearer ${sessionToken}`,'Content-Type':'application/json'},
+          body:JSON.stringify({p_venta_id:v.id,p_new_estado:'preparada',p_user_email:userEmail})
+        }).catch(e=>console.warn('[BatchPickingTab] transition_venta_state RPC:',e));
+      });
+    }
 
     const n=picking.ventas.length;
     setPicking(null);setSelIds([]);
-    setMsg("Batch completado. Stock descontado para "+n+" ordenes.");
+    setMsg("Picking completado — "+n+" ordenes marcadas como preparadas.");
     setTimeout(()=>setMsg(""),4000);
   };
 
@@ -121,7 +121,7 @@ function BatchPickingTab(){
       </div>
       <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
         <button onClick={()=>setPicking(null)} style={{padding:"10px 20px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:13}}>Cancelar</button>
-        <button onClick={confirmarBatch} disabled={!todoRecolectado} style={{padding:"10px 28px",background:todoRecolectado?"#059669":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todoRecolectado?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar y descontar stock</button>
+        <button onClick={confirmarBatch} disabled={!todoRecolectado} style={{padding:"10px 28px",background:todoRecolectado?"#059669":"#d1d5db",color:"#fff",border:"none",borderRadius:8,cursor:todoRecolectado?"pointer":"not-allowed",fontWeight:700,fontSize:14}}>Confirmar picking</button>
       </div>
     </section>
   );
