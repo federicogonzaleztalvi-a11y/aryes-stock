@@ -136,5 +136,58 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  // ───────── POST: Cliente envía calificación de su entrega ─────────
+  if (req.method === 'POST') {
+    if (!cliente) return res.status(400).json({ error: 'cliente requerido' });
+
+    const body = typeof req.body === 'object' ? req.body : (() => {
+      try { return JSON.parse(req.body || '{}'); } catch { return {}; }
+    })();
+
+    const rating = Number(body.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: 'rating inválido (1-5)' });
+    }
+    const note = String(body.note || '').slice(0, 500);
+
+    // Read current ruta to locate the cliente's entrega (server-side, anti spoof)
+    const rr = await fetch(
+      `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=entregas&limit=1`,
+      { headers }
+    );
+    if (!rr.ok) return res.status(500).json({ error: 'Error del servidor' });
+    const rrows = await rr.json();
+    const entregas = rrows?.[0]?.entregas;
+    if (!Array.isArray(entregas)) return res.status(404).json({ error: 'Ruta no encontrada' });
+
+    const idx = entregas.findIndex(e => e.clienteId === cliente);
+    if (idx < 0) return res.status(404).json({ error: 'Entrega no encontrada en esta ruta' });
+    if (entregas[idx].estado !== 'entregado') {
+      return res.status(400).json({ error: 'Solo se puede calificar una entrega completada' });
+    }
+    if (entregas[idx].rating) {
+      return res.status(409).json({ error: 'Esta entrega ya fue calificada' });
+    }
+
+    // Mutate only the rating fields of this single entrega
+    entregas[idx] = {
+      ...entregas[idx],
+      rating,
+      ratingNote: note,
+      ratingAt:   new Date().toISOString(),
+    };
+
+    const wr = await fetch(`${SB_URL}/rest/v1/rutas?id=eq.${ruta}`, {
+      method:  'PATCH',
+      headers: { ...headers, Prefer: 'return=minimal' },
+      body:    JSON.stringify({ entregas, updated_at: new Date().toISOString() }),
+    });
+    if (!wr.ok) {
+      console.error('[tracking-public] rating PATCH error:', await wr.text());
+      return res.status(500).json({ error: 'Error al guardar calificación' });
+    }
+    return res.status(200).json({ ok: true });
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }

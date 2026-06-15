@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import EtiquetasPDF from '../components/EtiquetasPDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import { LS, db, SB_URL, getAuthHeaders , getSession, getOrgId } from '../lib/constants.js';
 
@@ -13,7 +12,6 @@ async function callRpc(fnName, params = {}) {
   if (r.ok) return { data: await r.json() };
   const err = await r.json().catch(() => ({}));
   throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
-  return etiquetaPallet ? <EtiquetasPDF tipo="pallet" data={etiquetaPallet} brandCfg={window.__brandCfg||{}} onClose={()=>setEtiquetaPallet(null)}/> : null; // placeholder
 }
 
 function RecepcionTab(){
@@ -22,7 +20,6 @@ function RecepcionTab(){
   const KREC="aryes-recepciones";
   const [recepciones,setRecepciones]=useState([]);
   const [vista,setVista]=useState('lista');
-  const [etiquetaPallet,setEtiquetaPallet]=useState(null);
   const [pedidoSel,setPedidoSel]=useState(null);
   const [items,setItems]=useState([]);
   const [proveedor,setProveedor]=useState('');
@@ -31,6 +28,22 @@ function RecepcionTab(){
   const [notas,setNotas]=useState('');
   const [msg,setMsg]=useState('');
   const [saving,setSaving]=useState(false);
+
+  // Cargar historial de recepciones desde Supabase (source of truth) al montar.
+  // Antes el historial arrancaba vacío y nunca se poblaba tras un reload.
+  useEffect(()=>{
+    let cancel=false;
+    (async()=>{
+      const rows=await db.get('recepciones',`org_id=eq.${getOrgId()}&order=creado_en.desc&limit=50`);
+      if(cancel||!Array.isArray(rows))return;
+      setRecepciones(rows.map(r=>({
+        id:r.id, fecha:r.fecha, proveedor:r.proveedor, nroRemito:r.nro_remito,
+        notas:r.notas, pedidoId:r.pedido_id, items:r.items||[], estado:r.estado,
+        diferencias:r.diferencias, creadoEn:r.creado_en,
+      })));
+    })();
+    return ()=>{cancel=true;};
+  },[]);
 
   const pendientes=pedidos.filter(p=>p.status==='pending'||p.status==='ordered'||!p.status);
 

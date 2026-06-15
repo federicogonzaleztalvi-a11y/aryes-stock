@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmt } from '../../lib/constants.js';
 import { G, F, IVA_RATES, fmtMoney } from './constants.js';
 
 function ItemsTable({ items, setItems, moneda }) {

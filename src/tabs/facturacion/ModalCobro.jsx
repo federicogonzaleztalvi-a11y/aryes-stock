@@ -4,6 +4,7 @@
 // Puede ser prefillado con clienteId, clienteNombre, monto y facturas.
 
 import { useState, useMemo } from 'react';
+import { fmt } from '../../lib/constants.js';
 import { G, F, fmtMoney, fmtDateShort } from './constants.js';
 
 const METODOS = ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta', 'Otro'];

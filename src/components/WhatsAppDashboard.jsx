@@ -14,8 +14,6 @@ import { useApp } from '../context/AppContext.tsx';
 const G = '#059669';
 const WA = '#25d366';
 
-  '$' + Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 function isHoy(fechaStr) {
   if (!fechaStr) return false;
   const f   = new Date(fechaStr);

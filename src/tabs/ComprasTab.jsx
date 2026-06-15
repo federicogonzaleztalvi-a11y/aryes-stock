@@ -68,7 +68,7 @@ function ComprasTab() {
     if (typeof SB_URL !== 'undefined' && SB_URL && typeof SKEY !== 'undefined' && SKEY) {
       fetch(SB_URL + '/rest/v1/purchase_invoices?id=eq.' + orderId, { method:'PATCH', headers:{ apikey:SKEY, Authorization:'Bearer '+SKEY, 'Content-Type':'application/json', Prefer:'return=minimal' }, body:JSON.stringify({ expected_arrival: date }) }).catch(()=>{});
     }
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, expected_arrival: date } : o));
+    setPurchaseInvoices(prev => prev.map(o => o.id === orderId ? { ...o, expected_arrival: date } : o));
   };
   const [form,        setForm]        = useState(emptyForm);
   // Line items in the form

@@ -3,12 +3,42 @@
 // Also used to send messages (OTP, notifications) via WhatsApp Cloud API
 
 import { setCorsHeaders } from './_cors.js';
+import crypto from 'node:crypto';
 
 const WA_TOKEN = process.env.WA_ACCESS_TOKEN;
 const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;
 const WA_VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || 'pazque_webhook_2026';
+const WA_APP_SECRET = process.env.WA_APP_SECRET;
 const SB_URL = process.env.SUPABASE_URL;
 const SB_SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// El body-parser automático de Vercel se desactiva para poder calcular el HMAC
+// sobre los bytes EXACTOS que envió Meta (re-serializar el JSON parseado no
+// reproduce el payload original y rompería la verificación de firma).
+export const config = { api: { bodyParser: false } };
+
+function readRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
+// Verifica X-Hub-Signature-256 = 'sha256=' + HMAC_SHA256(app_secret, rawBody).
+// Sin esto, cualquiera podría POSTear mensajes falsos al webhook (inyección en wa_messages).
+function verifyMetaSignature(rawBody, signatureHeader) {
+  if (!WA_APP_SECRET) {
+    console.warn('[whatsapp] WA_APP_SECRET no configurado — se omite verificación de firma');
+    return true; // fail-open sólo si no hay secret (igual que el webhook de pagos)
+  }
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+  const expected = 'sha256=' + crypto.createHmac('sha256', WA_APP_SECRET).update(rawBody).digest('hex');
+  const a = Buffer.from(signatureHeader);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 // ── Webhook verification (GET) — Meta sends this to verify the endpoint ──
 function handleVerify(req, res) {
@@ -25,7 +55,17 @@ function handleVerify(req, res) {
 
 // ── Webhook notification (POST) — Meta sends incoming messages here ──
 async function handleWebhook(req, res) {
-  const body = req.body;
+  const rawBody = await readRawBody(req);
+
+  // Verificar firma de Meta ANTES de procesar/persistir nada.
+  if (!verifyMetaSignature(rawBody, req.headers['x-hub-signature-256'])) {
+    console.warn('[whatsapp] firma inválida — posible spoofing');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  let body;
+  try { body = JSON.parse(rawBody.toString('utf8') || '{}'); }
+  catch { return res.status(400).json({ error: 'Invalid JSON' }); }
 
   if (!body?.object) return res.status(400).json({ error: 'Invalid payload' });
 

@@ -21,7 +21,6 @@ export default function TrackingPage() {
   const rutaId    = params.get('ruta');
   const clienteId = params.get('cliente');
   const orgId     = params.get('org');
-  if (!orgId) return <div style={{padding:40,textAlign:'center',fontFamily:'system-ui'}}>Link inválido — falta parámetro de organización.</div>;
 
   const [data,       setData]       = useState(null);
   const [loading,    setLoading]    = useState(true);
@@ -89,6 +88,27 @@ export default function TrackingPage() {
     }
   }, [rutaId, clienteId, orgId]);
 
+  const saveRating = useCallback(async () => {
+    if (rating < 1 || ratingSaving) return;
+    setRatingSaving(true);
+    try {
+      const r = await fetch(
+        `/api/tracking-public?ruta=${encodeURIComponent(rutaId)}&org=${encodeURIComponent(orgId)}&cliente=${encodeURIComponent(clienteId)}`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ rating, note: ratingNote }),
+        }
+      );
+      if (r.ok) setRatingDone(true);
+      else setError('No pudimos guardar tu calificación. Intentá de nuevo.');
+    } catch {
+      setError('No pudimos guardar tu calificación. Intentá de nuevo.');
+    } finally {
+      setRatingSaving(false);
+    }
+  }, [rating, ratingNote, ratingSaving, rutaId, orgId, clienteId]);
+
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
@@ -97,6 +117,8 @@ export default function TrackingPage() {
     }, 60000);
     return () => clearInterval(id);
   }, [data, load]);
+
+  if (!orgId) return <div style={{padding:40,textAlign:'center',fontFamily:'system-ui'}}>Link inválido — falta parámetro de organización.</div>;
 
   if (loading) return (
     <div style={{ minHeight:'100vh', background:'#f0f2f5', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:F.sans }}>

@@ -17,6 +17,17 @@
     <meta name="apple-mobile-web-app-title" content="Pazque">
     <link rel="apple-touch-icon" href="/pazque-logo.png">
     <meta name="description" content="Sistema de gestión para distribuidoras — inventario, ventas, rutas y portal B2B">
+    <style>
+      /* Accesibilidad: respetar a quienes piden menos movimiento (WCAG 2.3.3) */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
   <script>
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(r){r.unregister()})});caches.keys().then(function(keys){keys.forEach(function(k){caches.delete(k)})});}
 </script>

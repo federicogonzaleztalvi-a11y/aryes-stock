@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { LS } from '../lib/constants.js';
 
 // ── NotificationBell ─────────────────────────────────────────────────────────
 // Persistent alert panel in the topbar.

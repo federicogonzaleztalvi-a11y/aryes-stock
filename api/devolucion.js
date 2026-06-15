@@ -4,23 +4,33 @@
 
 import { log } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
+import { getBearerToken, validatePortalSession } from './_session.js';
 
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
 
-export default async async function handler(req, res) {
+export default async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (!SB_URL || !SB_ANON) return res.status(503).json({ error: 'Servicio no disponible' });
 
-  // GET — listar devoluciones del cliente por teléfono
+  // SECURITY: requiere sesión de portal válida. Identidad (org, tel, cliente_id) se
+  // deriva de la sesión — NUNCA del query/body. Antes cualquiera con un teléfono podía
+  // leer las devoluciones de otro cliente o crear devoluciones por ventaId adivinado.
+  const session = await validatePortalSession(getBearerToken(req));
+  if (!session) return res.status(401).json({ error: 'Sesión requerida' });
+  const sessOrg = String(session.org_id || 'aryes');
+  const sessTel = String(session.tel || '').replace(/\D/g, '');
+  const sessClienteId = String(session.cliente_id || '');
+
+  // GET — listar devoluciones del cliente autenticado
   if (req.method === 'GET') {
-    const { tel, org = 'aryes' } = req.query || {};
-    if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });
-    const telClean = tel.replace(/\D/g, '');
+    const telClean = sessTel;
+    if (!telClean) return res.status(400).json({ error: 'Teléfono no encontrado en la sesión' });
+    const org = sessOrg;
 
     const r = await fetch(
       `${SB_URL}/rest/v1/devoluciones?cliente_tel=eq.${encodeURIComponent(telClean)}&org_id=eq.${encodeURIComponent(org)}&order=creado_en.desc&limit=10`,
@@ -33,23 +43,28 @@ export default async async function handler(req, res) {
 
   // POST — crear solicitud de devolución desde el portal
   if (req.method === 'POST') {
-    const { ventaId, clienteNombre, clienteTel, motivo, notas, items, org = 'aryes' } = req.body || {};
+    const { ventaId, clienteNombre, motivo, notas, items } = req.body || {};
+    // Identidad SIEMPRE desde la sesión, nunca del body.
+    const org = sessOrg;
+    const telClean = sessTel;
 
     if (!ventaId || !motivo || !items?.length) {
       return res.status(400).json({ error: 'ventaId, motivo e items son requeridos' });
     }
-    if (!clienteTel) return res.status(400).json({ error: 'Teléfono del cliente requerido' });
+    if (!telClean) return res.status(400).json({ error: 'Teléfono no encontrado en la sesión' });
 
-    const telClean = clienteTel.replace(/\D/g, '');
-
-    // Verificar que la venta pertenece a este cliente
+    // Verificar que la venta pertenece a ESTE cliente (org + cliente_id de la sesión).
     const vr = await fetch(
-      `${SB_URL}/rest/v1/ventas?id=eq.${ventaId}&org_id=eq.${encodeURIComponent(org)}&select=id,cliente_nombre,estado`,
+      `${SB_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(ventaId)}&org_id=eq.${encodeURIComponent(org)}&select=id,cliente_id,cliente_nombre,estado`,
       { headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, Accept: 'application/json' } }
     );
     const ventas = await vr.json();
     if (!Array.isArray(ventas) || !ventas.length) {
       return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+    if (sessClienteId && ventas[0].cliente_id && String(ventas[0].cliente_id) !== sessClienteId) {
+      log.warn('devolucion', 'venta ownership mismatch — blocked', { ventaId, sessClienteId });
+      return res.status(403).json({ error: 'Esta venta no pertenece a tu cuenta' });
     }
     if (ventas[0].estado !== 'entregada') {
       return res.status(400).json({ error: 'Solo se pueden devolver ventas entregadas' });

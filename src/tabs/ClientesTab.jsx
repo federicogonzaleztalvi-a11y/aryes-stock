@@ -744,7 +744,7 @@ function ClientesTab(){
                 headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'},
                 body:JSON.stringify({portal_activo:nuevo})
               });
-              setClients(cs=>cs.map(c=>c.id===sel.id?{...c,portal_activo:nuevo}:c));
+              setItems(cs=>cs.map(c=>c.id===sel.id?{...c,portal_activo:nuevo}:c));
             }}
             style={{padding:'8px 18px',border:`1px solid ${(sel.portal_activo??true)?'#bbf7d0':'#fde68a'}`,borderRadius:8,
               background:(sel.portal_activo??true)?'#f0fdf4':'#fffbeb',

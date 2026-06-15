@@ -4,7 +4,7 @@ import { db } from '../../lib/constants.js';
 
 // ── Lotes Tab ────────────────────────────────────────────────────────────
  
-const LotsTab=({products,session})=>{
+const LotsTab=()=>{
   const { lotes: lots, setLotes: setLots, products, session} = useApp();
   const [filter,setFilter]=useState('all');
   const [editing,setEditing]=useState(null);

@@ -97,32 +97,7 @@ export default async function handler(req, res) {
       const { email, password, name, role } = req.body || {};
 
       if (!email || !password || !name || !role)
-        
-
-  // ── Revoke portal sessions for a client ──────────────────────────
-  if (action === 'revoke-sessions') {
-    const { cliente_id } = req.body || {};
-    if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
-
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const revokeRes = await fetch(
-      `${process.env.SUPABASE_URL}/rest/v1/portal_sessions?cliente_id=eq.${encodeURIComponent(cliente_id)}&revoked=eq.false`,
-      {
-        method: 'PATCH',
-        headers: {
-          apikey: key, Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json', Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({ revoked: true }),
-      }
-    );
-    if (!revokeRes.ok) {
-      return res.status(500).json({ error: 'Error al revocar sesiones' });
-    }
-    return res.status(200).json({ ok: true, message: 'Sesiones del cliente revocadas' });
-  }
-
-  return res.status(400).json({ error: 'email, password, name y role son requeridos' });
+        return res.status(400).json({ error: 'email, password, name y role son requeridos' });
       if (!['admin', 'operador', 'vendedor'].includes(role))
         return res.status(400).json({ error: 'Rol inválido' });
       if (password.length < 6)
@@ -155,6 +130,28 @@ export default async function handler(req, res) {
       }
 
       return res.status(201).json({ success: true, user: Array.isArray(dbData) ? dbData[0] : dbData });
+    }
+
+    // ── Revoke portal sessions for a client ───────────────────────────────────
+    if (action === 'revoke-sessions') {
+      const { cliente_id } = req.body || {};
+      if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
+
+      const revokeRes = await fetch(
+        `${SB_URL}/rest/v1/portal_sessions?cliente_id=eq.${encodeURIComponent(cliente_id)}&revoked=eq.false`,
+        {
+          method: 'PATCH',
+          headers: {
+            apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+            'Content-Type': 'application/json', Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({ revoked: true }),
+        }
+      );
+      if (!revokeRes.ok) {
+        return res.status(500).json({ error: 'Error al revocar sesiones' });
+      }
+      return res.status(200).json({ ok: true, message: 'Sesiones del cliente revocadas' });
     }
 
     // ── UPDATE role / active / name ───────────────────────────────────────────

@@ -1,5 +1,10 @@
 // Public catalog API â no auth required from client side.
 import { setCorsHeaders } from './_cors.js';
+import { getBearerToken, validatePortalSession } from './_session.js';
+
+// PRIVATE mode (?cliente=) requires a valid portal session. org_id and cliente_id
+// are derived from the validated session — query params are IGNORED for that path
+// to prevent IDOR / cross-tenant data access.
 
 // GET /api/catalogo?org=aryes              â all products (public catalog)
 // GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
@@ -25,6 +30,14 @@ function setHeaders(res, extra = {}) {
   Object.entries(extra).forEach(([k, v]) => res.setHeader(k, v));
 }
 
+// Normaliza la unidad para mostrar en el portal: saca el "/" y el "." que vienen
+// del importador legado ("/kg." → "kg"), trimea y cae a 'un' si queda vacía.
+// Evita que el portal muestre "/ /kg" o "/ null".
+function normalizeUnit(unit) {
+  const clean = String(unit || '').replace(/^[/\s]+/, '').replace(/[.\s]+$/, '').trim();
+  return clean || 'un';
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     setHeaders(res);
@@ -36,8 +49,27 @@ export default async function handler(req, res) {
 
   if (!SB_KEY)              return res.status(500).json({ error: 'Server misconfigured' });
 
-  const org      = (req.query.org      || 'aryes').replace(/[^a-z0-9_-]/gi, '');
-  const clienteId = (req.query.cliente || '').replace(/[^a-z0-9_-]/gi, '');
+  let org        = (req.query.org      || 'aryes').replace(/[^a-z0-9_-]/gi, '');
+  const reqCliente = (req.query.cliente || '').replace(/[^a-z0-9_-]/gi, '');
+
+  // PRIVATE mode: a ?cliente= request asks for negotiated prices + purchase-based
+  // recommendations — both are tenant-private data. Require a valid portal session
+  // and DERIVE identity from it. Never trust the query param (IDOR defense).
+  let clienteId = '';
+  if (reqCliente) {
+    const session = await validatePortalSession(getBearerToken(req));
+    if (!session) {
+      setHeaders(res);
+      return res.status(401).json({ error: 'Sesión requerida para ver precios personalizados' });
+    }
+    // Override query identity with the authenticated session's identity.
+    clienteId = String(session.cliente_id || '');
+    org       = String(session.org_id || org).replace(/[^a-z0-9_-]/gi, '');
+    if (!clienteId) {
+      setHeaders(res);
+      return res.status(401).json({ error: 'Sesión inválida' });
+    }
+  }
 
   const headers = {
     'apikey':        SB_KEY,
@@ -191,7 +223,7 @@ export default async function handler(req, res) {
         return {
           id:             p.uuid,
           nombre:         p.name,
-          unidad:         p.unit,
+          unidad:         normalizeUnit(p.unit),
           categoria:      p.category || 'General',
           marca:          p.brand    || '',
           precio,

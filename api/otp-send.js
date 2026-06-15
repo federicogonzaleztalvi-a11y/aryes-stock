@@ -2,6 +2,8 @@
 // Si WA_ACCESS_TOKEN no está configurado, devuelve el código en la respuesta (modo dev)
 
 import { setCorsHeaders } from './_cors.js';
+import { checkRateLimit } from './_rate-limit.js';
+import { randomInt } from 'node:crypto';
 
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -71,26 +73,22 @@ async function sendViaWhatsApp(to, code) {
 }
 
 
-// ── Rate limiting: max 5 requests per IP per 10 min ──
-const _rl_otp = new Map();
-function _checkRate_otp(ip) {
-  const now = Date.now();
-  const entry = _rl_otp.get(ip) || [];
-  const recent = entry.filter(t => now - t < 600000);
-  if (recent.length >= 5) return false;
-  recent.push(now);
-  _rl_otp.set(ip, recent);
-  return true;
-}
 export default async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-  if (!_checkRate_otp(_ip)) return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
+  // Rate limit persistente (Supabase RPC) — efectivo en serverless multi-instancia.
+  // El Map en memoria anterior no servía: cada lambda tenía su propio Map.
+  if (!(await checkRateLimit('otp-send:' + _ip, 600, 5)))
+    return res.status(429).json({ error: 'Demasiadas solicitudes. Esperá un momento.' });
 
 
-  const { tel, org = 'aryes' } = req.body || {};
+  const { tel } = req.body || {};
+  // SECURITY: org determina a qué tenant pertenece la sesión. Se sanitiza y el
+  // cliente DEBE pertenecer a ese org — si no, 404. Esto evita que un cliente de
+  // un distribuidor pida OTP/sesión para el portal de otro (cross-tenant).
+  const org = String(req.body?.org || 'aryes').replace(/[^a-z0-9_-]/gi, '') || 'aryes';
   if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });
 
   const telClean = tel.replace(/\D/g, '');
@@ -98,9 +96,11 @@ export default async function handler(req, res) {
 
   const key = SB_SVC_KEY || SB_ANON;
 
-  // Buscar en tabla principal de clientes
+  // Buscar en tabla principal de clientes — SCOPED al org. El match por últimos 8
+  // dígitos tolera formatos con/sin código de país, pero ahora está acotado al org
+  // (antes era global → cross-tenant). PostgREST combina: org_id AND (phone OR like).
   const cliRes = await fetch(
-    `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
+    `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(org)}&or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   let clients = await cliRes.json();
@@ -114,8 +114,9 @@ export default async function handler(req, res) {
     const altPhones = await altRes.json();
     if (altPhones?.length) {
       const clientId = altPhones[0].client_id;
+      // El cliente del teléfono adicional también debe pertenecer al org solicitado.
       const cliRes2 = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clientId)}&select=id,name,lista_id&limit=1`,
+        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clientId)}&org_id=eq.${encodeURIComponent(org)}&select=id,name,lista_id&limit=1`,
         { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
       );
       clients = await cliRes2.json();
@@ -155,7 +156,9 @@ export default async function handler(req, res) {
     body: JSON.stringify({ used: true }),
   });
 
-  const code     = String(Math.floor(1000 + Math.random() * 9000));
+  // Código de 6 dígitos con CSPRNG (randomInt sin sesgo de módulo). Antes eran 4
+  // dígitos con Math.random() → 10.000 combinaciones predecibles, brute-forceable.
+  const code     = String(randomInt(0, 1000000)).padStart(6, '0');
   const codeHash = await sha256(code + telClean);
   const expires  = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
@@ -173,19 +176,31 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Error al generar código' });
   }
 
+  // SECURITY: nunca devolver el código OTP en la respuesta en producción.
+  // Solo en desarrollo local se expone para poder probar sin enviar mensajes.
+  const IS_PROD = (process.env.VERCEL_ENV || process.env.NODE_ENV) === 'production';
+
   if (WA_TOKEN && WA_PHONE_ID) {
     try {
       const telE164 = toE164(telClean);
       await sendViaWhatsApp(telE164, code);
       return res.status(200).json({ ok: true, clienteNombre: clients[0].name });
     } catch (err) {
-      console.error('[otp-send] WhatsApp failed, falling back to dev mode:', err.message);
-      // Fallback to dev mode — return code in response so user can still login
+      console.error('[otp-send] WhatsApp failed:', err.message);
+      // En prod NO se filtra el código — el usuario reintenta.
+      if (IS_PROD) {
+        return res.status(502).json({ error: 'No pudimos enviar el código. Probá de nuevo en unos segundos.' });
+      }
+      // Dev local: devolver el código para poder seguir probando.
       return res.status(200).json({ ok: true, clienteNombre: clients[0].name, code, _devMode: true, _waError: err.message });
     }
   }
 
-  // Dev mode
-  console.warn('[otp-send] DEV MODE — código devuelto en respuesta (sin SMS)');
+  // WhatsApp no configurado.
+  if (IS_PROD) {
+    console.error('[otp-send] WA_ACCESS_TOKEN no configurado en producción');
+    return res.status(503).json({ error: 'Servicio de mensajería no disponible. Contactá al proveedor.' });
+  }
+  console.warn('[otp-send] DEV MODE — código devuelto en respuesta (sin envío)');
   return res.status(200).json({ ok: true, clienteNombre: clients[0].name, code, _devMode: true });
 }

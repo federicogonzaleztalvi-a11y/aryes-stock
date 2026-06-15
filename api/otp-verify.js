@@ -1,6 +1,7 @@
 // api/otp-verify.js v4
 
 import { setCorsHeaders } from './_cors.js';
+import { checkRateLimit } from './_rate-limit.js';
 
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,7 +33,15 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
 
-  const { tel, code, org = 'aryes' } = req.body || {};
+  // Rate limit por IP además del MAX_ATTEMPTS por-OTP: frena fuerza bruta que rota
+  // entre múltiples OTPs/teléfonos desde una misma IP.
+  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  if (!(await checkRateLimit('otp-verify:' + _ip, 600, 30)))
+    return res.status(429).json({ error: 'Demasiados intentos. Esperá un momento.' });
+
+  const { tel, code } = req.body || {};
+  // SECURITY: org se sanitiza y el cliente debe pertenecer a ese org (cross-tenant).
+  const org = String(req.body?.org || 'aryes').replace(/[^a-z0-9_-]/gi, '') || 'aryes';
   if (!tel || !code) return res.status(400).json({ error: 'Teléfono y código requeridos' });
 
   const telClean = tel.replace(/\D/g, '');
@@ -65,9 +74,10 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: `Código incorrecto. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}.` });
   }
 
-  // 3. Buscar cliente — teléfono principal o adicional (client_phones)
+  // 3. Buscar cliente — teléfono principal o adicional (client_phones), SCOPED al org.
+  // El cliente debe pertenecer al org solicitado, si no la sesión sería cross-tenant.
   const cliRes = await fetch(
-    `${SB_URL}/rest/v1/clients?or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
+    `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(org)}&or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );
   let clients = await cliRes.json();
@@ -80,7 +90,7 @@ export default async function handler(req, res) {
     const altPhones = await altRes.json();
     if (altPhones?.length) {
       const cliRes2 = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(altPhones[0].client_id)}&select=id,name,lista_id&limit=1`,
+        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(altPhones[0].client_id)}&org_id=eq.${encodeURIComponent(org)}&select=id,name,lista_id&limit=1`,
         { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
       );
       clients = await cliRes2.json();

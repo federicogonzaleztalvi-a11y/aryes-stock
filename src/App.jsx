@@ -26,7 +26,6 @@ const TransferenciasTab = lazyWithRetry(() => import('./tabs/TransferenciasTab.j
 const ComprasTab        = lazyWithRetry(() => import('./tabs/ComprasTab.jsx'));
 const ResultadosTab     = lazyWithRetry(() => import('./tabs/ResultadosTab.jsx'));
 const BatchPickingTab = lazyWithRetry(() => import('./tabs/BatchPickingTab.jsx'));
-const PreciosTab = lazyWithRetry(() => import('./tabs/PreciosTab.jsx'));
 const PreciosListasTab = lazyWithRetry(() => import('./tabs/PreciosListasTab.jsx'));
 const KPIsTab = lazyWithRetry(() => import('./tabs/KPIsTab.jsx'));
 const DemandaTab = lazyWithRetry(() => import('./tabs/DemandaTab.jsx'));
@@ -417,7 +416,7 @@ const Stars = ({ value, onChange }) => (
     {[1,2,3,4,5].map(n => (
       <button key={n} onClick={()=>onChange&&onChange(n)}
         style={{background:"none",border:"none",cursor:onChange?"pointer":"default",
-          fontSize:16,color:n<=value?"#f59e0b":"#ddd6cb",padding:"0 1px",lineHeight:1}}>→</button>
+          fontSize:16,color:n<=value?"#f59e0b":"#ddd6cb",padding:"0 1px",lineHeight:1}}>★</button>
     ))}
   </div>
 );
@@ -1029,7 +1028,7 @@ Generado desde Pazque.`;
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,color:syncToast.type==="info"?"#1d4ed8":"#92400e"}}>{syncToast.msg}</span>
       </div>}
       {hasPendingSync&&<div style={{background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:16}}>→ ï¸</span>
+        <span style={{fontSize:16}}>⚠️</span>
         <span style={{fontFamily:"Inter,sans-serif",fontSize:13,color:"#92400e",fontWeight:600}}>Cambios pendientes de sincronización → reconectando...</span>
       </div>}
       {/* →→ DASHBOARD →→ */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { LS, fmt, getOrgId} from '../lib/constants.js';
 
@@ -11,14 +11,16 @@ function BatchPickingTab(){
   const [msg,setMsg]=useState("");
   const [zonas,setZonas]=useState([]);
 
-  // Cargar zonas del depósito para ordenar picking
-  useState(()=>{
+  // Cargar zonas del depósito para ordenar picking.
+  // Antes usaba useState(fn) como efecto (anti-patrón): el fetch corría como
+  // initializer de estado. useEffect es la forma correcta y estable.
+  useEffect(()=>{
     const SB=import.meta.env.VITE_SUPABASE_URL;
     const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
     fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${getOrgId()}&active=eq.true&order=orden.asc`,
       {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
-  });
+  },[]);
 
   // Función para obtener zona de un ítem por su categoría
   const getZonaOrden=(item)=>{

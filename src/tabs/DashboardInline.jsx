@@ -1,6 +1,6 @@
 import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import ReorderPointWidget from '../components/ReorderPointWidget.jsx';
-import { fmt , getOrgId } from '../lib/constants.js';
+import { fmt , getOrgId, getSession } from '../lib/constants.js';
 import React from 'react';
 import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 import { useApp } from '../context/AppContext.tsx';
@@ -186,8 +186,10 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       const raw = atob((publicKey + '='.repeat((4 - publicKey.length % 4) % 4)).replace(/-/g,'+').replace(/_/g,'/'));
       const key = Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-      const orgId = getOrgId();
-      await fetch('/api/push?action=subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub.toJSON(), orgId, role:'admin' }) });
+      // org_id/role los deriva el server desde la sesión — acá sólo mandamos el token.
+      const token = getSession()?.access_token;
+      if (!token) { setPushState('prompt'); return; }
+      await fetch('/api/push?action=subscribe', { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`}, body: JSON.stringify({ subscription: sub.toJSON() }) });
       setPushState('subscribed');
     } catch { setPushState('prompt'); }
   }, []);
@@ -503,7 +505,8 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           </div>
         </div>
 
-      {critN>0&&(
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        {critN>0&&(
           <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,
             padding:'10px 18px',display:'flex',gap:10,alignItems:'center',cursor:'pointer'}}
             onClick={()=>setTab('inventory')}>
@@ -515,6 +518,21 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             <span style={{fontSize:11,color:'#dc2626'}}>Ver →</span>
           </div>
         )}
+        <button onClick={exportarReporte} aria-label="Exportar reporte CSV" title="Exportar reporte CSV"
+          style={{display:'inline-flex',alignItems:'center',gap:7,padding:'9px 16px',
+            background:'#fff',color:T.green,border:`1px solid ${T.green}`,borderRadius:8,
+            cursor:'pointer',fontFamily:F.sans,fontSize:13,fontWeight:600,
+            transition:'background .2s,color .2s'}}
+          onMouseEnter={e=>{e.currentTarget.style.background=T.green;e.currentTarget.style.color='#fff';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.color=T.green;}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Exportar
+        </button>
+      </div>
       </div>
 
       {/* ── KPI Row 1: Operaciones ────────────────────────────────── */}
@@ -1140,15 +1158,6 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
             </div>
           )}
         </div>
-      
-      
-
-      <button onClick={exportarReporte} title="Exportar reporte CSV"
-        style={{position:'fixed',bottom:80,right:20,zIndex:800,width:48,height:48,borderRadius:'50%',
-          background:'#059669',color:'#fff',border:'none',cursor:'pointer',fontSize:20,
-          boxShadow:'0 4px 12px rgba(0,0,0,.15)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-        📥
-      </button>
 </div>
     </div>
   );

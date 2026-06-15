@@ -101,9 +101,27 @@ async function mpSubscription(req, res) {
     headers: { apikey: SB_SVC, Authorization: 'Bearer ' + token }
   });
   if (!userRes.ok) return res.status(401).json({ error: 'Sesion invalida' });
+  const userData = await userRes.json();
+  if (!userData?.id || !userData?.email) return res.status(401).json({ error: 'Sesion invalida' });
 
   const { plan = 'pro', org_id } = req.body || {};
   if (!org_id) return res.status(400).json({ error: 'org_id requerido' });
+
+  // SECURITY: el usuario autenticado DEBE pertenecer a ese org_id. Sin esto,
+  // cualquier usuario logueado podría crear/modificar la suscripción (y el
+  // mp_plan_id) de otra organización → manipulación de facturación cross-tenant.
+  let callerOrg = userData.user_metadata?.org_id || null;
+  if (!callerOrg) {
+    const memRes = await fetch(
+      SB_URL + '/rest/v1/users?email=eq.' + encodeURIComponent(userData.email) + '&select=org_id&limit=1',
+      { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' } }
+    );
+    if (memRes.ok) { const rows = await memRes.json(); callerOrg = rows?.[0]?.org_id || null; }
+  }
+  if (!callerOrg || String(callerOrg) !== String(org_id)) {
+    log.warn('payments', 'org mismatch on subscription attempt', { callerOrg, org_id, email: userData.email });
+    return res.status(403).json({ error: 'No autorizado para esta organización' });
+  }
 
   // Obtener datos de la org
   const orgRes = await fetch(

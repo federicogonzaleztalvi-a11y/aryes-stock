@@ -2,6 +2,18 @@
 const RESEND_KEY = process.env.RESEND_API_KEY;
 const FROM = 'Pazque <noreply@pazque.com>';
 
+// HTML-escape para valores interpolados en los templates. Sin esto, un nombre de
+// cliente o producto con "<script>"/HTML se inyecta en el email del admin (XSS
+// almacenado en el cliente de correo). Todo dato controlado por el usuario pasa por acá.
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export async function sendEmail({ to, subject, html, attachments }) {
   if (!RESEND_KEY) {
     console.warn('[email] RESEND_API_KEY not configured — skipping email');
@@ -31,7 +43,7 @@ export const templates = {
     html: `
       <div style="font-family:'Inter',system-ui,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
         <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 4px">Nuevo pedido recibido</h1>
-        <p style="font-size:14px;color:#6a6a68;margin:0 0 20px">Cliente: <strong>${clienteNombre}</strong></p>
+        <p style="font-size:14px;color:#6a6a68;margin:0 0 20px">Cliente: <strong>${esc(clienteNombre)}</strong></p>
         <table style="width:100%;border-collapse:collapse;font-size:14px;color:#1a1a18">
           <thead>
             <tr style="border-bottom:2px solid #efefeb;text-align:left">
@@ -43,16 +55,16 @@ export const templates = {
           <tbody>
             ${(items || []).map(it => `
               <tr style="border-bottom:1px solid #f4f4f0">
-                <td style="padding:8px 0">${it.nombre || it.productName || ''}</td>
-                <td style="padding:8px 0;text-align:center">${it.cantidad || it.qty || 0} ${it.unidad || it.unit || ''}</td>
-                <td style="padding:8px 0;text-align:right">${currencySymbol || '$'} ${Math.round(Number(it.subtotal || 0))}</td>
+                <td style="padding:8px 0">${esc(it.nombre || it.productName || '')}</td>
+                <td style="padding:8px 0;text-align:center">${esc(it.cantidad || it.qty || 0)} ${esc(it.unidad || it.unit || '')}</td>
+                <td style="padding:8px 0;text-align:right">${esc(currencySymbol || '$')} ${Math.round(Number(it.subtotal || 0))}</td>
               </tr>`).join('')}
           </tbody>
         </table>
         <div style="margin-top:16px;padding-top:12px;border-top:2px solid #efefeb;font-size:14px;color:#4b4b48">
-          <div style="text-align:right;margin-bottom:4px">Subtotal: ${currencySymbol || '$'} ${Math.round((items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
-          <div style="text-align:right;margin-bottom:8px">IVA: ${currencySymbol || '$'} ${Math.round(Number(total || 0) - (items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
-          <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18">Total: ${currencySymbol || '$'} ${Math.round(Number(total || 0))}</div>
+          <div style="text-align:right;margin-bottom:4px">Subtotal: ${esc(currencySymbol || '$')} ${Math.round((items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
+          <div style="text-align:right;margin-bottom:8px">IVA: ${esc(currencySymbol || '$')} ${Math.round(Number(total || 0) - (items || []).reduce((s,it)=>s+Number(it.subtotal||0),0))}</div>
+          <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18">Total: ${esc(currencySymbol || '$')} ${Math.round(Number(total || 0))}</div>
         </div>
         <a href="https://pazque.com/app/portal" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
           Ver pedido en Pazque
@@ -68,7 +80,7 @@ export const templates = {
         <img src="https://pazque.com/pazque-logo.png" alt="Pazque" style="height:28px;margin-bottom:24px" />
         <h1 style="font-size:22px;font-weight:700;color:#1a1a18;margin:0 0 12px">¡Bienvenido a Pazque!</h1>
         <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 16px">
-          Tu cuenta para <strong>${empresa}</strong> está lista. Tenés 14 días gratis para probar todas las funcionalidades.
+          Tu cuenta para <strong>${esc(empresa)}</strong> está lista. Tenés 14 días gratis para probar todas las funcionalidades.
         </p>
         <a href="https://pazque.com/app" style="display:inline-block;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
           Empezar ahora →
@@ -86,7 +98,7 @@ export const templates = {
         <img src="https://pazque.com/pazque-logo.png" alt="Pazque" style="height:28px;margin-bottom:24px" />
         <h1 style="font-size:22px;font-weight:700;color:#1a1a18;margin:0 0 12px">¡Pago recibido!</h1>
         <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 16px">
-          Confirmamos tu pago de <strong>$${amount}</strong> para <strong>${empresa}</strong>. Tu suscripción está activa.
+          Confirmamos tu pago de <strong>$${esc(amount)}</strong> para <strong>${esc(empresa)}</strong>. Tu suscripción está activa.
         </p>
         <a href="https://pazque.com/app" style="display:inline-block;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
           Ir a Pazque →
@@ -106,7 +118,7 @@ export const templates = {
           ${daysLeft <= 1 ? 'Tu prueba vence hoy' : 'Te quedan ' + daysLeft + ' días de prueba'}
         </h1>
         <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 16px">
-          Tu período de prueba en Pazque para <strong>${empresa}</strong> ${daysLeft <= 1 ? 'vence hoy' : 'vence en ' + daysLeft + ' días'}. 
+          Tu período de prueba en Pazque para <strong>${esc(empresa)}</strong> ${daysLeft <= 1 ? 'vence hoy' : 'vence en ' + Number(daysLeft) + ' días'}.
           Suscribite para seguir usando la plataforma sin interrupciones.
         </p>
         <a href="https://pazque.com/app" style="display:inline-block;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">

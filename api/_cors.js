@@ -39,17 +39,28 @@ async function getAllowedOrigins() {
   return origins;
 }
 
-export async function setCorsHeaders(req, res) {
-  const origin = req.headers.origin || '';
-  const allowed = await getAllowedOrigins();
+// Normaliza un origin para comparar: minúsculas y sin barra final.
+// Evita bypass triviales por capitalización o "https://x.com/" vs "https://x.com".
+function normOrigin(o) {
+  return String(o || '').trim().toLowerCase().replace(/\/+$/, '');
+}
 
-  if (allowed.includes(origin)) {
+export async function setCorsHeaders(req, res) {
+  const origin  = normOrigin(req.headers.origin);
+  const allowed = (await getAllowedOrigins()).map(normOrigin);
+
+  // Allowlist estricta: SOLO se refleja el Origin si está explícitamente permitido
+  // (dominios base + custom domains activos en domain_orgs). Un Origin desconocido
+  // NO recibe su propio valor reflejado — cae al origin base, que el browser
+  // rechazará por mismatch. No hay reflexión arbitraria.
+  if (origin && allowed.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
     res.setHeader('Access-Control-Allow-Origin', BASE_ORIGIN);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '600');
   res.setHeader('Vary', 'Origin');
 }
 

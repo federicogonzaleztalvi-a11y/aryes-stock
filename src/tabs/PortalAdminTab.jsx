@@ -92,7 +92,7 @@ export default function PortalAdminTab() {
         await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${order.id}`, {
           method: 'PATCH',
           headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({ status: 'importado', venta_id: ventaId }),
+          body: JSON.stringify({ estado: 'importado', venta_id: ventaId }),
         }).catch(() => {});
       }
 
@@ -129,13 +129,15 @@ export default function PortalAdminTab() {
   useEffect(() => { cargar(); }, []);
 
   const cambiarEstado = async (id, nuevoEstado) => {
+    // La columna en b2b_orders es `estado` (no `status`) — ver api/pedido.js.
+    // Antes se PATCHeaba `status`, que no existe, así que el cambio no persistía.
     await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${id}`, {
       method: 'PATCH',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ status: nuevoEstado }),
+      body: JSON.stringify({ estado: nuevoEstado }),
     });
-    setPedidos(ps => ps.map(p => p.id === id ? { ...p, status: nuevoEstado } : p));
-    if (pedidoSel?.id === id) setPedidoSel(p => ({ ...p, status: nuevoEstado }));
+    setPedidos(ps => ps.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
+    if (pedidoSel?.id === id) setPedidoSel(p => ({ ...p, estado: nuevoEstado }));
     showMsg(`Estado actualizado a "${nuevoEstado}"`);
   };
 
@@ -143,9 +145,9 @@ export default function PortalAdminTab() {
   const counts = {
     todos: pedidos.length,
     pendiente: pedidos.filter(p => p.estado === 'pendiente').length,
-    confirmado: pedidos.filter(p => p.estado === 'confirmada').length,
+    confirmado: pedidos.filter(p => p.estado === 'confirmado').length,
     importado: pedidos.filter(p => p.estado === 'importado').length,
-    cancelado: pedidos.filter(p => p.estado === 'cancelada').length,
+    cancelado: pedidos.filter(p => p.estado === 'cancelado').length,
   };
 
   return (
@@ -168,7 +170,7 @@ export default function PortalAdminTab() {
 
       {/* Filtros */}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-        {[['todos','Todos'],['pendiente','Pendientes'],['confirmada','Confirmados'],['importado','Importados'],['cancelada','Cancelados']].map(([key, label]) => (
+        {[['todos','Todos'],['pendiente','Pendientes'],['confirmado','Confirmados'],['importado','Importados'],['cancelado','Cancelados']].map(([key, label]) => (
           <button key={key} onClick={() => setFiltro(key)} style={{
             padding:'6px 14px', borderRadius:20, fontSize:12, fontWeight:600, cursor:'pointer',
             background: filtro === key ? G : T.muted,

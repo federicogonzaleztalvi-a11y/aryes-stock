@@ -3,6 +3,16 @@ import { T, totalLead, avgDaily, rop, safetyStock, eoq, alertLevel, ALERT_CFG,
          Modal, Inp, Btn, Cap, StockBar, fmtDate, fmtShort } from '../lib/ui.jsx';
 
 const OrderModal=({product,supplier,suppliers,onConfirm,onClose,suggestedQty})=>{
+  // Null-safe derivations so hooks can run before the supplier guard (rules-of-hooks)
+  const lead=supplier?totalLead(supplier):0;
+  const daily=avgDaily(product.history);
+  const eq=supplier?eoq(product.history,product.unitCost):0;
+  const initQty=suggestedQty||eq||Math.ceil(daily*lead*1.5);
+  const [qty,setQty]=useState(initQty);
+  const [useEOQ,setUseEOQ]=useState(!suggestedQty);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(()=>{if(useEOQ)setQty(eq||Math.ceil(daily*lead*1.5));},[useEOQ]);
+
   // Defense: if product has no supplier assigned, show helpful empty state
   if (!supplier) {
     const noSuppliers = !suppliers || suppliers.length === 0;
@@ -21,17 +31,9 @@ const OrderModal=({product,supplier,suppliers,onConfirm,onClose,suggestedQty})=>
       </Modal>
     );
   }
-  const lead=totalLead(supplier);
-  const daily=avgDaily(product.history);
   const r=rop(product.history,lead);
   const ss=safetyStock(product.history,lead);
-  const eq=eoq(product.history,product.unitCost);
   const {level,daysToROP,daysOut}=alertLevel(product,supplier);
-  const initQty=suggestedQty||eq||Math.ceil(daily*lead*1.5);
-  const [qty,setQty]=useState(initQty);
-  const [useEOQ,setUseEOQ]=useState(!suggestedQty);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(()=>{if(useEOQ)setQty(eq||Math.ceil(daily*lead*1.5));},[useEOQ]);
   const arrival=new Date();arrival.setDate(arrival.getDate()+lead);
   const stockAfter=product.stock+qty;
   const daysAfter=daily>0?Math.round(stockAfter/daily):999;

@@ -319,10 +319,14 @@ export default function CatalogoPage() {
   const clienteId = params.get('cliente') || '';
   const showPrice = !!clienteId;
 
-  // Cargar productos + config de marca en paralelo
+  // Cargar productos + config de marca en paralelo.
+  // SECURITY: este es un showroom PÚBLICO (link compartible sin login). NUNCA pide
+  // precios personalizados por ?cliente= — eso expondría precios negociados a quien
+  // adivine el UUID (IDOR). Los precios personalizados viven sólo en el portal con OTP.
+  // Acá se muestran precios BASE públicos cuando el dueño activa el toggle de precios.
   useEffect(() => {
     setLoading(true);
-    const catUrl = `${API}/api/catalogo?org=${org}${clienteId ? `&cliente=${clienteId}` : ''}`;
+    const catUrl = `${API}/api/catalogo?org=${org}`;
     const cfgUrl = `${API}/api/catalogo?org=${org}&config=1`;
 
     fetch(catUrl)
@@ -350,7 +354,6 @@ export default function CatalogoPage() {
     return mQ && mCat && mMar;
   }), [items, q, catActiva, marca]);
 
-  const totalCarrito = 0;
   const portalCfg = brandCfg || {};
   const portalDisabled = portalCfg.portalCatalogo === false;
   const pedidosEnabled = portalCfg.portalPedidos !== false;
@@ -509,20 +512,6 @@ export default function CatalogoPage() {
           )}
         </div>
       </div>
-
-      {/* ── Carrito flotante mobile ── */}
-      {totalCarrito > 0 && (
-        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 200 }}>
-          <button onClick={() => setModal(true)} style={{
-            background: G, color: '#fff', border: 'none', borderRadius: '50%',
-            width: 56, height: 56, cursor: 'pointer', boxShadow: '0 4px 16px rgba(26,138,60,.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.96 1.61h9.72a2 2 0 001.95-1.56L23 6H6"/></svg>
-            <span style={{ position: 'absolute', top: -3, right: -3, background: '#dc2626', color: '#fff', borderRadius: '50%', width: 18, height: 18, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{totalCarrito}</span>
-          </button>
-        </div>
-      )}
 
       {/* ── Modal quiero ser cliente ── */}
       {modalCliente && (

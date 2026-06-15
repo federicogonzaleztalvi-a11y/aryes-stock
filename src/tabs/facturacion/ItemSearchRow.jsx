@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext.tsx';
+import { fmt } from '../../lib/constants.js';
 import { G, F, IVA_RATES, fmtMoney } from './constants.js';
 
 function ItemSearchRow({ productos, onAdd }) {

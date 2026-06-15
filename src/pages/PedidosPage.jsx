@@ -316,18 +316,18 @@ function LoginStep({ onLogin }) {
                   Dev - codigo: <strong style={{ fontSize: 18, letterSpacing: 4 }}>{devCode}</strong>
                 </div>
               )}
-              <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#6a6a68' }}>
-                Codigo de 4 digitos
-              </div>
-              <input type="text" inputMode="numeric" placeholder="0000" aria-label="Código de 4 dígitos"
+              <label htmlFor="otp-code" style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#5a5a58' }}>
+                Codigo de 6 digitos
+              </label>
+              <input id="otp-code" type="text" inputMode="numeric" placeholder="000000" aria-label="Código de 6 dígitos"
                 value={code}
-                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={e => e.key === 'Enter' && verifyOTP()} autoFocus
                 onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
                 onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                 style={{ width: '100%', padding: '12px', border: '1px solid #e0e0d8',
                   borderRadius: 10, fontSize: 28, fontFamily: 'monospace', fontWeight: 700,
-                  textAlign: 'center', letterSpacing: 12, marginBottom: 16,
+                  textAlign: 'center', letterSpacing: 10, marginBottom: 16,
                   boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
               <button onClick={verifyOTP} disabled={loading} style={{
                 width: '100%', padding: '11px 0', background: loading ? '#b0b0a8' : G,
@@ -394,7 +394,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
           {item.precio > 0 ? fmt.currency(item.precio) : <span style={{ fontSize: 12, color: '#a0a098' }}>Consultar</span>}
-          {item.precio > 0 && <span style={{ fontSize: 10, color: '#a0a098', fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+          {item.precio > 0 && item.unidad && <span style={{ fontSize: 10, color: '#a0a098', fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
         {qty > 0 ? (
@@ -848,6 +848,7 @@ export default function PedidosPage() {
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
   const [brandCfg, setBrandCfg] = useState(null);
+  const [portalBloqueado, setPortalBloqueado] = useState(null); // mensaje si el portal está deshabilitado
   const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');
   const [busq,     setBusq]     = useState('');
@@ -893,14 +894,34 @@ export default function PedidosPage() {
     if (!ses?.clienteId) return;
     setLoading(true);
     try {
-      const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`);
+      const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`,
+        ses.token ? { headers: { Authorization: `Bearer ${ses.token}` } } : undefined);
       const d = await r.json();
+
+      // Branding vive en portalCfg (catalogo.js carga app_config key=brandcfg ahí).
+      // Antes se leía d.brandCfg (inexistente) con campo .nombre (es .name) → marca nunca cargaba.
+      if (d.portalCfg) {
+        setBrandCfg(d.portalCfg);
+        if (d.portalCfg.name) setBrandNombre(d.portalCfg.name);
+      }
+
+      // Portal deshabilitado a nivel org (catálogo apagado) o para este cliente (portal_activo=false).
+      if (d.portalDisabled) {
+        setPortalBloqueado('El catálogo no está disponible en este momento. Contactá a tu proveedor.');
+        setItems([]); setCats(['Todos']);
+        return;
+      }
+      if (d.portalActivo === false) {
+        setPortalBloqueado('Tu acceso al portal está temporalmente desactivado. Contactá a tu proveedor.');
+        setItems([]); setCats(['Todos']);
+        return;
+      }
+      setPortalBloqueado(null);
+
       if (d.items) {
         const prods = d.items;
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
-        if (d.brandCfg?.nombre) setBrandNombre(d.brandCfg.nombre);
-        if (d.brandCfg) setBrandCfg(d.brandCfg);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
@@ -1018,7 +1039,7 @@ export default function PedidosPage() {
             </div>
           ) : <div style={{ flex: 1 }} />}
           {lastOrder && (
-              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(id);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: isMobile ? 11 : 13, color: '#059669', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: isMobile ? '4px 8px' : '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
+              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var prod=items.find(function(p){return p.id===id;});if(!prod)return;var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(prod);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: isMobile ? 11 : 13, color: '#059669', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: isMobile ? '4px 8px' : '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
                 Repetir pedido anterior
               </button>
             )}
@@ -1155,7 +1176,13 @@ export default function PedidosPage() {
           <h1 style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
             Catálogo de productos{brandNombre ? ` — ${brandNombre}` : ''}
           </h1>
-          {loading ? (
+          {portalBloqueado ? (
+            <div role="status" style={{ textAlign: 'center', padding: '60px 24px', maxWidth: 460, margin: '0 auto' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#92400e' }}>{Icon.clock}</div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', margin: '0 0 6px' }}>Portal no disponible</p>
+              <p style={{ fontSize: 13, color: '#6a6a68', margin: 0, lineHeight: 1.5 }}>{portalBloqueado}</p>
+            </div>
+          ) : loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
               {[...Array(8)].map((_, i) => (
                 <div key={i} style={{ background: '#fff', borderRadius: 14, height: 240, border: '1px solid #efefeb', opacity: 0.5 }} />

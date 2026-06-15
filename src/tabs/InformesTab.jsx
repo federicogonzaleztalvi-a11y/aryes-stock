@@ -5,7 +5,7 @@ import ReportePDF from '../components/ReportePDF.jsx';
 import { useApp } from '../context/AppContext.tsx';
 
 function InformesTab(){
-  const { products: prods, movements: movs , ventas, clientes, lotes, rutas} = useApp();
+  const { products: prods, movements: movs , ventas, clientes, lotes, rutas, brandCfg} = useApp();
     const [periodo,setPeriodo]=useState("mes");
   const [msg,setMsg]=useState("");
   const hoy=new Date();

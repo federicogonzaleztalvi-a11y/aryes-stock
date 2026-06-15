@@ -7,7 +7,7 @@ import ModalCobro from './facturacion/ModalCobro.jsx';
 
 import GeneradorRuta from '../components/GeneradorRuta.jsx';
 
-import { nearestNeighborTSP } from './rutas/utils.js';
+import { nearestNeighborTSP, haversine, geocodeAddress } from './rutas/utils.js';
 
 function RutasTab(){
   const { clientes, setClientes, rutas, setRutas, setHasPendingSync, cfes, cobros, setCobros } = useApp();
@@ -116,9 +116,7 @@ function RutasTab(){
   // Modo A: empresa con dias fijos por zona (ej: Pazque — Centro los Lunes)
   // Modo B: empresa sin zonas — ruta libre optimizada
   const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
-  const [zonasConfig, setZonasConfig] = React.useState(() => {
-    try { return []; } catch { return []; } // zonas se cargan de deposit_zones en Supabase
-  });
+  const [zonasConfig, setZonasConfig] = React.useState([]); // zonas se cargan de deposit_zones en Supabase
   const [showZonasConfig, setShowZonasConfig] = React.useState(false);
   const [zonaForm, setZonaForm] = React.useState({ nombre:'', dias:[], color:'#3b82f6' });
   const [showSugeridor, setShowSugeridor] = React.useState(false);

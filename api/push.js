@@ -10,19 +10,15 @@ import { setCorsHeaders } from './_cors.js';
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
-const SB_SVC  = process.env.SUPABASE_SERVICE_KEY || SB_ANON;
+const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_ANON;
 
 const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hola@pazque.com';
 
 
-function setCORS(res) {
+export default async function handler(req, res) {
   await setCorsHeaders(req, res);
-}
-
-export default async async function handler(req, res) {
-  setCORS(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const action = req.query?.action || 'vapid-key';
@@ -42,9 +38,32 @@ export default async async function handler(req, res) {
 
   // POST /api/push?action=subscribe — save push subscription from browser
   if (action === 'subscribe' && req.method === 'POST') {
-    const { subscription, orgId, role } = req.body || {};
+    const { subscription } = req.body || {};
     if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
-    if (!orgId) return res.status(400).json({ error: 'orgId required' });
+
+    // SECURITY: org_id y role NO se confían del body. Antes, cualquiera podía
+    // suscribirse a las notificaciones admin de otro tenant (cross-tenant leak).
+    // Se autentica al usuario y se derivan org/role de su registro en public.users.
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'No autenticado' });
+    const userRes = await fetch(`${SB_URL}/auth/v1/user`, {
+      headers: { apikey: SB_ANON, Authorization: `Bearer ${token}` }
+    });
+    if (!userRes.ok) return res.status(401).json({ error: 'Sesión inválida' });
+    const userData = await userRes.json();
+    if (!userData?.email) return res.status(401).json({ error: 'Sesión inválida' });
+
+    // Resolver org_id y role reales del usuario desde public.users (fuente de verdad)
+    let orgId = userData.user_metadata?.org_id || null;
+    let role  = userData.user_metadata?.role || null;
+    if (!orgId || !role) {
+      const memRes = await fetch(
+        `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(userData.email)}&select=org_id,role&limit=1`,
+        { headers: { apikey: SB_SVC, Authorization: `Bearer ${SB_SVC}`, Accept: 'application/json' } }
+      );
+      if (memRes.ok) { const rows = await memRes.json(); orgId = orgId || rows?.[0]?.org_id; role = role || rows?.[0]?.role; }
+    }
+    if (!orgId) return res.status(403).json({ error: 'Usuario sin organización' });
 
     // Save to Supabase push_subscriptions table
     const r = await fetch(`${SB_URL}/rest/v1/push_subscriptions`, {
@@ -83,14 +102,24 @@ export default async async function handler(req, res) {
     });
     if (!userRes.ok) return res.status(401).json({ error: 'Sesión inválida' });
     const userData = await userRes.json();
-    const callerOrg = userData?.user_metadata?.org_id;
-    const { orgId } = req.body || {};
-    if (callerOrg && orgId && callerOrg !== orgId) {
+    if (!userData?.email) return res.status(401).json({ error: 'Sesión inválida' });
+
+    // Resolver org real del usuario. NO fail-open: si no se puede determinar el org
+    // del caller, se rechaza (antes, un user sin org_id en metadata pasaba el chequeo).
+    let callerOrg = userData.user_metadata?.org_id || null;
+    if (!callerOrg) {
+      const memRes = await fetch(
+        `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(userData.email)}&select=org_id&limit=1`,
+        { headers: { apikey: SB_SVC, Authorization: `Bearer ${SB_SVC}`, Accept: 'application/json' } }
+      );
+      if (memRes.ok) { const rows = await memRes.json(); callerOrg = rows?.[0]?.org_id || null; }
+    }
+    const { orgId, title, body, url, tag, urgent } = req.body || {};
+    if (!callerOrg || !orgId || String(callerOrg) !== String(orgId)) {
       log.warn('push', 'org mismatch — blocked', { callerOrg, targetOrg: orgId });
       return res.status(403).json({ error: 'No autorizado para esta organización' });
     }
-    const { orgId, title, body, url, tag, urgent } = req.body || {};
-    if (!orgId || !body) return res.status(400).json({ error: 'orgId and body required' });
+    if (!body) return res.status(400).json({ error: 'body required' });
 
     // Get all subscriptions for this org
     const r = await fetch(

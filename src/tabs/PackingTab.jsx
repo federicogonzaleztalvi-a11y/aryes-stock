@@ -1,11 +1,12 @@
 import { useApp } from '../context/AppContext.tsx';
 import { useState } from 'react';
-import { LS } from '../lib/constants.js';
+import { LS, getSession } from '../lib/constants.js';
 
 function PackingTab(){
   const G="#059669";
-  const { ventas } = useApp();
-  const [packings,setPackings]=useState([]);
+  const KPACK="aryes-packings";
+  const { ventas, setVentas, isDemoMode } = useApp();
+  const [packings,setPackings]=useState(()=>LS.get(KPACK,[]));
   const [sel,setSel]=useState(null);
   const [validados,setValidados]=useState({});
   const [bultos,setBultos]=useState(1);
@@ -25,14 +26,36 @@ function PackingTab(){
   const toggleValidar=(key)=>setValidados(v=>({...v,[key]:{...v[key],validado:!v[key].validado}}));
   const todosValidados=sel&&Object.values(validados).every(v=>v.validado);
 
-  const confirmarPacking=()=>{
+  const confirmarPacking=async()=>{
     if(!todosValidados){setMsg("Debes validar todos los items antes de confirmar");return;}
-    const pk={id:crypto.randomUUID(),ventaId:sel.id,nroVenta:sel.nroVenta,clienteNombre:sel.clienteNombre,
-      items:sel.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es"),creadoEn:new Date().toISOString()};
+    const venta=sel;
+    const pk={id:crypto.randomUUID(),ventaId:venta.id,nroVenta:venta.nroVenta,clienteNombre:venta.clienteNombre,
+      items:venta.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es"),creadoEn:new Date().toISOString()};
     const upd=[pk,...packings];
     setPackings(upd);
+    LS.set(KPACK,upd);
+
+    // Avanzar la venta en la máquina de estados: confirmada → preparada.
+    // Si ya estaba preparada no requiere transición (el packing sólo deja registro).
+    if(venta.estado==="confirmada"){
+      const ts=new Date().toISOString();
+      const userEmail=getSession()?.email||'sistema';
+      const newEntry={from:"confirmada",to:"preparada",ts,user:userEmail};
+      setVentas(vs=>vs.map(v=>v.id===venta.id?{...v,estado:"preparada",estadoLog:[...(v.estadoLog||[]),newEntry],updatedAt:ts}:v));
+      if(!isDemoMode){
+        try{
+          const {SB_URL,SKEY}=await import('../lib/constants.js');
+          await fetch(SB_URL+'/rest/v1/rpc/transition_venta_state',{
+            method:'POST',
+            headers:{apikey:SKEY,Authorization:'Bearer '+(getSession()?.access_token||''),'Content-Type':'application/json'},
+            body:JSON.stringify({p_venta_id:venta.id,p_new_estado:'preparada',p_user_email:userEmail})
+          });
+        }catch(e){console.warn('[packing] transition failed:',e?.message);}
+      }
+    }
+
     setSel(null);
-    setMsg("Packing "+sel.nroVenta+" confirmado. Listo para despacho.");
+    setMsg("Packing "+venta.nroVenta+" confirmado. Listo para despacho.");
     setTimeout(()=>setMsg(""),4000);
   };
 

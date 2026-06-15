@@ -111,6 +111,20 @@ async function handler(req, res) {
     const userMetaC = userDataC?.user_metadata || userDataC?.raw_user_meta_data || {};
     const org = userMetaC.org_id;
     if (!org) return res.status(403).json({ error: 'Usuario sin organización' });
+
+    // SECURITY: confirmar un pedido (genera venta y muta stock) es acción de
+    // operación — sólo admin/operador. Un vendedor no debería confirmarlos.
+    let roleC = userMetaC.role || null;
+    if (!roleC && userDataC?.email) {
+      const roleRes = await fetch(
+        `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(userDataC.email)}&select=role&limit=1`,
+        { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' } }
+      );
+      if (roleRes.ok) { const rows = await roleRes.json(); roleC = rows?.[0]?.role || null; }
+    }
+    if (!['admin', 'operador'].includes(roleC))
+      return res.status(403).json({ error: 'No autorizado: requiere rol operador o admin' });
+
     const { orderId, operador = 'admin' } = req.body || {};
     if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
     const key = SB_SVC || SB_ANON;
