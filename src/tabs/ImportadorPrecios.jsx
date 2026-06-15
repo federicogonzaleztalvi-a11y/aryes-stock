@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
-import { db, getAuthHeaders } from '../lib/constants.js';
+import { db, getAuthHeaders, getOrgId } from '../lib/constants.js';
 
 const G = '#059669';
 const SANS = 'Inter,system-ui,sans-serif';
@@ -232,7 +232,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         const res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({ lista_id: listaId, product_uuid: row.productoId, precio: Number(row.precioFinal) }),
+          body: JSON.stringify({ lista_id: listaId, org_id: getOrgId(), product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: 0 }),
         });
         if (!res.ok) throw new Error(await res.text());
         ok++;
