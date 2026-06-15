@@ -203,6 +203,12 @@ export default async function handler(req, res) {
           } else if (descGlobal > 0) {
             // 3. Global list discount
             precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100;
+          } else {
+            // 4. Cliente con lista, pero el producto no tiene precio deliberado en
+            //    ella (ni precio fijo, ni dto de categoría, ni dto global). NO
+            //    mostramos el precio_venta base porque puede no ser confiable →
+            //    precio 0 = "Consultar precio" en el portal (y botón Agregar off).
+            precio = 0;
           }
         }
 

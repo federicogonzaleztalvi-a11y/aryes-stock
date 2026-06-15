@@ -34,6 +34,7 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
   const [msg, setMsg] = useState('');
   const [dtoGlobal, setDtoGlobal] = useState(String(lista.descuento || 0));
   const [soloSpec, setSoloSpec] = useState(false);
+  const [soloSinPrecio, setSoloSinPrecio] = useState(false);
   const [copiarUuid, setCopiarUuid] = useState(null);
   const [copiarSel, setCopiarSel] = useState({});
   const [dtosCat, setDtosCat] = useState(lista.descuentos_categoria || {});
@@ -92,7 +93,12 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
   };
   const dg = parseFloat(dtoGlobal) || 0;
   const overrides = items.filter(it => it.precio > 0 || (it.descuento || 0) > 0).length;
-  const prods = (products || []).filter(p => { const nm = (p.name || p.nombre || '').toLowerCase(); if (busq && !nm.includes(busq.toLowerCase())) return false; if (soloSpec) { const it = items.find(i => i.product_uuid === (p.uuid || p.id)); if (!it || (it.precio === 0 && (it.descuento || 0) === 0)) return false; } return true; });
+  const tieneItem = p => { const it = items.find(i => i.product_uuid === (p.uuid || p.id)); return !!(it && (it.precio > 0 || (it.descuento || 0) > 0)); };
+  // "Sin precio en lista" = sin precio fijo/dto propio Y la lista no tiene dto global ni de categoría
+  // que lo cubra → en el portal cae al precio base, que puede no ser confiable. Hay que revisarlos.
+  const sinPrecio = p => { if (tieneItem(p)) return false; const cat = p.category || p.categoria || ''; const dtoCat = Number(dtosCat[cat] || 0); return dg <= 0 && dtoCat <= 0; };
+  const sinPrecioCount = (products || []).filter(sinPrecio).length;
+  const prods = (products || []).filter(p => { const nm = (p.name || p.nombre || '').toLowerCase(); if (busq && !nm.includes(busq.toLowerCase())) return false; if (soloSpec && !tieneItem(p)) return false; if (soloSinPrecio && !sinPrecio(p)) return false; return true; });
   return (
     <div style={{ padding: 20, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -105,6 +111,16 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
         </div>
       </div>
       {msg && <div style={{ background: msg.startsWith('❌') ? '#fef2f2' : '#f0fdf4', border: `1px solid ${msg.startsWith('❌') ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: msg.startsWith('❌') ? '#dc2626' : G, fontWeight: 600 }}>{msg}</div>}
+      {sinPrecioCount > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412' }}>{sinPrecioCount} producto{sinPrecioCount !== 1 ? 's' : ''} sin precio en esta lista</div>
+            <div style={{ fontSize: 12, color: '#b45309', marginTop: 2 }}>En el portal usan el precio base (que puede no ser confiable). Revisalos y ponéles un precio fijo, o un descuento global/por categoría.</div>
+          </div>
+          <button onClick={() => setSoloSinPrecio(v => !v)} style={{ padding: '8px 16px', background: soloSinPrecio ? '#9a3412' : '#fff', color: soloSinPrecio ? '#fff' : '#9a3412', border: '1.5px solid #9a3412', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>{soloSinPrecio ? 'Ver todos' : 'Revisar estos'}</button>
+        </div>
+      )}
       {(() => {
         const catsDisponibles = [...new Set((products || []).map(p => p.category || p.categoria).filter(Boolean))].sort();
         if (catsDisponibles.length === 0) return null;
