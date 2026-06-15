@@ -56,7 +56,7 @@ function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_produ
                         <Cap style={{color:sup.color}}>{totalLead(sup)} días totales</Cap>
                       </div>
                       <div style={{display:"flex",gap:2,height:6,borderRadius:3,overflow:"hidden"}}>
-                        {tfs.map((k,i)=><div key={k} style={{flex:sup.times[k]||0.1,background:tfCols[i],opacity:.75}}/>)}
+                        {tfs.map((k,i)=><div key={k} style={{flex:sup.times?.[k]||0.1,background:tfCols[i],opacity:.75}}/>)}
                       </div>
                     </div>
 
@@ -126,7 +126,7 @@ function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_produ
                           </div>
                         </td>
                         {["preparation","customs","freight","warehouse"].map(k=>(
-                          <td key={k} style={{padding:"10px 12px",fontFamily:T.sans,fontSize:13,color:T.textMd,textAlign:"center"}}>{sup.times[k]}d</td>
+                          <td key={k} style={{padding:"10px 12px",fontFamily:T.sans,fontSize:13,color:T.textMd,textAlign:"center"}}>{sup.times?.[k]??0}d</td>
                         ))}
                         <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:13,fontWeight:700,color:sup.color,textAlign:"center"}}>{totalLead(sup)}d</td>
                         <td style={{padding:"10px 12px",fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.currency||"USD"}</td>

@@ -70,8 +70,16 @@ export default function ImportClientesTab() {
     let ok = 0, fail = 0;
     for (const c of preview) {
       try {
+        // Si el teléfono ya existe, reutilizar el id del cliente existente para
+        // que el upsert ACTUALICE (no inserte un duplicado). Antes siempre se
+        // usaba un id nuevo, así que cada teléfono repetido creaba un cliente
+        // fantasma — contradiciendo lo que promete la UI ("actualiza datos").
+        const existing = c.telefono
+          ? existingClientes?.find(ex => ex.telefono === c.telefono)
+          : null;
+        const rowId = existing?.id || c.id;
         await db.upsert('clients', {
-          id: c.id, name: c.nombre, type: c.tipo||'Otro', rut: c.rut||'', phone: c.telefono||'',
+          id: rowId, name: c.nombre, type: c.tipo||'Otro', rut: c.rut||'', phone: c.telefono||'',
           email: c.email||'', email_facturacion: c.emailFacturacion||'', contact: c.contacto||'',
           address: c.direccion||'', ciudad: c.ciudad||'', cond_pago: c.condPago||'credito_30',
           limite_credito: c.limiteCredito||null, lista_id: c.listaId||null, codigo: c.codigo||null,

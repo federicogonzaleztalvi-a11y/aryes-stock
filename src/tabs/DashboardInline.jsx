@@ -1,6 +1,6 @@
 import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import ReorderPointWidget from '../components/ReorderPointWidget.jsx';
-import { fmt , getOrgId, getSession } from '../lib/constants.js';
+import { fmt , getOrgId, getSession, getAuthHeaders } from '../lib/constants.js';
 import React from 'react';
 import { T, ALERT_CFG, AlertPill, StockBar, Btn, fmtDate, totalLead } from '../lib/ui.jsx';
 import { useApp } from '../context/AppContext.tsx';
@@ -106,9 +106,8 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   const [purchaseOrders, setPurchaseOrders] = React.useState([]);
   React.useEffect(() => {
     const SB = import.meta.env.VITE_SUPABASE_URL;
-    const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    fetch(`${SB}/rest/v1/purchase_invoices?status=eq.pendiente&select=id,supplier_id,expected_arrival,total,created_at&order=expected_arrival.asc&limit=50`,
-      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+    fetch(`${SB}/rest/v1/purchase_invoices?org_id=eq.${getOrgId()}&status=eq.pendiente&select=id,supplier_id,expected_arrival,total,created_at&order=expected_arrival.asc&limit=50`,
+      {headers:getAuthHeaders()})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setPurchaseOrders(d); }).catch(()=>{});
   }, []);
 

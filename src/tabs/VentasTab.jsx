@@ -234,15 +234,19 @@ function VentasTab(){
         const deudaActual = cfes
           .filter(c => c.clienteId === form.clienteId && ['emitida','cobrado_parcial'].includes(c.status))
           .reduce((s, c) => s + (c.saldoPendiente || c.total || 0), 0);
-        const totalVenta = Number(form.total || 0);
-        if(deudaActual + totalVenta > limite){
-          const exceso = (deudaActual + totalVenta - limite).toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
+        // Usar el total REAL calculado (totalVenta es la función de línea 145).
+        // Antes se leía form.total, que está vacío/desactualizado en este punto
+        // (el total recién se calcula al guardar), así que el chequeo de crédito
+        // comparaba contra 0 y nunca se disparaba.
+        const totalVentaNum = totalVenta(form.items, form.descuento);
+        if(deudaActual + totalVentaNum > limite){
+          const exceso = (deudaActual + totalVentaNum - limite).toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
           const deudaStr = deudaActual.toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
           const limiteStr = limite.toLocaleString((getOrgConfigStatic(brandCfg).locale), {minimumFractionDigits:0});
           const proceed = window.confirm(
             `⚠️ Límite de crédito excedido para ${cli.nombre}\n\n` +
             `Deuda actual: ${getOrgConfigStatic(brandCfg).currencySymbol} ${deudaStr}\n` +
-            `Esta venta: ${getOrgConfigStatic(brandCfg).currencySymbol} ${totalVenta.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}\n` +
+            `Esta venta: ${getOrgConfigStatic(brandCfg).currencySymbol} ${totalVentaNum.toLocaleString((getOrgConfigStatic(brandCfg).locale),{minimumFractionDigits:0})}\n` +
             `Límite configurado: ${getOrgConfigStatic(brandCfg).currencySymbol} ${limiteStr}\n` +
             `Exceso: ${getOrgConfigStatic(brandCfg).currencySymbol} ${exceso}\n\n` +
             `¿Confirmar venta de todas formas?`
@@ -781,10 +785,9 @@ function VentasTab(){
           b2b_order_id: order.id,
         }, 'id').catch(() => {});
         const SB_URL2=import.meta.env.VITE_SUPABASE_URL;
-        const SKEY2=import.meta.env.VITE_SUPABASE_ANON_KEY;
-        if(SB_URL2&&order.id)fetch(`${SB_URL2}/rest/v1/b2b_orders?id=eq.${order.id}`,{
+        if(SB_URL2&&order.id)fetch(`${SB_URL2}/rest/v1/b2b_orders?id=eq.${order.id}&org_id=eq.${getOrgId()}`,{
           method:'PATCH',
-          headers:{apikey:SKEY2,Authorization:`Bearer ${SKEY2}`,'Content-Type':'application/json',Prefer:'return=minimal'},
+          headers:getAuthHeaders({Prefer:'return=minimal'}),
           body:JSON.stringify({estado:'importada',venta_id:ventaId}),
         }).catch(()=>{});
         showMsg(`Pedido importado como ${nroVenta}`);
@@ -864,15 +867,24 @@ function VentasTab(){
         })),
         notas: facturarVenta.notas||'',
       }}
-      onSave={(cfe)=>{
+      onSave={async (cfe)=>{
         // Save CFE directly → same logic as FacturacionTab.handleSaveCFE
         const CFE_TIPOS={
           'e-Factura':{code:'eFact'},'e-Ticket':{code:'eTick'},
           'e-Remito':{code:'eRem'},'e-N.Créd.':{code:'eNC'},
         };
         const code = CFE_TIPOS[cfe.tipo]?.code||'CFE';
-        const seq  = cfes.length + 1;
-        const numero = `${code}-${String(seq).padStart(6,'0')}`;
+        // Numeración atómica vía RPC next_cfe_nro (sin condición de carrera).
+        // Fallback al contador local cfes.length+1 si la RPC no está desplegada.
+        let numero;
+        try {
+          const r = await fetch(`${SB_URL}/rest/v1/rpc/next_cfe_nro`, {
+            method:'POST', headers:getAuthHeaders(),
+            body:JSON.stringify({ p_org:getOrgId(), p_code:code }),
+          });
+          if (r.ok) { const n = await r.json(); if (typeof n==='string' && n) numero = n; }
+        } catch { /* fallback below */ }
+        if (!numero) numero = `${code}-${String(cfes.length+1).padStart(6,'0')}`;
         const nuevo = { ...cfe, id: crypto.randomUUID(), numero,
           saldoPendiente: cfe.total, createdAt: new Date().toISOString() };
         setCfes(prev => [nuevo, ...prev]);

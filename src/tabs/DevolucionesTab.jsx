@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, SB_URL, getAuthHeaders , getSession, getOrgId } from '../lib/constants.js';
+import { db, SB_URL, getAuthHeaders , getSession } from '../lib/constants.js';
 
 
 async function callRpc(fnName, params = {}) {
@@ -61,19 +61,9 @@ function DevolucionesTab(){
     setProds(updProds);
     setLotes(updLotes);
 
-    // Ledger inmutable — llamar RPC por cada ítem aprobado
-    const SB=import.meta.env.VITE_SUPABASE_URL;
-    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
-    itemsDevueltos.filter(it=>it.inspeccion==='aprobado').forEach(it=>{
-      const prod=prods.find(p=>p.id===it.productoId);
-      if(prod?.uuid){
-        fetch(`${SB}/rest/v1/rpc/stock_devolucion`,{
-          method:'POST',
-          headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json'},
-          body:JSON.stringify({p_product_uuid:prod.uuid,p_qty:Number(it.cantDevolver),p_org_id:getOrgId(),p_ref:`devolucion-${form.ventaId||'manual'}`})
-        }).catch(e=>console.warn('[DevolucionesTab] stock_devolucion RPC:',e));
-      }
-    });
+    // El restablecimiento real de stock + movements + lotes ocurre dentro de
+    // create_devolucion (más abajo), en una sola transacción y solo para ítems
+    // aprobados. NO restaurar acá por separado: duplicaba el stock devuelto.
 
     if (form.ventaId) {
       setVentas(ventas.map(v => v.id === form.ventaId ? { ...v, tieneDevolucion: true } : v));
@@ -90,36 +80,9 @@ function DevolucionesTab(){
       creadoEn: now,
     };
     setDevoluciones([dev, ...devoluciones]);
-    // ── Generar nota de crédito automática ─────────────────────────
-    const totalCredito = itemsDevueltos.reduce((s, it) => s + (Number(it.precio || 0) * Number(it.cantDevolver || 0)), 0);
-    if (totalCredito > 0) {
-      const notaCredito = {
-        id: crypto.randomUUID(),
-        tipo: 'nota_credito',
-        nroDevolucion: dev.nroDevolucion,
-        clienteId: form.clienteId || dev.clienteId,
-        clienteNombre: form.clienteNombre || dev.clienteNombre,
-        monto: totalCredito,
-        motivo: form.motivo,
-        fecha: new Date().toISOString().split('T')[0],
-        items: itemsDevueltos.map(it => ({ nombre: it.nombre, qty: it.cantDevolver, precio: it.precio })),
-        estado: 'emitida',
-        createdAt: new Date().toISOString(),
-      };
-      // Save to cfes (facturas) as negative/credit
-      if (typeof setCfes === 'function') {
-        setCfes(prev => [{ ...notaCredito, saldoPendiente: -totalCredito, numero: 'NC-' + dev.nroDevolucion }, ...prev]);
-      }
-      // Persist to Supabase
-      try {
-        await callRpc('create_nota_credito', { p_data: JSON.stringify(notaCredito) });
-      } catch (ncErr) {
-        console.warn('[DevolucionesTab] nota_credito RPC:', ncErr?.message);
-        // Non-blocking — the local state is already updated
-      }
-      console.debug('[DevolucionesTab] Nota de crédito generada:', notaCredito.id, totalCredito);
-    }
-    
+    // La nota de crédito automática se genera una sola vez más abajo (bloque
+    // "M-1"), filtrando por ítems aprobados y persistiendo en invoices. Antes
+    // existía acá un segundo bloque que la duplicaba (acreditaba doble al cliente).
 
     // ── Atomic DB write via create_devolucion RPC ────────────────────────
     const userEmail = (getSession()?.email || 'sistema');

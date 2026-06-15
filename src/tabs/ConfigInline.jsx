@@ -3,7 +3,7 @@ import RolesManager from '../components/RolesManager.jsx';
 import { TAX_BY_COUNTRY, getCountryOptions } from '../lib/taxConfig.js';
 import UsersTab from './UsersTab.jsx';
 import RolesTab from './config/RolesTab.jsx';
-import { db, getOrgId } from '../lib/constants.js';
+import { db, getOrgId, getAuthHeaders } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
@@ -14,12 +14,11 @@ function ZonasDeposito({ orgId }) {
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState('');
   const SB = import.meta.env.VITE_SUPABASE_URL;
-  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const cargar = React.useCallback(async () => {
     try {
       const r = await fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${orgId}&active=eq.true&order=orden.asc`,
-        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
+        { headers: getAuthHeaders() });
       const data = await r.json();
       setZonas(Array.isArray(data) ? data : []);
     } catch(e) { console.error(e); }
@@ -33,9 +32,9 @@ function ZonasDeposito({ orgId }) {
     try {
       const body = { org_id: orgId, nombre: editZona.nombre, orden: editZona.orden || 0, descripcion: editZona.descripcion || '', categorias: editZona.categorias || [] };
       if (editZona.id) {
-        await fetch(`${SB}/rest/v1/deposit_zones?id=eq.${editZona.id}`, { method:'PATCH', headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'}, body:JSON.stringify(body) });
+        await fetch(`${SB}/rest/v1/deposit_zones?id=eq.${editZona.id}`, { method:'PATCH', headers:getAuthHeaders({Prefer:'return=minimal'}), body:JSON.stringify(body) });
       } else {
-        await fetch(`${SB}/rest/v1/deposit_zones`, { method:'POST', headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'}, body:JSON.stringify(body) });
+        await fetch(`${SB}/rest/v1/deposit_zones`, { method:'POST', headers:getAuthHeaders({Prefer:'return=minimal'}), body:JSON.stringify(body) });
       }
       setEditZona(null); setMsg('Zona guardada'); setTimeout(()=>setMsg(''),3000); await cargar();
     } catch(e) { console.error(e); }
@@ -43,7 +42,7 @@ function ZonasDeposito({ orgId }) {
   };
 
   const eliminar = async (id) => {
-    await fetch(`${SB}/rest/v1/deposit_zones?id=eq.${id}`, { method:'PATCH', headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'}, body:JSON.stringify({active:false}) });
+    await fetch(`${SB}/rest/v1/deposit_zones?id=eq.${id}`, { method:'PATCH', headers:getAuthHeaders({Prefer:'return=minimal'}), body:JSON.stringify({active:false}) });
     await cargar();
   };
 
@@ -119,12 +118,11 @@ function DominioCNAMEPanel({ orgId }) {
   const [saving, setSaving] = React.useState(false);
   const [msg, setMsg] = React.useState('');
   const SB = import.meta.env.VITE_SUPABASE_URL;
-  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const cargar = React.useCallback(async () => {
     try {
       const r = await fetch(`${SB}/rest/v1/domain_orgs?org_id=eq.${orgId}&select=id,domain,active,created_at&order=created_at.desc`,
-        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } });
+        { headers: getAuthHeaders() });
       const data = await r.json();
       setDominios(Array.isArray(data) ? data : []);
     } catch(e) { console.error(e); }
@@ -138,7 +136,7 @@ function DominioCNAMEPanel({ orgId }) {
     try {
       await fetch(`${SB}/rest/v1/domain_orgs`, {
         method: 'POST',
-        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        headers: getAuthHeaders({ Prefer: 'return=minimal' }),
         body: JSON.stringify({ domain: nuevo.trim().toLowerCase(), org_id: orgId, active: true }),
       });
       setNuevo('');
@@ -618,13 +616,12 @@ export default function ConfigInline({
                   btn.textContent='Exportando...';btn.disabled=true;
                   try{
                     const SB=import.meta.env.VITE_SUPABASE_URL;
-                    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
-                    const token=JSON.parse(localStorage.getItem('sb-mrotnqybqvmvlexncvno-auth-token')||'{}')?.access_token;
-                    const h={apikey:KEY,Authorization:'Bearer '+(token||KEY),Accept:'application/json'};
+                    const h=getAuthHeaders({Accept:'application/json'});
+                    const org=getOrgId();
                     const tables=['products','clients','suppliers','ventas','invoices','collections','orders','rutas','stock_movements','recepciones','devoluciones','lotes','price_lists','price_list_items','conteos'];
                     const results={};
                     for(const t of tables){
-                      const r=await fetch(SB+'/rest/v1/'+t+'?limit=10000',{headers:h});
+                      const r=await fetch(SB+'/rest/v1/'+t+'?org_id=eq.'+encodeURIComponent(org)+'&limit=10000',{headers:h});
                       if(r.ok){const d=await r.json();results[t]=d;}
                     }
                     const toCsv=(arr)=>{
@@ -680,12 +677,11 @@ export default function ConfigInline({
                     if(!confirm('¿Estás seguro de que querés cancelar tu suscripción? Tu cuenta seguirá activa hasta el final del período pagado.')) return;
                     try{
                       const SB=import.meta.env.VITE_SUPABASE_URL;
-                      const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
                       const sess=JSON.parse(localStorage.getItem('aryes-session')||'null');
                       if(!sess?.orgId) return alert('Error: sesión no válida');
                       await fetch(SB+'/rest/v1/organizations?id=eq.'+encodeURIComponent(sess.orgId),{
                         method:'PATCH',
-                        headers:{apikey:KEY,Authorization:'Bearer '+(sess.access_token||KEY),'Content-Type':'application/json',Prefer:'return=minimal'},
+                        headers:getAuthHeaders({Prefer:'return=minimal'}),
                         body:JSON.stringify({subscription_status:'canceled',active:false}),
                       });
                       alert('Suscripción cancelada. Tu cuenta seguirá activa hasta el final del período pagado.');

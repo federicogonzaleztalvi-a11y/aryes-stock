@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { db, LS, SB_URL, SKEY, getOrgId } from '../lib/constants.js';
+import { db, LS, SB_URL, getAuthHeaders, getOrgId } from '../lib/constants.js';
 
 const G = '#059669';
 const ONBOARDING_KEY = 'stock-onboarding-done';
@@ -293,7 +293,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
   useEffect(() => {
     if (!session?.orgId) return;
     fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.orgId) + '&select=name,email&limit=1', {
-      headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY }
+      headers: getAuthHeaders()
     }).then(r => r.json()).then(orgs => {
       if (orgs?.[0]) setCompany(c => ({ ...c, name: orgs[0].name || c.name, email: orgs[0].email || c.email }));
     }).catch(() => {});

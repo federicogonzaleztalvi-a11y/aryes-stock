@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { fmt, getOrgId, getSession, SB_URL, SKEY} from '../lib/constants.js';
+import { fmt, getOrgId, getSession, SB_URL, SKEY, getAuthHeaders} from '../lib/constants.js';
 
 function BatchPickingTab(){
   const { products: prods, ventas, setVentas, isDemoMode} = useApp();
@@ -16,9 +16,8 @@ function BatchPickingTab(){
   // initializer de estado. useEffect es la forma correcta y estable.
   useEffect(()=>{
     const SB=import.meta.env.VITE_SUPABASE_URL;
-    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
     fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${getOrgId()}&active=eq.true&order=orden.asc`,
-      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+      {headers:getAuthHeaders()})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
   },[]);
 

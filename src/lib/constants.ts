@@ -24,18 +24,20 @@ export const SKEY   = requireEnv('VITE_SUPABASE_ANON_KEY');
 // CRITICAL: apikey must always be the anon key (SKEY).
 // The user JWT goes only in Authorization — never in apikey.
 export const getAuthHeaders = (extra: Record<string, string> = {}): Record<string, string> => {
-  try {
-    const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
-    const token: string | undefined = session?.access_token;
-    return {
-      'apikey': SKEY,
-      'Authorization': `Bearer ${token || SKEY}`,
-      'Content-Type': 'application/json',
-      ...extra,
-    };
-  } catch {
-    return { 'apikey': SKEY, 'Authorization': `Bearer ${SKEY}`, 'Content-Type': 'application/json', ...extra };
+  // apikey is always the public anon key; Authorization must be the user JWT.
+  // Throw when there is no session rather than silently falling back to the anon
+  // role, which would bypass authenticated RLS policies.
+  const session = JSON.parse(localStorage.getItem('aryes-session') || 'null');
+  const token: string | undefined = session?.access_token;
+  if (!token) {
+    throw new Error('[auth] No active session — request aborted');
   }
+  return {
+    'apikey': SKEY,
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    ...extra,
+  };
 };
 
 // ─── LS — localStorage cache ──────────────────────────────────────────────────

@@ -401,7 +401,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
             <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
               padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
           )}
-          {item.precio > 0 && item.unidad && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+          {/* El precio mostrado es el del bulto entero (el importador normaliza
+              precios por kilo/litro al tamaño del bulto). Por eso NO mostramos
+              sufijos "/kg" o "/lt" — confundirían al cliente haciéndole creer
+              que es precio por kilo. Sí mostramos unidades de venta reales (un, caja). */}
+          {item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim()) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
         {qty > 0 ? (

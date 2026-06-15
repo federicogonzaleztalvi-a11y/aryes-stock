@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp }  from '../context/AppContext.tsx';
-import { SKEY, SB_URL, getOrgId } from '../lib/constants.js';
+import { getAuthHeaders, SB_URL, getOrgId } from '../lib/constants.js';
 
 const G = '#059669';
 const POLL_MS = 15_000;   // admin map refresh
@@ -162,13 +162,12 @@ function TrackingTab({ session }) {
     };
     fetch(SB_URL + '/rest/v1/aryes_tracking', {
       method: 'POST',
-      headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY,
-        'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      headers: getAuthHeaders({ Prefer: 'resolution=merge-duplicates' }),
       body: JSON.stringify(payload),
     }).catch(() => {});
     fetch(SB_URL + '/rest/v1/aryes_tracking_history', {
       method: 'POST',
-      headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY, 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ ...payload, id: undefined, driver_id: payload.id }),
     }).catch(() => {});
   }, [user, orgId, rutaActivaId]);
@@ -201,8 +200,8 @@ function TrackingTab({ session }) {
   const fetchPosiciones = useCallback(async () => {
     try {
       const r = await fetch(
-        `${SB_URL}/rest/v1/aryes_tracking?select=*&order=ts.desc`,
-        { headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY } }
+        `${SB_URL}/rest/v1/aryes_tracking?select=*&org_id=eq.${encodeURIComponent(orgId)}&order=ts.desc`,
+        { headers: getAuthHeaders() }
       );
       const data = await r.json();
       if (!Array.isArray(data)) return;
@@ -212,8 +211,8 @@ function TrackingTab({ session }) {
       const today = new Date().toISOString().slice(0, 10);
       const histPromises = data.map(p =>
         fetch(
-          `${SB_URL}/rest/v1/aryes_tracking_history?driver_id=eq.${encodeURIComponent(p.id)}&ts=gte.${today}T00:00:00Z&order=ts.asc&limit=200`,
-          { headers: { apikey: SKEY, Authorization: 'Bearer ' + SKEY } }
+          `${SB_URL}/rest/v1/aryes_tracking_history?org_id=eq.${encodeURIComponent(orgId)}&driver_id=eq.${encodeURIComponent(p.id)}&ts=gte.${today}T00:00:00Z&order=ts.asc&limit=200`,
+          { headers: getAuthHeaders() }
         ).then(r => r.json()).then(h => [p.id, Array.isArray(h) ? h : []])
       );
       const results = await Promise.allSettled(histPromises);

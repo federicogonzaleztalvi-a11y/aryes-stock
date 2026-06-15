@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
-import { db } from '../lib/constants.js';
+import { db, getAuthHeaders } from '../lib/constants.js';
 
 const G = '#059669';
 const SANS = 'Inter,system-ui,sans-serif';
@@ -222,7 +222,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
     setSaving(true);
     let ok = 0, err = 0;
     const SB_URL = import.meta.env.VITE_SUPABASE_URL;
-    const headers = { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + import.meta.env.VITE_SUPABASE_ANON_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' };
+    const headers = getAuthHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' });
     for (const row of toSave) {
       try {
         const res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {

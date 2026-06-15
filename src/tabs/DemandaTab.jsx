@@ -16,7 +16,8 @@ function DemandaTab(){
     const stock=Number(p.stock||0);
     const diasStock=salidaDiaria>0?Math.floor(stock/salidaDiaria):null;
     const proyeccion30=Math.round(salidaDiaria*30);
-    const rop=Number(p.rop||5);
+    // El campo real es minStock (rop sólo existe en imports locales).
+    const rop=Number(p.minStock??p.rop??5);
     // Dynamic Reorder Point: cross with supplier lead time
     const sup = suppliers.find(function(s) { return s.id === p.supplierId; });
     const leadDays = Number(sup?.lead_time_days || sup?.leadTime || 7);
@@ -25,7 +26,7 @@ function DemandaTab(){
     const diasParaPedir = diasStock !== null ? Math.max(0, diasStock - leadDays) : null;
     const alerta = diasStock !== null && diasStock <= leadDays ? "urgente" : diasStock !== null && diasStock <= (leadDays + 7) ? "proximo" : stock <= rop ? "critico" : "ok";
     return{...p,totalSalidas,salidaDiaria,diasStock,proyeccion30,alerta,leadDays,reorderPoint,diasParaPedir,supName:sup?.name||'—'};
-  }).filter(p=>p.totalSalidas>0||Number(p.stock||0)<=Number(p.rop||5)).sort((a,b)=>{
+  }).filter(p=>p.totalSalidas>0||Number(p.stock||0)<=Number(p.minStock??p.rop??5)).sort((a,b)=>{
     const ord={urgente:0,proximo:1,critico:2,ok:3};
     return(ord[a.alerta]||3)-(ord[b.alerta]||3);
   });

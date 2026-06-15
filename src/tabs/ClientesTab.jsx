@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useRole } from '../hooks/useRole.ts';
 import { useApp } from '../context/AppContext.tsx';
-import { db, LS, getOrgId, getSession } from '../lib/constants.js';
+import { db, LS, getOrgId, getSession, getAuthHeaders } from '../lib/constants.js';
 import { getTaxConfig } from '../lib/taxConfig.js';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
@@ -16,14 +16,13 @@ function AddressesPanel({ clientId, orgId }) {
   const [saving, setSaving] = React.useState(false);
   const [show, setShow] = React.useState(false);
   const SB = import.meta.env.VITE_SUPABASE_URL;
-  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const cargar = React.useCallback(async () => {
     if (!clientId) return;
     try {
       const r = await fetch(
         `${SB}/rest/v1/client_addresses?client_id=eq.${clientId}&org_id=eq.${orgId||getOrgId()}&active=eq.true&order=created_at.asc`,
-        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
+        { headers: getAuthHeaders() }
       );
       const data = await r.json();
       setAddresses(Array.isArray(data) ? data : []);
@@ -38,7 +37,7 @@ function AddressesPanel({ clientId, orgId }) {
     try {
       await fetch(`${SB}/rest/v1/client_addresses`, {
         method: 'POST',
-        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        headers: getAuthHeaders({ Prefer: 'return=minimal' }),
         body: JSON.stringify({ client_id: clientId, org_id: orgId||getOrgId(), ...form }),
       });
       setForm({ label:'Sucursal', direccion:'', ciudad:'', referencia:'' });
@@ -51,7 +50,7 @@ function AddressesPanel({ clientId, orgId }) {
   const eliminar = async (id) => {
     await fetch(`${SB}/rest/v1/client_addresses?id=eq.${id}`, {
       method: 'PATCH',
-      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: getAuthHeaders({ Prefer: 'return=minimal' }),
       body: JSON.stringify({ active: false }),
     });
     await cargar();
@@ -123,14 +122,13 @@ function PhonesPanel({ clientId, orgId }) {
   const [label, setLabel] = React.useState('Secundario');
   const [saving, setSaving] = React.useState(false);
   const SB = import.meta.env.VITE_SUPABASE_URL;
-  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   const cargar = React.useCallback(async () => {
     if (!clientId) return;
     try {
       const r = await fetch(
         `${SB}/rest/v1/client_phones?client_id=eq.${clientId}&org_id=eq.${orgId||getOrgId()}&active=eq.true&order=created_at.asc`,
-        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
+        { headers: getAuthHeaders() }
       );
       const data = await r.json();
       setPhones(Array.isArray(data) ? data : []);
@@ -146,7 +144,7 @@ function PhonesPanel({ clientId, orgId }) {
     try {
       await fetch(`${SB}/rest/v1/client_phones`, {
         method: 'POST',
-        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        headers: getAuthHeaders({ Prefer: 'return=minimal' }),
         body: JSON.stringify({ client_id: clientId, org_id: orgId||getOrgId(), phone: tel, label }),
       });
       setNuevo(''); await cargar();
@@ -157,7 +155,7 @@ function PhonesPanel({ clientId, orgId }) {
   const eliminar = async (id) => {
     await fetch(`${SB}/rest/v1/client_phones?id=eq.${id}`, {
       method: 'PATCH',
-      headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: getAuthHeaders({ Prefer: 'return=minimal' }),
       body: JSON.stringify({ active: false }),
     });
     await cargar();
@@ -206,18 +204,8 @@ function DescuentosPanel({ clientId, orgId }) {
   const [busqueda, setBusqueda] = React.useState('');
 
   const URL = import.meta.env.VITE_SUPABASE_URL;
-  const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
   // Use the logged-in user's JWT so RLS allows access to products/clients
-  const getHdr = () => {
-    try {
-      const ses = JSON.parse(localStorage.getItem('aryes-session') || '{}');
-      const token = ses?.access_token || KEY;
-      return { apikey: KEY, Authorization: 'Bearer ' + token };
-    } catch {
-      return { apikey: KEY, Authorization: 'Bearer ' + KEY };
-    }
-  };
-  const HDR = getHdr();
+  const HDR = getAuthHeaders();
 
   const cargar = React.useCallback(async () => {
     if (!clientId || !orgId) return;
@@ -235,7 +223,7 @@ function DescuentosPanel({ clientId, orgId }) {
       console.error('[DescuentosPanel]', e);
     }
     setLoading(false);
-  }, [clientId, orgId, URL, KEY]);
+  }, [clientId, orgId, URL]);
 
   React.useEffect(() => { cargar(); }, [cargar]);
 
@@ -738,10 +726,9 @@ function ClientesTab(){
             <button onClick={async()=>{
               const nuevo = !(sel.portal_activo ?? true);
               const SB = import.meta.env.VITE_SUPABASE_URL;
-              const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-              await fetch(`${SB}/rest/v1/clients?id=eq.${sel.id}`,{
+              await fetch(`${SB}/rest/v1/clients?id=eq.${sel.id}&org_id=eq.${getOrgId()}`,{
                 method:'PATCH',
-                headers:{apikey:KEY,Authorization:`Bearer ${KEY}`,'Content-Type':'application/json',Prefer:'return=minimal'},
+                headers:getAuthHeaders({Prefer:'return=minimal'}),
                 body:JSON.stringify({portal_activo:nuevo})
               });
               setItems(cs=>cs.map(c=>c.id===sel.id?{...c,portal_activo:nuevo}:c));

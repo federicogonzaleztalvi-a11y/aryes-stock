@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
-import { db, SB_URL, SKEY  } from '../lib/constants.js';
+import { db, SB_URL, getAuthHeaders } from '../lib/constants.js';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const G   = '#059669';
@@ -65,8 +65,8 @@ function ComprasTab() {
   const [vista,       setVista]       = useState('lista');
 
   const saveETA = async (orderId, date) => {
-    if (typeof SB_URL !== 'undefined' && SB_URL && typeof SKEY !== 'undefined' && SKEY) {
-      fetch(SB_URL + '/rest/v1/purchase_invoices?id=eq.' + orderId, { method:'PATCH', headers:{ apikey:SKEY, Authorization:'Bearer '+SKEY, 'Content-Type':'application/json', Prefer:'return=minimal' }, body:JSON.stringify({ expected_arrival: date }) }).catch(()=>{});
+    if (typeof SB_URL !== 'undefined' && SB_URL) {
+      fetch(SB_URL + '/rest/v1/purchase_invoices?id=eq.' + orderId, { method:'PATCH', headers:getAuthHeaders({ Prefer:'return=minimal' }), body:JSON.stringify({ expected_arrival: date }) }).catch(()=>{});
     }
     setPurchaseInvoices(prev => prev.map(o => o.id === orderId ? { ...o, expected_arrival: date } : o));
   };

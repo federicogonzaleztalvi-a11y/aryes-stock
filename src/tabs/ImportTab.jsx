@@ -10,8 +10,11 @@ function ImportTab(){
   const [msg,setMsg]=useState('');
   const [importing,setImporting]=useState(false);
 
-  const rowToProd=(obj,i)=>({
-    id:crypto.randomUUID()+i,
+  const rowToProd=(obj)=>({
+    // crypto.randomUUID() ya es único. Antes se concatenaba el índice
+    // (randomUUID()+i) lo que producía un UUID inválido y Postgres rechazaba
+    // el upsert → los productos se perdían en Supabase (solo quedaban en LS).
+    id:crypto.randomUUID(),
     nombre:obj.nombre||obj.name||obj.producto||obj.descripcion||'',
     codigo:obj.codigo||obj.sku||obj.code||obj.cdigo||'',
     categoria:obj.categoria||obj.category||obj.rubro||obj.categora||'',
@@ -28,11 +31,11 @@ function ImportTab(){
     const lines=text.split('\n').filter(l=>l.trim());
     if(lines.length<2)return[];
     const headers=lines[0].split(/[,;\t]/).map(h=>norm(h));
-    return lines.slice(1).map((line,i)=>{
+    return lines.slice(1).map((line)=>{
       const vals=line.split(/[,;\t]/);
       const obj={};
       headers.forEach((h,j)=>obj[h]=(vals[j]||'').trim().replace(/^"|"$/g,''));
-      return rowToProd(obj,i);
+      return rowToProd(obj);
     }).filter(p=>p.nombre);
   };
 
@@ -40,10 +43,10 @@ function ImportTab(){
     const wb=XLSX.read(arrayBuffer,{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    return rows.map((raw,i)=>{
+    return rows.map((raw)=>{
       const obj={};
       Object.keys(raw).forEach(k=>{obj[norm(k)]=raw[k];});
-      return rowToProd(obj,i);
+      return rowToProd(obj);
     }).filter(p=>p.nombre);
   };
 
@@ -85,14 +88,14 @@ function ImportTab(){
       if(idx>-1){existing[idx]={...existing[idx],...p,id:existing[idx].id};updated++;}
       else{existing.push(p);added++;}
     });
-    setProds(existing);
-    LS.set(KPROD,existing);
-    setPreview([]);
-    setMsg(added+' productos agregados, '+updated+' actualizados.');
-    setImporting(false);
-    try {
-      for (const p of preview) {
-        await db.upsert('products', {
+
+    // Persistir a Supabase ANTES de declarar éxito. db.upsert devuelve null si
+    // falla; contamos los fallos para no mostrar "importado" cuando en realidad
+    // los datos no llegaron al servidor.
+    let failed=0;
+    for (const p of preview) {
+      try {
+        const res=await db.upsert('products', {
           uuid: p.id,
           name: p.nombre || p.name || '',
           codigo: p.codigo || '',
@@ -105,8 +108,19 @@ function ImportTab(){
           org_id: getOrgId(),
           updated_at: new Date().toISOString(),
         }, 'uuid');
-      }
-    } catch (e) { console.warn('[ImportTab] Supabase sync error:', e); }
+        if(res===null) failed++;
+      } catch (e) { console.warn('[ImportTab] Supabase sync error:', e); failed++; }
+    }
+
+    setProds(existing);
+    LS.set(KPROD,existing);
+    setPreview([]);
+    if(failed>0){
+      setMsg('⚠ '+(preview.length-failed)+' productos sincronizados; '+failed+' no se guardaron en el servidor (guardados localmente, reintentá al reconectar).');
+    }else{
+      setMsg(added+' productos agregados, '+updated+' actualizados.');
+    }
+    setImporting(false);
   };
 
   const descargarPlantilla=()=>{

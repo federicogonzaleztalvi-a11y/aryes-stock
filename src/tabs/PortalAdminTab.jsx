@@ -42,9 +42,21 @@ export default function PortalAdminTab() {
     setImportando(true);
     try {
       const ventaId = crypto.randomUUID();
-      // Generate nroVenta locally
-      const nums = (ventas || []).map(v => parseInt((v.nroVenta || 'V-0000').replace('V-', '')) || 0);
-      const nroVenta = 'V-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
+      // Numeración atómica vía RPC next_nro_venta (sin condición de carrera entre
+      // importaciones concurrentes). Fallback a Math.max local si la RPC falla.
+      let nroVenta;
+      if (!isDemoMode) {
+        try {
+          const r = await fetch(`${SB_URL}/rest/v1/rpc/next_nro_venta`, {
+            method: 'POST', headers: getAuthHeaders(),
+          });
+          if (r.ok) { const n = await r.json(); if (typeof n === 'string' && n) nroVenta = n; }
+        } catch { /* fallback below */ }
+      }
+      if (!nroVenta) {
+        const nums = (ventas || []).map(v => parseInt((v.nroVenta || 'V-0000').replace('V-', '')) || 0);
+        nroVenta = 'V-' + String((nums.length ? Math.max(...nums) : 0) + 1).padStart(4, '0');
+      }
       
       const items = Array.isArray(order.items) ? order.items : JSON.parse(order.items || '[]');
       const enrichedItems = items.map(it => {

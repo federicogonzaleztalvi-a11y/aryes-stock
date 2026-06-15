@@ -64,6 +64,20 @@ async function verifyAdmin(authHeader) {
   return { id: userData.id, email: userData.email, orgId: resolvedOrgId || 'aryes' };
 }
 
+// Verify the target user (by email) belongs to the admin's org.
+// Prevents cross-tenant account takeover: an admin of org A must never be able
+// to update / reset-password / delete a user that lives in org B.
+async function targetInOrg(email, orgId) {
+  const r = await fetch(
+    `${SB_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=org_id&limit=1`,
+    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' } }
+  );
+  if (!r.ok) return false;
+  const rows = await r.json();
+  if (!Array.isArray(rows) || rows.length === 0) return false; // unknown user → deny
+  return rows[0].org_id === orgId;
+}
+
 export default async function handler(req, res) {
   // Fast-fail: SERVICE_KEY must exist. Missing = server misconfiguration, not auth failure.
   // Log it explicitly so it shows in Vercel function logs, not just as a 500.
@@ -137,6 +151,15 @@ export default async function handler(req, res) {
       const { cliente_id } = req.body || {};
       if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
 
+      // Scope the client to the admin's org — no revoking sessions of other tenants' clients
+      const cliRes = await fetch(
+        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(cliente_id)}&select=org_id&limit=1`,
+        { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' } }
+      );
+      const cliRows = cliRes.ok ? await cliRes.json() : [];
+      if (!Array.isArray(cliRows) || cliRows.length === 0 || cliRows[0].org_id !== admin.orgId)
+        return res.status(403).json({ error: 'Forbidden: cliente de otra organización' });
+
       const revokeRes = await fetch(
         `${SB_URL}/rest/v1/portal_sessions?cliente_id=eq.${encodeURIComponent(cliente_id)}&revoked=eq.false`,
         {
@@ -162,6 +185,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'No podés desactivarte a vos mismo' });
       if (email === admin.email && role && role !== 'admin')
         return res.status(400).json({ error: 'No podés cambiar tu propio rol' });
+      if (!(await targetInOrg(email, admin.orgId)))
+        return res.status(403).json({ error: 'Forbidden: usuario de otra organización' });
 
       const updates = {};
       if (role !== undefined) updates.role = role;
@@ -183,6 +208,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'email y newPassword requeridos' });
       if (newPassword.length < 6)
         return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+      if (!(await targetInOrg(email, admin.orgId)))
+        return res.status(403).json({ error: 'Forbidden: usuario de otra organización' });
 
       const { ok, data } = await rpc('update_auth_password', {
         user_email: email, new_password: newPassword,
@@ -197,6 +224,8 @@ export default async function handler(req, res) {
       const { email } = req.body || {};
       if (!email) return res.status(400).json({ error: 'email requerido' });
       if (email === admin.email) return res.status(400).json({ error: 'No podés eliminarte a vos mismo' });
+      if (!(await targetInOrg(email, admin.orgId)))
+        return res.status(403).json({ error: 'Forbidden: usuario de otra organización' });
 
       // Delete from public.users via SECURITY DEFINER RPC (bypasses RLS + cache)
       await rpc('delete_user_row', { p_email: email });

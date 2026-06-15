@@ -102,11 +102,14 @@ function KPIsTab(){
             const canceladas=ventasP.filter(v=>v.estado==="cancelada").length;
             const tasaCierre=totalV>0?Math.round(entregadas/totalV*100):0;
 
-            // Tiempo promedio de ciclo (pendiente → entregada) en horas
-            const ciclos=ventasP.filter(v=>v.estado==="entregada"&&v.createdAt&&v.estado_log?.length>0).map(v=>{
-              const entregadoEv=v.estado_log?.find(e=>e.estado==="entregada");
+            // Tiempo promedio de ciclo (pendiente → entregada) en horas.
+            // Los campos reales son creadoEn / estadoLog (camelCase) y cada
+            // entrada del log es {from,to,ts}. Antes se usaba createdAt /
+            // estado_log / e.estado, que no existen → el ciclo era siempre nulo.
+            const ciclos=ventasP.filter(v=>v.estado==="entregada"&&v.creadoEn&&v.estadoLog?.length>0).map(v=>{
+              const entregadoEv=v.estadoLog?.find(e=>e.to==="entregada");
               if(!entregadoEv) return null;
-              return (new Date(entregadoEv.ts)-new Date(v.createdAt))/3600000;
+              return (new Date(entregadoEv.ts)-new Date(v.creadoEn))/3600000;
             }).filter(Boolean);
             const avgCiclo=ciclos.length>0?Math.round(ciclos.reduce((s,c)=>s+c,0)/ciclos.length):null;
 
@@ -117,8 +120,10 @@ function KPIsTab(){
             const rutasTotal=rutas.length;
             const rutasComp=rutas.filter(r=>r.completada||r.estado==="completada").length;
 
-            // Recepciones del periodo
-            const movEntradas=movs.filter(m=>["in","recepcion","scanner_in"].includes(m.type)).length;
+            // Recepciones del periodo. El campo real es m.tipo con valor
+            // "entrada" (ver entradas arriba); antes se filtraba por m.type con
+            // valores en inglés que no existen → siempre 0.
+            const movEntradas=movsP.filter(m=>["entrada","recepcion"].includes(m.tipo)).length;
 
             return [
               {icon:"✅",label:"Tasa de cierre",value:tasaCierre+"%",sub:entregadas+" entregadas · "+canceladas+" canceladas",color:tasaCierre>=80?G:tasaCierre>=60?"#f59e0b":"#dc2626"},

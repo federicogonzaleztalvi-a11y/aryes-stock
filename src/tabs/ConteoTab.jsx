@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db , getOrgId } from '../lib/constants.js';
+import { db , getOrgId, getAuthHeaders } from '../lib/constants.js';
 
 function ConteoTab(){
   const { products: prods, setProducts: setProds, conteos, setConteos, setHasPendingSync, addMov } = useApp();
@@ -16,9 +16,8 @@ function ConteoTab(){
   // Cargar zonas del depósito
   useState(()=>{
     const SB=import.meta.env.VITE_SUPABASE_URL;
-    const KEY=import.meta.env.VITE_SUPABASE_ANON_KEY;
     fetch(`${SB}/rest/v1/deposit_zones?org_id=eq.${getOrgId()}&active=eq.true&order=orden.asc`,
-      {headers:{apikey:KEY,Authorization:`Bearer ${KEY}`}})
+      {headers:getAuthHeaders()})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setZonas(d); }).catch(()=>{});
   });
 
@@ -42,6 +41,8 @@ function ConteoTab(){
   const registrarItem=()=>{
     if(cantFisica==="")return;
     const cant=Number(cantFisica);
+    // Evitar escribir NaN en el stock si el valor no es numérico.
+    if(!Number.isFinite(cant))return;
     const upd={...conteoActivo};
     upd.items[itemIdx]={...upd.items[itemIdx],cantFisica:cant,diferencia:cant-upd.items[itemIdx].stockSistema};
     setConteoActivo(upd);
