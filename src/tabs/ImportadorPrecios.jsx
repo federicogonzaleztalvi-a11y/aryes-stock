@@ -55,7 +55,11 @@ function extractWeightKg(name) {
 function extractPackSize(name) {
   const kg = extractWeightKg(name);
   if (kg != null) return kg;
-  const m = String(name).toLowerCase().match(/(\d+[,.]?\d*)\s*(?:lt?s?|litros?)\.?/);
+  const n = String(name).toLowerCase();
+  // ml / cc → litros (un envase de 900 ml = 0,9 lt). Va antes que litros.
+  let m = n.match(/(\d+[,.]?\d*)\s*(?:ml|cc)\b\.?/);
+  if (m) return parseFloat(m[1].replace(',', '.')) / 1000;
+  m = n.match(/(\d+[,.]?\d*)\s*(?:lt?s?|litros?)\.?/);
   if (m) return parseFloat(m[1].replace(',', '.'));
   return null;
 }
