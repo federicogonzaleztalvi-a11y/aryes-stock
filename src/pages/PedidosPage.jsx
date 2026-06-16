@@ -1068,7 +1068,10 @@ export default function PedidosPage() {
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
           borderBottom: '0.5px solid #f0f0ec', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
+          <div onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); }}
+            role="button" tabIndex={0} aria-label="Volver al catálogo"
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setVista('catalogo'); setCatFil('Todos'); setBusq(''); } }}
+            style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, cursor: 'pointer' }}>
             {brandCfg?.logoUrl ? (
               <img src={brandCfg.logoUrl} alt={brandNombre || 'Logo'}
                 style={{ width: 28, height: 28, borderRadius: 7, objectFit: 'contain', background: '#fff' }} />
@@ -1290,6 +1293,15 @@ export default function PedidosPage() {
 
       {vista === 'historial' && (
         <main style={{ maxWidth: 700, margin: '0 auto', padding: '20px 24px 60px' }}>
+          <button onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); }} style={{
+            display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
+            color: G, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+            padding: 0, marginBottom: 14 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Volver al catálogo
+          </button>
           <h1 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a18', marginBottom: 16 }}>Mis pedidos</h1>
           <HistorialPedidos session={session} onReordenar={order => {
             // MEDIO: validar contra el catálogo ACTUAL. Un pedido viejo puede tener
