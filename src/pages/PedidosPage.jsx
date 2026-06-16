@@ -1,6 +1,7 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import RecommendedProducts from '../components/RecommendedProducts.jsx';
+import BuyAgainRow from '../components/BuyAgainRow.jsx';
 import { fmt } from '../lib/constants.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
@@ -891,7 +892,7 @@ export default function PedidosPage() {
   const [vista,    setVista]    = useState('catalogo');
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
   const [recommended, setRecommended] = useState([]);
-  const [lastOrder, setLastOrder] = useState(null);
+  const [buyAgain, setBuyAgain] = useState([]);
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
@@ -981,19 +982,19 @@ export default function PedidosPage() {
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
         if (Array.isArray(d.recommended)) setRecommended(d.recommended);
+        if (Array.isArray(d.buyAgain)) setBuyAgain(d.buyAgain);
       }
     } catch {}
     finally { setLoading(false); }
   }, []);
 
-  // Demo mode: inject fake lastOrder and recommended when demo products load
+  // Demo mode: inject fake buyAgain and recommended when demo products load
   useEffect(() => {
     if (!isPortalDemo || items.length === 0) return;
-    var fakeItems = items.slice(0, 5).map(function(p) {
-      return { productId: p.id, nombre: p.nombre, qty: Math.ceil(2 + ((p.nombre||'').length % 4)), precio: p.precio || 100, unidad: p.unidad || 'u.' };
+    var baItems = items.slice(0, 6).map(function(p) {
+      return { id: p.id, nombre: p.nombre, precio: p.precio || 100, unidad: p.unidad || 'u.', categoria: p.categoria };
     });
-    var fakeTotal = fakeItems.reduce(function(s, it) { return s + it.qty * it.precio; }, 0);
-    setLastOrder({ items: fakeItems, total: fakeTotal });
+    setBuyAgain(baItems);
     var recItems = items.slice(8, 12).map(function(p) {
       return { id: p.id, nombre: p.nombre, precio: p.precio || 100, unit: p.unidad || 'u.', reason: Math.ceil(2 + ((p.nombre||'').length % 3)) + ' clientes lo compran' };
     });
@@ -1102,11 +1103,6 @@ export default function PedidosPage() {
               </div>
             </div>
           ) : <div style={{ flex: 1 }} />}
-          {lastOrder && (
-              <button onClick={function(){(lastOrder.items||[]).forEach(function(it){var id=it.productId||it.productoId||'';var prod=items.find(function(p){return p.id===id;});if(!prod)return;var qty=Number(it.qty||it.cantidad||1);for(var i=0;i<qty;i++) addItem(prod);});setLastOrder(null);}} style={{ background: 'none', border: 'none', fontSize: isMobile ? 11 : 13, color: '#059669', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,system-ui,sans-serif', padding: isMobile ? '4px 8px' : '6px 12px', borderRadius: 8, transition: 'background 0.15s', whiteSpace: 'nowrap' }} onMouseEnter={function(e){e.currentTarget.style.background='#f0fdf4';}} onMouseLeave={function(e){e.currentTarget.style.background='none';}}>
-                Repetir pedido anterior
-              </button>
-            )}
             <button onClick={() => totalItems > 0 && setShowCart(true)} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
             borderRadius: 24, border: 'none', cursor: 'pointer',
@@ -1274,6 +1270,9 @@ export default function PedidosPage() {
             </div>
           ) : (
             <>
+              {catFil === 'Todos' && !busq && buyAgain.length > 0 && (
+                <BuyAgainRow buyAgain={buyAgain} onAdd={addItem} onRemove={removeItem} carrito={carrito} brandCfg={brandCfg} />
+              )}
                         {recommended.length > 0 && (
             <RecommendedProducts recommended={recommended} onAdd={addItem} onRemove={removeItem} carrito={carrito} brandCfg={brandCfg} />
           )}

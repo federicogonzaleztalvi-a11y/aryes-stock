@@ -276,6 +276,7 @@ export default async function handler(req, res) {
 
     // ── 4. Cross-sell recommendations (only when clienteId is provided) ──────
     let recommended = [];
+    let buyAgain = [];
     if (clienteId) {
       try {
         const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
@@ -287,14 +288,28 @@ export default async function handler(req, res) {
           { headers: svcHeaders }
         );
         const myPurchased = new Set();
+        const myFreq = {};  // productoId -> nº de pedidos que lo incluyen
         if (myVentasRes.ok) {
           const myVentas = await myVentasRes.json();
           (myVentas || []).forEach(function(v) {
             (v.items || []).forEach(function(it) {
-              if (it.productoId) myPurchased.add(it.productoId);
+              if (it.productoId) {
+                myPurchased.add(it.productoId);
+                myFreq[it.productoId] = (myFreq[it.productoId] || 0) + 1;
+              }
             });
           });
         }
+
+        // "Volver a pedir": productos propios más pedidos, que sigan en el catálogo actual
+        buyAgain = Object.entries(myFreq)
+          .sort(function(a, b) { return b[1] - a[1]; })
+          .map(function(e) { return items.find(function(p) { return p.id === e[0]; }); })
+          .filter(Boolean)
+          .slice(0, 8)
+          .map(function(p) {
+            return { id: p.id, nombre: p.nombre, precio: p.precio, unidad: p.unidad, categoria: p.categoria, iva_rate: p.iva_rate };
+          });
 
         // 4b. Get ventas from OTHER clients in the same org (last 100 ventas)
         const otherVentasRes = await fetch(
@@ -349,6 +364,7 @@ export default async function handler(req, res) {
       org,
       clienteId: clienteId || null,
       recommended,
+      buyAgain,
       hasLista: !!listaId,
       descGlobal,
       horarioDesde,
