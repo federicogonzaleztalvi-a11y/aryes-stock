@@ -1220,7 +1220,7 @@ export default function PedidosPage() {
               <p style={{ fontSize: 13, color: '#6a6a68', margin: 0, lineHeight: 1.5 }}>{portalBloqueado}</p>
             </div>
           ) : loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
               {[...Array(8)].map((_, i) => (
                 <div key={i} className="sk-shimmer" style={{ borderRadius: 14, height: 240, border: '1px solid #efefeb' }} />
               ))}
@@ -1253,7 +1253,7 @@ export default function PedidosPage() {
 <div style={{ fontSize: 12, color: GRAY, marginBottom: 14 }}>
                 {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
                 {filtered.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg}
                     qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} />

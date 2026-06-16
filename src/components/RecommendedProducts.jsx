@@ -4,6 +4,7 @@ var G = '#059669';
 
 export default function RecommendedProducts({ recommended, onAdd, onRemove, carrito, brandCfg }) {
   if (!recommended || recommended.length === 0) return null;
+  var isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   return (
     <div style={{ maxWidth: 1300, margin: '0 auto', padding: '16px 24px 0' }}>
@@ -15,7 +16,7 @@ export default function RecommendedProducts({ recommended, onAdd, onRemove, carr
             
           </span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(170px,1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(170px,1fr))', gap: 10 }}>
           {recommended.map(function(p) {
             var inCart = (carrito && carrito[p.id]) || 0;
             return (
