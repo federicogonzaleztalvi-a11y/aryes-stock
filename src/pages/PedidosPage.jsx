@@ -540,7 +540,7 @@ function HistorialPedidos({ session, onReordenar }) {
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine }) {
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
@@ -770,7 +770,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{qty} x {fmt.currency(item.precio)}</span>
+                    <span>{fmt.currency(item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
                     {descPct > 0 && <span style={{ color: '#dc2626' }}>-{descPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
                   </div>
@@ -785,6 +785,27 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm }) {
                     {fmt.currency(netoLinea)}
                   </div>
                 </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e2e2dc', borderRadius: 8, overflow: 'hidden' }}>
+                  <button onClick={() => onRemove && onRemove(item)} aria-label={`Quitar uno de ${item.nombre}`} style={{
+                    width: 32, height: 32, border: 'none', background: '#f7f7f4', color: G,
+                    fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{'\u2212'}</button>
+                  <span aria-live="polite" style={{ minWidth: 36, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>{qty}</span>
+                  <button onClick={() => onAdd && onAdd(item)} aria-label={`Agregar uno de ${item.nombre}`} style={{
+                    width: 32, height: 32, border: 'none', background: '#f7f7f4', color: G,
+                    fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                </div>
+                <button onClick={() => onRemoveLine && onRemoveLine(item)} aria-label={`Eliminar ${item.nombre} del carrito`} style={{
+                  background: 'none', border: 'none', color: '#b0b0a8', fontSize: 11,
+                  cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 4, padding: 4 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                  </svg>
+                  Eliminar
+                </button>
               </div>
             </div>
           ))}
@@ -998,6 +1019,7 @@ export default function PedidosPage() {
     if (q < min) { const n = { ...c }; delete n[item.id]; return n; }
     return { ...c, [item.id]: q };
   });
+  const removeLine = item => setCarrito(c => { const n = { ...c }; delete n[item.id]; return n; });
 
   const logout = () => {
     if (isPortalDemo) { setPortalDemo(null); setItems([]); setCarrito({}); window.location.href = '/pedidos'; return; }
@@ -1332,6 +1354,7 @@ export default function PedidosPage() {
 
       {showCart && (
         <CartDrawer carrito={carrito} items={items} session={session}
+          onAdd={addItem} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />
       )}

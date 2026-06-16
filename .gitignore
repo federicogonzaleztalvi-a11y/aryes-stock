@@ -18,3 +18,4 @@ Thumbs.db
 npm-debug.log*
 .vercel
 .env*.local
+.github/workflows/ci.yml
