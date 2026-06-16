@@ -25,6 +25,19 @@ function calcFinal(base, dg, item, dtoCat) {
   if (dg > 0) return Math.round(base * (1 - dg / 100) * 100) / 100;
   return base;
 }
+// % de descuento que se está aplicando (no comparación contra el base, que puede no ser confiable).
+// Un precio fijo reemplaza el base → no hay "descuento" que mostrar.
+function dtoAplicado(dg, item, dtoCat) {
+  if (item && item.precio > 0) return 0;
+  if (item && (item.descuento || 0) > 0) return Number(item.descuento);
+  if (dtoCat > 0) return dtoCat;
+  if (dg > 0) return dg;
+  return 0;
+}
+// Moneda con 2 decimales — solo para el editor (fmt.currency redondea a entero en toda la app).
+function fmtPrecio(n) {
+  return `$ ${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
   const { products, clientes, setClientes} = useApp();
@@ -189,13 +202,13 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
               const catProd = p.category || p.categoria || '';
               const dtoCatProd = Number(dtosCat[catProd] || 0);
               const final = calcFinal(base, dg, item, dtoCatProd);
-              const ahorro = base > 0 && final < base ? Math.round((1 - final / base) * 100) : 0;
+              const ahorro = dtoAplicado(dg, item, dtoCatProd);
               const rowBg = item?.precio > 0 ? '#fffdf0' : (item?.descuento || 0) > 0 ? '#fdf8ff' : 'transparent';
               return (<tr key={uuid} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', background: rowBg, opacity: saving[uuid] ? 0.6 : 1 }}>
                 <td style={{ padding: '8px 16px' }}><div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{p.name || p.nombre}</div><div style={{ fontSize: 11, color: '#9ca3af' }}>{p.category || p.categoria} · {p.unit || p.unidad}</div></td>
                 <td style={{ padding: '6px 12px', textAlign: 'center' }}><input key={`pf-${uuid}-${item?.id}`} type="number" min={0} step="0.01" placeholder={base > 0 ? base.toFixed(2) : 'Precio'} defaultValue={item?.precio > 0 ? item.precio : ''} onBlur={e => saveItem(uuid, 'precio', e.target.value)} style={{ width: 100, padding: '5px 8px', border: `1.5px solid ${item?.precio > 0 ? '#fbbf24' : '#e5e7eb'}`, borderRadius: 8, fontSize: 13, textAlign: 'right', background: item?.precio > 0 ? '#fffbeb' : '#fafafa' }} /></td>
                 <td style={{ padding: '6px 12px', textAlign: 'center' }}><div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}><input key={`dto-${uuid}-${item?.id}`} type="number" min={0} max={100} step="0.5" placeholder={dg > 0 ? String(dg) : '0'} defaultValue={(item?.descuento || 0) > 0 ? item.descuento : ''} onBlur={e => saveItem(uuid, 'descuento', e.target.value)} style={{ width: 58, padding: '5px 8px', border: `1.5px solid ${(item?.descuento || 0) > 0 ? '#c4b5fd' : '#e5e7eb'}`, borderRadius: 8, fontSize: 13, textAlign: 'center', background: (item?.descuento || 0) > 0 ? '#faf5ff' : '#fafafa' }} /><span style={{ fontSize: 11, color: '#9ca3af' }}>%</span></div></td>
-                <td style={{ padding: '8px 16px', textAlign: 'right' }}>{final > 0 ? (<div><span style={{ fontSize: 14, fontWeight: 800, color: tieneOverride ? (item?.precio > 0 ? '#d97706' : '#7c3aed') : (dg > 0 ? G : '#374151') }}>{fmt.currency(final)}</span>{ahorro > 0 && <span style={{ fontSize: 10, color: '#16a34a', marginLeft: 6 }}>-{ahorro}%</span>}</div>) : <span style={{ color: '#e5e7eb', fontSize: 12 }}>sin precio</span>}</td>
+                <td style={{ padding: '8px 16px', textAlign: 'right' }}>{final > 0 ? (<div><span style={{ fontSize: 14, fontWeight: 800, color: tieneOverride ? (item?.precio > 0 ? '#d97706' : '#7c3aed') : (dg > 0 ? G : '#374151') }}>{fmtPrecio(final)}</span>{ahorro > 0 && <span title="Descuento aplicado sobre el precio base" style={{ fontSize: 10, color: '#16a34a', marginLeft: 6 }}>-{ahorro}% dto.</span>}</div>) : <span style={{ color: '#e5e7eb', fontSize: 12 }}>sin precio</span>}</td>
                 <td style={{ padding: '6px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>{tieneOverride && (listas || []).length > 1 && <button title="Copiar precio a otras listas" onClick={() => { setCopiarUuid(uuid); setCopiarSel({}); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>⧉</button>}{tieneOverride && <button title="Quitar de esta lista" onClick={() => clearItem(uuid)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 14, padding: '2px 4px' }}>✕</button>}</td>
               </tr>);
             })}
