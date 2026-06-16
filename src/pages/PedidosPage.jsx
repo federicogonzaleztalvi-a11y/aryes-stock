@@ -369,6 +369,8 @@ function LoginStep({ onLogin }) {
 function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const imgH = isMobile ? 120 : 160;
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
@@ -376,11 +378,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
       transition: 'border-color .15s' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = '#c8c8c0'}
       onMouseLeave={e => e.currentTarget.style.borderColor = '#efefeb'}>
-      <div style={{ height: 160, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
+      <div style={{ height: imgH, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
         display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
-              style={{ maxHeight: 159, maxWidth: '100%', objectFit: 'contain' }} />
+              style={{ maxHeight: imgH - 1, maxWidth: '100%', objectFit: 'contain' }} />
           : <div style={{ textAlign: 'center' }}>
               <div style={{ width: 40, height: 40, borderRadius: 8, background: G + '18',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1149,7 +1151,7 @@ export default function PedidosPage() {
         <nav aria-label="Categorías" style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
           display: 'flex', alignItems: 'center',
           height: 44, position: 'relative', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
-          {vista === 'catalogo' && cats.slice(0, NAV_MAX).map(cat => (
+          {vista === 'catalogo' && (isMobile ? cats : cats.slice(0, NAV_MAX)).map(cat => (
             <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
               padding: '0 16px', height: 44, border: 'none', background: 'transparent',
               fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS,
@@ -1161,7 +1163,7 @@ export default function PedidosPage() {
               {cat}
             </button>
           ))}
-          {vista === 'catalogo' && cats.length > NAV_MAX && (
+          {vista === 'catalogo' && !isMobile && cats.length > NAV_MAX && (
             <div style={{ position: 'relative' }}
               onMouseEnter={() => setDdOpen(true)}
               onMouseLeave={() => setDdOpen(false)}>
