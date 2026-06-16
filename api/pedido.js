@@ -250,26 +250,59 @@ async function handler(req, res) {
   // This single RPC validates available_stock for ALL items, creates ALL
   // reservations, and inserts the order — all in one Postgres transaction.
   // If any item has insufficient stock → full rollback, no partial state.
-  const rpcRes = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, {
-    method:  'POST',
-    headers: rpcHeaders,
-    body: JSON.stringify({
-      p_order_id:        orderId,
-      p_org_id:          org,
-      p_cliente_id:      clienteId,
-      p_cliente_nombre:  clienteNombre,
-      p_cliente_tel:     clienteTel,
-      p_items:           items,
-      p_total:           Number(total) || 0,
-      p_notas:           notas || '',
-      p_idempotency_key: idempotencyKey || null,
-      p_ttl_hours:       6,
-    }),
+  const rpcPayload = JSON.stringify({
+    p_order_id:        orderId,
+    p_org_id:          org,
+    p_cliente_id:      clienteId,
+    p_cliente_nombre:  clienteNombre,
+    p_cliente_tel:     clienteTel,
+    p_items:           items,
+    p_total:           Number(total) || 0,
+    p_notas:           notas || '',
+    p_idempotency_key: idempotencyKey || null,
+    p_ttl_hours:       6,
   });
 
+  // Call the RPC reading the body as TEXT once, with one retry on transient
+  // failures (network throw or upstream 5xx). A retry is only safe when an
+  // idempotency key is present: if the first attempt actually committed the
+  // order but the response was lost, the retry hits the idempotency check and
+  // returns the existing order instead of duplicating it. Without a key we do
+  // NOT retry, since a lost response could otherwise create a duplicate.
+  const rpcUrl   = `${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`;
+  const canRetry = !!idempotencyKey;
+  let rpcRes   = null;
+  let rpcText  = '';
+  let rpcThrew = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      rpcRes   = await fetch(rpcUrl, { method: 'POST', headers: rpcHeaders, body: rpcPayload });
+      rpcText  = await rpcRes.text();
+      rpcThrew = null;
+      // Retry only on transient upstream errors (gateway/timeout/5xx)
+      if (rpcRes.status >= 500 && attempt === 0 && canRetry) {
+        log.warn('pedido', 'RPC transient upstream error — retrying', { status: rpcRes.status });
+        continue;
+      }
+      break;
+    } catch (netErr) {
+      rpcThrew = netErr;
+      log.warn('pedido', 'RPC network error', { attempt, error: netErr.message });
+      if (attempt === 0 && canRetry) continue;
+    }
+  }
+
+  // Network failure on both attempts → upstream unreachable
+  if (rpcThrew || !rpcRes) {
+    log.error('pedido', 'RPC unreachable', { error: rpcThrew?.message });
+    return res.status(502).json({ error: 'No pudimos conectar con el servidor. Intentá de nuevo en unos segundos.' });
+  }
+
+  let rpcBody = null;
+  try { rpcBody = rpcText ? JSON.parse(rpcText) : null; } catch { /* non-JSON upstream body */ }
+
   if (!rpcRes.ok) {
-    const errBody = await rpcRes.json().catch(() => ({}));
-    const errMsg  = errBody?.message || errBody?.details || '';
+    const errMsg = rpcBody?.message || rpcBody?.details || rpcText || '';
 
     // Parse structured errors from the RPC
     if (errMsg.includes('item_insufficient:')) {
@@ -294,19 +327,22 @@ async function handler(req, res) {
     }
 
     // Idempotent hit — order already exists
-    const rpcData = await rpcRes.json().catch(() => null);
-    if (rpcData?.idempotent) {
-      log.info('pedido', 'idempotent hit', { orderId: rpcData.orderId });
-      
-
-    return res.status(200).json({ ok: true, orderId: rpcData.orderId, idempotent: true });
+    if (rpcBody?.idempotent) {
+      log.info('pedido', 'idempotent hit', { orderId: rpcBody.orderId });
+      return res.status(200).json({ ok: true, orderId: rpcBody.orderId, idempotent: true });
     }
 
-    log.error('pedido', 'RPC error', { status: rpcRes.status, errMsg, errBody });
+    // Unknown failure — log the FULL upstream response so it is diagnosable.
+    log.error('pedido', 'RPC error', {
+      status:  rpcRes.status,
+      code:    rpcBody?.code || null,
+      errMsg,
+      rawBody: rpcText ? rpcText.slice(0, 800) : '(empty)',
+    });
     return res.status(502).json({ error: 'Error al procesar el pedido. Intentá de nuevo.' });
   }
 
-  const result = await rpcRes.json();
+  const result = rpcBody || {};
 
   // Handle idempotent response from RPC (order already existed)
   if (result?.idempotent) {
