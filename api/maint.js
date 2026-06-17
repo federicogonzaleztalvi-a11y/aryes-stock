@@ -1,15 +1,14 @@
-// api/maint.js — TEMPORARY maintenance endpoint. (1) Migrates the test client
-// "federico-test" (non-UUID clients.id, which breaks the UUID-typed order RPC)
-// to a real UUID, re-pointing its portal sessions. (2) Updates the org's order
-// notification email. Reports every step. Gated by MAINT_SECRET. REMOVE after.
+// api/maint.js — TEMPORARY maintenance endpoint. Scans all clients in the org
+// for non-UUID ids (which break the UUID-typed order RPC → 502). Reports the
+// affected rows. Also confirms the org notify email. Gated by MAINT_SECRET.
+// REMOVE after.
 import crypto from 'crypto';
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 const ORG = 'aryes-ltda-6223';
-const OLD_CID = 'federico-test';
-const NEW_NOTIFY_EMAIL = 'federicogonzalez@aryes.com.uy';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function safeEq(a, b) {
   const ab = Buffer.from(String(a)); const bb = Buffer.from(String(b));
@@ -24,49 +23,16 @@ export default async function handler(req, res) {
 
   const key = SB_SVC || SB_ANON;
   const H = { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' };
-  const Hj = { ...H, 'Content-Type': 'application/json' };
-  const rnd = () => crypto.randomUUID();
-  const steps = {};
 
-  async function patch(path, body, prefer = 'return=representation') {
-    const r = await fetch(`${SB_URL}/rest/v1/${path}`, {
-      method: 'PATCH', headers: { ...Hj, Prefer: prefer }, body: JSON.stringify(body),
-    });
-    return { status: r.status, body: (await r.text()).slice(0, 400) };
-  }
+  const clients = await (await fetch(`${SB_URL}/rest/v1/clients?org_id=eq.${ORG}&select=id,name,phone,lista_id&order=created_at.asc`, { headers: H })).json();
+  const bad = (clients || []).filter(c => !UUID_RE.test(c.id || ''));
 
-  // ── Part 1: change the org notification email ──────────────────────────────
-  steps.email = await patch(`organizations?id=eq.${ORG}`, { order_notify_email: NEW_NOTIFY_EMAIL });
+  const org = (await (await fetch(`${SB_URL}/rest/v1/organizations?id=eq.${ORG}&select=order_notify_email`, { headers: H })).json())?.[0];
 
-  // ── Part 2: migrate federico-test → UUID ───────────────────────────────────
-  const existing = (await (await fetch(`${SB_URL}/rest/v1/clients?id=eq.${OLD_CID}&select=*`, { headers: H })).json())?.[0];
-  if (!existing) {
-    steps.migrate = { skipped: 'no federico-test client row found' };
-  } else {
-    const newUuid = rnd();
-    // Try the simplest path first: directly update the PK in place.
-    steps.clients_pk = await patch(`clients?id=eq.${OLD_CID}`, { id: newUuid });
-    if (steps.clients_pk.status >= 200 && steps.clients_pk.status < 300) {
-      steps.sessions   = await patch(`portal_sessions?cliente_id=eq.${OLD_CID}`, { cliente_id: newUuid }, 'return=minimal');
-      steps.new_uuid   = newUuid;
-      // Verify the order RPC now accepts the migrated client
-      const orderId = rnd();
-      const rpcRes = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, {
-        method: 'POST', headers: Hj,
-        body: JSON.stringify({
-          p_order_id: orderId, p_org_id: ORG, p_cliente_id: newUuid,
-          p_cliente_nombre: 'DBG_DELETE', p_cliente_tel: '0',
-          p_items: [{ productId: null }], p_total: 0, p_notas: 'dbg',
-          p_idempotency_key: 'dbg-' + rnd(), p_ttl_hours: 1,
-        }),
-      });
-      steps.rpc_verify = { status: rpcRes.status, body: (await rpcRes.text()).slice(0, 300) };
-      await fetch(`${SB_URL}/rest/v1/stock_reservations?reference_id=eq.${orderId}`, { method: 'DELETE', headers: H });
-      await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}`, { method: 'DELETE', headers: H });
-    } else {
-      steps.migrate = { note: 'direct PK update failed — see clients_pk status/body, will need insert+repoint+delete' };
-    }
-  }
-
-  return res.status(200).json(steps);
+  return res.status(200).json({
+    total_clients: clients?.length ?? 0,
+    non_uuid_count: bad.length,
+    non_uuid_clients: bad,
+    order_notify_email: org?.order_notify_email || null,
+  });
 }
