@@ -578,6 +578,28 @@ export default function ConfigInline({
                   </label>
                 </div>
 
+                {/* Pedido mínimo */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Pedido mínimo</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Monto mínimo (sin IVA) para que el cliente pueda confirmar. 0 = sin mínimo.</div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                    <span style={{fontFamily:'Inter,sans-serif',fontSize:14,color:'#6a6a68'}}>$</span>
+                    <input
+                      key={'min'+(brandCfg?.minOrderAmount||0)}
+                      type="number" min={0} step={1}
+                      defaultValue={brandCfg?.minOrderAmount||0}
+                      onBlur={e=>{
+                        const v=Math.max(0,Number(e.target.value)||0);
+                        const updated={...(brandCfg||{}),minOrderAmount:v};
+                        setBrandCfg(updated);
+                        db.upsert('app_config',{key:'brandcfg',value:updated,org_id:getOrgId()},'key,org_id');
+                      }}
+                      style={{width:120,padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,textAlign:'right',background:'#fafaf7',color:'#1a1a18'}}/>
+                  </div>
+                </div>
+
                 {/* URL del portal */}
                 <div style={{background:'#f7f6f3',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
                   <div style={{fontFamily:'Inter,sans-serif',fontSize:12,fontWeight:700,color:'#1a1a18',marginBottom:8}}>URL de tu portal</div>

@@ -410,7 +410,7 @@ const describeAction = (action: string, detail: string): string => {
       try {
         const prods = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null, codigo:p.codigo||'' }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null, codigo:p.codigo||'', volume_tiers:Array.isArray(p.volume_tiers)?p.volume_tiers:[] }));
           setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', `org_id=eq.${getOrgId()}&order=name.asc`);
@@ -496,6 +496,7 @@ const describeAction = (action: string, detail: string): string => {
             minStock:Number(row.min_stock)||0, unitCost:Number(row.unit_cost)||0, unit:row.unit||'',
             supplierId:row.supplier_id||'', name:row.name||row.nombre||'', brand:row.brand||'',
             category:row.category||'', precioVenta:Number(row.precio_venta)||0, imagen_url:row.imagen_url||'', descripcion:row.descripcion||'',
+            volume_tiers:Array.isArray(row.volume_tiers)?row.volume_tiers:[],
             dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
           return [p, ...ps];
         }
@@ -698,6 +699,7 @@ const describeAction = (action: string, detail: string): string => {
       imagen_url: (f.imagen_url || '') as string,
       descripcion: (f.descripcion || '') as string,
       codigo: (f.codigo || '') as string,
+      volume_tiers: (Array.isArray(f.volume_tiers) ? f.volume_tiers : []) as unknown[],
       updated_at: now,
     };
     // Optimistic update

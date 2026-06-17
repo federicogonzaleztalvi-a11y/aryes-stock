@@ -38,6 +38,19 @@ function normalizeUnit(unit) {
   return clean || 'un';
 }
 
+// Escalas de descuento por volumen: [{ min, dto }]. Genérico por producto: cualquier
+// org puede cargar tiers en products.volume_tiers (JSONB). Saneamos para no confiar en
+// la forma cruda de la DB y devolver siempre un array ordenado por cantidad mínima.
+function sanitizeVolumeTiers(raw) {
+  let arr = raw;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch { return []; } }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map(t => ({ min: Math.floor(Number(t?.min)), dto: Number(t?.dto) }))
+    .filter(t => Number.isFinite(t.min) && t.min > 1 && Number.isFinite(t.dto) && t.dto > 0 && t.dto <= 100)
+    .sort((a, b) => a.min - b.min);
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     setHeaders(res);
@@ -80,7 +93,7 @@ export default async function handler(req, res) {
   try {
     // ââ 1. Load products ââââââââââââââââââââââââââââââââââââââââââââââââââââ
     const prodQuery = [
-      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty',
+      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers',
       `org_id=eq.${org}`,
             'order=category.asc,name.asc',
       'limit=500',
@@ -240,6 +253,8 @@ export default async function handler(req, res) {
           iva_rate:       p.iva_rate != null ? Number(p.iva_rate) : null,
           imagen_url:     p.imagen_url || null,
           min_order_qty:  p.min_order_qty != null ? Number(p.min_order_qty) : 1,
+          descripcion:    p.descripcion || '',
+          volume_tiers:   sanitizeVolumeTiers(p.volume_tiers),
         };
       });
 

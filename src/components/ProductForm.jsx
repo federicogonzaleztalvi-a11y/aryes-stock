@@ -6,8 +6,8 @@ import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '
 
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
-  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[]};
-  const [f,setF]=useState(product?{...product}:blank);
+  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[]};
+  const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[]}:blank);
 
   // WA template in localStorage
   // wa template — read from localStorage, not used in current form UI
@@ -22,6 +22,16 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
       setF(p=>({...p,history:rows}));
     }catch{setCsvMsg("Formato incorrecto. Usar: YYYY-MM,cantidad");}
   };
+  // Escalas de descuento por volumen ([{min,dto}]). Genérico por producto.
+  const tiers=Array.isArray(f.volume_tiers)?f.volume_tiers:[];
+  const addTier=()=>setF(p=>({...p,volume_tiers:[...(p.volume_tiers||[]),{min:"",dto:""}]}));
+  const updTier=(i,k,v)=>setF(p=>{const t=[...(p.volume_tiers||[])];t[i]={...t[i],[k]:v};return{...p,volume_tiers:t};});
+  const rmTier=(i)=>setF(p=>({...p,volume_tiers:(p.volume_tiers||[]).filter((_,j)=>j!==i)}));
+  const cleanTiers=(arr)=>(Array.isArray(arr)?arr:[])
+    .map(t=>({min:Math.floor(Number(t.min)),dto:Number(t.dto)}))
+    .filter(t=>Number.isFinite(t.min)&&t.min>1&&Number.isFinite(t.dto)&&t.dto>0&&t.dto<=100)
+    .sort((a,b)=>a.min-b.min);
+
   const sup=suppliers.find(s=>s.id===f.supplierId);
   const lead=sup?totalLead(sup):0;
   const r=f.history.length?rop(f.history,lead):null;
@@ -76,6 +86,24 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
           placeholder="Usos, presentaciones, características técnicas, envases disponibles..."
           style={{width:"100%",minHeight:80,fontFamily:"inherit",fontSize:13,border:`1px solid ${T.border}`,borderRadius:6,padding:"9px 11px",resize:"vertical",background:T.muted,color:T.text,boxSizing:"border-box"}}/>
       </Field>
+      <Field label="Descuentos por volumen" hint="Opcional — premiá la compra por bulto. Ej: 10+ unidades −5%. El cliente ve el descuento en el portal.">
+        <div style={{display:"grid",gap:8}}>
+          {tiers.length===0&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,margin:0}}>Sin escalas. Agregá una para dar descuento al comprar cantidad.</p>}
+          {tiers.map((t,i)=>(
+            <div key={i} style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Desde</span>
+              <input type="number" min={2} step={1} value={t.min} onChange={e=>updTier(i,"min",e.target.value)} placeholder="10"
+                style={{width:80,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>unidades:</span>
+              <input type="number" min={1} max={100} step={0.5} value={t.dto} onChange={e=>updTier(i,"dto",e.target.value)} placeholder="5"
+                style={{width:70,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>% off</span>
+              <button onClick={()=>rmTier(i)} title="Quitar escala" style={{marginLeft:"auto",border:`1px solid ${T.border}`,background:T.muted,color:T.red,borderRadius:6,width:30,height:30,cursor:"pointer",fontSize:16,lineHeight:1}}>×</button>
+            </div>
+          ))}
+          <Btn onClick={addTier} variant="ghost" small>+ Agregar escala</Btn>
+        </div>
+      </Field>
       <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>
       {r!==null&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
@@ -113,7 +141,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
         </Field>
       </div>
       <div style={{display:"flex",gap:10,paddingTop:4}}>
-        <Btn onClick={()=>onSave(f)} full>{product?"Guardar cambios":"Agregar producto"}</Btn>
+        <Btn onClick={()=>onSave({...f,volume_tiers:cleanTiers(f.volume_tiers)})} full>{product?"Guardar cambios":"Agregar producto"}</Btn>
         <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
       </div>
     </div>

@@ -82,6 +82,83 @@ async function handler(req, res) {
 
     return res.status(200).json({ ok: true, pedidos: await r.json() });
     }
+
+    // ── GET ?action=comprobante&orderId=X — PDF descargable del pedido (cliente) ──
+    if (action === 'comprobante') {
+      const authHeader = req.headers['authorization'] || '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const session = await validatePortalSession(token);
+      if (!session) return res.status(401).json({ error: 'Sesión inválida' });
+      const orderId = req.query?.orderId;
+      if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
+      const key = SB_SVC || SB_ANON;
+      const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
+      // SECURITY: el cliente sólo puede descargar SUS pedidos (cliente_id + org_id).
+      const oRes = await fetch(
+        `${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(orderId)}&cliente_id=eq.${session.cliente_id}&org_id=eq.${session.org_id}&limit=1`,
+        hdr
+      );
+      if (!oRes.ok) return res.status(500).json({ error: 'Error al obtener pedido' });
+      const oRows = await oRes.json();
+      if (!oRows?.length) return res.status(404).json({ error: 'Pedido no encontrado' });
+      const pedido = oRows[0];
+      const orderItems = pedido.items || [];
+      try {
+        // empresa
+        const orgRes = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.org_id) + '&select=name', hdr);
+        const empresa = (orgRes.ok ? (await orgRes.json())[0]?.name : '') || 'Pazque';
+        // datos fiscales del cliente
+        const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(session.cliente_id) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
+        const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
+        // precios base
+        const ids = orderItems.map(i => i.id || i.productId).filter(Boolean);
+        let baseMap = {};
+        if (ids.length) {
+          const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
+          if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
+        }
+        const lineas = orderItems.map(i => {
+          const unit = Number(i.precioUnit) || 0;
+          const pid = i.id || i.productId;
+          const qty = Number(i.cantidad || i.qty) || 0;
+          return {
+            codigo: baseMap[pid]?.codigo || '',
+            nombre: i.nombre || i.productName || '',
+            unidad: i.unidad || i.unit || '',
+            qty,
+            precioBase: (baseMap[pid]?.precio) || unit,
+            precioUnit: unit,
+            subtotal: Number(i.subtotal) || (unit * qty),
+          };
+        });
+        const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
+        const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+        const total = Number(pedido.total) || subtotal;
+        const iva = Math.round(total - subtotal);
+        const pdfBuf = await generarOrdenPDF({
+          titulo: 'Comprobante de pedido',
+          footer: 'Comprobante generado por ' + empresa + ' vía Pazque',
+          nroOrden: 'OC-' + String(orderId).slice(0, 8).toUpperCase(),
+          fecha: pedido.creado_en || new Date().toISOString(),
+          empresa, currencySymbol: '$',
+          cliente: {
+            nombre: cli.name, codigo: cli.codigo, rut: cli.rut,
+            direccion: cli.address, ciudad: cli.ciudad,
+            horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
+            zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
+          },
+          lineas, subtotal, descuentoTotal, iva, total,
+          notas: pedido.notas || '',
+        });
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename="comprobante-OC-' + String(orderId).slice(0, 8).toUpperCase() + '.pdf"');
+        return res.status(200).send(pdfBuf);
+      } catch (pdfErr) {
+        log.warn('pedido', 'comprobante pdf failed', { error: pdfErr.message });
+        return res.status(500).json({ error: 'No se pudo generar el comprobante' });
+      }
+    }
+
     return res.status(400).json({ error: 'action requerida' });
   }
 

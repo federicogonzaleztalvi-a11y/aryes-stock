@@ -366,6 +366,20 @@ function LoginStep({ onLogin }) {
   );
 }
 
+// Descuento por volumen: devuelve el % de la mejor escala cuyo mínimo alcanza qty.
+// Las escalas (item.volume_tiers = [{min,dto}]) vienen saneadas y ordenadas del API.
+function volTierDto(item, qty) {
+  const tiers = Array.isArray(item?.volume_tiers) ? item.volume_tiers : [];
+  let dto = 0;
+  for (const t of tiers) { if (qty >= t.min) dto = t.dto; }
+  return dto;
+}
+// Primera escala (la de menor cantidad) — para mostrar un hint en la tarjeta.
+function primerTier(item) {
+  const tiers = Array.isArray(item?.volume_tiers) ? item.volume_tiers : [];
+  return tiers.length ? tiers[0] : null;
+}
+
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
   const [imgErr, setImgErr] = useState(false);
@@ -396,9 +410,17 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
       </div>
       <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: .3 }}>{item.categoria}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3, flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3 }}>
           {item.nombre}
         </div>
+        {item.descripcion && (
+          <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.35, marginTop: 1,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            overflow: 'hidden', flex: 1 }}>
+            {item.descripcion}
+          </div>
+        )}
+        {!item.descripcion && <div style={{ flex: 1 }} />}
         <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
           {item.precio > 0 ? fmt.currency(item.precio) : (
             <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
@@ -411,6 +433,13 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
           {item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim()) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
+        {item.precio > 0 && primerTier(item) && (
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
+            border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
+            marginTop: 2 }}>
+            {primerTier(item).min}+ unidades: −{primerTier(item).dto}%
+          </div>
+        )}
         {qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
@@ -446,6 +475,31 @@ function HistorialPedidos({ session, onReordenar }) {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expand,  setExpand]  = useState(null);
+  const [dlId,    setDlId]    = useState(null);
+
+  const descargarComprobante = async (pedidoId) => {
+    if (!session?.token || session?.token === 'demo-token') return;
+    setDlId(pedidoId);
+    try {
+      const r = await fetch(`${API}/api/pedido?action=comprobante&orderId=${encodeURIComponent(pedidoId)}`, {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+      if (!r.ok) throw new Error('No se pudo generar el comprobante');
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comprobante-OC-${String(pedidoId).slice(0, 8).toUpperCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      alert('No se pudo descargar el comprobante. Intentá de nuevo.');
+    } finally {
+      setDlId(null);
+    }
+  };
 
   const EST = {
     pendiente:  { label: 'Pendiente',  color: '#d97706', bg: '#fffbeb' },
@@ -523,14 +577,25 @@ function HistorialPedidos({ session, onReordenar }) {
                     </div>
                   ))}
                 </div>
-                <button onClick={e => { e.stopPropagation(); onReordenar(p); }} style={{
-                  marginTop: 12, width: '100%', padding: '9px 0',
-                  background: '#f0fdf4', color: G, border: '1px solid #bbf7d0',
-                  borderRadius: 9, cursor: 'pointer', fontWeight: 600, fontSize: 12,
-                  fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}>
-                  {Icon.repeat} Repetir pedido
-                </button>
+                <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                  <button onClick={e => { e.stopPropagation(); onReordenar(p); }} style={{
+                    flex: 1, padding: '9px 0',
+                    background: '#f0fdf4', color: G, border: '1px solid #bbf7d0',
+                    borderRadius: 9, cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                    fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}>
+                    {Icon.repeat} Repetir pedido
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); descargarComprobante(p.id); }} disabled={dlId === p.id} style={{
+                    flex: 1, padding: '9px 0',
+                    background: '#fff', color: '#4a4a42', border: '1px solid #e0e0d8',
+                    borderRadius: 9, cursor: dlId === p.id ? 'default' : 'pointer', fontWeight: 600, fontSize: 12,
+                    fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: dlId === p.id ? 0.6 : 1,
+                  }}>
+                    {dlId === p.id ? 'Generando...' : 'Descargar PDF'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -541,7 +606,7 @@ function HistorialPedidos({ session, onReordenar }) {
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg }) {
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
@@ -554,15 +619,24 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
 
   const lineasConCalc = lineas.map(({ item, qty }) => {
     const ivaRate = item.iva_rate != null ? Number(item.iva_rate) : 0;
-    const descPct = item.descGlobal || 0;
-    const precioConDto = descPct > 0 ? item.precio * (1 - descPct / 100) : item.precio;
+    // Descuento aplicable = el mayor entre el dto del item y la escala por volumen que
+    // alcanza la cantidad pedida. El descuento por volumen premia comprar en bulto.
+    const volDto = volTierDto(item, qty);
+    const descPct = Math.max(item.descGlobal || 0, volDto);
+    const precioConDto = descPct > 0 ? Math.round(item.precio * (1 - descPct / 100) * 100) / 100 : item.precio;
     const netoLinea = precioConDto * qty;
     const ivaLinea = netoLinea * (ivaRate / 100);
-    return { item, qty, ivaRate, descPct, precioConDto, netoLinea, ivaLinea };
+    return { item, qty, ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea };
   });
   const subtotalNeto = lineasConCalc.reduce((s, l) => s + l.netoLinea, 0);
   const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
   const total = subtotalNeto + ivaTotal;
+
+  // Mínimo de pedido (genérico por-org vía app_config brandcfg). 0 = sin mínimo.
+  // Se mide sobre el subtotal neto (mercadería sin IVA), el criterio wholesale habitual.
+  const minOrderAmount = Number(brandCfg?.minOrderAmount) || 0;
+  const faltaParaMinimo = minOrderAmount > 0 ? Math.max(0, minOrderAmount - subtotalNeto) : 0;
+  const cumpleMinimo = faltaParaMinimo <= 0;
 
   // A7: idempotencyKey ESTABLE por carrito. Antes se generaba con Date.now()+random
   // en cada click → un doble-tap o un retry de red creaba pedidos duplicados. Atada
@@ -608,9 +682,9 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
         body: JSON.stringify({
           org: ORG, clienteId: session.clienteId,
           clienteNombre: session.nombre, clienteTelefono: session.tel,
-          items: lineas.map(l => ({
+          items: lineasConCalc.map(l => ({
             productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
-            cantidad: l.qty, precioUnit: l.item.precio, subtotal: l.item.precio * l.qty,
+            cantidad: l.qty, precioUnit: l.precioConDto, subtotal: l.netoLinea,
           })),
           total, notas,
           direccion_entrega: addresses.find(a => a.id === selectedAddress)?.direccion || null,
@@ -874,13 +948,19 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               {err}
             </div>
           )}
-          <button onClick={confirmar} disabled={loading || lineas.length === 0} style={{
+          {minOrderAmount > 0 && !cumpleMinimo && lineas.length > 0 && (
+            <div role="alert" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
+              padding: '9px 12px', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
+              Pedido mínimo de {fmt.currency(minOrderAmount)}. Te faltan {fmt.currency(faltaParaMinimo)} para confirmar.
+            </div>
+          )}
+          <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
             width: '100%', padding: '13px 0',
-            background: loading || lineas.length === 0 ? '#c8c8c0' : G,
+            background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
             color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
-            fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: SANS,
+            fontWeight: 600, cursor: (loading || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS,
           }}>
-            {loading ? 'Enviando...' : 'Confirmar pedido'}
+            {loading ? 'Enviando...' : (!cumpleMinimo ? `Mínimo ${fmt.currency(minOrderAmount)}` : 'Confirmar pedido')}
           </button>
         </div>
       </div>
@@ -956,6 +1036,16 @@ export default function PedidosPage() {
     try {
       const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`,
         ses.token ? { headers: { Authorization: `Bearer ${ses.token}` } } : undefined);
+
+      // Revalidación de sesión: si el server rechaza el token (expirado o revocado —
+      // ej. el distribuidor dio de baja al cliente), no mostramos datos viejos:
+      // limpiamos la sesión local y volvemos al login. (El TTL es de 7 días, así que
+      // esto cubre sobre todo la revocación, no la expiración normal.)
+      if (r.status === 401 && ses.token && ses.token !== 'demo-token') {
+        localStorage.removeItem(SK);
+        setSession(null); setItems([]); setCarrito({});
+        return;
+      }
       const d = await r.json();
 
       // Branding vive en portalCfg (catalogo.js carga app_config key=brandcfg ahí).
@@ -1368,7 +1458,7 @@ export default function PedidosPage() {
       )}
 
       {showCart && (
-        <CartDrawer carrito={carrito} items={items} session={session}
+        <CartDrawer carrito={carrito} items={items} session={session} brandCfg={brandCfg}
           onAdd={addItem} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />

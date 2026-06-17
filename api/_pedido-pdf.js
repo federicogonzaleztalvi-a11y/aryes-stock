@@ -32,7 +32,7 @@ export function generarOrdenPDF(data) {
       const right = left + pageW;
 
       doc.fillColor(OSCURO).fontSize(20).font('Helvetica-Bold').text(data.empresa || 'Pazque', left, 48);
-      doc.fillColor(GRIS).fontSize(9).font('Helvetica').text('Orden de compra', left, 74);
+      doc.fillColor(GRIS).fontSize(9).font('Helvetica').text(data.titulo || 'Orden de compra', left, 74);
       doc.fillColor(OSCURO).fontSize(11).font('Helvetica-Bold').text('N ' + (data.nroOrden || '-'), left, 48, { width: pageW, align: 'right' });
       doc.fillColor(GRIS).fontSize(9).font('Helvetica').text('Fecha: ' + fecha(data.fecha), left, 66, { width: pageW, align: 'right' });
       doc.moveTo(left, 96).lineTo(right, 96).strokeColor(VERDE).lineWidth(2).stroke();
@@ -126,7 +126,7 @@ export function generarOrdenPDF(data) {
       }
 
       doc.fontSize(8).font('Helvetica').fillColor('#9a9a98')
-         .text('Documento interno generado por Pazque - ' + fecha(data.fecha), left, doc.page.height - 60, { width: pageW, align: 'center' });
+         .text((data.footer || 'Documento interno generado por Pazque') + ' - ' + fecha(data.fecha), left, doc.page.height - 60, { width: pageW, align: 'center' });
 
       doc.end();
     } catch (err) { reject(err); }
