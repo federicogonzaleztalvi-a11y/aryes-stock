@@ -56,12 +56,25 @@ export default async function handler(req, res) {
     return { clienteId, status, raw };
   }
 
+  // Inventory references to the non-UUID test client "federico-test"
+  const cid = 'federico-test';
+  async function cnt(path) {
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: { ...H, Prefer: 'count=exact', Range: '0-0' } });
+    return r.headers.get('content-range') || r.status;
+  }
+  const inventory = {
+    clients_row:    await (await fetch(`${SB_URL}/rest/v1/clients?id=eq.${cid}&select=id,name,phone,lista_id,org_id`, { headers: H })).json(),
+    portal_sessions: await cnt(`portal_sessions?cliente_id=eq.${cid}&select=token`),
+    b2b_orders:     await cnt(`b2b_orders?cliente_id=eq.${cid}&select=id`),
+    client_addresses: await cnt(`client_addresses?client_id=eq.${cid}&select=id`),
+    stock_reservations: await cnt(`stock_reservations?cliente_id=eq.${cid}&select=id`),
+  };
+
   return res.status(200).json({
     real_session_cliente_id: sess?.cliente_id || null,
-    real_session_tel: sess?.tel || null,
     generic_cliente_id: genCli?.id || null,
-    same_client: sess?.cliente_id === genCli?.id,
     REAL:    await callRpc(sess?.cliente_id, sess?.tel),
     GENERIC: await callRpc(genCli?.id, '0'),
+    inventory,
   });
 }
