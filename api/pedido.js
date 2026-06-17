@@ -8,11 +8,11 @@
 // INTERNAL OPS: unaffected — VentasTab / create_venta unchanged
 
 import { checkRateLimit } from './_rate-limit.js';
-import webpush from 'web-push';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
-import { sendEmail, templates } from './_email.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
+// Núcleo compartido de creación de pedido (mismo cierre para portal y bot WhatsApp).
+import { createB2BOrder } from './_create-order.js';
 // SECURITY (A3): usar la validación compartida que además exige revoked=false.
 // La copia local no chequeaba `revoked`, así un token revocado (logout / baja de
 // cliente) seguía autenticando hasta expirar por TTL.
@@ -265,320 +265,36 @@ async function handler(req, res) {
   const clienteTel    = portalSession.tel;
   const clienteNombre = (req.body?.clienteNombre || '').substring(0, 100);
 
-  // The order RPC types p_cliente_id as UUID. A session whose cliente_id is not a
-  // UUID (legacy/test client rows whose clients.id is a non-UUID string) makes
-  // Postgres throw 22P02, which previously surfaced as an opaque 502. Detect it
-  // up front and return a clear, actionable message instead.
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!UUID_RE.test(clienteId || '')) {
-    log.error('pedido', 'session cliente_id is not a UUID — cannot place order', { clienteId, org });
-    return res.status(400).json({ error: 'Tu cuenta no está habilitada para pedidos. Cerrá sesión y volvé a entrar.' });
-  }
+  // ── 3. Crear el pedido vía núcleo compartido ─────────────────────────────
+  // createB2BOrder hace: validación de UUID + detección de anomalías + RPC
+  // atómico (con reintentos idempotentes) + push + mail con PDF. Devuelve un
+  // resultado estructurado que mapeamos a HTTP acá. El bot de WhatsApp llamará a
+  // la MISMA función y mapeará el resultado a un mensaje.
+  const result = await createB2BOrder({
+    org, clienteId, clienteNombre, clienteTel,
+    items, total, notas, idempotencyKey,
+  });
 
-  // Pre-generate order ID (used as reservation reference_id)
-  const orderId = crypto.randomUUID();
-
-  const rpcHeaders = {
-    apikey:          SB_SVC || SB_ANON,
-    Authorization:  `Bearer ${SB_SVC || SB_ANON}`,
-    'Content-Type': 'application/json',
-    Accept:         'application/json',
-  };
-
-  // ── 2b. Anomaly detection — flag unusual orders for admin review ─────────
-  let requiere_revision = false;
-  let anomaly_reasons = [];
-  try {
-    // Get client's last 10 orders to compare
-    const histRes = await fetch(
-      SB_URL + '/rest/v1/b2b_orders?cliente_id=eq.' + clienteId + '&org_id=eq.' + org + '&order=creado_en.desc&limit=10&select=items,total',
-      { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
-    );
-    if (histRes.ok) {
-      const history = await histRes.json();
-      if (history && history.length >= 2) {
-        // Average order total
-        var avgTotal = history.reduce(function(s, o) { return s + Number(o.total || 0); }, 0) / history.length;
-        // Check if current total is 3x the average
-        if (Number(total) > avgTotal * 3 && avgTotal > 0) {
-          requiere_revision = true;
-          anomaly_reasons.push('Total $' + Number(total).toFixed(0) + ' es ' + Math.round(Number(total)/avgTotal) + 'x el promedio ($' + Math.round(avgTotal) + ')');
-        }
-        // Check individual item quantities vs historical average
-        var histQty = {};
-        history.forEach(function(o) { (o.items || []).forEach(function(it) {
-          var k = it.productId || it.productoId || '';
-          if (!histQty[k]) histQty[k] = [];
-          histQty[k].push(Number(it.qty || it.cantidad || 0));
-        }); });
-        items.forEach(function(it) {
-          var k = it.productId || '';
-          var qty = Number(it.qty || it.cantidad || 0);
-          if (histQty[k] && histQty[k].length >= 2) {
-            var avgQty = histQty[k].reduce(function(s,v){return s+v;},0) / histQty[k].length;
-            if (qty > avgQty * 3 && avgQty > 0) {
-              requiere_revision = true;
-              anomaly_reasons.push((it.nombre || k) + ': ' + qty + ' unidades (promedio: ' + Math.round(avgQty) + ')');
-            }
-          }
+  if (!result.ok) {
+    switch (result.code) {
+      case 'invalid_client':
+        return res.status(400).json({ error: 'Tu cuenta no está habilitada para pedidos. Cerrá sesión y volvé a entrar.' });
+      case 'insufficient_stock':
+        return res.status(409).json({
+          error:     `Stock insuficiente para: ${result.nombre}. Disponible: ${result.available}. Actualizá tu pedido.`,
+          productId: result.productId,
+          available: result.available,
         });
-      } else if (history.length === 0 && Number(total) > 500) {
-        // First order and high value
-        requiere_revision = true;
-        anomaly_reasons.push('Primer pedido del cliente con total alto: $' + Number(total).toFixed(0));
-      }
-    }
-  } catch (anomalyErr) {
-    // Non-fatal — continue without anomaly check
-    log.warn('pedido', 'anomaly check failed (non-fatal)', { error: anomalyErr.message });
-  }
-
-  // ── 3. Call atomic RPC: create_b2b_order_with_reservations ───────────────
-  // This single RPC validates available_stock for ALL items, creates ALL
-  // reservations, and inserts the order — all in one Postgres transaction.
-  // If any item has insufficient stock → full rollback, no partial state.
-  const rpcPayload = JSON.stringify({
-    p_order_id:        orderId,
-    p_org_id:          org,
-    p_cliente_id:      clienteId,
-    p_cliente_nombre:  clienteNombre,
-    p_cliente_tel:     clienteTel,
-    p_items:           items,
-    p_total:           Number(total) || 0,
-    p_notas:           notas || '',
-    p_idempotency_key: idempotencyKey || null,
-    p_ttl_hours:       6,
-  });
-
-  // Call the RPC reading the body as TEXT once, with retries on transient
-  // failures (network throw or upstream 5xx such as a Postgres statement timeout
-  // or connection-pool exhaustion during a load spike). Retries use a short
-  // backoff so the pool has a moment to recover — an immediate retry tends to
-  // hit the same overloaded state. Retrying is only safe when an idempotency key
-  // is present: if the first attempt actually committed the order but the
-  // response was lost, the retry hits the idempotency check and returns the
-  // existing order instead of duplicating it. Without a key we do NOT retry,
-  // since a lost response could otherwise create a duplicate.
-  const rpcUrl    = `${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`;
-  const canRetry  = !!idempotencyKey;
-  const MAX_TRIES = canRetry ? 3 : 1;
-  const BACKOFF   = [300, 800]; // ms before retry attempt 2 and 3
-  const sleep     = (ms) => new Promise((r) => setTimeout(r, ms));
-  let rpcRes   = null;
-  let rpcText  = '';
-  let rpcThrew = null;
-  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
-    const isLast = attempt === MAX_TRIES - 1;
-    try {
-      rpcRes   = await fetch(rpcUrl, { method: 'POST', headers: rpcHeaders, body: rpcPayload });
-      rpcText  = await rpcRes.text();
-      rpcThrew = null;
-      // Retry only on transient upstream errors (gateway/timeout/5xx)
-      if (rpcRes.status >= 500 && !isLast) {
-        log.warn('pedido', 'RPC transient upstream error — retrying', { status: rpcRes.status, attempt });
-        await sleep(BACKOFF[attempt] || 800);
-        continue;
-      }
-      break;
-    } catch (netErr) {
-      rpcThrew = netErr;
-      log.warn('pedido', 'RPC network error', { attempt, error: netErr.message });
-      if (!isLast) { await sleep(BACKOFF[attempt] || 800); continue; }
+      case 'product_not_found':
+        return res.status(404).json({ error: 'Uno o más productos no fueron encontrados.' });
+      case 'unreachable':
+        return res.status(502).json({ error: 'No pudimos conectar con el servidor. Intentá de nuevo en unos segundos.' });
+      default:
+        return res.status(502).json({ error: 'Error al procesar el pedido. Intentá de nuevo.' });
     }
   }
 
-  // Network failure on both attempts → upstream unreachable
-  if (rpcThrew || !rpcRes) {
-    log.error('pedido', 'RPC unreachable', { error: rpcThrew?.message });
-    return res.status(502).json({ error: 'No pudimos conectar con el servidor. Intentá de nuevo en unos segundos.' });
-  }
-
-  let rpcBody = null;
-  try { rpcBody = rpcText ? JSON.parse(rpcText) : null; } catch { /* non-JSON upstream body */ }
-
-  if (!rpcRes.ok) {
-    const errMsg = rpcBody?.message || rpcBody?.details || rpcText || '';
-
-    // Parse structured errors from the RPC
-    if (errMsg.includes('item_insufficient:')) {
-      // Format: 'item_insufficient:{productId}:{available}:{requested}'
-      const parts     = errMsg.split(':');
-      const productId = parts[1] || '';
-      const available = parts[2] || '0';
-      // Find the product name from items
-      const itemMatch = items.find(i => i.productId === productId);
-      const nombre    = itemMatch?.nombre || productId;
-      log.warn('pedido', 'insufficient stock', { productId, available });
-      return res.status(409).json({
-        error:     `Stock insuficiente para: ${nombre}. Disponible: ${available}. Actualizá tu pedido.`,
-        productId,
-        available: Number(available),
-      });
-    }
-
-    if (errMsg.includes('product_not_found')) {
-      log.warn('pedido', 'product not found in RPC', { errMsg });
-      return res.status(404).json({ error: 'Uno o más productos no fueron encontrados.' });
-    }
-
-    // Idempotent hit — order already exists
-    if (rpcBody?.idempotent) {
-      log.info('pedido', 'idempotent hit', { orderId: rpcBody.orderId });
-      return res.status(200).json({ ok: true, orderId: rpcBody.orderId, idempotent: true });
-    }
-
-    // Unknown failure — log the FULL upstream response so it is diagnosable.
-    log.error('pedido', 'RPC error', {
-      status:  rpcRes.status,
-      code:    rpcBody?.code || null,
-      errMsg,
-      rawBody: rpcText ? rpcText.slice(0, 800) : '(empty)',
-    });
-    return res.status(502).json({ error: 'Error al procesar el pedido. Intentá de nuevo.' });
-  }
-
-  const result = rpcBody || {};
-
-  // Handle idempotent response from RPC (order already existed)
-  if (result?.idempotent) {
-    log.info('pedido', 'idempotent hit via RPC', { orderId: result.orderId });
-    
-
-    return res.status(200).json({ ok: true, orderId: result.orderId, idempotent: true });
-  }
-
-  log.info('pedido', 'order created with reservations', {
-    orderId: result.orderId || orderId,
-    org,
-    clienteId,
-    items:  items.length,
-    total,
-  });
-
-  
-
-    // Patch anomaly flags if detected
-    if (requiere_revision) {
-      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + (result.orderId || orderId), {
-        method: 'PATCH',
-        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ requiere_revision: true, anomaly_reasons: anomaly_reasons }),
-      }).catch(function() {});
-      log.info('pedido', 'anomaly detected', { orderId: result.orderId || orderId, reasons: anomaly_reasons });
-    }
-
-    // ── Push notification to org admin ───────────────────────────────────
-    try {
-      const pushSubs = await fetch(
-        SB_URL + '/rest/v1/push_subscriptions?org_id=eq.' + encodeURIComponent(org) + '&limit=20',
-        { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
-      );
-      if (pushSubs.ok) {
-        const subs = await pushSubs.json();
-        if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
-          webpush.setVapidDetails(
-            process.env.VAPID_SUBJECT || 'mailto:hola@pazque.com',
-            process.env.VAPID_PUBLIC_KEY,
-            process.env.VAPID_PRIVATE_KEY
-          );
-          const payload = JSON.stringify({
-            title: 'Nuevo pedido B2B',
-            body: (clienteNombre || 'Un cliente') + ' hizo un pedido por $' + Number(total).toFixed(0),
-            icon: '/pazque-logo.png',
-            tag: 'b2b-order-' + (result.orderId || orderId),
-            url: '/app/pedidos',
-          });
-          await Promise.allSettled(
-            subs.map(sub => {
-              try {
-                // push_subscriptions guarda los campos PLANOS (endpoint/p256dh/auth),
-                // no una columna `subscription`. Reconstruimos el shape que espera
-                // web-push igual que lo hace api/push.js (action=send).
-                const subscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
-                return webpush.sendNotification(subscription, payload);
-              } catch { return Promise.resolve(); }
-            })
-          );
-          log.info('pedido', 'push sent', { org, subs: subs.length });
-        }
-      }
-    } catch (pushErr) {
-      log.warn('pedido', 'push notification failed (non-fatal)', { error: pushErr.message });
-    }
-
-    // ── Email notification to org (solo si la org tiene casilla configurada) ──
-    try {
-      const orgRes = await fetch(
-        SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org) + '&select=order_notify_email,name',
-        { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
-      );
-      if (orgRes.ok) {
-        const orgRows = await orgRes.json();
-        const notifyEmail = orgRows?.[0]?.order_notify_email;
-        if (notifyEmail) {
-          const empresa = orgRows[0].name || 'Pazque';
-          const currencySymbol = '$';
-          const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
-
-          // Generar orden de compra en PDF (uso interno) y adjuntar. Si falla, el mail va igual.
-          let attachments;
-          try {
-            const k = SB_SVC || SB_ANON;
-            const hdr = { headers: { apikey: k, Authorization: 'Bearer ' + k, Accept: 'application/json' } };
-            // datos fiscales del cliente
-            const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(clienteId) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
-            const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
-            // precios base de los productos del pedido
-            const ids = items.map(i => i.id || i.productId).filter(Boolean);
-            let baseMap = {};
-            if (ids.length) {
-              const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
-              if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
-            }
-            const lineas = items.map(i => {
-              const unit = Number(i.precioUnit) || 0;
-              const pid = i.id || i.productId;
-              return {
-                codigo: baseMap[pid]?.codigo || '',
-                nombre: i.nombre || i.productName || '',
-                unidad: i.unidad || i.unit || '',
-                qty: Number(i.cantidad || i.qty) || 0,
-                precioBase: (baseMap[pid]?.precio) || unit,
-                precioUnit: unit,
-                subtotal: Number(i.subtotal) || (unit * (Number(i.cantidad || i.qty) || 0)),
-              };
-            });
-            const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
-            const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
-            const iva = Math.round(Number(total) - subtotal);
-            const pdfBuf = await generarOrdenPDF({
-              nroOrden: 'OC-' + String(result.orderId || orderId).slice(0, 8).toUpperCase(),
-              fecha: new Date().toISOString(),
-              empresa, currencySymbol,
-              cliente: {
-                nombre: cli.name || clienteNombre, codigo: cli.codigo, rut: cli.rut,
-                direccion: cli.address, ciudad: cli.ciudad,
-                horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
-                zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
-              },
-              lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
-              notas: notas || '',
-            });
-            const nombreLimpio = (clienteNombre || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,30);
-            attachments = [{ filename: 'orden-' + nombreLimpio + '-OC-' + String(result.orderId || orderId).slice(0,8).toUpperCase() + '.pdf', content: pdfBuf.toString('base64') }];
-          } catch (pdfErr) {
-            log.warn('pedido', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
-          }
-
-          await sendEmail({ to: notifyEmail, subject: tpl.subject, html: tpl.html, attachments });
-          log.info('pedido', 'order email sent', { org, to: notifyEmail, pdf: !!attachments });
-        }
-      }
-    } catch (mailErr) {
-      log.warn('pedido', 'order email failed (non-fatal)', { error: mailErr.message });
-    }
-
-    return res.status(200).json({ ok: true, orderId: result.orderId || orderId });
+  return res.status(200).json({ ok: true, orderId: result.orderId, ...(result.idempotent ? { idempotent: true } : {}) });
 }
 
 export default withObservability('pedido', handler);
