@@ -1,7 +1,6 @@
-// api/maint.js — TEMPORARY debug endpoint. Replays the pedido RPC call exactly
-// like api/pedido.js (service-role key) with the REAL org/client/product and the
-// portal's exact item shape, to surface the real error behind the 502.
-// Cleans up any order/reservation it creates. Gated by MAINT_SECRET. REMOVE after.
+// api/maint.js — TEMPORARY debug endpoint. Probes which quantity field the
+// DEPLOYED RPC reads, and how it reacts to a non-uuid productId, to pinpoint
+// the 502. Cleans up. Gated by MAINT_SECRET. REMOVE after.
 import crypto from 'crypto';
 
 const SB_URL  = process.env.SUPABASE_URL;
@@ -24,40 +23,33 @@ export default async function handler(req, res) {
   const H = { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' };
   const Hj = { ...H, 'Content-Type': 'application/json' };
   const rnd = () => crypto.randomUUID();
-  const out = { keyUsed: SB_SVC ? 'svc' : 'anon' };
 
-  // 1. Fetch a real client for the org and inspect its id format.
-  const cliRes = await fetch(`${SB_URL}/rest/v1/clients?org_id=eq.${ORG}&select=id,name&limit=1`, { headers: H });
-  const clients = await cliRes.json().catch(() => []);
-  const cli = clients?.[0];
-  out.clientFetchStatus = cliRes.status;
-  out.clientId = cli?.id ?? null;
-  out.clientIdType = cli ? typeof cli.id : null;
+  const cli = (await (await fetch(`${SB_URL}/rest/v1/clients?org_id=eq.${ORG}&select=id&limit=1`, { headers: H })).json())?.[0];
+  const pr  = (await (await fetch(`${SB_URL}/rest/v1/products?org_id=eq.${ORG}&select=uuid,name&limit=1`, { headers: H })).json())?.[0];
+  if (!cli || !pr) return res.status(200).json({ err: 'no client/product', cli, pr });
 
-  // 2. Fetch a real product uuid.
-  const prRes = await fetch(`${SB_URL}/rest/v1/products?org_id=eq.${ORG}&select=uuid,name&limit=1`, { headers: H });
-  const prods = await prRes.json().catch(() => []);
-  const pid = prods?.[0]?.uuid;
-  out.productId = pid ?? null;
+  async function runVariant(label, item) {
+    const orderId = rnd();
+    const body = JSON.stringify({
+      p_order_id: orderId, p_org_id: ORG, p_cliente_id: cli.id,
+      p_cliente_nombre: 'DBG_DELETE', p_cliente_tel: '0',
+      p_items: [item], p_total: 1, p_notas: 'dbg', p_idempotency_key: 'dbg-' + rnd(), p_ttl_hours: 1,
+    });
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, { method: 'POST', headers: Hj, body });
+    const status = r.status; const txt = (await r.text()).slice(0, 300);
+    let resvCount = null;
+    const rv = await fetch(`${SB_URL}/rest/v1/stock_reservations?reference_id=eq.${orderId}&select=quantity`, { headers: H });
+    if (rv.ok) resvCount = (await rv.json()).length;
+    // cleanup
+    await fetch(`${SB_URL}/rest/v1/stock_reservations?reference_id=eq.${orderId}`, { method: 'DELETE', headers: H });
+    await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}`, { method: 'DELETE', headers: H });
+    return { label, status, resvCount, body: txt };
+  }
 
-  if (!cli || !pid) return res.status(200).json(out);
-
-  // 3. Replay the RPC exactly as the portal -> pedido.js does (item field: cantidad).
-  const orderId = rnd();
-  const idk = 'dbgreal-' + rnd();
-  const body = JSON.stringify({
-    p_order_id: orderId, p_org_id: ORG, p_cliente_id: cli.id,
-    p_cliente_nombre: 'DBG_REAL_DELETE', p_cliente_tel: '0',
-    p_items: [{ productId: pid, nombre: prods[0].name, unidad: 'un', cantidad: 1, precioUnit: 1, subtotal: 1 }],
-    p_total: 1, p_notas: 'dbg', p_idempotency_key: idk, p_ttl_hours: 1,
-  });
-  const r = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, { method: 'POST', headers: Hj, body });
-  out.rpcStatus = r.status;
-  out.rpcBody = (await r.text()).slice(0, 600);
-
-  // 4. Cleanup anything created.
-  await fetch(`${SB_URL}/rest/v1/stock_reservations?reference_id=eq.${orderId}`, { method: 'DELETE', headers: H });
-  await fetch(`${SB_URL}/rest/v1/b2b_orders?cliente_nombre=eq.DBG_REAL_DELETE`, { method: 'DELETE', headers: H });
-
+  const out = {};
+  out.A_cantidad = await runVariant('cantidad', { productId: pr.uuid, cantidad: 2 });
+  out.B_qty      = await runVariant('qty',      { productId: pr.uuid, qty: 2 });
+  out.C_baduuid  = await runVariant('baduuid',  { productId: 'p1', qty: 2 });
+  out.D_both     = await runVariant('both',     { productId: pr.uuid, cantidad: 2, qty: 2 });
   return res.status(200).json(out);
 }
