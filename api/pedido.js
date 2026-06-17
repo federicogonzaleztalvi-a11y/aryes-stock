@@ -414,7 +414,10 @@ async function handler(req, res) {
           await Promise.allSettled(
             subs.map(sub => {
               try {
-                const subscription = typeof sub.subscription === 'string' ? JSON.parse(sub.subscription) : sub.subscription;
+                // push_subscriptions guarda los campos PLANOS (endpoint/p256dh/auth),
+                // no una columna `subscription`. Reconstruimos el shape que espera
+                // web-push igual que lo hace api/push.js (action=send).
+                const subscription = { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } };
                 return webpush.sendNotification(subscription, payload);
               } catch { return Promise.resolve(); }
             })
