@@ -263,32 +263,40 @@ async function handler(req, res) {
     p_ttl_hours:       6,
   });
 
-  // Call the RPC reading the body as TEXT once, with one retry on transient
-  // failures (network throw or upstream 5xx). A retry is only safe when an
-  // idempotency key is present: if the first attempt actually committed the
-  // order but the response was lost, the retry hits the idempotency check and
-  // returns the existing order instead of duplicating it. Without a key we do
-  // NOT retry, since a lost response could otherwise create a duplicate.
-  const rpcUrl   = `${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`;
-  const canRetry = !!idempotencyKey;
+  // Call the RPC reading the body as TEXT once, with retries on transient
+  // failures (network throw or upstream 5xx such as a Postgres statement timeout
+  // or connection-pool exhaustion during a load spike). Retries use a short
+  // backoff so the pool has a moment to recover — an immediate retry tends to
+  // hit the same overloaded state. Retrying is only safe when an idempotency key
+  // is present: if the first attempt actually committed the order but the
+  // response was lost, the retry hits the idempotency check and returns the
+  // existing order instead of duplicating it. Without a key we do NOT retry,
+  // since a lost response could otherwise create a duplicate.
+  const rpcUrl    = `${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`;
+  const canRetry  = !!idempotencyKey;
+  const MAX_TRIES = canRetry ? 3 : 1;
+  const BACKOFF   = [300, 800]; // ms before retry attempt 2 and 3
+  const sleep     = (ms) => new Promise((r) => setTimeout(r, ms));
   let rpcRes   = null;
   let rpcText  = '';
   let rpcThrew = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < MAX_TRIES; attempt++) {
+    const isLast = attempt === MAX_TRIES - 1;
     try {
       rpcRes   = await fetch(rpcUrl, { method: 'POST', headers: rpcHeaders, body: rpcPayload });
       rpcText  = await rpcRes.text();
       rpcThrew = null;
       // Retry only on transient upstream errors (gateway/timeout/5xx)
-      if (rpcRes.status >= 500 && attempt === 0 && canRetry) {
-        log.warn('pedido', 'RPC transient upstream error — retrying', { status: rpcRes.status });
+      if (rpcRes.status >= 500 && !isLast) {
+        log.warn('pedido', 'RPC transient upstream error — retrying', { status: rpcRes.status, attempt });
+        await sleep(BACKOFF[attempt] || 800);
         continue;
       }
       break;
     } catch (netErr) {
       rpcThrew = netErr;
       log.warn('pedido', 'RPC network error', { attempt, error: netErr.message });
-      if (attempt === 0 && canRetry) continue;
+      if (!isLast) { await sleep(BACKOFF[attempt] || 800); continue; }
     }
   }
 
