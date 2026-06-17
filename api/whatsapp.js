@@ -4,6 +4,7 @@
 
 import { setCorsHeaders } from './_cors.js';
 import crypto from 'node:crypto';
+import { procesarMensajeBot } from './_wa-bot.js';
 
 const WA_TOKEN = process.env.WA_ACCESS_TOKEN;
 const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;
@@ -117,6 +118,29 @@ async function handleWebhook(req, res) {
                 });
               } catch (e) {
                 console.error('[whatsapp] Failed to store message:', e.message);
+              }
+            }
+
+            // ── Bot de pedidos (Fase 3) ──────────────────────────────────
+            // Sólo texto. El bot decide por sí mismo si toma el mensaje
+            // (resolveOrg + cliente + flag botPedidos por-org). Si no es flujo
+            // de bot devuelve handled:false y no enviamos nada → el OTP y demás
+            // siguen intactos. Todo en try/catch para no afectar el 200.
+            if (msg.type === 'text' && msg.text?.body) {
+              try {
+                const out = await procesarMensajeBot({
+                  phone_number_id: value.metadata?.phone_number_id || WA_PHONE_ID,
+                  from: msg.from,
+                  text: msg.text.body,
+                  messageId: msg.id,
+                });
+                if (out?.handled && out.replies?.length) {
+                  for (const reply of out.replies) {
+                    await sendWhatsApp(msg.from, reply, value.metadata?.phone_number_id);
+                  }
+                }
+              } catch (botErr) {
+                console.error('[whatsapp] Bot processing error (non-fatal):', botErr.message);
               }
             }
           }

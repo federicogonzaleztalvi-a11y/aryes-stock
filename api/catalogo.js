@@ -1,18 +1,18 @@
-// Public catalog API â no auth required from client side.
+// Public catalog API — no auth required from client side.
 import { setCorsHeaders } from './_cors.js';
 import { getBearerToken, validatePortalSession } from './_session.js';
+// Núcleo compartido de resolución de precios (misma fuente de verdad que el bot WhatsApp).
+import { getCatalogoCliente } from './_catalog.js';
 
 // PRIVATE mode (?cliente=) requires a valid portal session. org_id and cliente_id
 // are derived from the validated session — query params are IGNORED for that path
 // to prevent IDOR / cross-tenant data access.
 
-// GET /api/catalogo?org=aryes              â all products (public catalog)
-// GET /api/catalogo?org=aryes&cliente=UUID â products with client's prices applied
+// GET /api/catalogo?org=aryes              — all products (public catalog)
+// GET /api/catalogo?org=aryes&cliente=UUID — products with client's prices applied
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-
-
 
 // ── Rate limiting: max 60 requests per IP per 1 min ──
 const _rl_cat = new Map();
@@ -28,27 +28,6 @@ function _checkRate_cat(ip) {
 function setHeaders(res, extra = {}) {
   setCorsHeaders({ headers: {} }, res);
   Object.entries(extra).forEach(([k, v]) => res.setHeader(k, v));
-}
-
-// Normaliza la unidad para mostrar en el portal: saca el "/" y el "." que vienen
-// del importador legado ("/kg." → "kg"), trimea y cae a 'un' si queda vacía.
-// Evita que el portal muestre "/ /kg" o "/ null".
-function normalizeUnit(unit) {
-  const clean = String(unit || '').replace(/^[/\s]+/, '').replace(/[.\s]+$/, '').trim();
-  return clean || 'un';
-}
-
-// Escalas de descuento por volumen: [{ min, dto }]. Genérico por producto: cualquier
-// org puede cargar tiers en products.volume_tiers (JSONB). Saneamos para no confiar en
-// la forma cruda de la DB y devolver siempre un array ordenado por cantidad mínima.
-function sanitizeVolumeTiers(raw) {
-  let arr = raw;
-  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch { return []; } }
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map(t => ({ min: Math.floor(Number(t?.min)), dto: Number(t?.dto) }))
-    .filter(t => Number.isFinite(t.min) && t.min > 1 && Number.isFinite(t.dto) && t.dto > 0 && t.dto <= 100)
-    .sort((a, b) => a.min - b.min);
 }
 
 export default async function handler(req, res) {
@@ -84,200 +63,20 @@ export default async function handler(req, res) {
     }
   }
 
-  const headers = {
-    'apikey':        SB_KEY,
-    'Authorization': `Bearer ${SB_KEY}`,
-    'Accept':        'application/json',
-  };
-
   try {
-    // ââ 1. Load products ââââââââââââââââââââââââââââââââââââââââââââââââââââ
-    const prodQuery = [
-      'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers',
-      `org_id=eq.${org}`,
-            'order=category.asc,name.asc',
-      'limit=500',
-    ].join('&');
-
-    // Parallel: products + active B2B reservations for ATP
-    const now = new Date().toISOString();
-    const resQuery = [
-      'select=product_id,quantity',
-      `org_id=eq.${org}`,
-      'status=eq.active',
-      `expires_at=gte.${now}`,
-    ].join('&');
-
-    // Fetch overrides for this client if provided
-    const ovQuery = clienteId
-      ? `select=producto_uuid,descuento_pct,precio_override&org_id=eq.${org}&cliente_id=eq.${clienteId}`
-      : null;
-
-    const promises = [
-      fetch(`${SB_URL}/rest/v1/products?${prodQuery}`, { headers }),
-      fetch(`${SB_URL}/rest/v1/stock_reservations?${resQuery}`, { headers }),
-    ];
-    if (ovQuery) {
-      promises.push(fetch(`${SB_URL}/rest/v1/client_product_overrides?${ovQuery}`, { headers }));
+    // ── Carga del catálogo + precios via núcleo compartido (misma fuente que el bot) ──
+    let catalogo;
+    try {
+      catalogo = await getCatalogoCliente({ org, clienteId });
+    } catch (e) {
+      console.error('[catalogo] load failed:', e.message);
+      return res.status(502).json({ error: 'Database error' });
     }
-
-    const [prodRes, resRes, ovRes] = await Promise.all(promises);
-
-    if (!prodRes.ok) return res.status(502).json({ error: 'Database error' });
-    const products = await prodRes.json();
-
-    // Build reserved_qty map: productId -> total reserved
-    const reservedMap = {};
-    if (resRes.ok) {
-      const reservations = await resRes.json();
-      for (const r of (reservations || [])) {
-        reservedMap[r.product_id] = (reservedMap[r.product_id] || 0) + Number(r.quantity);
-      }
-    }
-
-    // Build overrides map: producto_uuid -> { descuento_pct, precio_override }
-    const overrideMap = {};
-    if (ovRes && ovRes.ok) {
-      const overrides = await ovRes.json();
-      for (const o of (overrides || [])) {
-        overrideMap[o.producto_uuid] = {
-          descuento_pct: o.descuento_pct != null ? Number(o.descuento_pct) : null,
-          precio_override: o.precio_override != null ? Number(o.precio_override) : null,
-        };
-      }
-    }
-
-    // ââ 2. Load client's price list if clienteId provided âââââââââââââââââââ
-    let listaId   = null;
-  let horarioDesde = null;
-  let horarioHasta = null;
-  let portalActivo = true;
-    let descGlobal = 0;       // % global discount for the list
-    let dtosCategoria = {};   // { categoria: % } discount per category
-    let itemMap   = {};       // productUuid â precio especÃ­fico
-
-    if (clienteId) {
-      // Get the client's lista_id
-      const cliRes = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${clienteId}&select=id,lista_id,horario_desde,horario_hasta,portal_activo&limit=1`,
-        { headers }
-      );
-      if (cliRes.ok) {
-        const cliData = await cliRes.json();
-        horarioDesde = cliData?.[0]?.horario_desde || null;
-          horarioHasta = cliData?.[0]?.horario_hasta || null;
-          portalActivo = cliData?.[0]?.portal_activo !== false;
-          if (cliData?.[0]?.lista_id) {
-          listaId = cliData[0].lista_id;
-
-          // Get the list's global discount
-          const listRes = await fetch(
-            `${SB_URL}/rest/v1/price_lists?id=eq.${listaId}&select=id,descuento,descuentos_categoria&limit=1`,
-            { headers }
-          );
-          if (listRes.ok) {
-            const listData = await listRes.json();
-            descGlobal = Number(listData?.[0]?.descuento || 0);
-            dtosCategoria = listData?.[0]?.descuentos_categoria || {};
-          }
-
-          // Get per-product prices for this list
-          const itemsRes = await fetch(
-            `${SB_URL}/rest/v1/price_list_items?lista_id=eq.${listaId}&select=product_uuid,precio`,
-            { headers }
-          );
-          if (itemsRes.ok) {
-            const itemsData = await itemsRes.json();
-            itemsData.forEach(it => {
-              if (it.precio > 0) itemMap[it.product_uuid] = Number(it.precio);
-            });
-          }
-        }
-      }
-    }
-
-    // ââ 3. Build response â only expose what clients need âââââââââââââââââââ
-    const items = products
-      // Public catalog (no cliente) still requires precio_venta > 0
-      .filter(p => true) // show all products — precio 0 = consultar precio
-      .map(p => {
-        const base = Number(p.precio_venta) || 0;
-        let precio = base;
-
-        if (clienteId && listaId) {
-          const catProd = p.category || '';
-          const dtoCat = Number(dtosCategoria[catProd] || 0);
-          if (itemMap[p.uuid] !== undefined) {
-            // 1. Specific per-product price for this list (highest)
-            precio = itemMap[p.uuid];
-          } else if (dtoCat > 0) {
-            // 2. Category discount for this list
-            precio = Math.round(base * (1 - dtoCat / 100) * 100) / 100;
-          } else if (descGlobal > 0) {
-            // 3. Global list discount
-            precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100;
-          } else {
-            // 4. Cliente con lista, pero el producto no tiene precio deliberado en
-            //    ella (ni precio fijo, ni dto de categoría, ni dto global). NO
-            //    mostramos el precio_venta base porque puede no ser confiable →
-            //    precio 0 = "Consultar precio" en el portal (y botón Agregar off).
-            precio = 0;
-          }
-        }
-
-        // Apply client-product override (highest priority — wins over list)
-        if (clienteId && overrideMap[p.uuid]) {
-          const ov = overrideMap[p.uuid];
-          if (ov.precio_override != null) {
-            precio = ov.precio_override;
-          } else if (ov.descuento_pct != null) {
-            precio = Math.round(precio * (1 - ov.descuento_pct / 100) * 100) / 100;
-          }
-        }
-
-        const physicalStock  = Number(p.stock) || 0;
-        const reservedStock  = reservedMap[p.uuid] || 0;
-        const availableStock = Math.max(0, physicalStock - reservedStock);
-
-        return {
-          id:             p.uuid,
-          nombre:         p.name,
-          unidad:         normalizeUnit(p.unit),
-          categoria:      p.category || 'General',
-          marca:          p.brand    || '',
-          precio,
-          precioBase:     base,
-          stock:          physicalStock,    // physical (unchanged — used by internal ops)
-          available_stock: availableStock,  // available for B2B orders (ATP)
-          reserved_stock:  reservedStock,   // informational
-          iva_rate:       p.iva_rate != null ? Number(p.iva_rate) : null,
-          imagen_url:     p.imagen_url || null,
-          min_order_qty:  p.min_order_qty != null ? Number(p.min_order_qty) : 1,
-          descripcion:    p.descripcion || '',
-          volume_tiers:   sanitizeVolumeTiers(p.volume_tiers),
-        };
-      });
-
-    const categorias = [...new Set(items.map(i => i.categoria))].sort();
+    const { items, categorias, hasLista, descGlobal, horarioDesde, horarioHasta, portalActivo, portalCfg } = catalogo;
 
     setHeaders(res, { 'Cache-Control': clienteId
-      ? 'private, max-age=60'                          // personalized â don't cache in CDN
+      ? 'private, max-age=60'                          // personalized — don't cache in CDN
       : 'public, s-maxage=60, stale-while-revalidate=300' });
-
-    // Load portal config (brandcfg) for this org
-    let portalCfg = { portalCatalogo: true, portalPedidos: true };
-    try {
-      const cfgRes = await fetch(
-        `${SB_URL}/rest/v1/app_config?key=eq.brandcfg&org_id=eq.${org}&limit=1`,
-        { headers }
-      );
-      if (cfgRes.ok) {
-        const cfgData = await cfgRes.json();
-        if (cfgData?.[0]?.value) {
-          portalCfg = { ...portalCfg, ...cfgData[0].value };
-        }
-      }
-    } catch(e) { /* config load failed — use defaults */ }
 
     // If catalog is disabled globally, return empty
     if (portalCfg.portalCatalogo === false) {
@@ -289,7 +88,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ── 4. Cross-sell recommendations (only when clienteId is provided) ──────
+    // ── Cross-sell recommendations (only when clienteId is provided) ──────────
     let recommended = [];
     let buyAgain = [];
     if (clienteId) {
@@ -297,7 +96,7 @@ export default async function handler(req, res) {
         const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
         const svcHeaders = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
 
-        // 4a. Get this client's purchased product IDs from ventas
+        // Get this client's purchased product IDs from ventas
         const myVentasRes = await fetch(
           SB_URL + '/rest/v1/ventas?cliente_id=eq.' + clienteId + '&estado=neq.cancelada&select=items&limit=50',
           { headers: svcHeaders }
@@ -326,7 +125,7 @@ export default async function handler(req, res) {
             return { id: p.id, nombre: p.nombre, precio: p.precio, unidad: p.unidad, categoria: p.categoria, iva_rate: p.iva_rate };
           });
 
-        // 4b. Get ventas from OTHER clients in the same org (last 100 ventas)
+        // Get ventas from OTHER clients in the same org (last 100 ventas)
         const otherVentasRes = await fetch(
           SB_URL + '/rest/v1/ventas?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=created_at.desc&limit=100',
           { headers: svcHeaders }
@@ -380,7 +179,7 @@ export default async function handler(req, res) {
       clienteId: clienteId || null,
       recommended,
       buyAgain,
-      hasLista: !!listaId,
+      hasLista,
       descGlobal,
       horarioDesde,
       horarioHasta,
