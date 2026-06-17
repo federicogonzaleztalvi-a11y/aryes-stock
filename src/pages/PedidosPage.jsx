@@ -617,7 +617,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           idempotencyKey,
         }),
       });
-      if (r.ok) { track('pedido_confirmado', { items: lineas.length, total }); setDone(true); onConfirm(); }
+      // Solo marcamos done → se muestra la pantalla de confirmación. El carrito se
+      // limpia y el drawer se cierra recién cuando el usuario descarta esa pantalla
+      // (onConfirm), no antes; si no, el drawer se desmontaba y la confirmación
+      // nunca llegaba a verse.
+      if (r.ok) { track('pedido_confirmado', { items: lineas.length, total }); setDone(true); }
       else { const d = await r.json().catch(() => ({})); setErr(d.error || 'No se pudo confirmar el pedido.'); }
     } catch { setErr('Error de conexión. Intentá de nuevo.'); }
     finally { setLoading(false); }
@@ -629,11 +633,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
   if (done) return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: Z.overlay,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={onClose}>
+      onClick={onConfirm}>
       <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 480,
         maxHeight: '90vh', overflowY: 'auto', fontFamily: SANS, position: 'relative' }}
         onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} aria-label="Cerrar" style={{
+        <button onClick={onConfirm} aria-label="Cerrar" style={{
           position: 'absolute', top: 12, right: 12, zIndex: 10,
           width: 36, height: 36, borderRadius: '50%',
           background: 'rgba(255,255,255,.25)', border: 'none',
@@ -726,7 +730,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           <p style={{ fontSize: 12, color: '#6a6a68', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
             Tu distribuidor recibio el pedido. Te avisamos cuando este confirmado.
           </p>
-          <button onClick={onClose} style={{
+          <button onClick={onConfirm} style={{
             width: '100%', padding: '12px 0', background: G, color: '#fff', border: 'none',
             borderRadius: 50, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
