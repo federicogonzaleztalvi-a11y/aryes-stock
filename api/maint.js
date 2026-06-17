@@ -1,13 +1,15 @@
-// api/maint.js — TEMPORARY debug endpoint. Pinpoints the deterministic 502 by
-// running the RPC with Eric's REAL client (from his latest portal session) vs a
-// generic client, and returns the FULL Postgres rawBody. Gated by MAINT_SECRET.
-// REMOVE after.
+// api/maint.js — TEMPORARY maintenance endpoint. (1) Migrates the test client
+// "federico-test" (non-UUID clients.id, which breaks the UUID-typed order RPC)
+// to a real UUID, re-pointing its portal sessions. (2) Updates the org's order
+// notification email. Reports every step. Gated by MAINT_SECRET. REMOVE after.
 import crypto from 'crypto';
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 const ORG = 'aryes-ltda-6223';
+const OLD_CID = 'federico-test';
+const NEW_NOTIFY_EMAIL = 'federicogonzalez@aryes.com.uy';
 
 function safeEq(a, b) {
   const ab = Buffer.from(String(a)); const bb = Buffer.from(String(b));
@@ -24,57 +26,47 @@ export default async function handler(req, res) {
   const H = { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' };
   const Hj = { ...H, 'Content-Type': 'application/json' };
   const rnd = () => crypto.randomUUID();
+  const steps = {};
 
-  // Eric's REAL client: most recent portal session for this org
-  const sess = (await (await fetch(`${SB_URL}/rest/v1/portal_sessions?org_id=eq.${ORG}&order=expires_at.desc&select=cliente_id,tel,expires_at&limit=1`, { headers: H })).json())?.[0];
-  // Generic client (what my earlier repro used)
-  const genCli = (await (await fetch(`${SB_URL}/rest/v1/clients?org_id=eq.${ORG}&select=id&limit=1`, { headers: H })).json())?.[0];
-  const prs = await (await fetch(`${SB_URL}/rest/v1/products?org_id=eq.${ORG}&select=uuid,name,precio_venta&limit=3`, { headers: H })).json();
-  if (!prs?.length) return res.status(200).json({ err: 'no products' });
-
-  const items = prs.map((p, i) => ({
-    productId: p.uuid, nombre: p.name, unidad: 'un',
-    cantidad: i + 1, precioUnit: Number(p.precio_venta) || 0,
-    subtotal: (Number(p.precio_venta) || 0) * (i + 1),
-  }));
-  const total = items.reduce((s, it) => s + it.subtotal, 0);
-
-  async function callRpc(clienteId, tel) {
-    if (!clienteId) return { skipped: 'no client id' };
-    const orderId = rnd();
-    const body = JSON.stringify({
-      p_order_id: orderId, p_org_id: ORG, p_cliente_id: clienteId,
-      p_cliente_nombre: 'DBG_DELETE', p_cliente_tel: tel || '0',
-      p_items: items, p_total: total, p_notas: 'dbg', p_idempotency_key: 'dbg-' + rnd(), p_ttl_hours: 6,
+  async function patch(path, body, prefer = 'return=representation') {
+    const r = await fetch(`${SB_URL}/rest/v1/${path}`, {
+      method: 'PATCH', headers: { ...Hj, Prefer: prefer }, body: JSON.stringify(body),
     });
-    const r = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, { method: 'POST', headers: Hj, body });
-    const status = r.status;
-    const raw = await r.text();
-    // cleanup
-    await fetch(`${SB_URL}/rest/v1/stock_reservations?reference_id=eq.${orderId}`, { method: 'DELETE', headers: H });
-    await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}`, { method: 'DELETE', headers: H });
-    return { clienteId, status, raw };
+    return { status: r.status, body: (await r.text()).slice(0, 400) };
   }
 
-  // Inventory references to the non-UUID test client "federico-test"
-  const cid = 'federico-test';
-  async function cnt(path) {
-    const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: { ...H, Prefer: 'count=exact', Range: '0-0' } });
-    return r.headers.get('content-range') || r.status;
-  }
-  const inventory = {
-    clients_row:    await (await fetch(`${SB_URL}/rest/v1/clients?id=eq.${cid}&select=id,name,phone,lista_id,org_id`, { headers: H })).json(),
-    portal_sessions: await cnt(`portal_sessions?cliente_id=eq.${cid}&select=token`),
-    b2b_orders:     await cnt(`b2b_orders?cliente_id=eq.${cid}&select=id`),
-    client_addresses: await cnt(`client_addresses?client_id=eq.${cid}&select=id`),
-    stock_reservations: await cnt(`stock_reservations?cliente_id=eq.${cid}&select=id`),
-  };
+  // ── Part 1: change the org notification email ──────────────────────────────
+  steps.email = await patch(`organizations?id=eq.${ORG}`, { order_notify_email: NEW_NOTIFY_EMAIL });
 
-  return res.status(200).json({
-    real_session_cliente_id: sess?.cliente_id || null,
-    generic_cliente_id: genCli?.id || null,
-    REAL:    await callRpc(sess?.cliente_id, sess?.tel),
-    GENERIC: await callRpc(genCli?.id, '0'),
-    inventory,
-  });
+  // ── Part 2: migrate federico-test → UUID ───────────────────────────────────
+  const existing = (await (await fetch(`${SB_URL}/rest/v1/clients?id=eq.${OLD_CID}&select=*`, { headers: H })).json())?.[0];
+  if (!existing) {
+    steps.migrate = { skipped: 'no federico-test client row found' };
+  } else {
+    const newUuid = rnd();
+    // Try the simplest path first: directly update the PK in place.
+    steps.clients_pk = await patch(`clients?id=eq.${OLD_CID}`, { id: newUuid });
+    if (steps.clients_pk.status >= 200 && steps.clients_pk.status < 300) {
+      steps.sessions   = await patch(`portal_sessions?cliente_id=eq.${OLD_CID}`, { cliente_id: newUuid }, 'return=minimal');
+      steps.new_uuid   = newUuid;
+      // Verify the order RPC now accepts the migrated client
+      const orderId = rnd();
+      const rpcRes = await fetch(`${SB_URL}/rest/v1/rpc/create_b2b_order_with_reservations`, {
+        method: 'POST', headers: Hj,
+        body: JSON.stringify({
+          p_order_id: orderId, p_org_id: ORG, p_cliente_id: newUuid,
+          p_cliente_nombre: 'DBG_DELETE', p_cliente_tel: '0',
+          p_items: [{ productId: null }], p_total: 0, p_notas: 'dbg',
+          p_idempotency_key: 'dbg-' + rnd(), p_ttl_hours: 1,
+        }),
+      });
+      steps.rpc_verify = { status: rpcRes.status, body: (await rpcRes.text()).slice(0, 300) };
+      await fetch(`${SB_URL}/rest/v1/stock_reservations?reference_id=eq.${orderId}`, { method: 'DELETE', headers: H });
+      await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${orderId}`, { method: 'DELETE', headers: H });
+    } else {
+      steps.migrate = { note: 'direct PK update failed — see clients_pk status/body, will need insert+repoint+delete' };
+    }
+  }
+
+  return res.status(200).json(steps);
 }

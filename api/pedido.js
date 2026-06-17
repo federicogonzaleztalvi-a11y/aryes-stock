@@ -188,6 +188,16 @@ async function handler(req, res) {
   const clienteTel    = portalSession.tel;
   const clienteNombre = (req.body?.clienteNombre || '').substring(0, 100);
 
+  // The order RPC types p_cliente_id as UUID. A session whose cliente_id is not a
+  // UUID (legacy/test client rows whose clients.id is a non-UUID string) makes
+  // Postgres throw 22P02, which previously surfaced as an opaque 502. Detect it
+  // up front and return a clear, actionable message instead.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(clienteId || '')) {
+    log.error('pedido', 'session cliente_id is not a UUID — cannot place order', { clienteId, org });
+    return res.status(400).json({ error: 'Tu cuenta no está habilitada para pedidos. Cerrá sesión y volvé a entrar.' });
+  }
+
   // Pre-generate order ID (used as reservation reference_id)
   const orderId = crypto.randomUUID();
 
