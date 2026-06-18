@@ -38,6 +38,13 @@ export function useRealtime(callbacks, enabled = true) {
     // dejaba el primer join con anon y el canal en error perpetuo).
     const token = getSession()?.access_token;
     if (token) client.realtime.setAuth(token);
+    // DIAG temporal: confirmar que el token llega al socket antes de subscribe.
+    try {
+      console.info('[Realtime DIAG] tokenPresent=', !!token,
+        'len=', token ? token.length : 0,
+        'accessTokenValueSet=', !!(client as any)?.realtime?.accessTokenValue,
+        'sameAsUserToken=', (client as any)?.realtime?.accessTokenValue === token);
+    } catch { /* noop */ }
 
     // Al renovarse el JWT, reautenticamos el socket con el token nuevo para que
     // el canal no se caiga cuando vence el viejo.
