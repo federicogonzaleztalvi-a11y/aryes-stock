@@ -3,7 +3,7 @@ import React, {
   createContext, useContext,
   useState, useEffect, useMemo,
 } from 'react';
-import { LS, db, SB_URL, SKEY, getOrgId, getSession, getAuthHeaders } from '../lib/constants.js';
+import { LS, db, SB_URL, getOrgId, getSession, getAuthHeaders, refreshSession } from '../lib/constants.js';
 
 // Multi-user filter: vendedor/repartidor only see their own data
 const getUserFilter = (session: any, field: string = 'vendedor_id'): string => {
@@ -163,49 +163,43 @@ const describeAction = (action: string, detail: string): string => {
   useEffect(() => {
     if (!session?.refresh_token || !session?.expiresAt || isDemoMode) return;
 
-    // Renueva el access_token usando el refresh_token. Idempotente: si el token
-    // todavía está lejos de vencer y no se fuerza, no hace nada.
-    let refreshing = false;
-    const doRefresh = async (force = false) => {
-      if (refreshing) return;
-      // Sólo renovamos si faltan <5min para vencer (o ya venció), salvo force.
+    // El refresco del JWT vive en constants.refreshSession (ÚNICA fuente, con
+    // deduplicación y rotación segura del refresh_token). Acá sólo decidimos
+    // CUÁNDO dispararlo y reaccionamos a sus eventos para mantener el estado
+    // de React y el localStorage en sync con las escrituras que se auto-curan.
+    const maybeRefresh = (force = false) => {
       const msLeft = session.expiresAt - Date.now();
       if (!force && msLeft > 5 * 60 * 1000) return;
-      refreshing = true;
-      try {
-        const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
-          method: 'POST',
-          headers: { 'apikey': SKEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: session.refresh_token }),
-        });
-        const data = await res.json();
-        if (res.ok && data.access_token) {
-          const refreshed = { ...session, access_token: data.access_token, refresh_token: data.refresh_token, expiresAt: Date.now() + (data.expires_in || 3600) * 1000 };
-          LS.set('aryes-session', refreshed);
-          onSessionUpdate?.(refreshed);
-        } else if (res.status === 400 || res.status === 401) {
-          // refresh_token inválido/revocado → sesión muerta, hay que re-loguear.
-          LS.remove('aryes-session'); onLogout?.();
-        }
-        // Otros errores (5xx/red): NO deslogueamos, reintentamos al próximo foco.
-      } catch (e) { console.warn('[AppContext] token refresh failed', e); }
-      finally { refreshing = false; }
+      refreshSession(); // dedupeado internamente; emite los eventos de abajo
     };
+
+    // Sesión renovada (por el timer, el foco, o un 401 auto-curado en una
+    // escritura) → propagamos el nuevo token al estado de React.
+    const onRefreshed = (e: Event) => {
+      const next = (e as CustomEvent).detail;
+      if (next) onSessionUpdate?.(next);
+    };
+    // refresh_token revocado → sesión muerta, hay que re-loguear.
+    const onDead = () => { LS.remove('aryes-session'); onLogout?.(); };
+    window.addEventListener('aryes-session-refreshed', onRefreshed);
+    window.addEventListener('aryes-session-dead', onDead);
 
     // 1. Timer proactivo (funciona si la pestaña queda activa).
     const refreshIn = Math.max(0, session.expiresAt - Date.now() - 5 * 60 * 1000);
-    const timer = setTimeout(() => doRefresh(true), refreshIn);
+    const timer = setTimeout(() => maybeRefresh(true), refreshIn);
 
     // 2. Al volver el foco a la pestaña: los setTimeout se suspenden cuando la
     // laptop duerme o la pestaña va a segundo plano, así que el timer de arriba
     // puede no haber disparado. Acá renovamos si el token está por vencer ANTES
     // de que el usuario intente guardar algo (evita el "Cambios pendientes").
-    const onVisible = () => { if (document.visibilityState === 'visible') doRefresh(false); };
+    const onVisible = () => { if (document.visibilityState === 'visible') maybeRefresh(false); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
 
     return () => {
       clearTimeout(timer);
+      window.removeEventListener('aryes-session-refreshed', onRefreshed);
+      window.removeEventListener('aryes-session-dead', onDead);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };

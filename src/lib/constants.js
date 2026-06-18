@@ -82,6 +82,66 @@ export const LS = {
   },
 };
 
+// ─── refreshSession — ÚNICA fuente de refresco del JWT ────────────────────────
+// CRÍTICO: Supabase rota el refresh_token en cada uso (single-use). Si hubiera
+// dos lugares refrescando por separado, el segundo usaría un refresh_token ya
+// revocado → 400 → deslogueo accidental. Por eso TODO el refresco pasa por acá,
+// con deduplicación (_refreshInFlight) para que llamadas concurrentes compartan
+// el mismo request. Actualiza localStorage y avisa a la app por eventos.
+let _refreshInFlight = null;
+export async function refreshSession() {
+  if (_refreshInFlight) return _refreshInFlight;
+  const s = getSession();
+  if (!s?.refresh_token) return null;
+  _refreshInFlight = (async () => {
+    try {
+      const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { apikey: SKEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: s.refresh_token }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.access_token) {
+        const next = {
+          ...getSession(),
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+        };
+        LS.set('aryes-session', next);
+        try { window.dispatchEvent(new CustomEvent('aryes-session-refreshed', { detail: next })); } catch { /* SSR */ }
+        return next;
+      }
+      // refresh_token inválido/revocado → sesión muerta, hay que re-loguear.
+      if (res.status === 400 || res.status === 401) {
+        try { window.dispatchEvent(new CustomEvent('aryes-session-dead')); } catch { /* SSR */ }
+      }
+      // Otros errores (5xx/red): no tocamos la sesión; se reintenta luego.
+      return null;
+    } catch {
+      return null;
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+  return _refreshInFlight;
+}
+
+// ─── fetchWithRefresh — auto-recuperación ante token vencido ──────────────────
+// Hace el request; si vuelve 401 (token expiró justo antes del guardado),
+// refresca el JWT una vez y reintenta. doFetch DEBE reconstruir sus headers en
+// cada llamada (vía getAuthHeaders, que lee el token fresco de localStorage),
+// así el reintento sale con el token nuevo. Esto evita el banner "Cambios
+// pendientes" por expiración de sesión sin esperar al timer proactivo.
+async function fetchWithRefresh(doFetch) {
+  let r = await doFetch();
+  if (r.status === 401) {
+    const ns = await refreshSession();
+    if (ns) r = await doFetch();
+  }
+  return r;
+}
+
 // ─── db — Supabase REST client ────────────────────────────────────────────────
 export const db = {
   async get(table, query = '') {
@@ -97,9 +157,9 @@ export const db = {
       : `${SB_URL}/rest/v1/${table}?${query}`;
     let r;
     try {
-      r = await fetch(url, {
+      r = await fetchWithRefresh(() => fetch(url, {
         headers: getAuthHeaders({ 'Prefer': 'return=representation' }),
-      });
+      }));
     } catch (networkErr) {
       // Network failure — return null so callers preserve existing state
       console.warn('[db.get] network error:', table, networkErr?.message);
@@ -118,11 +178,11 @@ export const db = {
     if (!_s?.access_token) return [data];
     const payload = data.org_id !== undefined ? data : { ...data, org_id: getOrgId() };
     const url = `${SB_URL}/rest/v1/${table}${conflictCol ? `?on_conflict=${conflictCol}` : ''}`;
-    const r = await fetch(url, {
+    const r = await fetchWithRefresh(() => fetch(url, {
       method: 'POST',
       headers: getAuthHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }),
       body: JSON.stringify(payload),
-    });
+    }));
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       console.warn('[db] upsert failed:', table, e?.message || r.status);
@@ -139,11 +199,11 @@ export const db = {
       ? match
       : Object.entries(match).map(([k, v]) => `${k}=eq.${v}`).join('&');
     const orgFilter = query.includes('org_id') ? '' : `&org_id=eq.${getOrgId()}`;
-    const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
+    const r = await fetchWithRefresh(() => fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
       method: 'PATCH',
       headers: getAuthHeaders({ 'Prefer': 'return=representation' }),
       body: JSON.stringify(data),
-    });
+    }));
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       console.warn('[db] patch failed:', table, e?.message || r.status);
@@ -157,20 +217,20 @@ export const db = {
     if (!getSession()?.access_token) return;
     const query = Object.entries(match).map(([k, v]) => `${k}=eq.${v}`).join('&');
     const orgFilter = `&org_id=eq.${getOrgId()}`;
-    await fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
+    await fetchWithRefresh(() => fetch(`${SB_URL}/rest/v1/${table}?${query}${orgFilter}`, {
       method: 'DELETE',
       headers: getAuthHeaders(),
-    });
+    }));
   },
 
   async insert(table, row) {
     // Auto-inject org_id if not already present — enables multi-tenancy transparently
     const payload = row.org_id !== undefined ? row : { ...row, org_id: getOrgId() };
-    const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    const r = await fetchWithRefresh(() => fetch(`${SB_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: getAuthHeaders({ 'Prefer': 'return=representation,resolution=ignore-duplicates' }),
       body: JSON.stringify(payload),
-    });
+    }));
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       console.warn('[db] insert failed:', table, e?.message || r.status);
@@ -200,11 +260,11 @@ export const db = {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const orgFilter = filter.includes('org_id') ? '' : `&org_id=eq.${getOrgId()}`;
       const lockFilter = `${filter}&${lockField}=eq.${lockValue}${orgFilter}`;
-      const r = await fetch(`${SB_URL}/rest/v1/${table}?${lockFilter}`, {
+      const r = await fetchWithRefresh(() => fetch(`${SB_URL}/rest/v1/${table}?${lockFilter}`, {
         method: 'PATCH',
         headers: { ...getAuthHeaders(), 'Prefer': 'return=representation,count=exact' },
         body: JSON.stringify(data),
-      });
+      }));
       if (!r.ok) {
         const e = await r.text();
         throw new Error(`patchWithLock ${table}: ${e}`);
