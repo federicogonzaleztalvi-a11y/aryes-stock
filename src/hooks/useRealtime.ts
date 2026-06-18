@@ -5,7 +5,17 @@ import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
 
 let _client = null;
 function getClient() {
-  if (!_client) _client = createClient(SB_URL, SKEY, { realtime: { params: { eventsPerSecond: 10 } } });
+  if (!_client) {
+    // CRÍTICO: el websocket de Realtime debe unirse con el JWT del usuario, no
+    // con la anon key — si no, no pasa el RLS por org_id y el canal queda en
+    // CHANNEL_ERROR perpetuo. La opción `accessToken` hace que supabase-js lea
+    // el token FRESCO de localStorage en cada join (y tras cada refresh), así
+    // que no depende de timing ni de llamar setAuth a mano.
+    _client = createClient(SB_URL, SKEY, {
+      accessToken: async () => getSession()?.access_token || SKEY,
+      realtime: { params: { eventsPerSecond: 10 } },
+    });
+  }
   return _client;
 }
 
@@ -30,19 +40,9 @@ export function useRealtime(callbacks, enabled = true) {
     if (!enabled || !SB_URL || !SKEY) return;
     const client = getClient();
 
-    // CRÍTICO: el websocket debe autenticarse con el JWT del usuario, no con la
-    // anon key. Las tablas tienen RLS por org_id; sin el token de usuario el
-    // canal no pasa el filtro de RLS → CHANNEL_ERROR perpetuo y sync entre
-    // dispositivos roto. setAuth empuja el access_token al canal al unirse.
-    const applyAuth = () => {
-      const token = getSession()?.access_token;
-      if (token) client.realtime.setAuth(token);
-    };
-    applyAuth();
-
-    // Cuando el JWT se renueva (refreshSession), reautenticamos el socket para
-    // que el canal no se caiga al vencer el token viejo.
-    const onRefreshed = () => applyAuth();
+    // Tras renovarse el JWT, reconectamos el socket para que vuelva a unirse
+    // con el token nuevo (la opción accessToken lo leerá fresco en el rejoin).
+    const onRefreshed = () => { try { client.realtime.disconnect(); client.realtime.connect(); } catch { /* noop */ } };
     window.addEventListener('aryes-session-refreshed', onRefreshed);
 
     const channel = client.channel(`aryes_rt_${orgId}_${Date.now()}`, {
