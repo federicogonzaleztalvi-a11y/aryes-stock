@@ -1,4 +1,11 @@
-// src/hooks/useRealtime.ts — Supabase Realtime multi-device sync
+// src/hooks/useRealtime.ts — Supabase Realtime multi-device sync (Broadcast-from-DB)
+//
+// Antes usábamos postgres_changes (CDC), pero el worker PostgresCdcRls del tenant
+// crasheaba con :queue_timeout y nunca entregaba (canal SUBSCRIBED, cero eventos).
+// Ahora sincronizamos por Broadcast: triggers en la base emiten un broadcast
+// PRIVADO al topic 'org:<org_id>' en cada INSERT/UPDATE/DELETE (ver
+// supabase-broadcast-sync.sql). Acá nos suscribimos a ese topic y despachamos a
+// los mismos callbacks con la forma { eventType, new, old }.
 import { useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
@@ -6,14 +13,11 @@ import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
 let _client = null;
 function getClient() {
   if (!_client) {
-    // CRÍTICO: pasamos `accessToken` como callback. Nuestra auth vive en
-    // localStorage (no usamos supabase auth-js), así que sin esto el cliente
-    // inyecta su propio _getAccessToken → auth.getSession() es null → cae al
-    // anon key. Al conectar el socket, realtime-js llama _setAuthSafely('connect')
-    // → setAuth() sin token → usa ese callback y PISA con anon el JWT que
-    // habíamos puesto a mano → el server rechaza por RLS → CHANNEL_ERROR perpetuo.
-    // Con accessToken propio, el callback devuelve SIEMPRE el JWT del usuario
-    // (y al renovarse el token, en cada reconnect/heartbeat lee el fresco solo).
+    // accessToken propio: nuestra auth vive en localStorage (no usamos supabase
+    // auth-js). El callback devuelve SIEMPRE el JWT del usuario, así que cada
+    // join/reconnect (y los canales PRIVADOS, que se autorizan por RLS contra
+    // realtime.messages) van autenticados. Sin esto el cliente caería al anon
+    // key y el server rechazaría por RLS.
     _client = createClient(SB_URL, SKEY, {
       accessToken: async () => getSession()?.access_token ?? null,
       realtime: { params: { eventsPerSecond: 10 } },
@@ -41,44 +45,54 @@ export function useRealtime(callbacks, enabled = true) {
 
   useEffect(() => {
     if (!enabled || !SB_URL || !SKEY) return;
+    if (!orgId || orgId === '__no_org__') return;
     const client = getClient();
 
-    // El JWT del usuario lo provee el callback `accessToken` del cliente (ver
-    // getClient): en cada join/reconnect realtime-js lo lee de localStorage, así
-    // que el canal siempre se une autenticado contra RLS. Al renovarse el JWT
-    // empujamos el token nuevo a los canales abiertos con setAuth() (sin arg →
-    // re-lee el fresco vía callback) para no esperar a un reconnect.
+    // Al renovarse el JWT, empujamos el token nuevo a los canales abiertos con
+    // setAuth() (sin arg → re-lee el fresco vía el callback accessToken) para no
+    // esperar a un reconnect. Importante en canales privados (re-autoriza).
     const onRefreshed = () => {
       try { client.realtime.setAuth(); } catch { /* noop */ }
     };
     window.addEventListener('aryes-session-refreshed', onRefreshed);
 
-    // Recuperación ante CHANNEL_ERROR. El PRIMER join corre una carrera con la
-    // carga inicial de la página (socket/token aún asentándose) y a veces entra
-    // en CHANNEL_ERROR. realtime-js reintenta el MISMO canal (mismo topic) y ese
-    // canal queda "envenenado": no se recupera nunca. Verificado: un canal NUEVO
-    // (topic nuevo) siempre conecta SUBSCRIBED. Así que ante error recreamos el
-    // canal desde cero con backoff, y si insiste reseteamos el socket entero.
+    // El topic DEBE ser exactamente 'org:<org_id>' para casar con la policy de
+    // realtime.messages (rt_receive_own_org). Ante CHANNEL_ERROR recreamos el
+    // canal con el MISMO topic y backoff; si insiste, reseteamos el socket.
+    const topic = `org:${orgId}`;
     let currentChannel: ReturnType<typeof client.channel> | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
     let disposed = false;
 
-    const join = () => {
+    const join = async () => {
       if (disposed) return;
       if (currentChannel) {
         try { client.removeChannel(currentChannel); } catch { /* noop */ }
         currentChannel = null;
       }
 
-      const channel = client.channel(`aryes_rt_${orgId}_${Date.now()}`, {
-        config: { broadcast: { self: false } },
+      // CRÍTICO para canales PRIVADOS: subscribe() dispara el POST de autorización
+      // (contra realtime.messages/RLS) con el token YA cacheado en el socket. Como
+      // nuestra auth es async (callback accessToken), ese token arranca en null/anon
+      // y la policy rt_receive_own_org deniega ("Unauthorized... topic org:<id>"):
+      // get_my_org_id() sin claim email -> NULL -> 'org:x' = 'org:'||NULL = NULL.
+      // setAuth() (sin arg) re-lee el JWT fresco vía el callback y lo empuja al
+      // socket ANTES de subscribe, así la autorización va con el email del usuario.
+      try { await client.realtime.setAuth(); } catch { /* noop */ }
+      if (disposed) return;
+
+      const channel = client.channel(topic, {
+        config: { private: true, broadcast: { self: false } },
       });
-      TABLES.forEach(table => {
-        channel.on('postgres_changes', {
-          event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}`,
-        }, payload => dispatch(table, payload));
+
+      // Un único evento 'change' para todas las tablas; el payload trae la tabla.
+      channel.on('broadcast', { event: 'change' }, (msg: any) => {
+        const p = msg?.payload;
+        if (!p?.table) return;
+        dispatch(p.table, { eventType: p.operation, new: p.record, old: p.old_record });
       });
+
       channel.subscribe((status, err) => {
         if (disposed) return;
         if (status === 'SUBSCRIBED') {
@@ -87,13 +101,9 @@ export function useRealtime(callbacks, enabled = true) {
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           attempts += 1;
           const delay = Math.min(1000 * 2 ** (attempts - 1), 15000);
-          // Sólo el primer error se loguea como warning; los reintentos en silencio
-          // para no llenar la consola (es recuperación esperada, no un fallo real).
           if (attempts === 1) {
             console.warn('[Realtime] Channel error — reconnecting', err?.message || err || '');
           }
-          // Si tras varios intentos sigue fallando, el socket puede estar tildado:
-          // lo reseteamos para que el próximo subscribe levante uno fresco.
           if (attempts >= 3) { try { client.realtime.disconnect(); } catch { /* noop */ } }
           clearTimeout(retryTimer);
           retryTimer = setTimeout(join, delay);
