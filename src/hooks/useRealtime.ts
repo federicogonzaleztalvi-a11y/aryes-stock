@@ -5,7 +5,13 @@ import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
 
 let _client = null;
 function getClient() {
-  if (!_client) _client = createClient(SB_URL, SKEY, { realtime: { params: { eventsPerSecond: 10 } } });
+  if (!_client) _client = createClient(SB_URL, SKEY, {
+    // CRÍTICO: realtime-js 2.x usa por defecto el protocolo VSN 2.0.0, que el
+    // servidor Realtime de este proyecto rechaza → CHANNEL_ERROR sin detalle.
+    // Verificado por websocket directo: el join con VSN 1.0.0 + el JWT del
+    // usuario responde "Subscribed to PostgreSQL" (status ok). Forzamos 1.0.0.
+    realtime: { vsn: '1.0.0', params: { eventsPerSecond: 10 } },
+  });
   return _client;
 }
 
@@ -38,13 +44,6 @@ export function useRealtime(callbacks, enabled = true) {
     // dejaba el primer join con anon y el canal en error perpetuo).
     const token = getSession()?.access_token;
     if (token) client.realtime.setAuth(token);
-    // DIAG temporal: confirmar que el token llega al socket antes de subscribe.
-    try {
-      console.info('[Realtime DIAG] tokenPresent=', !!token,
-        'len=', token ? token.length : 0,
-        'accessTokenValueSet=', !!(client as any)?.realtime?.accessTokenValue,
-        'sameAsUserToken=', (client as any)?.realtime?.accessTokenValue === token);
-    } catch { /* noop */ }
 
     // Al renovarse el JWT, reautenticamos el socket con el token nuevo para que
     // el canal no se caiga cuando vence el viejo.
