@@ -1361,7 +1361,7 @@ const S={
       {/* Trigger button */}
       <button onClick={()=>setOpen(o=>!o)} style={S.btn} aria-label="Asistente IA">
         {open
-          ? <span style={{fontSize:14,color:G,lineHeight:1}}>→</span>
+          ? <span style={{fontSize:15,color:G,lineHeight:1,fontWeight:400}}>✕</span>
           : <span style={{color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}><ChatIcon size={20}/></span>
         }
         {unread>0&&!open&&<span style={{position:'absolute',top:-5,right:-5,background:'#e24b4a',color:'#fff',borderRadius:'50%',width:19,height:19,fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid #f9f9f7'}}>{unread}</span>}
