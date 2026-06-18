@@ -5,13 +5,7 @@ import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
 
 let _client = null;
 function getClient() {
-  if (!_client) _client = createClient(SB_URL, SKEY, {
-    // CRÍTICO: realtime-js 2.x usa por defecto el protocolo VSN 2.0.0, que el
-    // servidor Realtime de este proyecto rechaza → CHANNEL_ERROR sin detalle.
-    // Verificado por websocket directo: el join con VSN 1.0.0 + el JWT del
-    // usuario responde "Subscribed to PostgreSQL" (status ok). Forzamos 1.0.0.
-    realtime: { vsn: '1.0.0', params: { eventsPerSecond: 10 } },
-  });
+  if (!_client) _client = createClient(SB_URL, SKEY, { realtime: { params: { eventsPerSecond: 10 } } });
   return _client;
 }
 
