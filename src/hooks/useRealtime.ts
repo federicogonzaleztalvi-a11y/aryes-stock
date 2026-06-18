@@ -53,22 +53,64 @@ export function useRealtime(callbacks, enabled = true) {
     };
     window.addEventListener('aryes-session-refreshed', onRefreshed);
 
-    const channel = client.channel(`aryes_rt_${orgId}_${Date.now()}`, {
-      config: { broadcast: { self: false } },
-    });
-    TABLES.forEach(table => {
-      channel.on('postgres_changes', {
-        event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}`,
-      }, payload => dispatch(table, payload));
-    });
-    channel.subscribe((status, err) => {
-      if (status === 'SUBSCRIBED')    console.info('[Realtime] Connected org:', orgId);
-      if (status === 'CHANNEL_ERROR') console.warn('[Realtime] Channel error — retrying', err?.message || err || '(sin detalle)');
-      if (status === 'TIMED_OUT')     console.warn('[Realtime] Timed out');
-    });
+    // Recuperación ante CHANNEL_ERROR. El PRIMER join corre una carrera con la
+    // carga inicial de la página (socket/token aún asentándose) y a veces entra
+    // en CHANNEL_ERROR. realtime-js reintenta el MISMO canal (mismo topic) y ese
+    // canal queda "envenenado": no se recupera nunca. Verificado: un canal NUEVO
+    // (topic nuevo) siempre conecta SUBSCRIBED. Así que ante error recreamos el
+    // canal desde cero con backoff, y si insiste reseteamos el socket entero.
+    let currentChannel: ReturnType<typeof client.channel> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    let disposed = false;
+
+    const join = () => {
+      if (disposed) return;
+      if (currentChannel) {
+        try { client.removeChannel(currentChannel); } catch { /* noop */ }
+        currentChannel = null;
+      }
+
+      const channel = client.channel(`aryes_rt_${orgId}_${Date.now()}`, {
+        config: { broadcast: { self: false } },
+      });
+      TABLES.forEach(table => {
+        channel.on('postgres_changes', {
+          event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}`,
+        }, payload => dispatch(table, payload));
+      });
+      channel.subscribe((status, err) => {
+        if (disposed) return;
+        if (status === 'SUBSCRIBED') {
+          attempts = 0;
+          console.info('[Realtime] Connected org:', orgId);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          attempts += 1;
+          const delay = Math.min(1000 * 2 ** (attempts - 1), 15000);
+          // Sólo el primer error se loguea como warning; los reintentos en silencio
+          // para no llenar la consola (es recuperación esperada, no un fallo real).
+          if (attempts === 1) {
+            console.warn('[Realtime] Channel error — reconnecting', err?.message || err || '');
+          }
+          // Si tras varios intentos sigue fallando, el socket puede estar tildado:
+          // lo reseteamos para que el próximo subscribe levante uno fresco.
+          if (attempts >= 3) { try { client.realtime.disconnect(); } catch { /* noop */ } }
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(join, delay);
+        }
+      });
+      currentChannel = channel;
+    };
+
+    join();
+
     return () => {
+      disposed = true;
+      clearTimeout(retryTimer);
       window.removeEventListener('aryes-session-refreshed', onRefreshed);
-      client.removeChannel(channel);
+      if (currentChannel) {
+        try { client.removeChannel(currentChannel); } catch { /* noop */ }
+      }
     };
   }, [enabled, orgId, dispatch]);
 }
