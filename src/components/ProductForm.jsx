@@ -59,13 +59,13 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
         <Field label={"Costo unitario (" + taxCfg.currency + ")"}>
-          <Inp type="number" step="0.01" value={f.unitCost} onChange={e=>set("unitCost",+e.target.value)}/>
+          <Inp type="number" step="0.01" min="0" placeholder="0.00" value={f.unitCost||""} onChange={e=>set("unitCost",e.target.value===""?0:+e.target.value)}/>
           {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es',{day:'2-digit',month:'short'}):''}</div>}
         </Field>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Field label={"Precio de venta (" + taxCfg.currency + ")"}>
-          <Inp type="number" step="0.01" value={f.precioVenta||f.precio_venta||0} onChange={e=>set("precioVenta",+e.target.value)}/>
+          <Inp type="number" step="0.01" min="0" placeholder="0.00" value={f.precioVenta||f.precio_venta||""} onChange={e=>set("precioVenta",e.target.value===""?0:+e.target.value)}/>
         </Field>
         <Field label={taxCfg.taxName} hint={"Tasa de " + taxCfg.taxName + " (" + taxCfg.country + ")"}>
           <Sel value={f.iva_rate!=null?f.iva_rate:taxCfg.defaultRate} onChange={e=>set("iva_rate",+e.target.value)}>
@@ -104,7 +104,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
           <Btn onClick={addTier} variant="ghost" small>+ Agregar escala</Btn>
         </div>
       </Field>
-      <Field label="Stock actual"><Inp type="number" value={f.stock} onChange={e=>set("stock",+e.target.value)}/></Field>
+      <Field label="Stock actual"><Inp type="number" min="0" placeholder="0" value={f.stock||""} onChange={e=>set("stock",e.target.value===""?0:+e.target.value)}/></Field>
       {r!==null&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
           {[{l:"Punto de pedido (ROP)",v:`${r} ${f.unit}`,h:"Pedir cuando llegue a este nivel"},{l:"Stock de seguridad",v:`${ss} ${f.unit}`,h:"Buffer 95% nivel de servicio"},{l:"Cantidad óptima (EOQ)",v:eq?`${eq} ${f.unit}`:"—",h:"Minimiza costos"}].map((s,i)=>(
