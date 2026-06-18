@@ -5,7 +5,20 @@ import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
 
 let _client = null;
 function getClient() {
-  if (!_client) _client = createClient(SB_URL, SKEY, { realtime: { params: { eventsPerSecond: 10 } } });
+  if (!_client) {
+    // CRÍTICO: pasamos `accessToken` como callback. Nuestra auth vive en
+    // localStorage (no usamos supabase auth-js), así que sin esto el cliente
+    // inyecta su propio _getAccessToken → auth.getSession() es null → cae al
+    // anon key. Al conectar el socket, realtime-js llama _setAuthSafely('connect')
+    // → setAuth() sin token → usa ese callback y PISA con anon el JWT que
+    // habíamos puesto a mano → el server rechaza por RLS → CHANNEL_ERROR perpetuo.
+    // Con accessToken propio, el callback devuelve SIEMPRE el JWT del usuario
+    // (y al renovarse el token, en cada reconnect/heartbeat lee el fresco solo).
+    _client = createClient(SB_URL, SKEY, {
+      accessToken: async () => getSession()?.access_token ?? null,
+      realtime: { params: { eventsPerSecond: 10 } },
+    });
+  }
   return _client;
 }
 
@@ -30,20 +43,13 @@ export function useRealtime(callbacks, enabled = true) {
     if (!enabled || !SB_URL || !SKEY) return;
     const client = getClient();
 
-    // CRÍTICO: el websocket debe unirse con el JWT del usuario, no con la anon
-    // key — las tablas tienen RLS por org_id, así que con anon el servidor
-    // responde CHANNEL_ERROR. setAuth(token) DEBE correr ANTES de subscribe:
-    // es síncrono cuando se le pasa un token explícito, así que el join sale
-    // ya con el access_token (evita la race condition del callback async, que
-    // dejaba el primer join con anon y el canal en error perpetuo).
-    const token = getSession()?.access_token;
-    if (token) client.realtime.setAuth(token);
-
-    // Al renovarse el JWT, reautenticamos el socket con el token nuevo para que
-    // el canal no se caiga cuando vence el viejo.
+    // El JWT del usuario lo provee el callback `accessToken` del cliente (ver
+    // getClient): en cada join/reconnect realtime-js lo lee de localStorage, así
+    // que el canal siempre se une autenticado contra RLS. Al renovarse el JWT
+    // empujamos el token nuevo a los canales abiertos con setAuth() (sin arg →
+    // re-lee el fresco vía callback) para no esperar a un reconnect.
     const onRefreshed = () => {
-      const t = getSession()?.access_token;
-      if (t) { try { client.realtime.setAuth(t); } catch { /* noop */ } }
+      try { client.realtime.setAuth(); } catch { /* noop */ }
     };
     window.addEventListener('aryes-session-refreshed', onRefreshed);
 
