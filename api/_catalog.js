@@ -34,6 +34,35 @@ export function sanitizeVolumeTiers(raw) {
     .sort((a, b) => a.min - b.min);
 }
 
+// Normaliza el JSONB `variants` del producto. Forma esperada:
+//   { label: "Color", options: [{ id, label, sku?, color_hex? }, ...] }
+// Las variantes comparten precio/IVA/stock del padre; sólo aportan etiqueta+SKU.
+// Devuelve null si no hay opciones válidas (producto simple) para que el portal
+// trate el producto como antes.
+export function sanitizeVariants(raw) {
+  let obj = raw;
+  if (typeof obj === 'string') { try { obj = JSON.parse(obj); } catch { return null; } }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  const rawOpts = Array.isArray(obj.options) ? obj.options : [];
+  const seen = new Set();
+  const options = rawOpts
+    .map(o => {
+      const label = String(o?.label ?? '').trim();
+      if (!label) return null;
+      const id = String(o?.id ?? label).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || label;
+      return {
+        id,
+        label,
+        sku: o?.sku != null ? String(o.sku).trim() : '',
+        color_hex: /^#[0-9a-fA-F]{6}$/.test(String(o?.color_hex || '')) ? o.color_hex : '',
+      };
+    })
+    .filter(o => o && !seen.has(o.id) && seen.add(o.id));
+  if (options.length === 0) return null;
+  const label = String(obj.label ?? '').trim() || 'Variante';
+  return { label, options };
+}
+
 /**
  * Devuelve el catálogo de una org con los precios resueltos para un cliente.
  * Sin clienteId → catálogo público (precio_venta base).
@@ -53,7 +82,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
 
   // ── 1. Productos + reservas activas (ATP) + overrides del cliente ──────────
   const prodQuery = [
-    'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers',
+    'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants',
     `org_id=eq.${org}`,
     'order=category.asc,name.asc',
     'limit=500',
@@ -187,6 +216,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       min_order_qty: p.min_order_qty != null ? Number(p.min_order_qty) : 1,
       descripcion: p.descripcion || '',
       volume_tiers: sanitizeVolumeTiers(p.volume_tiers),
+      variants: sanitizeVariants(p.variants),
     };
   });
 

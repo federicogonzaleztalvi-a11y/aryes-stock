@@ -724,6 +724,7 @@ const describeAction = (action: string, detail: string): string => {
       descripcion: (f.descripcion || '') as string,
       codigo: (f.codigo || '') as string,
       volume_tiers: (Array.isArray(f.volume_tiers) ? f.volume_tiers : []) as unknown[],
+      variants: (f.variants && typeof f.variants === 'object' && !Array.isArray(f.variants) ? f.variants : {}) as Record<string, unknown>,
       updated_at: now,
     };
     // Optimistic update

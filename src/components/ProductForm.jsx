@@ -6,8 +6,9 @@ import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '
 
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
-  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[]};
-  const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[]}:blank);
+  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]}};
+  const normVariants=(v)=>{const o=v&&typeof v==="object"&&!Array.isArray(v)?v:{};return{label:o.label||"Color",options:Array.isArray(o.options)?o.options:[]};};
+  const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[],variants:normVariants(product.variants)}:blank);
 
   // WA template in localStorage
   // wa template — read from localStorage, not used in current form UI
@@ -31,6 +32,18 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
     .map(t=>({min:Math.floor(Number(t.min)),dto:Number(t.dto)}))
     .filter(t=>Number.isFinite(t.min)&&t.min>1&&Number.isFinite(t.dto)&&t.dto>0&&t.dto<=100)
     .sort((a,b)=>a.min-b.min);
+
+  // Variantes ({label, options:[{id,label,sku,color_hex}]}). Comparten precio/stock
+  // del padre; el cliente las elige en el portal. Genérico (colores, sabores, talles).
+  const variants=normVariants(f.variants);
+  const setVarLabel=(v)=>setF(p=>({...p,variants:{...normVariants(p.variants),label:v}}));
+  const addVar=()=>setF(p=>{const cur=normVariants(p.variants);return{...p,variants:{...cur,options:[...cur.options,{id:"",label:"",sku:"",color_hex:""}]}};});
+  const updVar=(i,k,v)=>setF(p=>{const cur=normVariants(p.variants);const o=[...cur.options];o[i]={...o[i],[k]:v};return{...p,variants:{...cur,options:o}};});
+  const rmVar=(i)=>setF(p=>{const cur=normVariants(p.variants);return{...p,variants:{...cur,options:cur.options.filter((_,j)=>j!==i)}};});
+  const cleanVariants=(v)=>{const cur=normVariants(v);const seen=new Set();const options=cur.options
+    .map(o=>{const label=String(o.label||"").trim();if(!label)return null;const id=String(o.id||label).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||label;return{id,label,sku:String(o.sku||"").trim(),color_hex:/^#[0-9a-fA-F]{6}$/.test(String(o.color_hex||""))?o.color_hex:""};})
+    .filter(o=>o&&!seen.has(o.id)&&seen.add(o.id));
+    return options.length?{label:String(cur.label||"Variante").trim()||"Variante",options}:{};};
 
   const sup=suppliers.find(s=>s.id===f.supplierId);
   const lead=sup?totalLead(sup):0;
@@ -104,6 +117,29 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
           <Btn onClick={addTier} variant="ghost" small>+ Agregar escala</Btn>
         </div>
       </Field>
+      <Field label="Variantes" hint="Opcional — opciones que el cliente elige en el portal (colores, sabores, talles...). Comparten precio, IVA y stock de este producto. Ej: un colorante con 16 colores en una sola card.">
+        <div style={{display:"grid",gap:8}}>
+          {variants.options.length>0&&(
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Etiqueta del grupo</span>
+              <Inp value={variants.label} onChange={e=>setVarLabel(e.target.value)} placeholder="Color"/>
+            </div>
+          )}
+          {variants.options.length===0&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,margin:0}}>Sin variantes. Agregá una para que el cliente elija (ej: colores) en una sola card.</p>}
+          {variants.options.map((o,i)=>(
+            <div key={i} style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input type="color" value={o.color_hex||"#cccccc"} onChange={e=>updVar(i,"color_hex",e.target.value)} title="Color (opcional)"
+                style={{width:34,height:34,padding:0,border:`1px solid ${T.border}`,borderRadius:6,background:T.muted,cursor:"pointer",flexShrink:0}}/>
+              <input value={o.label} onChange={e=>updVar(i,"label",e.target.value)} placeholder="Nombre (ej: Rojo)"
+                style={{flex:1,minWidth:0,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <input value={o.sku} onChange={e=>updVar(i,"sku",e.target.value)} placeholder="SKU (opcional)"
+                style={{width:120,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <button onClick={()=>rmVar(i)} title="Quitar variante" style={{border:`1px solid ${T.border}`,background:T.muted,color:T.red,borderRadius:6,width:30,height:30,cursor:"pointer",fontSize:16,lineHeight:1,flexShrink:0}}>×</button>
+            </div>
+          ))}
+          <Btn onClick={addVar} variant="ghost" small>+ Agregar variante</Btn>
+        </div>
+      </Field>
       <Field label="Stock actual"><Inp type="number" min="0" placeholder="0" value={f.stock||""} onChange={e=>set("stock",e.target.value===""?0:+e.target.value)}/></Field>
       {r!==null&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
@@ -141,7 +177,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
         </Field>
       </div>
       <div style={{display:"flex",gap:10,paddingTop:4}}>
-        <Btn onClick={()=>onSave({...f,volume_tiers:cleanTiers(f.volume_tiers)})} full>{product?"Guardar cambios":"Agregar producto"}</Btn>
+        <Btn onClick={()=>onSave({...f,volume_tiers:cleanTiers(f.volume_tiers),variants:cleanVariants(f.variants)})} full>{product?"Guardar cambios":"Agregar producto"}</Btn>
         <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
       </div>
     </div>

@@ -381,11 +381,14 @@ function primerTier(item) {
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
+function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito }) {
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const imgH = isMobile ? 120 : 160;
+  // Variantes: el cliente elige cantidad por opción (color/sabor/...). El precio,
+  // IVA y descuentos son del producto padre. La clave de carrito es "id::variantId".
+  const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
 
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
@@ -440,7 +443,9 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
             {primerTier(item).min}+ unidades: −{primerTier(item).dto}%
           </div>
         )}
-        {qty > 0 ? (
+        {variantOpts ? (
+          <VariantPicker item={item} options={variantOpts} carrito={carrito || {}} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} />
+        ) : qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
               width: 40, height: 40, border: `1.5px solid ${G}`, borderRadius: 8,
@@ -465,6 +470,55 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg }) {
             {item.precio > 0 ? (item.min_order_qty > 1 ? ('+ Min. ' + item.min_order_qty) : '+ Agregar') : 'Sin precio'}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Grid de variantes: una fila por opción (swatch + nombre + stepper). El cliente
+// arma un pedido mixto (ej: 3 rojos + 2 azules). Lee cantidades del carrito por
+// clave "id::variantId" y delega add/remove al padre.
+function VariantPicker({ item, options, carrito, onAdd, onRemove, label }) {
+  const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, letterSpacing: .3, marginBottom: 5,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>ELEGÍ {String(label || 'VARIANTE').toUpperCase()}</span>
+        {totalSel > 0 && <span style={{ color: G }}>{totalSel} en carrito</span>}
+      </div>
+      <div style={{ display: 'grid', gap: 4, maxHeight: 168, overflowY: 'auto', paddingRight: 2 }}>
+        {options.map(o => {
+          const q = carrito[`${item.id}::${o.id}`] || 0;
+          return (
+            <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 6,
+              padding: '3px 4px', borderRadius: 7, background: q > 0 ? G + '12' : '#fafaf7',
+              border: `1px solid ${q > 0 ? G + '55' : '#eeeee8'}` }}>
+              {o.color_hex && <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+                background: o.color_hex, border: '1px solid rgba(0,0,0,.12)' }} />}
+              <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 600, color: '#1a1a18',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.label}</span>
+              {q > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                  <button onClick={() => onRemove(item, o.id)} aria-label={`Quitar ${o.label}`} style={{
+                    width: 24, height: 24, border: `1px solid ${G}`, borderRadius: 6, background: '#fff',
+                    color: G, fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{'\u2212'}</button>
+                  <span style={{ minWidth: 18, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>{q}</span>
+                  <button onClick={() => onAdd(item, o.id)} aria-label={`Agregar ${o.label}`} style={{
+                    width: 24, height: 24, border: 'none', borderRadius: 6, background: G,
+                    color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                </div>
+              ) : (
+                <button onClick={() => onAdd(item, o.id)} aria-label={`Agregar ${o.label}`} style={{
+                  flexShrink: 0, width: 24, height: 24, border: 'none', borderRadius: 6, background: G,
+                  color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -612,12 +666,25 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
 
+  // La clave puede ser "id" (producto simple) o "id::variantId" (con variante).
+  // Resolvemos el producto base y, si hay variante, anexamos su etiqueta al nombre
+  // y guardamos variantId para el pedido. El precio/IVA/descuentos son del padre.
   const lineas = Object.entries(carrito)
     .filter(([, qty]) => qty > 0)
-    .map(([id, qty]) => ({ item: items.find(i => i.id === id), qty }))
-    .filter(l => l.item);
+    .map(([key, qty]) => {
+      const sep = key.indexOf('::');
+      const baseId = sep === -1 ? key : key.slice(0, sep);
+      const variantId = sep === -1 ? null : key.slice(sep + 2);
+      const base = items.find(i => i.id === baseId);
+      if (!base) return null;
+      if (!variantId) return { key, item: base, qty, variantId: null };
+      const opt = base.variants?.options?.find(o => o.id === variantId);
+      const item = { ...base, nombre: opt ? `${base.nombre} — ${opt.label}` : base.nombre };
+      return { key, item, qty, variantId, variantLabel: opt?.label || null, variantSku: opt?.sku || null };
+    })
+    .filter(Boolean);
 
-  const lineasConCalc = lineas.map(({ item, qty }) => {
+  const lineasConCalc = lineas.map(({ key, item, qty, variantId, variantSku }) => {
     const ivaRate = item.iva_rate != null ? Number(item.iva_rate) : 0;
     // Descuento aplicable = el mayor entre el dto del item y la escala por volumen que
     // alcanza la cantidad pedida. El descuento por volumen premia comprar en bulto.
@@ -626,7 +693,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
     const precioConDto = descPct > 0 ? Math.round(item.precio * (1 - descPct / 100) * 100) / 100 : item.precio;
     const netoLinea = precioConDto * qty;
     const ivaLinea = netoLinea * (ivaRate / 100);
-    return { item, qty, ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea };
+    return { key, item, qty, variantId, variantSku, ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea };
   });
   const subtotalNeto = lineasConCalc.reduce((s, l) => s + l.netoLinea, 0);
   const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
@@ -685,6 +752,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           items: lineasConCalc.map(l => ({
             productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
             cantidad: l.qty, precioUnit: l.precioConDto, subtotal: l.netoLinea,
+            ...(l.variantId ? { variantId: l.variantId, variantSku: l.variantSku || '' } : {}),
           })),
           total, notas,
           direccion_entrega: addresses.find(a => a.id === selectedAddress)?.direccion || null,
@@ -746,8 +814,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           <div style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 10 }}>
             DETALLE DEL PEDIDO
           </div>
-          {lineasConCalc.map(({ item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
-            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between',
+          {lineasConCalc.map(({ key, item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
+            <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
               padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
@@ -843,8 +911,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
-          {lineasConCalc.map(({ item, qty, ivaRate, descPct, precioConDto, netoLinea }) => (
-            <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
+          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descPct, precioConDto, netoLinea }) => (
+            <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
@@ -867,17 +935,17 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e2e2dc', borderRadius: 8, overflow: 'hidden' }}>
-                  <button onClick={() => onRemove && onRemove(item)} aria-label={`Quitar uno de ${item.nombre}`} style={{
+                  <button onClick={() => onRemove && onRemove(item, variantId)} aria-label={`Quitar uno de ${item.nombre}`} style={{
                     width: 32, height: 32, border: 'none', background: '#f7f7f4', color: G,
                     fontSize: 18, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{'\u2212'}</button>
                   <span aria-live="polite" style={{ minWidth: 36, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>{qty}</span>
-                  <button onClick={() => onAdd && onAdd(item)} aria-label={`Agregar uno de ${item.nombre}`} style={{
+                  <button onClick={() => onAdd && onAdd(item, variantId)} aria-label={`Agregar uno de ${item.nombre}`} style={{
                     width: 32, height: 32, border: 'none', background: '#f7f7f4', color: G,
                     fontSize: 18, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                 </div>
-                <button onClick={() => onRemoveLine && onRemoveLine(item)} aria-label={`Eliminar ${item.nombre} del carrito`} style={{
+                <button onClick={() => onRemoveLine && onRemoveLine(item, variantId)} aria-label={`Eliminar ${item.nombre} del carrito`} style={{
                   background: 'none', border: 'none', color: '#b0b0a8', fontSize: 11,
                   cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 4, padding: 4 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1107,14 +1175,18 @@ export default function PedidosPage() {
   // Analytics — PedidosPage scope
   const track = (event, props = {}) => { try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
 
-  const addItem = item => { track('producto_agregado', { producto: item.nombre, precio: item.precio }); setCarrito(c => { const cur = c[item.id] || 0; const min = item.min_order_qty || 1; return { ...c, [item.id]: cur === 0 ? min : cur + 1 }; }); };
-  const removeItem = item => setCarrito(c => {
-    const q = (c[item.id] || 0) - 1;
+  // Clave de carrito: producto simple -> "id". Con variante -> "id::variantId".
+  // Retrocompatible: los productos sin variante siguen usando su id pelado.
+  const cartKey = (item, variantId) => variantId ? `${item.id}::${variantId}` : item.id;
+  const addItem = (item, variantId) => { track('producto_agregado', { producto: item.nombre, precio: item.precio, variante: variantId || null }); setCarrito(c => { const k = cartKey(item, variantId); const cur = c[k] || 0; const min = item.min_order_qty || 1; return { ...c, [k]: cur === 0 ? min : cur + 1 }; }); };
+  const removeItem = (item, variantId) => setCarrito(c => {
+    const k = cartKey(item, variantId);
+    const q = (c[k] || 0) - 1;
     const min = item.min_order_qty || 1;
-    if (q < min) { const n = { ...c }; delete n[item.id]; return n; }
-    return { ...c, [item.id]: q };
+    if (q < min) { const n = { ...c }; delete n[k]; return n; }
+    return { ...c, [k]: q };
   });
-  const removeLine = item => setCarrito(c => { const n = { ...c }; delete n[item.id]; return n; });
+  const removeLine = (item, variantId) => setCarrito(c => { const n = { ...c }; delete n[cartKey(item, variantId)]; return n; });
 
   const logout = () => {
     if (isPortalDemo) { setPortalDemo(null); setItems([]); setCarrito({}); window.location.href = '/pedidos'; return; }
@@ -1375,7 +1447,7 @@ export default function PedidosPage() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
                 {filtered.map(item => (
-                  <ProductCard key={item.id} item={item} brandCfg={brandCfg}
+                  <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
                     qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} />
                 ))}
               </div>
