@@ -121,7 +121,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: model || 'claude-sonnet-4-20250514',
+        model: model || 'claude-sonnet-4-6',
         max_tokens: Math.min(max_tokens || 600, 1000), // cap at 1000
         system,
         messages,

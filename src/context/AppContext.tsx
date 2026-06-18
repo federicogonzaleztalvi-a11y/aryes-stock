@@ -732,6 +732,8 @@ const describeAction = (action: string, detail: string): string => {
     // Persist to Supabase
     try {
       await db.upsert('products', productData, 'uuid');
+      setSyncToast({ msg: `${isEdit ? 'Producto actualizado' : 'Producto agregado'}: ${productData.name}`, type: 'success' });
+      setTimeout(() => setSyncToast(null), 4000);
     } catch(e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn('[saveProduct] SB failed:', msg);

@@ -1023,9 +1023,9 @@ Generado desde Pazque.`;
 
         <div style={{padding:"32px 40px",flex:1,minWidth:0,paddingBottom:60}}>
 
-        {syncToast&&<div style={{position:"fixed",top:20,right:20,zIndex:9999,background:syncToast.type==="info"?"#eff6ff":"#fef3c7",border:"1px solid "+(syncToast.type==="info"?"#bfdbfe":"#fde68a"),borderRadius:8,padding:"12px 18px",boxShadow:"0 4px 16px rgba(0,0,0,.12)",display:"flex",alignItems:"center",gap:10,animation:"fadeUp .25s ease both",maxWidth:360}}>
-        <span style={{fontSize:18}}>{syncToast.type==="info"?"📊":"→ ï¸"}</span>
-        <span style={{fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,color:syncToast.type==="info"?"#1d4ed8":"#92400e"}}>{syncToast.msg}</span>
+        {syncToast&&<div style={{position:"fixed",top:20,right:20,zIndex:9999,background:syncToast.type==="info"?"#eff6ff":syncToast.type==="success"?"#ecfdf5":syncToast.type==="error"?"#fef2f2":"#fef3c7",border:"1px solid "+(syncToast.type==="info"?"#bfdbfe":syncToast.type==="success"?"#a7f3d0":syncToast.type==="error"?"#fecaca":"#fde68a"),borderRadius:8,padding:"12px 18px",boxShadow:"0 4px 16px rgba(0,0,0,.12)",display:"flex",alignItems:"center",gap:10,animation:"fadeUp .25s ease both",maxWidth:360}}>
+        <span style={{fontSize:18}}>{syncToast.type==="info"?"📊":syncToast.type==="success"?"✅":"⚠️"}</span>
+        <span style={{fontFamily:"Inter,sans-serif",fontSize:13,fontWeight:600,color:syncToast.type==="info"?"#1d4ed8":syncToast.type==="success"?"#065f46":syncToast.type==="error"?"#b91c1c":"#92400e"}}>{syncToast.msg}</span>
       </div>}
       {hasPendingSync&&<div style={{background:"#fef3c7",border:"1px solid #fde68a",borderRadius:6,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:16}}>⚠️</span>
@@ -1263,7 +1263,7 @@ function AIChatFloat({session,products,suppliers,orders,movements,clientes,venta
       // Verificar tamaño del contexto antes de enviar
       const ctxStr = JSON.stringify(ctx);
       console.log('[chat] ctx size:', ctxStr.length, 'chars');
-      const reqBody=JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))});
+      const reqBody=JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:sys,messages:next.map(m=>({role:m.r==='u'?'user':'assistant',content:m.t}))});
       const doChatFetch=()=>{
         const tok=(()=>{try{return JSON.parse(localStorage.getItem('aryes-session')||'null')?.access_token||'';}catch{return '';}})();
         const controller = new AbortController();
