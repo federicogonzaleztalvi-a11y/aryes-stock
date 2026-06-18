@@ -5,17 +5,7 @@ import { SB_URL, SKEY, getOrgId, getSession } from '../lib/constants.js';
 
 let _client = null;
 function getClient() {
-  if (!_client) {
-    // CRÍTICO: el websocket de Realtime debe unirse con el JWT del usuario, no
-    // con la anon key — si no, no pasa el RLS por org_id y el canal queda en
-    // CHANNEL_ERROR perpetuo. La opción `accessToken` hace que supabase-js lea
-    // el token FRESCO de localStorage en cada join (y tras cada refresh), así
-    // que no depende de timing ni de llamar setAuth a mano.
-    _client = createClient(SB_URL, SKEY, {
-      accessToken: async () => getSession()?.access_token || SKEY,
-      realtime: { params: { eventsPerSecond: 10 } },
-    });
-  }
+  if (!_client) _client = createClient(SB_URL, SKEY, { realtime: { params: { eventsPerSecond: 10 } } });
   return _client;
 }
 
@@ -40,9 +30,21 @@ export function useRealtime(callbacks, enabled = true) {
     if (!enabled || !SB_URL || !SKEY) return;
     const client = getClient();
 
-    // Tras renovarse el JWT, reconectamos el socket para que vuelva a unirse
-    // con el token nuevo (la opción accessToken lo leerá fresco en el rejoin).
-    const onRefreshed = () => { try { client.realtime.disconnect(); client.realtime.connect(); } catch { /* noop */ } };
+    // CRÍTICO: el websocket debe unirse con el JWT del usuario, no con la anon
+    // key — las tablas tienen RLS por org_id, así que con anon el servidor
+    // responde CHANNEL_ERROR. setAuth(token) DEBE correr ANTES de subscribe:
+    // es síncrono cuando se le pasa un token explícito, así que el join sale
+    // ya con el access_token (evita la race condition del callback async, que
+    // dejaba el primer join con anon y el canal en error perpetuo).
+    const token = getSession()?.access_token;
+    if (token) client.realtime.setAuth(token);
+
+    // Al renovarse el JWT, reautenticamos el socket con el token nuevo para que
+    // el canal no se caiga cuando vence el viejo.
+    const onRefreshed = () => {
+      const t = getSession()?.access_token;
+      if (t) { try { client.realtime.setAuth(t); } catch { /* noop */ } }
+    };
     window.addEventListener('aryes-session-refreshed', onRefreshed);
 
     const channel = client.channel(`aryes_rt_${orgId}_${Date.now()}`, {
