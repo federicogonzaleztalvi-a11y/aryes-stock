@@ -53,9 +53,10 @@ export function useRealtime(callbacks, enabled = true) {
         event: '*', schema: 'public', table, filter: `org_id=eq.${orgId}`,
       }, payload => dispatch(table, payload));
     });
-    channel.subscribe(status => {
+    channel.subscribe((status, err) => {
       if (status === 'SUBSCRIBED')    console.info('[Realtime] Connected org:', orgId);
-      if (status === 'CHANNEL_ERROR') console.warn('[Realtime] Channel error — retrying');
+      if (status === 'CHANNEL_ERROR') console.warn('[Realtime] Channel error — retrying', err?.message || err || '(sin detalle)');
+      if (status === 'TIMED_OUT')     console.warn('[Realtime] Timed out');
     });
     return () => {
       window.removeEventListener('aryes-session-refreshed', onRefreshed);
