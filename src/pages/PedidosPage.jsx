@@ -381,9 +381,10 @@ function primerTier(item) {
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito }) {
+function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) {
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
+  const open = onOpen ? () => onOpen(item) : undefined;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const imgH = isMobile ? 120 : 160;
   // Variantes: el cliente elige cantidad por opción (color/sabor/...). El precio,
@@ -396,8 +397,8 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito }) {
       transition: 'border-color .15s' }}
       onMouseEnter={e => e.currentTarget.style.borderColor = '#c8c8c0'}
       onMouseLeave={e => e.currentTarget.style.borderColor = '#efefeb'}>
-      <div style={{ height: imgH, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
-        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={open} style={{ height: imgH, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: open ? 'pointer' : 'default' }}>
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
               style={{ maxHeight: imgH - 1, maxWidth: '100%', objectFit: 'contain' }} />
@@ -413,7 +414,8 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito }) {
       </div>
       <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div style={{ fontSize: 11, color: GRAY, letterSpacing: .3 }}>{item.categoria}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3 }}>
+        <div onClick={open} style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3,
+          cursor: open ? 'pointer' : 'default' }}>
           {item.nombre}
         </div>
         {item.descripcion && (
@@ -521,6 +523,141 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label }) {
         })}
       </div>
     </div>
+  );
+}
+
+// ── Product Detail (PDP) ───────────────────────────────────────────────────────
+// Página de detalle estilo Amazon/Shopify: el cliente hace clic en una card y entra
+// a la ficha completa (imagen grande, descripción, ficha técnica y acción de compra).
+// Se puede comprar desde acá — la PDP es donde más convierte. Reusa VariantPicker.
+const SERIF = "Georgia,'Times New Roman',serif";
+function FichaRow({ label, value, last }) {
+  if (value == null || value === '') return null;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '13px 0', borderBottom: last ? 'none' : '1px solid #eeeee8' }}>
+      <span style={{ fontSize: 14, color: GRAY }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', textAlign: 'right' }}>{value}</span>
+    </div>
+  );
+}
+function ProductDetail({ item, carrito, onAdd, onRemove, brandCfg, isMobile, onBack }) {
+  const [imgErr, setImgErr] = useState(false);
+  const hasImg = item.imagen_url && !imgErr;
+  const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
+  const qty = carrito[item.id] || 0;
+  // Unidades reales de venta (un/caja) — NO sufijos kg/lt (ver nota en ProductCard).
+  const showUnidad = item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim());
+  const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
+  const waLink = tel ? `https://wa.me/${tel}?text=${encodeURIComponent('Hola, quiero consultar disponibilidad de: ' + item.nombre)}` : null;
+
+  const imgBox = (
+    <div style={{ background: '#fff', border: '1px solid #efefeb', borderRadius: 16,
+      minHeight: isMobile ? 260 : 460, display: 'flex', alignItems: 'center',
+      justifyContent: 'center', padding: 24 }}>
+      {hasImg
+        ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
+            style={{ maxWidth: '100%', maxHeight: isMobile ? 240 : 420, objectFit: 'contain' }} />
+        : <div style={{ textAlign: 'center' }}>
+            <div style={{ width: 72, height: 72, borderRadius: 14, background: G + '18',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 10px', fontSize: 22, fontWeight: 700, color: G }}>
+              {(item.marca || item.categoria || '?').slice(0, 2).toUpperCase()}
+            </div>
+            {item.marca && <div style={{ fontSize: 12, color: GRAY, fontWeight: 600, letterSpacing: .5 }}>{item.marca.toUpperCase()}</div>}
+          </div>}
+    </div>
+  );
+
+  return (
+    <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '16px 18px 60px' : '24px 24px 80px' }}>
+      {/* Breadcrumb */}
+      <div style={{ fontSize: 13, color: GRAY, marginBottom: isMobile ? 16 : 28, display: 'flex',
+        alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+        <span onClick={onBack} role="button" tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onBack(); }}
+          style={{ cursor: 'pointer' }}>Inicio</span>
+        <span style={{ color: '#d0d0c8' }}>/</span>
+        <span onClick={onBack} role="button" tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onBack(); }}
+          style={{ cursor: 'pointer' }}>Catálogo</span>
+        <span style={{ color: '#d0d0c8' }}>/</span>
+        <span style={{ color: '#1a1a18' }}>{item.nombre}</span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 48, alignItems: 'start' }}>
+        {imgBox}
+
+        <div>
+          {item.marca && <div style={{ fontSize: 12, fontWeight: 700, color: GRAY, letterSpacing: 1.2, marginBottom: 10 }}>{item.marca.toUpperCase()}</div>}
+          <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 26 : 34, fontWeight: 600, color: '#1a1a18', margin: '0 0 18px', lineHeight: 1.15 }}>
+            {item.nombre}
+          </h1>
+          {item.descripcion && (
+            <p style={{ fontSize: 15, color: '#4a4a46', lineHeight: 1.6, margin: '0 0 28px' }}>{item.descripcion}</p>
+          )}
+
+          {/* Ficha técnica — sólo filas con datos */}
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18', letterSpacing: 1, marginBottom: 4 }}>FICHA TÉCNICA</div>
+          <div style={{ marginBottom: 28 }}>
+            <FichaRow label="Formato" value={showUnidad ? item.unidad : (item.unidad && item.unidad !== 'un' ? item.unidad : null)} />
+            <FichaRow label="Marca" value={item.marca || null} />
+            <FichaRow label="Categoría" value={item.categoria || null} last />
+          </div>
+
+          {/* Acción de compra */}
+          {item.precio > 0 && (
+            <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
+              {fmt.currency(item.precio)}
+              {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
+            </div>
+          )}
+          {item.precio > 0 && <div style={{ marginBottom: 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+
+          {variantOpts ? (
+            <div style={{ maxWidth: 420 }}>
+              <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} />
+            </div>
+          ) : item.precio > 0 ? (
+            qty > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 280 }}>
+                <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
+                  width: 48, height: 48, border: `1.5px solid ${G}`, borderRadius: 10, background: '#fff',
+                  color: G, fontSize: 20, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{'\u2212'}</button>
+                <div style={{ flex: 1, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 18, fontWeight: 700, color: '#1a1a18', border: '1px solid #e0e0d8', borderRadius: 10, background: '#fafaf7' }}>{qty}</div>
+                <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
+                  width: 48, height: 48, background: G, border: 'none', borderRadius: 10, color: '#fff',
+                  fontSize: 20, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
+              </div>
+            ) : (
+              <button onClick={() => onAdd(item)} style={{
+                width: '100%', maxWidth: 420, padding: '15px 0', background: G, color: '#fff', border: 'none',
+                borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: SANS }}>
+                {item.min_order_qty > 1 ? `Agregar (mín. ${item.min_order_qty})` : 'Agregar al carrito'}
+              </button>
+            )
+          ) : (
+            <div style={{ maxWidth: 420 }}>
+              {waLink ? (
+                <a href={waLink} target="_blank" rel="noreferrer" style={{
+                  display: 'block', textAlign: 'center', width: '100%', padding: '15px 0', background: '#1f2d24',
+                  color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700,
+                  fontFamily: SANS, textDecoration: 'none', boxSizing: 'border-box' }}>
+                  Consultar disponibilidad
+                </a>
+              ) : (
+                <div style={{ textAlign: 'center', width: '100%', padding: '15px 0', background: '#f0f0ec',
+                  color: GRAY, borderRadius: 12, fontSize: 15, fontWeight: 700 }}>Consultar disponibilidad</div>
+              )}
+              <div style={{ textAlign: 'center', fontSize: 12, color: GRAY, marginTop: 10 }}>Te respondemos por WhatsApp</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -1042,6 +1179,7 @@ export default function PedidosPage() {
   const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
   const [session,  setSession]  = useState(() => loadSession());
   const [vista,    setVista]    = useState('catalogo');
+  const [detalle,  setDetalle]  = useState(null); // producto abierto en la PDP (null = grilla)
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
   const [recommended, setRecommended] = useState([]);
   const [buyAgain, setBuyAgain] = useState([]);
@@ -1235,9 +1373,9 @@ export default function PedidosPage() {
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
           borderBottom: '0.5px solid #f0f0ec', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <div onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); }}
+          <div onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); setDetalle(null); }}
             role="button" tabIndex={0} aria-label="Volver al catálogo"
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setVista('catalogo'); setCatFil('Todos'); setBusq(''); } }}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setVista('catalogo'); setCatFil('Todos'); setBusq(''); setDetalle(null); } }}
             style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, cursor: 'pointer' }}>
             {brandCfg?.logoUrl ? (
               <img src={brandCfg.logoUrl} alt={brandNombre || 'Logo'}
@@ -1258,7 +1396,7 @@ export default function PedidosPage() {
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isMobile ? '4px 0' : '0 16px', ...(isMobile ? { order: 10, flex: '1 1 100%' } : {}) }}>
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: GRAY }}>{Icon.search}</div>
-                <input value={busq} onChange={e => setBusq(e.target.value)}
+                <input value={busq} onChange={e => { setBusq(e.target.value); if (detalle) setDetalle(null); }}
                   placeholder="Buscar producto o marca..." aria-label="Buscar producto o marca"
                   style={{ width: '100%', padding: '9px 16px 9px 36px',
                     border: '1.5px solid #e0e0d8', borderRadius: 28, fontSize: 16,
@@ -1302,7 +1440,7 @@ export default function PedidosPage() {
                 {effectiveSession?.nombre}
               </div>
               <div style={{ borderTop: '0.5px solid #f0f0ec', margin: '4px 0' }} />
-              <button onClick={() => { setUdOpen(false); setVista('historial'); }} style={{
+              <button onClick={() => { setUdOpen(false); setVista('historial'); setDetalle(null); }} style={{
                 display: 'flex', alignItems: 'center', gap: 9, width: '100%',
                 padding: '9px 16px', border: 'none', background: 'transparent',
                 fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
@@ -1339,7 +1477,7 @@ export default function PedidosPage() {
           display: 'flex', alignItems: 'center',
           height: 44, position: 'relative', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
           {vista === 'catalogo' && (isMobile ? cats : cats.slice(0, NAV_MAX)).map(cat => (
-            <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
+            <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
               padding: '0 16px', height: 44, border: 'none', background: 'transparent',
               fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS,
               fontWeight: catFil === cat ? 500 : 400,
@@ -1374,7 +1512,7 @@ export default function PedidosPage() {
                   border: '0.5px solid #e0e0d8', borderRadius: 10, padding: '6px 0',
                   minWidth: 200, boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: Z.dropdown }}>
                   {cats.slice(NAV_MAX).map(cat => (
-                    <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); }} style={{
+                    <button key={cat} onClick={() => { setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
                       display: 'block', width: '100%', padding: '8px 16px', border: 'none',
                       background: catFil === cat ? '#f0fdf4' : 'transparent',
                       fontSize: 13, color: catFil === cat ? G : '#3a3a32',
@@ -1397,7 +1535,11 @@ export default function PedidosPage() {
           {Icon.clock} <span>Horario de recepción: <strong>{horarioInfo.desde||'?'} – {horarioInfo.hasta||'?'}</strong></span>
         </div>
       )}
-      {vista === 'catalogo' && (
+      {vista === 'catalogo' && detalle && (
+        <ProductDetail item={detalle} carrito={carrito} onAdd={addItem} onRemove={removeItem}
+          brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)} />
+      )}
+      {vista === 'catalogo' && !detalle && (
         <main style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
           <h1 style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
             Catálogo de productos{brandNombre ? ` — ${brandNombre}` : ''}
@@ -1448,7 +1590,7 @@ export default function PedidosPage() {
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
                 {filtered.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
-                    qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} />
+                    qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} onOpen={setDetalle} />
                 ))}
               </div>
             </>
