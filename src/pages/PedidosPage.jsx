@@ -383,6 +383,7 @@ function primerTier(item) {
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) {
   const [imgErr, setImgErr] = useState(false);
+  const [hov, setHov] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
   const open = onOpen ? () => onOpen(item) : undefined;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -392,16 +393,21 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
+    <div style={{ background: '#fff', borderRadius: 14,
+      border: `1px solid ${hov ? '#c8c8c0' : '#efefeb'}`,
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
-      transition: 'border-color .15s' }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = '#c8c8c0'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = '#efefeb'}>
+      transform: hov && open ? 'translateY(-3px)' : 'none',
+      boxShadow: hov && open ? '0 8px 24px rgba(0,0,0,.10)' : 'none',
+      transition: 'transform .18s, box-shadow .18s, border-color .15s' }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}>
       <div onClick={open} style={{ height: imgH, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: open ? 'pointer' : 'default' }}>
+        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+        cursor: open ? 'pointer' : 'default' }}>
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
-              style={{ maxHeight: imgH - 1, maxWidth: '100%', objectFit: 'contain' }} />
+              style={{ maxHeight: imgH - 1, maxWidth: '100%', objectFit: 'contain',
+                transform: hov && open ? 'scale(1.06)' : 'none', transition: 'transform .25s' }} />
           : <div style={{ textAlign: 'center' }}>
               <div style={{ width: 40, height: 40, borderRadius: 8, background: G + '18',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -413,14 +419,17 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
         }
       </div>
       <div style={{ padding: '10px 12px 12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ fontSize: 11, color: GRAY, letterSpacing: .3 }}>{item.categoria}</div>
-        <div onClick={open} style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3,
-          cursor: open ? 'pointer' : 'default' }}>
+        <div onClick={open} style={{ fontSize: 11, color: GRAY, letterSpacing: .3,
+          cursor: open ? 'pointer' : 'default' }}>{item.categoria}</div>
+        <div onClick={open} style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.3,
+          color: hov && open ? G : '#1a1a18',
+          textDecoration: hov && open ? 'underline' : 'none', textUnderlineOffset: 2,
+          transition: 'color .15s', cursor: open ? 'pointer' : 'default' }}>
           {item.nombre}
         </div>
         {/* La descripción vive en la ficha de detalle (PDP). En la card sólo
             nombre + precio + acción — truncarla acá quedaba cortada a media palabra. */}
-        <div style={{ flex: 1 }} />
+        <div onClick={open} style={{ flex: 1, cursor: open ? 'pointer' : 'default' }} />
         <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
           {item.precio > 0 ? fmt.currency(item.precio) : (
             <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
