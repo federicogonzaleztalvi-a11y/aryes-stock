@@ -418,14 +418,9 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
           cursor: open ? 'pointer' : 'default' }}>
           {item.nombre}
         </div>
-        {item.descripcion && (
-          <div style={{ fontSize: 11, color: GRAY, lineHeight: 1.35, marginTop: 1,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-            overflow: 'hidden', flex: 1 }}>
-            {item.descripcion}
-          </div>
-        )}
-        {!item.descripcion && <div style={{ flex: 1 }} />}
+        {/* La descripción vive en la ficha de detalle (PDP). En la card sólo
+            nombre + precio + acción — truncarla acá quedaba cortada a media palabra. */}
+        <div style={{ flex: 1 }} />
         <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
           {item.precio > 0 ? fmt.currency(item.precio) : (
             <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
