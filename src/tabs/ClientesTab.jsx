@@ -204,11 +204,12 @@ function DescuentosPanel({ clientId, orgId }) {
   const [busqueda, setBusqueda] = React.useState('');
 
   const URL = import.meta.env.VITE_SUPABASE_URL;
-  // Use the logged-in user's JWT so RLS allows access to products/clients
-  const HDR = getAuthHeaders();
+  // Use the logged-in user's JWT so RLS allows access to products/clients.
+  // En demo mode no hay sesión → HDR queda null y no se consulta Supabase.
+  const HDR = getSession()?.access_token ? getAuthHeaders() : null;
 
   const cargar = React.useCallback(async () => {
-    if (!clientId || !orgId) return;
+    if (!clientId || !orgId || !HDR) { setLoading(false); return; }
     setLoading(true);
     try {
       const [r1, r2] = await Promise.all([

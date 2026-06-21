@@ -6,7 +6,7 @@ import { LS, db } from '../lib/constants.js';
 import ModalFactura from './facturacion/ModalFactura.jsx';
 import FacturaPDF from '../components/FacturaPDF.jsx';
 import ModalCobro from './facturacion/ModalCobro.jsx';
-import { getOrgId, getAuthHeaders } from '../lib/constants.js';
+import { getOrgId, getAuthHeaders, getSession } from '../lib/constants.js';
 import { G, F, CFE_TIPOS, CFE_STATUS, COND_PAGO, newId, fmtMoney, fmtDateShort, daysUntil, agingBucket } from './facturacion/constants.js';
 const fmt = { currency: fmtMoney };
 import { Pill, TabBtn, KpiCard, Lbl, Sel } from './facturacion/components.jsx';
@@ -28,6 +28,7 @@ function FacturacionTab({ products=[] }) {
   const [seq, setSeq] = useState(1);
   // Cargar seq desde Supabase al arrancar
   useEffect(()=>{
+    if (!getSession()?.access_token) return; // demo mode — sin sesión, no se consulta Supabase
     const SB=import.meta.env.VITE_SUPABASE_URL;
     fetch(`${SB}/rest/v1/app_config?key=eq.cfe_seq_${getOrgId()}&org_id=eq.${getOrgId()}&select=value&limit=1`,
       {headers:getAuthHeaders()})

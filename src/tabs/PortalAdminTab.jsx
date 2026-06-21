@@ -147,6 +147,7 @@ export default function PortalAdminTab() {
   const showMsg = (text) => { setMsg(text); setTimeout(() => setMsg(''), 3000); };
 
   const cargar = async () => {
+    if (isDemoMode) { setLoading(false); return; } // demo mode — sin sesión, no se consulta Supabase
     setLoading(true);
     try {
       const r = await fetch(

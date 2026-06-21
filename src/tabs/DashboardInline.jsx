@@ -105,6 +105,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   // Cargar pedidos a proveedores con ETA
   const [purchaseOrders, setPurchaseOrders] = React.useState([]);
   React.useEffect(() => {
+    if (!getSession()?.access_token) return; // demo mode — sin sesión, no se consulta Supabase
     const SB = import.meta.env.VITE_SUPABASE_URL;
     fetch(`${SB}/rest/v1/purchase_invoices?org_id=eq.${getOrgId()}&status=eq.pendiente&select=id,supplier_id,expected_arrival,total,created_at&order=expected_arrival.asc&limit=50`,
       {headers:getAuthHeaders()})
