@@ -384,6 +384,7 @@ function primerTier(item) {
 function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) {
   const [imgErr, setImgErr] = useState(false);
   const [hov, setHov] = useState(false);
+  const [pressed, setPressed] = useState(false); // feedback táctil (equiv. a hover en touch)
   const hasImg = item.imagen_url && !imgErr;
   const open = onOpen ? () => onOpen(item) : undefined;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -396,11 +397,17 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
     <div style={{ background: '#fff', borderRadius: 14,
       border: `1px solid ${hov ? '#c8c8c0' : '#efefeb'}`,
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
-      transform: hov && open ? 'translateY(-3px)' : 'none',
-      boxShadow: hov && open ? '0 8px 24px rgba(0,0,0,.10)' : 'none',
-      transition: 'transform .18s, box-shadow .18s, border-color .15s' }}
+      // Señales de "tocable" en mobile (no hay hover): (1) sombra de reposo →
+      // la card se lee como superficie elevada; (2) press → se hunde al tocar.
+      transform: open && pressed ? 'scale(.97)' : (hov && open ? 'translateY(-3px)' : 'none'),
+      boxShadow: hov && open ? '0 8px 24px rgba(0,0,0,.10)' : '0 1px 3px rgba(0,0,0,.07)',
+      transition: 'transform .14s, box-shadow .18s, border-color .15s' }}
       onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}>
+      onMouseLeave={() => setHov(false)}
+      onPointerDown={() => open && setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerCancel={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}>
       <div onClick={open} style={{ height: imgH, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
         cursor: open ? 'pointer' : 'default' }}>
@@ -575,6 +582,12 @@ function ProductDetail({ item, carrito, onAdd, onRemove, brandCfg, isMobile, onB
 
   return (
     <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '16px 18px 60px' : '24px 24px 80px' }}>
+      {/* Botón de volver — affordance clara para regresar al catálogo (patrón mobile Amazon/Shopify) */}
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+        background: 'none', border: 'none', color: G, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+        padding: '6px 10px 6px 0', marginBottom: isMobile ? 10 : 14, fontFamily: SANS }}>
+        <span style={{ fontSize: 20, lineHeight: 1, marginTop: -2 }}>{'\u2039'}</span> Volver al catálogo
+      </button>
       {/* Breadcrumb */}
       <div style={{ fontSize: 13, color: GRAY, marginBottom: isMobile ? 16 : 28, display: 'flex',
         alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
@@ -801,7 +814,7 @@ function HistorialPedidos({ session, onReordenar }) {
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
@@ -839,6 +852,36 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
   const subtotalNeto = lineasConCalc.reduce((s, l) => s + l.netoLinea, 0);
   const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
   const total = subtotalNeto + ivaTotal;
+
+  // Cross-sell: productos que suelen pedirse JUNTO con lo que ya hay en el carrito.
+  // Se arma desde la co-ocurrencia real de pedidos (coBuy). Si no alcanza para
+  // llenar la tira, completa con los populares entre clientes similares
+  // (recommended). Se excluyen los que ya están en el carrito y los que no se
+  // pueden agregar de un toque (sin precio o con variantes).
+  const sugeridos = useMemo(() => {
+    if (lineas.length === 0) return [];
+    const cartIds = new Set(lineas.map(l => l.item.id));
+    const score = {};
+    lineas.forEach(l => {
+      (coBuy?.[l.item.id] || []).forEach((cid, idx) => {
+        if (cartIds.has(cid)) return;
+        score[cid] = (score[cid] || 0) + (6 - idx);
+      });
+    });
+    const pickable = p => p && p.precio > 0 && !(p.variants?.options?.length);
+    const out = Object.entries(score)
+      .sort((a, b) => b[1] - a[1])
+      .map(e => items.find(p => p.id === e[0]))
+      .filter(pickable);
+    if (out.length < 4 && Array.isArray(recommended)) {
+      recommended.forEach(r => {
+        if (out.length >= 4 || cartIds.has(r.id) || out.find(s => s.id === r.id)) return;
+        const full = items.find(p => p.id === r.id);
+        if (pickable(full)) out.push(full);
+      });
+    }
+    return out.slice(0, 4);
+  }, [lineas, coBuy, recommended, items]);
 
   // Mínimo de pedido (genérico por-org vía app_config brandcfg). 0 = sin mínimo.
   // Se mide sobre el subtotal neto (mercadería sin IVA), el criterio wholesale habitual.
@@ -1097,6 +1140,34 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               </div>
             </div>
           ))}
+          {sugeridos.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0ede8' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>
+                Quienes pidieron esto también sumaron
+              </div>
+              <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 1, marginBottom: 10 }}>
+                Completá tu pedido con lo que suele ir junto
+              </div>
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+                {sugeridos.map(p => (
+                  <div key={p.id} style={{ flex: '0 0 134px', width: 134, border: '1px solid #ececec',
+                    borderRadius: 12, padding: 10, display: 'flex', flexDirection: 'column', gap: 6, background: '#fff' }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3,
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', minHeight: 31 }}>
+                      {p.nombre}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
+                    <button onClick={() => onAdd && onAdd(p)} aria-label={`Agregar ${p.nombre}`} style={{
+                      marginTop: 'auto', padding: '7px 0', background: G, color: '#fff', border: 'none',
+                      borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
+                      + Agregar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {addresses.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Dirección de entrega</div>
@@ -1187,6 +1258,7 @@ export default function PedidosPage() {
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
   const [recommended, setRecommended] = useState([]);
   const [buyAgain, setBuyAgain] = useState([]);
+  const [coBuy, setCoBuy] = useState({}); // productoId -> [ids que suele pedirse junto]
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [brandNombre, setBrandNombre] = useState('');
@@ -1287,6 +1359,7 @@ export default function PedidosPage() {
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
         if (Array.isArray(d.recommended)) setRecommended(d.recommended);
         if (Array.isArray(d.buyAgain)) setBuyAgain(d.buyAgain);
+        if (d.coBuy && typeof d.coBuy === 'object') setCoBuy(d.coBuy);
       }
     } catch {}
     finally { setLoading(false); }
@@ -1303,6 +1376,12 @@ export default function PedidosPage() {
       return { id: p.id, nombre: p.nombre, precio: p.precio || 100, unit: p.unidad || 'u.', reason: Math.ceil(2 + ((p.nombre||'').length % 3)) + ' clientes lo compran' };
     });
     setRecommended(recItems);
+    // Demo: co-ocurrencia ficticia para que el cross-sell del carrito se vea
+    var co = {};
+    items.slice(0, 16).forEach(function(p, idx) {
+      co[p.id] = items.slice(idx + 1, idx + 5).map(function(q) { return q.id; }).filter(Boolean);
+    });
+    setCoBuy(co);
   }, [isPortalDemo, items]);
 
     useEffect(() => { if (session) loadCatalogo(session); }, [session, loadCatalogo]);
@@ -1677,6 +1756,7 @@ export default function PedidosPage() {
 
       {showCart && (
         <CartDrawer carrito={carrito} items={items} session={session} brandCfg={brandCfg}
+          coBuy={coBuy} recommended={recommended}
           onAdd={addItem} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />

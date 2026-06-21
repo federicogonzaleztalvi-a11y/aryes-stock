@@ -91,7 +91,9 @@ export default async function handler(req, res) {
     // ── Cross-sell recommendations (only when clienteId is provided) ──────────
     let recommended = [];
     let buyAgain = [];
+    let coBuy = {};
     if (clienteId) {
+      let allOrders = [];
       try {
         const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
         const svcHeaders = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
@@ -105,6 +107,7 @@ export default async function handler(req, res) {
         const myFreq = {};  // productoId -> nº de pedidos que lo incluyen
         if (myVentasRes.ok) {
           const myVentas = await myVentasRes.json();
+          allOrders = allOrders.concat(myVentas || []);
           (myVentas || []).forEach(function(v) {
             (v.items || []).forEach(function(it) {
               if (it.productoId) {
@@ -132,6 +135,7 @@ export default async function handler(req, res) {
         );
         if (otherVentasRes.ok) {
           const otherVentas = await otherVentasRes.json();
+          allOrders = allOrders.concat(otherVentas || []);
           // Count how many OTHER clients buy each product
           var prodClients = {};  // productId -> Set of clienteIds
           (otherVentas || []).forEach(function(v) {
@@ -166,6 +170,34 @@ export default async function handler(req, res) {
             }
           });
         }
+
+        // ── Co-ocurrencia: "quien compra X también lleva Y" ──────────────────
+        // Sobre todos los pedidos vistos (propios + del resto de la org), cuenta
+        // qué productos aparecen juntos en el mismo pedido. El portal lo usa en
+        // el carrito para sugerir complementos según lo que el cliente ya cargó.
+        const catalogIds = new Set(items.map(function(p) { return p.id; }));
+        const coMap = {};  // a -> { b: vecesJuntos }
+        allOrders.forEach(function(v) {
+          const ids = Array.from(new Set((v.items || [])
+            .map(function(it) { return it.productoId; })
+            .filter(Boolean)));
+          for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) {
+              const a = ids[i], b = ids[j];
+              (coMap[a] || (coMap[a] = {}))[b] = (coMap[a][b] || 0) + 1;
+              (coMap[b] || (coMap[b] = {}))[a] = (coMap[b][a] || 0) + 1;
+            }
+          }
+        });
+        Object.keys(coMap).forEach(function(a) {
+          if (!catalogIds.has(a)) return;
+          const ranked = Object.entries(coMap[a])
+            .filter(function(e) { return catalogIds.has(e[0]); })
+            .sort(function(x, y) { return y[1] - x[1]; })
+            .slice(0, 6)
+            .map(function(e) { return e[0]; });
+          if (ranked.length) coBuy[a] = ranked;
+        });
       } catch (recErr) {
         console.error('[catalogo] Recommendation error (non-fatal):', recErr.message);
         // Non-fatal — continue without recommendations
@@ -179,6 +211,7 @@ export default async function handler(req, res) {
       clienteId: clienteId || null,
       recommended,
       buyAgain,
+      coBuy,
       hasLista,
       descGlobal,
       horarioDesde,
