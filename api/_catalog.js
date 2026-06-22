@@ -186,7 +186,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       } else if (descGlobal > 0) {
         precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100; // 3. dto global
       } else {
-        precio = 0;                                                // 4. sin precio deliberado → "consultar"
+        precio = base;                                             // 4. sin precio especial → precio general
       }
     }
 
