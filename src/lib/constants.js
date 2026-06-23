@@ -294,7 +294,7 @@ export const fmt = {
   currency: (n, currency = 'UYU') => {
     const num = Number(n || 0);
     const sym = currency === 'UYU' ? '$' : currency === 'USD' ? 'US$' : currency === 'EUR' ? '€' : currency;
-    return `${sym} ${num.toLocaleString('es', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `${sym} ${num.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   },
 
   // Moneda compacta — $1.2k / US$34k
