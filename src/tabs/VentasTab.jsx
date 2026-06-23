@@ -1,6 +1,6 @@
 import { getOrgConfigStatic } from '../hooks/useOrgConfig.js';
 import BackButton from '../components/BackButton.jsx';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { db, SB_URL, SKEY, getAuthHeaders, fmt, getSession, getOrgId } from '../lib/constants.js';
 import ModalCobro from './facturacion/ModalCobro.jsx';
@@ -132,15 +132,29 @@ function VentasTab(){
   const showMsg=(text,type='ok')=>{setMsg({text,type});setTimeout(()=>setMsg({text:'',type:'ok'}),4000);};
 
   // Form state
-  const emptyForm={clienteId:'',clienteNombre:'',fecha:new Date().toISOString().split('T')[0],items:[],notas:'',descuento:0};
+  const emptyForm={clienteId:'',clienteNombre:'',fecha:new Date().toISOString().split('T')[0],items:[],notas:'',descuento:0,toEmail:''};
   const [form,setForm]=useState(emptyForm);
   const [itemProd,setItemProd]=useState('');
   const [itemCant,setItemCant]=useState(1);
   const [itemPrecio,setItemPrecio]=useState(0);
+  const [itemDesc,setItemDesc]=useState(0);    // descuento % puntual de la línea actual
   const [itemLote,setItemLote]=useState('');  // selected lote id for current item
   const [saving,setSaving]=useState(false);
   const [showNewClient,setShowNewClient]=useState(false);
   const [newClientNombre,setNewClientNombre]=useState('');
+  const [defaultEmail,setDefaultEmail]=useState('');  // casilla de notificaciones de la org (solo para mostrar)
+
+  // Trae la casilla por defecto a la que se envía el mail del pedido, para mostrarla
+  // en el form y que el admin sepa a dónde va si deja el campo vacío.
+  useEffect(()=>{
+    if(isDemoMode)return;
+    const tok=getSession()?.access_token;
+    if(!tok)return;
+    fetch(`${window.location.origin}/api/notify-venta`,{headers:{Authorization:'Bearer '+tok}})
+      .then(r=>r.ok?r.json():null)
+      .then(d=>{if(d?.defaultEmail)setDefaultEmail(d.defaultEmail);})
+      .catch(()=>{});
+  },[isDemoMode]);
 
   const totalVenta=(items,desc=0)=>{
     const sub=items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.precioUnit),0);
@@ -184,18 +198,25 @@ function VentasTab(){
         }
       }
     }
+    // Descuento puntual de la línea: reduce el precio unitario de este producto.
+    // precioLista guarda el precio antes del descuento (para mostrarlo tachado).
+    const dpct=Math.min(100,Math.max(0,Number(itemDesc)||0));
+    const precioFinal=dpct>0?Math.round(Number(precio)*(1-dpct/100)*100)/100:Number(precio);
+    const cant=Math.max(1, Math.round(Number(itemCant)));
     setForm(f=>({...f,items:[...f.items,{
       productoId:prod.id,
       nombre:prod.nombre||prod.name,
-      cantidad:Math.max(1, Math.round(Number(itemCant))),
-      precioUnit:Number(precio),
+      cantidad:cant,
+      precioLista:Number(precio),
+      descPct:dpct,
+      precioUnit:precioFinal,
       costoUnit:Number(prod.unitCost||0),
       unidad:prod.unit||prod.unidad||'u',
-      subtotal:Number(itemCant)*Number(precio),
+      subtotal:cant*precioFinal,
       loteId:   itemLote || undefined,
       loteNro:  itemLote ? (lotes.find(l=>l.id===itemLote)?.lote||undefined) : undefined,
     }]}));
-    setItemProd('');setItemCant(1);setItemPrecio(0);setItemLote('');
+    setItemProd('');setItemCant(1);setItemPrecio(0);setItemDesc(0);setItemLote('');
   };
 
   const addNewClientInline=()=>{
@@ -355,10 +376,31 @@ function VentasTab(){
         return;
       }
 
+      // Mail del pedido (con la orden en PDF) — best-effort, no bloquea la UI.
+      // Va a la casilla configurada de la org, o a form.toEmail si el admin la cargó.
+      try{
+        const tok=getSession()?.access_token;
+        if(tok){
+          fetch(`${window.location.origin}/api/notify-venta`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},
+            body:JSON.stringify({
+              clienteId:venta.clienteId||'',
+              clienteNombre:venta.clienteNombre||'',
+              items:venta.items,
+              total:venta.total,
+              notas:venta.notas||'',
+              orderId:venta.id,
+              toEmail:(form.toEmail||'').trim(),
+            }),
+          }).catch(()=>{});
+        }
+      }catch{/* best-effort */}
+
       const upd=[venta,...ventas];
       setVentas(upd);
       setForm(emptyForm);setVista('lista');
-      showMsg(`→ Venta ${venta.nroVenta} creada → stock descontado`,'ok');
+      showMsg(`✓ Venta ${venta.nroVenta} creada → stock descontado`,'ok');
     }finally{setSaving(false);}
   };
 
@@ -539,7 +581,7 @@ function VentasTab(){
             {activaLista&&(
               <div style={{marginTop:5,fontSize:11,fontWeight:700,color:activaLista.color||G,
                 background:(activaLista.color||G)+'18',padding:'3px 10px',borderRadius:20,display:'inline-block'}}>
-                {activaLista.nombre} · →{activaLista.descuento}%
+                {activaLista.nombre} · -{activaLista.descuento}%
               </div>
             )}
             {!showNewClient
@@ -548,7 +590,7 @@ function VentasTab(){
                 <input value={newClientNombre} onChange={e=>setNewClientNombre(e.target.value)} placeholder='Nombre del cliente' style={{...inp,flex:1,padding:'6px 8px'}}
                   onKeyDown={e=>e.key==='Enter'&&addNewClientInline()}/>
                 <button onClick={addNewClientInline} style={{padding:'6px 12px',background:G,color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,fontWeight:600}}>OK</button>
-                <button onClick={()=>setShowNewClient(false)} style={{padding:'6px 10px',background:'none',border:'1px solid #e5e7eb',borderRadius:6,cursor:'pointer',fontSize:12}}>→</button>
+                <button onClick={()=>setShowNewClient(false)} style={{padding:'6px 10px',background:'none',border:'1px solid #e5e7eb',borderRadius:6,cursor:'pointer',fontSize:12}}>✕</button>
               </div>
             }
           </div>
@@ -578,7 +620,7 @@ function VentasTab(){
             <div style={{flex:3,minWidth:200}}>
               <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
                 <option value=''>Producto</option>
-                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} → stock: {p.stock} {p.unit||''}</option>)}
+                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} · stock: {p.stock} {p.unit||''}</option>)}
               </select>
             </div>
             {/* Lot selector → only shown when selected product has available lots */}
@@ -598,6 +640,7 @@ function VentasTab(){
               </div>
             )}
             <div style={{width:90}}><input type='number' placeholder='Cant.' value={itemCant} onChange={e=>setItemCant(e.target.value)} style={inp} min='1'/></div>
+            <div style={{width:90}}><input type='number' placeholder='Desc. %' value={itemDesc} onChange={e=>setItemDesc(e.target.value)} style={inp} min='0' max='100'/></div>
             <div style={{width:110}}><input type='number' placeholder='Precio u.' value={itemPrecio} onChange={e=>setItemPrecio(e.target.value)} style={inp} min='0'/></div>
             <button onClick={agregarItem} style={{padding:'8px 18px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Agregar</button>
           </div>
@@ -612,9 +655,9 @@ function VentasTab(){
                   <tr key={i} style={{borderTop:'1px solid #f3f4f6'}}>
                     <td style={{padding:'9px 12px',fontWeight:500}}>{it.nombre}{it.loteNro&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:G,background:G+'18',padding:'1px 7px',borderRadius:20}}>L:{it.loteNro}</span>}</td>
                     <td style={{padding:'9px 12px'}}>{it.cantidad} {it.unidad}</td>
-                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'→'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#059669':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'→'}</td>
+                    <td style={{padding:'9px 12px',color:'#6b7280'}}>{fmt.currencyCompact(it.precioUnit)}{it.descPct>0&&<div style={{fontSize:10,fontWeight:600,marginTop:2}}><span style={{textDecoration:'line-through',color:'#9ca3af'}}>{fmt.currencyCompact(it.precioLista)}</span> <span style={{color:'#92400e'}}>-{it.descPct}%</span></div>}</td><td style={{padding:'9px 12px',color:'#9ca3af',fontSize:12}}>{it.costoUnit>0?fmt.currencyCompact(it.costoUnit):'—'}</td><td style={{padding:'9px 12px',fontWeight:600,fontSize:12,color:it.costoUnit>0&&it.precioUnit>0?(((it.precioUnit-it.costoUnit)/it.precioUnit)>=0.15?'#059669':'#d97706'):'#9ca3af'}}>{it.costoUnit>0&&it.precioUnit>0?fmtPct((it.precioUnit-it.costoUnit)/it.precioUnit*100):'—'}</td>
                     <td style={{padding:'9px 12px',fontWeight:700,color:G}}>${((Number(it.cantidad)||1)*(Number(it.precioUnit)||0)).toLocaleString((getOrgConfigStatic(brandCfg).locale))}</td>
-                    <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>→</button></td>
+                    <td style={{padding:'9px 8px'}}><button onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))} style={{background:'none',border:'none',cursor:'pointer',color:'#dc2626'}}>✕</button></td>
                   </tr>
                 ))}
                 {Number(form.descuento)>0&&(
@@ -637,11 +680,22 @@ function VentasTab(){
           <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Notas</label>
           <textarea value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} rows={2} style={{...inp,resize:'vertical'}}/>
         </div>
+        <div>
+          <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Enviar pedido por mail a</label>
+          <input type='email' value={form.toEmail} onChange={e=>setForm(f=>({...f,toEmail:e.target.value}))} placeholder={defaultEmail?('Por defecto: '+defaultEmail):'Por defecto: casilla de notificaciones de la organización'} style={inp}/>
+          <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>
+            {form.toEmail.trim()
+              ? <>Se enviará a <b style={{color:'#6b7280'}}>{form.toEmail.trim()}</b></>
+              : defaultEmail
+                ? <>Si lo dejás vacío, se enviará a <b style={{color:'#6b7280'}}>{defaultEmail}</b></>
+                : 'Se enviará a la casilla de notificaciones de la organización.'}
+          </div>
+        </div>
       </div>
       <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
         <button onClick={()=>{setVista('lista');setForm(emptyForm);}} style={{padding:'10px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',cursor:'pointer',fontSize:13}}>Cancelar</button>
         <button onClick={guardarVenta} disabled={saving} style={{padding:'10px 28px',background:saving?'#9ca3af':G,color:'#fff',border:'none',borderRadius:8,cursor:saving?'not-allowed':'pointer',fontWeight:700,fontSize:14}}>
-          {saving?'Guardando→¦':'Crear orden de venta'}
+          {saving?'Guardando…':'Crear orden de venta'}
         </button>
       </div>
     </section>
@@ -657,7 +711,7 @@ function VentasTab(){
           <div style={{flex:1}}>
             <h2 style={{fontFamily:'Playfair Display,serif',fontSize:24,color:'#1a1a1a',margin:0}}>
               {v.nroVenta}  ·  {v.clienteNombre}
-              {v.tieneDevolucion&&<span style={{marginLeft:10,fontSize:11,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:20,verticalAlign:'middle'}}>→© Con devolución</span>}
+              {v.tieneDevolucion&&<span style={{marginLeft:10,fontSize:11,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'2px 8px',borderRadius:20,verticalAlign:'middle'}}>↩ Con devolución</span>}
             </h2>
             <p style={{fontSize:12,color:'#888',margin:'2px 0 0'}}>{v.fecha}</p>
           </div>
@@ -837,7 +891,7 @@ function VentasTab(){
                 <tr key={v.id} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa',cursor:'pointer'}} onClick={()=>{setVentaSel(v);setVista('detalle');}}>
                   <td style={{padding:'11px 14px',fontFamily:'monospace',fontWeight:700,color:G,fontSize:12}}>
                     {v.nroVenta}
-                    {v.tieneDevolucion&&<span style={{marginLeft:5,fontSize:9,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'1px 5px',borderRadius:20,verticalAlign:'middle'}}>→© DEV</span>}
+                    {v.tieneDevolucion&&<span style={{marginLeft:5,fontSize:9,fontWeight:700,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',padding:'1px 5px',borderRadius:20,verticalAlign:'middle'}}>↩ DEV</span>}
                   </td>
                   <td style={{padding:'11px 14px',fontWeight:600}}>{v.clienteNombre}</td>
                   <td style={{padding:'11px 14px',color:'#6b7280'}}>{v.fecha}</td>
@@ -899,7 +953,7 @@ function VentasTab(){
           created_at: nuevo.createdAt,
         }, 'id').catch(()=>setHasPendingSync(true));
         setShowFacturar(false); setFacturarVenta(null);
-        showMsg(`CFE ${numero} emitida →`);
+        showMsg(`CFE ${numero} emitida ✓`);
       }}
       onClose={()=>{setShowFacturar(false);setFacturarVenta(null);}}
     />}

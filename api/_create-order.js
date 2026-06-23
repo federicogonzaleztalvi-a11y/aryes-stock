@@ -279,73 +279,97 @@ async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas,
     log.warn('create-order', 'push notification failed (non-fatal)', { error: pushErr.message });
   }
 
-  // ── Mail a la org (solo si tiene casilla configurada) ─────────────────────
+  // ── Mail a la org (best-effort) — reusa sendOrderEmail, la misma lógica que
+  //    usa la pestaña Ventas (api/notify-venta), para que ambos flujos no se
+  //    desincronicen en formato de mail / PDF.
   try {
-    const orgRes = await fetch(
-      SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org) + '&select=order_notify_email,name',
-      { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
-    );
-    if (orgRes.ok) {
-      const orgRows = await orgRes.json();
-      const notifyEmail = orgRows?.[0]?.order_notify_email;
-      if (notifyEmail) {
-        const empresa = orgRows[0].name || 'Pazque';
-        const currencySymbol = '$';
-        const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
-
-        // Genera orden de compra en PDF (uso interno) y adjunta. Si falla, el mail va igual.
-        let attachments;
-        try {
-          const k = SB_SVC || SB_ANON;
-          const hdr = { headers: { apikey: k, Authorization: 'Bearer ' + k, Accept: 'application/json' } };
-          const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(clienteId) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
-          const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
-          const ids = items.map(i => i.id || i.productId).filter(Boolean);
-          let baseMap = {};
-          if (ids.length) {
-            const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
-            if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
-          }
-          const lineas = items.map(i => {
-            const unit = Number(i.precioUnit) || 0;
-            const pid = i.id || i.productId;
-            return {
-              codigo: baseMap[pid]?.codigo || '',
-              nombre: i.nombre || i.productName || '',
-              unidad: i.unidad || i.unit || '',
-              qty: Number(i.cantidad || i.qty) || 0,
-              precioBase: (baseMap[pid]?.precio) || unit,
-              precioUnit: unit,
-              subtotal: Number(i.subtotal) || (unit * (Number(i.cantidad || i.qty) || 0)),
-            };
-          });
-          const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
-          const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
-          const iva = Math.round(Number(total) - subtotal);
-          const pdfBuf = await generarOrdenPDF({
-            nroOrden: 'OC-' + String(orderId).slice(0, 8).toUpperCase(),
-            fecha: new Date().toISOString(),
-            empresa, currencySymbol,
-            cliente: {
-              nombre: cli.name || clienteNombre, codigo: cli.codigo, rut: cli.rut,
-              direccion: cli.address, ciudad: cli.ciudad,
-              horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
-              zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
-            },
-            lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
-            notas: notas || '',
-          });
-          const nombreLimpio = (clienteNombre || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,30);
-          attachments = [{ filename: 'orden-' + nombreLimpio + '-OC-' + String(orderId).slice(0,8).toUpperCase() + '.pdf', content: pdfBuf.toString('base64') }];
-        } catch (pdfErr) {
-          log.warn('create-order', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
-        }
-
-        await sendEmail({ to: notifyEmail, subject: tpl.subject, html: tpl.html, attachments });
-        log.info('create-order', 'order email sent', { org, to: notifyEmail, pdf: !!attachments });
-      }
-    }
+    await sendOrderEmail({ org, clienteId, clienteNombre, items, total, notas, orderId });
   } catch (mailErr) {
     log.warn('create-order', 'order email failed (non-fatal)', { error: mailErr.message });
   }
+}
+
+/**
+ * Envía el mail de "nuevo pedido" (con la orden en PDF adjunta) a la casilla de
+ * notificaciones de la org, o a `toOverride` si se pasa una casilla válida.
+ * Usado por el portal (vía notifyOrder) y por la pestaña Ventas admin (vía
+ * api/notify-venta). Best-effort: el caller envuelve en try/catch.
+ *
+ * @returns {{ ok: boolean, to?: string, reason?: string }}
+ */
+export async function sendOrderEmail({ org, clienteId, clienteNombre, items, total, notas, orderId, toOverride }) {
+  const k = SB_SVC || SB_ANON;
+  const hdr = { headers: { apikey: k, Authorization: 'Bearer ' + k, Accept: 'application/json' } };
+
+  const orgRes = await fetch(
+    SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(org) + '&select=order_notify_email,name',
+    hdr
+  );
+  let notifyEmail = null;
+  let empresa = 'Pazque';
+  if (orgRes.ok) {
+    const orgRows = await orgRes.json();
+    notifyEmail = orgRows?.[0]?.order_notify_email || null;
+    empresa = orgRows?.[0]?.name || 'Pazque';
+  }
+
+  // Destino: el override del admin (si es un mail válido) tiene prioridad; si no,
+  // la casilla configurada de la org. Sin ningún destino → no se manda nada.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const override = String(toOverride || '').trim();
+  const dest = (override && EMAIL_RE.test(override)) ? override : notifyEmail;
+  if (!dest) return { ok: false, reason: 'no_destination' };
+
+  const currencySymbol = '$';
+  const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
+
+  // Genera orden de compra en PDF (uso interno) y adjunta. Si falla, el mail va igual.
+  let attachments;
+  try {
+    const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(clienteId || '') + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
+    const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
+    const ids = (items || []).map(i => i.id || i.productId || i.productoId).filter(Boolean);
+    let baseMap = {};
+    if (ids.length) {
+      const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
+      if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
+    }
+    const lineas = (items || []).map(i => {
+      const unit = Number(i.precioUnit) || 0;
+      const pid = i.id || i.productId || i.productoId;
+      return {
+        codigo: baseMap[pid]?.codigo || '',
+        nombre: i.nombre || i.productName || '',
+        unidad: i.unidad || i.unit || '',
+        qty: Number(i.cantidad || i.qty) || 0,
+        precioBase: (baseMap[pid]?.precio) || unit,
+        precioUnit: unit,
+        subtotal: Number(i.subtotal) || (unit * (Number(i.cantidad || i.qty) || 0)),
+      };
+    });
+    const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
+    const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+    const iva = Math.round(Number(total) - subtotal);
+    const pdfBuf = await generarOrdenPDF({
+      nroOrden: 'OC-' + String(orderId).slice(0, 8).toUpperCase(),
+      fecha: new Date().toISOString(),
+      empresa, currencySymbol,
+      cliente: {
+        nombre: cli.name || clienteNombre, codigo: cli.codigo, rut: cli.rut,
+        direccion: cli.address, ciudad: cli.ciudad,
+        horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
+        zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
+      },
+      lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
+      notas: notas || '',
+    });
+    const nombreLimpio = (clienteNombre || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,30);
+    attachments = [{ filename: 'orden-' + nombreLimpio + '-OC-' + String(orderId).slice(0,8).toUpperCase() + '.pdf', content: pdfBuf.toString('base64') }];
+  } catch (pdfErr) {
+    log.warn('order-email', 'pdf generation failed (non-fatal)', { error: pdfErr.message });
+  }
+
+  await sendEmail({ to: dest, subject: tpl.subject, html: tpl.html, attachments });
+  log.info('order-email', 'sent', { org, to: dest, pdf: !!attachments });
+  return { ok: true, to: dest };
 }
