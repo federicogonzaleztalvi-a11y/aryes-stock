@@ -98,25 +98,44 @@ export default async function handler(req, res) {
         const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
         const svcHeaders = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
 
-        // Get this client's purchased product IDs from ventas
-        const myVentasRes = await fetch(
-          SB_URL + '/rest/v1/ventas?cliente_id=eq.' + clienteId + '&estado=neq.cancelada&select=items&limit=50',
-          { headers: svcHeaders }
-        );
+        // Historial de compras del cliente para "Volver a pedir". Combina dos
+        // fuentes para que aparezca apenas el cliente hace su primer pedido por
+        // el portal, sin esperar a que el admin lo importe a ventas:
+        //   - ventas       (pedidos ya importados/confirmados desde el admin)
+        //   - b2b_orders   (pedidos hechos por el cliente desde el portal)
+        // Los items de ventas usan { productoId }; los de b2b_orders usan
+        // { productId }. Normalizamos a productoId para tratarlos igual.
+        const [myVentasRes, myPortalRes] = await Promise.all([
+          fetch(
+            SB_URL + '/rest/v1/ventas?cliente_id=eq.' + clienteId + '&estado=neq.cancelada&select=items&limit=50',
+            { headers: svcHeaders }
+          ),
+          fetch(
+            SB_URL + '/rest/v1/b2b_orders?cliente_id=eq.' + clienteId + '&estado=neq.cancelada&select=items&limit=50',
+            { headers: svcHeaders }
+          ),
+        ]);
         const myPurchased = new Set();
         const myFreq = {};  // productoId -> nº de pedidos que lo incluyen
-        if (myVentasRes.ok) {
-          const myVentas = await myVentasRes.json();
-          allOrders = allOrders.concat(myVentas || []);
-          (myVentas || []).forEach(function(v) {
-            (v.items || []).forEach(function(it) {
-              if (it.productoId) {
-                myPurchased.add(it.productoId);
-                myFreq[it.productoId] = (myFreq[it.productoId] || 0) + 1;
-              }
-            });
+        const normItems = function(arr) {
+          return (arr || []).map(function(o) {
+            return { items: (o.items || []).map(function(it) {
+              return { productoId: it.productoId || it.productId || '' };
+            }) };
           });
-        }
+        };
+        let myOrders = [];
+        if (myVentasRes.ok) myOrders = myOrders.concat(normItems(await myVentasRes.json()));
+        if (myPortalRes.ok) myOrders = myOrders.concat(normItems(await myPortalRes.json()));
+        allOrders = allOrders.concat(myOrders);
+        myOrders.forEach(function(v) {
+          (v.items || []).forEach(function(it) {
+            if (it.productoId) {
+              myPurchased.add(it.productoId);
+              myFreq[it.productoId] = (myFreq[it.productoId] || 0) + 1;
+            }
+          });
+        });
 
         // "Volver a pedir": productos propios más pedidos, que sigan en el catálogo actual
         buyAgain = Object.entries(myFreq)
