@@ -94,9 +94,10 @@ function LoginScreen({ onLogin, onExplore }) {
       const users = await userR.json();
       const role = users?.[0]?.role || 'operador';
       const name = users?.[0]?.name || email.split('@')[0];
+      const username = users?.[0]?.username || email.split('@')[0];
       const orgId = users?.[0]?.org_id || getOrgId();
       const expiresIn = (data.expires_in || 3600) * 1000;
-      const session = { ...data, email, role, name, orgId, expiresAt: Date.now() + expiresIn };
+      const session = { ...data, email, role, name, username, orgId, expiresAt: Date.now() + expiresIn };
       localStorage.setItem('aryes-session', JSON.stringify(session));
       onLogin(session);
     } catch {

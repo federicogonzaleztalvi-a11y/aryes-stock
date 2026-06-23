@@ -94,6 +94,7 @@ function VentasTab(){
           clientes, setClientes, priceListas, priceListItems, lotes,
           cfes, setCfes, cobros, setCobros, brandCfg , isDemoMode, session} = useApp();
   const isAdmin = session?.role === 'admin';
+  const isVendedor = session?.role === 'vendedor';
   const G="#059669";
   const ESTADOS={pendiente:'#f59e0b',confirmada:'#3b82f6',preparada:'#8b5cf6',entregada:'#059669',cancelada:'#ef4444'};
 
@@ -563,13 +564,27 @@ function VentasTab(){
     }
   };
 
-  const ventasFiltradas=ventas.filter(v=>{
+  // Scope por vendedor: un vendedor ve sólo las ventas que cargó él o las de los
+  // clientes que tiene asignados. Los admin/operadores ven todo. El identificador
+  // del vendedor en clientes.vendedorId puede ser username, name o email, así que
+  // matcheamos contra cualquiera de ellos para no depender de un único campo.
+  const misIds=new Set([session?.email,String(session?.email||'').split('@')[0],session?.name,session?.username]
+    .filter(Boolean).map(s=>String(s).toLowerCase()));
+  const misClienteIds=isVendedor
+    ? new Set(clientes.filter(c=>misIds.has(String(c.vendedorId||'').toLowerCase())).map(c=>c.id))
+    : null;
+  const esMia=v=>!isVendedor
+    || misIds.has(String(v.vendedorId||'').toLowerCase())
+    || (misClienteIds&&misClienteIds.has(v.clienteId));
+  const ventasScope=isVendedor?ventas.filter(esMia):ventas;
+
+  const ventasFiltradas=ventasScope.filter(v=>{
     if(filtroEstado!=='todos'&&v.estado!==filtroEstado)return false;
     if(busqueda&&!v.clienteNombre?.toLowerCase().includes(busqueda.toLowerCase())&&!v.nroVenta?.toLowerCase().includes(busqueda.toLowerCase()))return false;
     return true;
   });
 
-  const totalMes=ventas.filter(v=>{
+  const totalMes=ventasScope.filter(v=>{
     const d=new Date(v.creadoEn);const now=new Date();
     return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()&&v.estado!=='cancelada';
   }).reduce((a,v)=>a+Number(v.total||0),0);
@@ -893,18 +908,22 @@ function VentasTab(){
         }).catch(()=>{});
         showMsg(`Pedido importado como ${nroVenta}`);
       }}/>}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:8}}>
         {[
-          {l:'Total ventas',v:ventas.length,c:'#6b7280'},
-          {l:'Pendientes',v:ventas.filter(v=>v.estado==='pendiente').length,c:'#f59e0b'},
-          {l:'En preparación',v:ventas.filter(v=>v.estado==='preparada'||v.estado==='confirmada').length,c:'#8b5cf6'},
-          {l:'Facturado este mes',v:fmt.currency(totalMes),c:G},
+          {l:isVendedor?'Mis ventas':'Total ventas',v:ventasScope.length,c:'#6b7280'},
+          {l:'Pendientes',v:ventasScope.filter(v=>v.estado==='pendiente').length,c:'#f59e0b'},
+          {l:'En preparación',v:ventasScope.filter(v=>v.estado==='preparada'||v.estado==='confirmada').length,c:'#8b5cf6'},
+          {l:isVendedor?'Mi facturación este mes':'Facturado este mes',v:fmt.currency(totalMes),c:G},
         ].map(s=>(
           <div key={s.l} style={{background:'#fff',borderRadius:10,padding:'14px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
             <div style={{fontSize:11,color:'#888',textTransform:'uppercase',letterSpacing:.5,marginBottom:4}}>{s.l}</div>
             <div style={{fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div>
           </div>
         ))}
+      </div>
+      <div style={{fontSize:11,color:'#9ca3af',marginBottom:20}}>
+        {isVendedor&&'Ves solo las ventas tuyas y de tus clientes asignados. '}
+        El facturado del mes se reinicia automáticamente al comenzar cada mes.
       </div>
       <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
         <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder='Buscar cliente o N° venta...' style={{padding:'7px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',flex:1,minWidth:200}}/>
