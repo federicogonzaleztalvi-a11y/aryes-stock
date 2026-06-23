@@ -147,17 +147,35 @@ export default async function handler(req, res) {
             return { id: p.id, nombre: p.nombre, precio: p.precio, unidad: p.unidad, categoria: p.categoria, iva_rate: p.iva_rate };
           });
 
-        // Get ventas from OTHER clients in the same org (last 100 ventas)
-        const otherVentasRes = await fetch(
-          SB_URL + '/rest/v1/ventas?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=created_at.desc&limit=100',
-          { headers: svcHeaders }
-        );
-        if (otherVentasRes.ok) {
-          const otherVentas = await otherVentasRes.json();
-          allOrders = allOrders.concat(otherVentas || []);
+        // Pedidos de OTROS clientes de la org, para "Recomendado para vos".
+        // Igual que arriba, combinamos ventas + b2b_orders (pedidos del portal)
+        // para que las recomendaciones reflejen la actividad real del portal y no
+        // sólo lo que el admin importó. Normalizamos productId→productoId.
+        const [otherVentasRes, otherPortalRes] = await Promise.all([
+          fetch(
+            SB_URL + '/rest/v1/ventas?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=created_at.desc&limit=100',
+            { headers: svcHeaders }
+          ),
+          fetch(
+            SB_URL + '/rest/v1/b2b_orders?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=creado_en.desc&limit=100',
+            { headers: svcHeaders }
+          ),
+        ]);
+        const normOther = function(arr) {
+          return (arr || []).map(function(o) {
+            return { cliente_id: o.cliente_id, items: (o.items || []).map(function(it) {
+              return { productoId: it.productoId || it.productId || '' };
+            }) };
+          });
+        };
+        let otherOrders = [];
+        if (otherVentasRes.ok) otherOrders = otherOrders.concat(normOther(await otherVentasRes.json()));
+        if (otherPortalRes.ok) otherOrders = otherOrders.concat(normOther(await otherPortalRes.json()));
+        if (otherOrders.length) {
+          allOrders = allOrders.concat(otherOrders);
           // Count how many OTHER clients buy each product
           var prodClients = {};  // productId -> Set of clienteIds
-          (otherVentas || []).forEach(function(v) {
+          otherOrders.forEach(function(v) {
             (v.items || []).forEach(function(it) {
               if (it.productoId && !myPurchased.has(it.productoId)) {
                 if (!prodClients[it.productoId]) prodClients[it.productoId] = new Set();
