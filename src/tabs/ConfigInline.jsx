@@ -7,6 +7,67 @@ import { db, getOrgId, getAuthHeaders } from '../lib/constants.js';
 import { T, Cap, Inp, Field } from '../lib/ui.jsx';
 import ImageUpload from '../components/ImageUpload.jsx';
 
+// ── Casilla de notificación de pedidos ───────────────────────────────────
+// Edita organizations.order_notify_email: la casilla a la que llegan los mails
+// de pedidos (del portal B2B y de la pestaña Ventas). PATCH directo vía RLS,
+// igual que el resto de los ajustes de la org en este archivo.
+function OrderNotifyEmailField({ orgId }) {
+  const SB = import.meta.env.VITE_SUPABASE_URL;
+  const [email, setEmail] = React.useState('');
+  const [loaded, setLoaded] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch(`${SB}/rest/v1/organizations?id=eq.${encodeURIComponent(orgId)}&select=order_notify_email&limit=1`,
+          { headers: getAuthHeaders() });
+        const d = r.ok ? await r.json() : [];
+        if (alive) setEmail(d?.[0]?.order_notify_email || '');
+      } catch { /* deja vacío */ }
+      if (alive) setLoaded(true);
+    })();
+    return () => { alive = false; };
+  }, [orgId, SB]);
+
+  const guardar = async () => {
+    const val = email.trim();
+    if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { alert('Ingresá un email válido'); return; }
+    setSaving(true); setSaved(false);
+    try {
+      await fetch(`${SB}/rest/v1/organizations?id=eq.${encodeURIComponent(orgId)}`, {
+        method: 'PATCH',
+        headers: getAuthHeaders({ Prefer: 'return=minimal' }),
+        body: JSON.stringify({ order_notify_email: val || null }),
+      });
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } catch { alert('No se pudo guardar. Probá de nuevo.'); }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
+      <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Email de notificación de pedidos</div>
+      <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2,marginBottom:10}}>A esta casilla llegan los pedidos (con la orden en PDF), tanto del portal B2B como de la pestaña Ventas.</div>
+      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <input
+          type="email"
+          value={email}
+          disabled={!loaded}
+          onChange={e=>setEmail(e.target.value)}
+          placeholder={loaded?'pedidos@tuempresa.com':'Cargando…'}
+          style={{flex:1,padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,background:'#fafaf7',color:'#1a1a18'}}/>
+        <button onClick={guardar} disabled={saving||!loaded}
+          style={{padding:'8px 18px',background:'#059669',color:'#fff',border:'none',borderRadius:6,fontSize:13,fontWeight:600,cursor:saving?'not-allowed':'pointer',whiteSpace:'nowrap',opacity:saving?.6:1}}>
+          {saving?'Guardando…':saved?'Guardado ✓':'Guardar'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
 // ── Gestión de zonas del depósito ────────────────────────────────────────
 function ZonasDeposito({ orgId }) {
@@ -599,6 +660,9 @@ export default function ConfigInline({
                       style={{width:120,padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,textAlign:'right',background:'#fafaf7',color:'#1a1a18'}}/>
                   </div>
                 </div>
+
+                {/* Email de notificación de pedidos */}
+                <OrderNotifyEmailField orgId={brandCfg?.orgId||getOrgId()} />
 
                 {/* URL del portal */}
                 <div style={{background:'#f7f6f3',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>

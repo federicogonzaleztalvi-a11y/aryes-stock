@@ -51,6 +51,44 @@ async function callRpc(fnName, params = {}) {
   throw new Error(err?.message || err?.hint || `RPC ${fnName} failed (${r.status})`);
 }
 
+// ── SearchSelect — combo buscable (escribir para filtrar) ────────────────────
+// Reemplaza a <select> largos: el usuario escribe y filtra en vez de scrollear.
+// options: [{ value, label, sub? }]. Ignora tildes/mayúsculas al buscar.
+function SearchSelect({ options, value, onChange, placeholder, inputStyle }){
+  const [open,setOpen]=useState(false);
+  const [q,setQ]=useState('');
+  const sel=options.find(o=>o.value===value);
+  const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const nq=norm(q);
+  const filtered=nq?options.filter(o=>norm(o.label).includes(nq)||norm(o.sub).includes(nq)):options;
+  return (
+    <div style={{position:'relative'}}>
+      <input
+        value={open?q:(sel?sel.label:'')}
+        onChange={e=>{setQ(e.target.value);if(!open)setOpen(true);}}
+        onFocus={()=>{setOpen(true);setQ('');}}
+        onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        placeholder={sel?sel.label:(placeholder||'Buscar…')}
+        style={inputStyle}
+      />
+      {open&&(
+        <div style={{position:'absolute',zIndex:30,top:'calc(100% + 2px)',left:0,right:0,background:'#fff',border:'1px solid #e5e7eb',borderRadius:8,boxShadow:'0 4px 16px rgba(0,0,0,.12)',maxHeight:240,overflowY:'auto'}}>
+          {filtered.length===0
+            ? <div style={{padding:'10px 12px',fontSize:13,color:'#9ca3af'}}>Sin resultados</div>
+            : filtered.slice(0,100).map(o=>(
+                <div key={o.value}
+                  onMouseDown={()=>{onChange(o.value);setOpen(false);setQ('');}}
+                  style={{padding:'8px 12px',fontSize:13,cursor:'pointer',background:o.value===value?'#f0fdf4':'#fff',borderBottom:'1px solid #f3f4f6'}}>
+                  <div style={{fontWeight:500,color:'#111827'}}>{o.label}</div>
+                  {o.sub&&<div style={{fontSize:11,color:'#9ca3af'}}>{o.sub}</div>}
+                </div>
+              ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function VentasTab(){
   const { products, setProducts, addMov, setHasPendingSync, ventas, setVentas,
           clientes, setClientes, priceListas, priceListItems, lotes,
@@ -537,6 +575,7 @@ function VentasTab(){
   }).reduce((a,v)=>a+Number(v.total||0),0);
 
   const inp={padding:'8px 10px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,fontFamily:'inherit',width:'100%',boxSizing:'border-box',background:'#fff'};
+  const miniLbl={fontSize:10,fontWeight:600,color:'#9ca3af',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:3};
 
   // Pre-compute active price list for the selected client (avoids IIFE in JSX)
   const activaLista = (() => {
@@ -573,10 +612,13 @@ function VentasTab(){
           {/* CLIENTE → siempre desde lista */}
           <div>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>Cliente</label>
-            <select value={form.clienteId} onChange={e=>{const cl=clientes.find(c=>c.id===e.target.value);setForm(f=>({...f,clienteId:e.target.value,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}} style={inp}>
-              <option value=''>Seleccionar cliente</option>
-              {clientes.sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=><option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
+            <SearchSelect
+              options={clientes.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(c=>({value:c.id,label:c.nombre}))}
+              value={form.clienteId}
+              onChange={v=>{const cl=clientes.find(c=>c.id===v);setForm(f=>({...f,clienteId:v,clienteNombre:cl?.nombre||''}));setShowNewClient(false);}}
+              placeholder='Buscar cliente…'
+              inputStyle={inp}
+            />
             {/* Active price list badge → computed outside JSX */}
             {activaLista&&(
               <div style={{marginTop:5,fontSize:11,fontWeight:700,color:activaLista.color||G,
@@ -618,14 +660,19 @@ function VentasTab(){
           <div style={{fontSize:12,fontWeight:600,color:'#666',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Agregar producto</div>
           <div style={{display:'flex',gap:10,alignItems:'flex-end',flexWrap:'wrap'}}>
             <div style={{flex:3,minWidth:200}}>
-              <select value={itemProd} onChange={e=>{const pid=e.target.value;setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}} style={inp}>
-                <option value=''>Producto</option>
-                {products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=><option key={p.id} value={p.id}>{p.nombre||p.name} · stock: {p.stock} {p.unit||''}</option>)}
-              </select>
+              <label style={miniLbl}>Producto</label>
+              <SearchSelect
+                options={products.filter(p=>(p.stock||0)>0).sort((a,b)=>(a.nombre||a.name||'').localeCompare(b.nombre||b.name||'')).map(p=>({value:p.id,label:(p.nombre||p.name),sub:`stock: ${p.stock} ${p.unit||''}`}))}
+                value={itemProd}
+                onChange={pid=>{setItemProd(pid);const p=products.find(x=>x.id===pid);if(p)setItemPrecio(p.precioVenta||p.precio||p.price||0);}}
+                placeholder='Buscar producto…'
+                inputStyle={inp}
+              />
             </div>
             {/* Lot selector → only shown when selected product has available lots */}
             {itemProd && lotes.filter(l => l.productoId === itemProd && Number(l.cantidad) > 0).length > 0 && (
               <div style={{flex:2,minWidth:140}}>
+                <label style={miniLbl}>Lote</label>
                 <select value={itemLote} onChange={e=>setItemLote(e.target.value)}
                   style={{width:'100%',padding:'8px 10px',border:`1px solid ${itemLote?G:'#e5e7eb'}`,borderRadius:6,fontSize:12,fontFamily:'inherit',background:itemLote?G+'0d':'#fff',color:itemLote?G:'inherit'}}>
                   <option value=''>Lote (opcional)</option>
@@ -639,9 +686,9 @@ function VentasTab(){
                 </select>
               </div>
             )}
-            <div style={{width:90}}><input type='number' placeholder='Cant.' value={itemCant} onChange={e=>setItemCant(e.target.value)} style={inp} min='1'/></div>
-            <div style={{width:90}}><input type='number' placeholder='Desc. %' value={itemDesc} onChange={e=>setItemDesc(e.target.value)} style={inp} min='0' max='100'/></div>
-            <div style={{width:110}}><input type='number' placeholder='Precio u.' value={itemPrecio} onChange={e=>setItemPrecio(e.target.value)} style={inp} min='0'/></div>
+            <div style={{width:90}}><label style={miniLbl}>Cantidad</label><input type='number' placeholder='Cant.' value={itemCant} onChange={e=>setItemCant(e.target.value)} style={inp} min='1'/></div>
+            <div style={{width:90}}><label style={miniLbl}>Descuento %</label><input type='number' placeholder='0' value={itemDesc} onChange={e=>setItemDesc(e.target.value)} style={inp} min='0' max='100'/></div>
+            <div style={{width:110}}><label style={miniLbl}>Precio unit.</label><input type='number' placeholder='Precio u.' value={itemPrecio} onChange={e=>setItemPrecio(e.target.value)} style={inp} min='0'/></div>
             <button onClick={agregarItem} style={{padding:'8px 18px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Agregar</button>
           </div>
         </div>
