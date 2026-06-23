@@ -1,6 +1,5 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import RecommendedProducts from '../components/RecommendedProducts.jsx';
 import { fmt } from '../lib/constants.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
@@ -1676,10 +1675,7 @@ export default function PedidosPage() {
             </div>
           ) : (
             <>
-                        {recommended.length > 0 && (
-            <RecommendedProducts recommended={recommended} onAdd={addItem} onRemove={removeItem} carrito={carrito} brandCfg={brandCfg} />
-          )}
-<div style={{ fontSize: 12, color: GRAY, marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: GRAY, marginBottom: 14 }}>
                 {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
