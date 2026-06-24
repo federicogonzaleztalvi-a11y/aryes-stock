@@ -393,16 +393,19 @@ function LoginStep({ onLogin }) {
 }
 
 // "Powered by Pazque" — atribución sutil al pie (estilo Shopify/Stripe). Discreto,
-// gris, con link a pazque.com. Sirve de marketing pasivo: cada cliente que ve el
-// portal de Eric descubre la plataforma. Genérico, no depende del org.
+// pero "Pazque" va en verde de marca (señal de link clickeable) + subrayado al hover,
+// para que se entienda que lleva a pazque.com. Marketing pasivo: cada cliente que ve
+// el portal de Eric descubre la plataforma. Genérico, no depende del org.
 function PoweredByPazque({ style }) {
   return (
     <div style={{ textAlign: 'center', padding: '20px 0 24px', ...style }}>
       <a href="https://pazque.com" target="_blank" rel="noopener noreferrer"
+        onMouseEnter={e => { const s = e.currentTarget.querySelector('span'); if (s) s.style.textDecoration = 'underline'; }}
+        onMouseLeave={e => { const s = e.currentTarget.querySelector('span'); if (s) s.style.textDecoration = 'none'; }}
         style={{ fontSize: 11, color: '#a0a098', textDecoration: 'none',
           fontFamily: SANS, letterSpacing: '0.2px',
           display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-        Powered by <span style={{ fontWeight: 600, color: '#6b6b66' }}>Pazque</span>
+        Powered by <span style={{ fontWeight: 700, color: G, textUnderlineOffset: 2 }}>Pazque</span>
       </a>
     </div>
   );
