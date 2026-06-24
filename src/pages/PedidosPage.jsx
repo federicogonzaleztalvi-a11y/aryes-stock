@@ -54,7 +54,14 @@ function getOrgFromContext() {
   return host; // retorna el host como placeholder, se reemplaza async
 }
 
-const ORG = getOrgFromContext();
+// `let` (no const): para un dominio custom (ej. pedidos.aryes.com.uy) ORG arranca
+// como el hostname (placeholder) y se reemplaza con el org real apenas resuelve
+// domain_orgs. Todas las funciones de abajo leen la binding viva, así que al
+// reasignar ORG ya queda corregido antes de pegarle al catálogo.
+let ORG = getOrgFromContext();
+// ¿ORG vino del hostname (dominio custom) en vez de ?org= o un host conocido?
+// En ese caso todavía no es el org real: hay que resolverlo contra domain_orgs.
+const ORG_NEEDS_RESOLUTION = ORG === window.location.hostname && ORG.includes('.');
 const SK   = 'aryes-pedidos-session';
 
 function loadSession() {
@@ -1614,6 +1621,9 @@ export default function PedidosPage() {
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
   const [udOpen,   setUdOpen]   = useState(false);
+  // Resolución del org para dominios custom (pedidos.aryes.com.uy → org de Eric).
+  // Si no hay que resolver (host conocido o ?org=), arranca listo de una.
+  const [orgReady, setOrgReady] = useState(!ORG_NEEDS_RESOLUTION);
   const [reorderMsg, setReorderMsg] = useState(''); // toast al reordenar (items no disponibles)
   const NAV_MAX = 10;
 
@@ -1657,6 +1667,21 @@ export default function PedidosPage() {
     if (params.get('demo') === 'true' && !portalDemo) setPortalDemo('selecting');
   }, []);
 
+  // Dominio custom: resolver el org real contra domain_orgs antes de cargar nada.
+  // Así pedidos.aryes.com.uy abre el catálogo de Eric sin ?org= en la URL, y
+  // sumar un cliente nuevo es solo agregar una fila en domain_orgs (genérico).
+  useEffect(() => {
+    if (orgReady) return;
+    let cancelled = false;
+    (async () => {
+      const resolved = await resolveOrgFromDomain(window.location.hostname);
+      if (cancelled) return;
+      if (resolved) ORG = resolved;
+      setOrgReady(true);
+    })();
+    return () => { cancelled = true; };
+  }, [orgReady]);
+
   // Load demo products when dataset selected
   useEffect(() => {
     if (!isPortalDemo) return;
@@ -1696,7 +1721,17 @@ export default function PedidosPage() {
       // Antes se leía d.brandCfg (inexistente) con campo .nombre (es .name) → marca nunca cargaba.
       if (d.portalCfg) {
         setBrandCfg(d.portalCfg);
-        if (d.portalCfg.name) setBrandNombre(d.portalCfg.name);
+        if (d.portalCfg.name) {
+          setBrandNombre(d.portalCfg.name);
+          // iOS lee el título de "Agregar a inicio" del meta apple-mobile-web-app-title
+          // (estático en el HTML). Lo actualizamos a la marca del org para que el
+          // ícono en el homescreen diga, ej., "Aryes" y no "Pazque".
+          try {
+            document.title = d.portalCfg.name;
+            const m = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+            if (m) m.setAttribute('content', d.portalCfg.name);
+          } catch { /* no-op */ }
+        }
       }
 
       // Portal deshabilitado a nivel org (catálogo apagado) o para este cliente (portal_activo=false).
@@ -1746,7 +1781,7 @@ export default function PedidosPage() {
     setCoBuy(co);
   }, [isPortalDemo, items]);
 
-    useEffect(() => { if (session) loadCatalogo(session); }, [session, loadCatalogo]);
+    useEffect(() => { if (orgReady && session) loadCatalogo(session); }, [orgReady, session, loadCatalogo]);
 
   const filtered = useMemo(() => items.filter(i => {
     const mCat = catFil === 'Todos' || i.categoria === catFil;
@@ -1787,6 +1822,15 @@ export default function PedidosPage() {
   };
 
   if (portalDemo === 'selecting') return <PortalDemoSelector onSelect={key => setPortalDemo(key)} />;
+
+  // Dominio custom: mientras resolvemos el org no mostramos login ni catálogo
+  // (evita pedir OTP / cargar con el org equivocado). Resuelve en ~200ms.
+  if (!orgReady && !isPortalDemo) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f7f4', fontFamily: SANS }}>
+      <div style={{ width: 32, height: 32, border: `3px solid ${G}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+    </div>
+  );
 
   // Demo mode: create a fake session so the catalog renders without null errors
   const effectiveSession = isPortalDemo ? {
