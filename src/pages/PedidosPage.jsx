@@ -550,11 +550,16 @@ function FichaRow({ label, value, last }) {
     </div>
   );
 }
-function ProductDetail({ item, carrito, onAdd, onRemove, brandCfg, isMobile, onBack }) {
+function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isMobile, onBack }) {
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
   const qty = carrito[item.id] || 0;
+  // Input de cantidad editable: mientras el cliente escribe usamos texto local,
+  // y sólo al perder foco normalizamos contra el mínimo de pedido.
+  const [editingQty, setEditingQty] = useState(false);
+  const [qtyInput, setQtyInput] = useState('');
+  useEffect(() => { if (!editingQty) setQtyInput(qty > 0 ? String(qty) : ''); }, [qty, editingQty]);
   // Unidades reales de venta (un/caja) — NO sufijos kg/lt (ver nota en ProductCard).
   const showUnidad = item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim());
   const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
@@ -640,8 +645,24 @@ function ProductDetail({ item, carrito, onAdd, onRemove, brandCfg, isMobile, onB
                   width: 48, height: 48, border: `1.5px solid ${G}`, borderRadius: 10, background: '#fff',
                   color: G, fontSize: 20, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{'\u2212'}</button>
-                <div style={{ flex: 1, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18, fontWeight: 700, color: '#1a1a18', border: '1px solid #e0e0d8', borderRadius: 10, background: '#fafaf7' }}>{qty}</div>
+                <input type="text" inputMode="numeric" value={qtyInput}
+                  aria-label={`Cantidad de ${item.nombre}`}
+                  onFocus={() => setEditingQty(true)}
+                  onChange={e => {
+                    const v = e.target.value.replace(/[^0-9]/g, '');
+                    setQtyInput(v);
+                    if (v !== '') onSetQty(item, undefined, parseInt(v, 10));
+                  }}
+                  onBlur={() => {
+                    setEditingQty(false);
+                    const n = parseInt(qtyInput, 10);
+                    const min = item.min_order_qty || 1;
+                    if (!n || n <= 0) onSetQty(item, undefined, 0);
+                    else if (n < min) onSetQty(item, undefined, min);
+                  }}
+                  style={{ flex: 1, width: '100%', height: 48, textAlign: 'center', boxSizing: 'border-box',
+                    fontSize: 18, fontWeight: 700, color: '#1a1a18', border: '1px solid #e0e0d8', borderRadius: 10,
+                    background: '#fff', outline: 'none', fontFamily: SANS }} />
                 <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
                   width: 48, height: 48, background: G, border: 'none', borderRadius: 10, color: '#fff',
                   fontSize: 20, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
@@ -1406,6 +1427,14 @@ export default function PedidosPage() {
     return { ...c, [k]: q };
   });
   const removeLine = (item, variantId) => setCarrito(c => { const n = { ...c }; delete n[cartKey(item, variantId)]; return n; });
+  // Fija la cantidad exacta escrita por el cliente (input editable en la ficha del producto).
+  const setItemQty = (item, variantId, val) => setCarrito(c => {
+    const k = cartKey(item, variantId);
+    const n = { ...c };
+    if (!val || val <= 0) { delete n[k]; return n; }
+    n[k] = Math.floor(val);
+    return n;
+  });
 
   const logout = () => {
     if (isPortalDemo) { setPortalDemo(null); setItems([]); setCarrito({}); window.location.href = '/pedidos'; return; }
@@ -1633,7 +1662,7 @@ export default function PedidosPage() {
         </div>
       )}
       {vista === 'catalogo' && detalle && (
-        <ProductDetail item={detalle} carrito={carrito} onAdd={addItem} onRemove={removeItem}
+        <ProductDetail item={detalle} carrito={carrito} onAdd={addItem} onRemove={removeItem} onSetQty={setItemQty}
           brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)} />
       )}
       {vista === 'catalogo' && !detalle && (
