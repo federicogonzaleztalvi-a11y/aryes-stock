@@ -225,6 +225,21 @@ function LoginStep({ onLogin }) {
   const [devCode, setDevCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [err,     setErr]     = useState('');
+  // Logo de la distribuidora para mostrarlo en el login (antes de loguearse no
+  // tenemos brandCfg aún). /api/manifest ya resuelve el org por dominio/?org= y
+  // devuelve el logo. Si es el fallback de Pazque, dejamos el ícono genérico.
+  const [brandLogo, setBrandLogo] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const m = await fetch('/api/manifest').then(r => r.json());
+        const src = m?.icons?.[0]?.src;
+        if (!cancelled && src && !src.includes('pazque-logo')) setBrandLogo(src);
+      } catch { /* sin red → ícono genérico */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const sendOTP = async () => {
     if (!tel.trim()) { setErr('Ingresa tu numero de WhatsApp'); return; }
@@ -263,10 +278,16 @@ function LoginStep({ onLogin }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ width: 48, height: 48, background: G, borderRadius: 12,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-            {Icon.logo}
-          </div>
+          {brandLogo ? (
+            <img src={brandLogo} alt="Logo"
+              style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'contain',
+                background: '#fff', margin: '0 auto 14px', display: 'block' }} />
+          ) : (
+            <div style={{ width: 48, height: 48, background: G, borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              {Icon.logo}
+            </div>
+          )}
           <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>
             Portal de pedidos
           </div>
