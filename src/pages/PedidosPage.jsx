@@ -1597,6 +1597,101 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
   );
 }
 
+// ── Banner "Instalar app" (PWA) ───────────────────────────────────────────────
+// Invita al cliente a instalar el portal como app en su cel. Genérico por-org:
+// muestra la marca de la distribuidora. En Android/Chrome dispara el instalador
+// nativo; en iPhone (Safari no expone API de instalación) abre las instrucciones
+// de "Compartir → Agregar a inicio". Se auto-oculta si ya está instalada o si el
+// cliente lo cierra (no vuelve a molestar).
+function InstallAppBanner({ brandNombre }) {
+  const [deferred, setDeferred]   = useState(null); // evento beforeinstallprompt (Android)
+  const [iosHelp,  setIosHelp]    = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem('pazque-install-dismissed') === '1'; } catch { return false; }
+  });
+
+  // ¿Ya corre instalada (standalone)? → no mostrar nada.
+  const isStandalone = typeof window !== 'undefined' &&
+    ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
+  // iOS Safari no dispara beforeinstallprompt: la instalación es manual.
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setDeferred(e); };
+    const onInstalled = () => { setDeferred(null); setDismissed(true); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  const cerrar = () => {
+    setDismissed(true);
+    try { localStorage.setItem('pazque-install-dismissed', '1'); } catch { /* storage bloqueado */ }
+  };
+  const instalar = async () => {
+    if (deferred) {
+      deferred.prompt();
+      try { await deferred.userChoice; } catch { /* el usuario canceló */ }
+      setDeferred(null);
+      cerrar();
+    } else if (isIOS) {
+      setIosHelp(true);
+    }
+  };
+
+  // Mostrar sólo si: no instalada, no descartada, y hay forma de instalar (Android o iOS).
+  if (isStandalone || dismissed) return null;
+  if (!deferred && !isIOS) return null;
+
+  const marca = brandNombre ? `de ${brandNombre}` : 'de pedidos';
+  return (
+    <>
+      <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '8px 16px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, fontFamily: SANS }}>
+        <span style={{ fontSize: 13, color: '#166534', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 15 }}>📲</span> Instalá la app {marca} en tu celular
+        </span>
+        <button onClick={instalar} style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: G,
+          border: 'none', borderRadius: 7, padding: '5px 14px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>
+          Instalar
+        </button>
+        <button onClick={cerrar} aria-label="Cerrar" style={{ fontSize: 18, lineHeight: 1, color: '#6a6a68',
+          background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
+          ×
+        </button>
+      </div>
+
+      {iosHelp && (
+        <div onClick={() => setIosHelp(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
+          zIndex: Z.overlay, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', fontFamily: SANS }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px 16px 0 0',
+            padding: '24px 22px 32px', width: '100%', maxWidth: 460, boxShadow: '0 -8px 40px rgba(0,0,0,.2)' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: '#1a1a18', marginBottom: 14 }}>
+              Instalar la app en tu iPhone
+            </div>
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: '#3a3a32', lineHeight: 1.9 }}>
+              <li>Tocá el botón <strong>Compartir</strong> <span style={{ display: 'inline-flex', verticalAlign: 'middle' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2">
+                  <path d="M12 16V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg>
+              </span> (abajo, en la barra de Safari)</li>
+              <li>Deslizá y elegí <strong>"Agregar a inicio"</strong></li>
+              <li>Tocá <strong>"Agregar"</strong> arriba a la derecha</li>
+            </ol>
+            <button onClick={() => setIosHelp(false)} style={{ marginTop: 22, width: '100%', padding: '12px 0',
+              background: G, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', fontFamily: SANS }}>
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Pagina principal ──────────────────────────────────────────────────────────
 export default function PedidosPage() {
   const [portalDemo, setPortalDemo] = useState(null); // null | 'selecting' | dataset key
@@ -2042,6 +2137,8 @@ export default function PedidosPage() {
 
         </nav>
       </header>
+
+      {!isPortalDemo && <InstallAppBanner brandNombre={brandNombre} />}
 
       {horarioInfo && (
         <div style={{ background:'#fffbeb', borderBottom:'1px solid #fde68a', padding:'6px 24px', fontSize:12, color:'#92400e', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
