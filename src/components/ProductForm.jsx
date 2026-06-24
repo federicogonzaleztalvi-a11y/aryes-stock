@@ -4,7 +4,7 @@ import { getTaxConfig } from '../lib/taxConfig.js';
 import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
-const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
+const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
   const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]}};
   const normVariants=(v)=>{const o=v&&typeof v==="object"&&!Array.isArray(v)?v:{};return{label:o.label||"Color",options:Array.isArray(o.options)?o.options:[]};};
@@ -71,6 +71,11 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg})=>{
           {!suppliers.length && <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:4}}>Aún no cargaste proveedores. Creá uno desde la sección Proveedores.</p>}
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
+        <Field label="Categoría" hint="Agrupa el producto en el portal. Escribí una nueva o elegí una existente. Vacío = sin categoría.">
+          <input list="pf-cat-list" value={f.category||""} onChange={e=>set("category",e.target.value)} placeholder="Ej: Lácteos"
+            style={{width:"100%",boxSizing:"border-box",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4}}/>
+          <datalist id="pf-cat-list">{categories.map(c=><option key={c} value={c}/>)}</datalist>
+        </Field>
         <Field label={"Costo unitario (" + taxCfg.currency + ")"}>
           <Inp type="number" step="0.01" min="0" placeholder="0.00" value={f.unitCost||""} onChange={e=>set("unitCost",e.target.value===""?0:+e.target.value)}/>
           {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es',{day:'2-digit',month:'short'}):''}</div>}
