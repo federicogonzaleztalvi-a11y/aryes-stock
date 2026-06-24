@@ -73,6 +73,26 @@ export const templates = {
       </div>`,
   }),
 
+  // Mail al CLIENTE con su comprobante de pedido adjunto en PDF. Distinto del
+  // nuevoPedido (que va a la casilla del distribuidor): éste lo pide el cliente
+  // desde el portal tras confirmar, para tener su orden en PDF en su bandeja.
+  comprobanteCliente: (empresa, ref, total) => ({
+    subject: 'Tu comprobante de pedido ' + ref + ' — ' + (empresa || 'Pazque'),
+    html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 6px">Comprobante de tu pedido</h1>
+        <p style="font-size:14px;color:#4b4b48;line-height:1.6;margin:0 0 16px">
+          ¡Gracias por tu pedido en <strong>${esc(empresa || 'Pazque')}</strong>!
+          Adjuntamos tu orden de compra <strong>${esc(ref)}</strong> en PDF.
+        </p>
+        <div style="background:#f7f7f4;border-radius:10px;padding:14px 18px;font-size:14px;color:#1a1a18">
+          <div style="display:flex;justify-content:space-between"><span style="color:#6a6a68">Orden</span><strong>${esc(ref)}</strong></div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="color:#6a6a68">Total</span><strong>$ ${Math.round(Number(total || 0))}</strong></div>
+        </div>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px">Pazque — Comprobante generado automáticamente. El detalle completo está en el PDF adjunto.</p>
+      </div>`,
+  }),
+
   welcome: (empresa) => ({
     subject: 'Bienvenido a Pazque',
     html: `

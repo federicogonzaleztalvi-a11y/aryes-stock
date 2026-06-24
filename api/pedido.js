@@ -11,6 +11,7 @@ import { checkRateLimit } from './_rate-limit.js';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
+import { sendEmail, templates } from './_email.js';
 // Núcleo compartido de creación de pedido (mismo cierre para portal y bot WhatsApp).
 import { createB2BOrder } from './_create-order.js';
 // SECURITY (A3): usar la validación compartida que además exige revoked=false.
@@ -29,6 +30,73 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+
+// Construye el PDF del comprobante de un pedido YA guardado. Reusado por la
+// descarga (GET ?action=comprobante) y el envío por mail (POST ?action=email-comprobante),
+// para que el documento sea idéntico en ambos caminos.
+// SECURITY: el cliente sólo accede a SUS pedidos (cliente_id + org_id de la sesión).
+// Devuelve null si el pedido no existe / no es del cliente; lanza ante fallo de red.
+async function buildComprobantePdf(session, orderId) {
+  const key = SB_SVC || SB_ANON;
+  const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
+  const oRes = await fetch(
+    `${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(orderId)}&cliente_id=eq.${session.cliente_id}&org_id=eq.${session.org_id}&limit=1`,
+    hdr
+  );
+  if (!oRes.ok) throw new Error('order_fetch_failed');
+  const oRows = await oRes.json();
+  if (!oRows?.length) return null;
+  const pedido = oRows[0];
+  const orderItems = pedido.items || [];
+  // empresa
+  const orgRes = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.org_id) + '&select=name', hdr);
+  const empresa = (orgRes.ok ? (await orgRes.json())[0]?.name : '') || 'Pazque';
+  // datos fiscales del cliente
+  const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(session.cliente_id) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
+  const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
+  // precios base
+  const ids = orderItems.map(i => i.id || i.productId).filter(Boolean);
+  let baseMap = {};
+  if (ids.length) {
+    const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
+    if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
+  }
+  const lineas = orderItems.map(i => {
+    const unit = Number(i.precioUnit) || 0;
+    const pid = i.id || i.productId;
+    const qty = Number(i.cantidad || i.qty) || 0;
+    return {
+      codigo: baseMap[pid]?.codigo || '',
+      nombre: i.nombre || i.productName || '',
+      unidad: i.unidad || i.unit || '',
+      qty,
+      precioBase: (baseMap[pid]?.precio) || unit,
+      precioUnit: unit,
+      subtotal: Number(i.subtotal) || (unit * qty),
+    };
+  });
+  const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
+  const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+  const total = Number(pedido.total) || subtotal;
+  const iva = Math.round(total - subtotal);
+  const ref = 'OC-' + String(orderId).slice(0, 8).toUpperCase();
+  const pdfBuf = await generarOrdenPDF({
+    titulo: 'Comprobante de pedido',
+    footer: 'Comprobante generado por ' + empresa + ' vía Pazque',
+    nroOrden: ref,
+    fecha: pedido.creado_en || new Date().toISOString(),
+    empresa, currencySymbol: '$',
+    cliente: {
+      nombre: cli.name, codigo: cli.codigo, rut: cli.rut,
+      direccion: cli.address, ciudad: cli.ciudad,
+      horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
+      zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
+    },
+    lineas, subtotal, descuentoTotal, iva, total,
+    notas: pedido.notas || '',
+  });
+  return { pdfBuf, ref, empresa, total, filename: 'comprobante-' + ref + '.pdf' };
+}
 
 async function handler(req, res) {
   await setCorsHeaders(req, res);
@@ -91,68 +159,12 @@ async function handler(req, res) {
       if (!session) return res.status(401).json({ error: 'Sesión inválida' });
       const orderId = req.query?.orderId;
       if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
-      const key = SB_SVC || SB_ANON;
-      const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
-      // SECURITY: el cliente sólo puede descargar SUS pedidos (cliente_id + org_id).
-      const oRes = await fetch(
-        `${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(orderId)}&cliente_id=eq.${session.cliente_id}&org_id=eq.${session.org_id}&limit=1`,
-        hdr
-      );
-      if (!oRes.ok) return res.status(500).json({ error: 'Error al obtener pedido' });
-      const oRows = await oRes.json();
-      if (!oRows?.length) return res.status(404).json({ error: 'Pedido no encontrado' });
-      const pedido = oRows[0];
-      const orderItems = pedido.items || [];
       try {
-        // empresa
-        const orgRes = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.org_id) + '&select=name', hdr);
-        const empresa = (orgRes.ok ? (await orgRes.json())[0]?.name : '') || 'Pazque';
-        // datos fiscales del cliente
-        const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(session.cliente_id) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
-        const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
-        // precios base
-        const ids = orderItems.map(i => i.id || i.productId).filter(Boolean);
-        let baseMap = {};
-        if (ids.length) {
-          const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
-          if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
-        }
-        const lineas = orderItems.map(i => {
-          const unit = Number(i.precioUnit) || 0;
-          const pid = i.id || i.productId;
-          const qty = Number(i.cantidad || i.qty) || 0;
-          return {
-            codigo: baseMap[pid]?.codigo || '',
-            nombre: i.nombre || i.productName || '',
-            unidad: i.unidad || i.unit || '',
-            qty,
-            precioBase: (baseMap[pid]?.precio) || unit,
-            precioUnit: unit,
-            subtotal: Number(i.subtotal) || (unit * qty),
-          };
-        });
-        const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
-        const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
-        const total = Number(pedido.total) || subtotal;
-        const iva = Math.round(total - subtotal);
-        const pdfBuf = await generarOrdenPDF({
-          titulo: 'Comprobante de pedido',
-          footer: 'Comprobante generado por ' + empresa + ' vía Pazque',
-          nroOrden: 'OC-' + String(orderId).slice(0, 8).toUpperCase(),
-          fecha: pedido.creado_en || new Date().toISOString(),
-          empresa, currencySymbol: '$',
-          cliente: {
-            nombre: cli.name, codigo: cli.codigo, rut: cli.rut,
-            direccion: cli.address, ciudad: cli.ciudad,
-            horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
-            zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
-          },
-          lineas, subtotal, descuentoTotal, iva, total,
-          notas: pedido.notas || '',
-        });
+        const built = await buildComprobantePdf(session, orderId);
+        if (!built) return res.status(404).json({ error: 'Pedido no encontrado' });
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="comprobante-OC-' + String(orderId).slice(0, 8).toUpperCase() + '.pdf"');
-        return res.status(200).send(pdfBuf);
+        res.setHeader('Content-Disposition', 'attachment; filename="' + built.filename + '"');
+        return res.status(200).send(built.pdfBuf);
       } catch (pdfErr) {
         log.warn('pedido', 'comprobante pdf failed', { error: pdfErr.message });
         return res.status(500).json({ error: 'No se pudo generar el comprobante' });
@@ -163,6 +175,36 @@ async function handler(req, res) {
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── POST ?action=email-comprobante — envía el comprobante por mail al cliente ──
+  // Lo dispara el cliente desde el portal tras confirmar; manda a una casilla que
+  // él elige. Reusa el MISMO PDF que la descarga (buildComprobantePdf).
+  if (req.query?.action === 'email-comprobante') {
+    const authHeaderE = req.headers['authorization'] || '';
+    const tokenE = authHeaderE.startsWith('Bearer ') ? authHeaderE.slice(7) : null;
+    const sessionE = await validatePortalSession(tokenE);
+    if (!sessionE) return res.status(401).json({ error: 'Sesión inválida' });
+    const { orderId, to } = req.body || {};
+    if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const dest = String(to || '').trim();
+    if (!EMAIL_RE.test(dest)) return res.status(400).json({ error: 'Email inválido' });
+    try {
+      const built = await buildComprobantePdf(sessionE, orderId);
+      if (!built) return res.status(404).json({ error: 'Pedido no encontrado' });
+      const tpl = templates.comprobanteCliente(built.empresa, built.ref, built.total);
+      const sent = await sendEmail({
+        to: dest, subject: tpl.subject, html: tpl.html,
+        attachments: [{ filename: built.filename, content: built.pdfBuf.toString('base64') }],
+      });
+      if (!sent) return res.status(502).json({ error: 'No se pudo enviar el email. Revisá la dirección e intentá de nuevo.' });
+      log.info('pedido', 'comprobante emailed', { orderId, to: dest });
+      return res.status(200).json({ ok: true });
+    } catch (e) {
+      log.warn('pedido', 'email-comprobante failed', { error: e.message });
+      return res.status(500).json({ error: 'No se pudo enviar el comprobante' });
+    }
+  }
 
   // ── POST /api/pedido?action=confirmar — confirmar pedido B2B → venta (operador) ──
   const actionConfirm = req.query?.action;

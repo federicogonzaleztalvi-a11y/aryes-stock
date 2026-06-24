@@ -846,11 +846,22 @@ function HistorialPedidos({ session, onReordenar }) {
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg, coBuy, recommended }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
+  // Vista previa de la orden (antes de confirmar) + acciones post-confirmación
+  // (descargar PDF / enviar por mail). lastOrderId es el id real devuelto por el
+  // endpoint, necesario para pedir el comprobante; en demo queda null.
+  const [showPreview, setShowPreview] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [emailOpen,   setEmailOpen]   = useState(false);
+  const [emailAddr,   setEmailAddr]   = useState('');
+  const [emailing,    setEmailing]    = useState(false);
+  const [accionMsg,   setAccionMsg]   = useState('');
+  const isDemo = typeof window !== 'undefined' && window.location.search.includes('demo=true');
 
   // La clave puede ser "id" (producto simple) o "id::variantId" (con variante).
   // Resolvemos el producto base y, si hay variante, anexamos su etiqueta al nombre
@@ -979,14 +990,179 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
       // limpia y el drawer se cierra recién cuando el usuario descarta esa pantalla
       // (onConfirm), no antes; si no, el drawer se desmontaba y la confirmación
       // nunca llegaba a verse.
-      if (r.ok) { track('pedido_confirmado', { items: lineas.length, total }); setDone(true); }
+      if (r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setLastOrderId(d.orderId || null);
+        track('pedido_confirmado', { items: lineas.length, total });
+        setShowPreview(false);
+        setDone(true);
+      }
       else { const d = await r.json().catch(() => ({})); setErr(d.error || 'No se pudo confirmar el pedido.'); }
     } catch { setErr('Error de conexión. Intentá de nuevo.'); }
     finally { setLoading(false); }
   };
 
+  // Descarga el comprobante en PDF del pedido recién confirmado (id real).
+  const descargarPDF = async () => {
+    if (!lastOrderId || isDemo) return;
+    setDownloading(true); setAccionMsg('');
+    try {
+      const r = await fetch(`${window.location.origin}/api/pedido?action=comprobante&orderId=${lastOrderId}`,
+        { headers: { Authorization: `Bearer ${session.token}` } });
+      if (!r.ok) throw new Error();
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `comprobante-OC-${String(lastOrderId).slice(0, 8).toUpperCase()}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { setAccionMsg('No se pudo descargar el PDF. Intentá de nuevo.'); }
+    finally { setDownloading(false); }
+  };
+
+  // Envía el comprobante por mail a la casilla que elige el cliente.
+  const enviarPorMail = async () => {
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const dest = emailAddr.trim();
+    if (!EMAIL_RE.test(dest)) { setAccionMsg('Ingresá un email válido.'); return; }
+    if (!lastOrderId || isDemo) { setAccionMsg('Disponible al confirmar un pedido real.'); return; }
+    setEmailing(true); setAccionMsg('');
+    try {
+      const r = await fetch(`${window.location.origin}/api/pedido?action=email-comprobante`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ orderId: lastOrderId, to: dest }),
+      });
+      if (r.ok) { setAccionMsg('✓ Comprobante enviado a ' + dest); setEmailOpen(false); }
+      else { const d = await r.json().catch(() => ({})); setAccionMsg(d.error || 'No se pudo enviar el email.'); }
+    } catch { setAccionMsg('Error de conexión. Intentá de nuevo.'); }
+    finally { setEmailing(false); }
+  };
+
   const pedidoRef = Math.random().toString(36).slice(2,8).toUpperCase();
   const fechaHoy  = new Date().toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  // ── Vista previa de la orden (antes de confirmar) ────────────────────────────
+  // Muestra el detalle TAL COMO sale en el PDF: cabecera, cliente, líneas con
+  // cantidad/precio/descuento, totales y notas. Desde acá se confirma o se vuelve.
+  if (showPreview && !done) {
+    const direccionSel = addresses.find(a => a.id === selectedAddress);
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: Z.overlay,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        onClick={() => setShowPreview(false)}>
+        <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520,
+          maxHeight: '90vh', overflowY: 'auto', fontFamily: SANS, position: 'relative' }}
+          onClick={e => e.stopPropagation()}>
+          {/* Cabecera documento */}
+          <div style={{ padding: '24px 24px 18px', borderBottom: `2px solid ${G}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#1a1a18' }}>{brandNombre || 'Orden de compra'}</div>
+                <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>Vista previa de la orden</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: '#6a6a68' }}>Fecha</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a18' }}>{fechaHoy}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Cliente */}
+          <div style={{ padding: '16px 24px 4px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 6 }}>CLIENTE</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>{session?.nombre || 'Cliente'}</div>
+            {session?.tel && <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>Tel: {session.tel}</div>}
+            {direccionSel && (
+              <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>
+                Entrega: {direccionSel.direccion}{direccionSel.ciudad ? ` — ${direccionSel.ciudad}` : ''}
+              </div>
+            )}
+          </div>
+
+          {/* Detalle */}
+          <div style={{ padding: '12px 24px' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 8,
+              display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ececec', paddingBottom: 6 }}>
+              <span>PRODUCTO</span><span>SUBTOTAL</span>
+            </div>
+            {lineasConCalc.map(({ key, item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
+                padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, paddingRight: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
+                  <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
+                    {qty} {item.unidad || ''} × {fmt.currency(precioConDto)}
+                    {descPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descPct}%</span>}
+                    <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{fmt.currency(netoLinea)}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Totales */}
+          <div style={{ padding: '0 24px 16px' }}>
+            <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '12px 16px',
+              display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
+                <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
+              </div>
+              {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a, b) => a - b).map(rate => {
+                const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s, l) => s + l.ivaLinea, 0);
+                return (
+                  <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
+                    <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaDeRate)}</span>
+                  </div>
+                );
+              })}
+              <div style={{ borderTop: '1px solid #e8e8e0', paddingTop: 8, marginTop: 2,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notas */}
+          {notas && (
+            <div style={{ padding: '0 24px 16px' }}>
+              <div style={{ background: '#fffbeb', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400e' }}>
+                Nota: {notas}
+              </div>
+            </div>
+          )}
+
+          {err && (
+            <div style={{ padding: '0 24px 12px' }}>
+              <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
+                padding: '9px 12px', fontSize: 12, color: '#dc2626' }}>{err}</div>
+            </div>
+          )}
+
+          {/* Acciones */}
+          <div style={{ padding: '4px 24px 28px', display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowPreview(false)} style={{
+              flex: '0 0 auto', padding: '12px 18px', background: '#fff', color: '#1a1a18',
+              border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 14, fontWeight: 600,
+              cursor: 'pointer', fontFamily: SANS }}>
+              ← Editar
+            </button>
+            <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
+              flex: 1, padding: '12px 0',
+              background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
+              color: '#fff', border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 600,
+              cursor: (loading || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
+              {loading ? 'Enviando…' : 'Confirmar pedido'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (done) return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: Z.overlay,
@@ -1088,6 +1264,58 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           <p style={{ fontSize: 12, color: '#6a6a68', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
             Tu distribuidor recibio el pedido. Te avisamos cuando este confirmado.
           </p>
+
+          {/* Descargar PDF / Enviar por mail — sólo con pedido real (id devuelto) */}
+          {lastOrderId && !isDemo && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={descargarPDF} disabled={downloading} style={{
+                  flex: 1, padding: '11px 0', background: '#fff', color: '#1a1a18',
+                  border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13, fontWeight: 600,
+                  cursor: downloading ? 'wait' : 'pointer', fontFamily: SANS,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {downloading ? 'Generando…' : 'Descargar PDF'}
+                </button>
+                <button onClick={() => { setEmailOpen(o => !o); setAccionMsg(''); }} style={{
+                  flex: 1, padding: '11px 0', background: '#fff', color: '#1a1a18',
+                  border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: SANS,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/><polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  Enviar por mail
+                </button>
+              </div>
+              {emailOpen && (
+                <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                  <input type="email" inputMode="email" value={emailAddr}
+                    onChange={e => setEmailAddr(e.target.value)} placeholder="tucorreo@ejemplo.com"
+                    aria-label="Email para enviar el comprobante"
+                    onKeyDown={e => { if (e.key === 'Enter') enviarPorMail(); }}
+                    onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                    onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+                    style={{ flex: 1, padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 10,
+                      fontSize: 16, fontFamily: SANS, outline: 'none', background: '#fafaf7' }} />
+                  <button onClick={enviarPorMail} disabled={emailing} style={{
+                    padding: '10px 18px', background: G, color: '#fff', border: 'none', borderRadius: 10,
+                    fontSize: 13, fontWeight: 600, cursor: emailing ? 'wait' : 'pointer', fontFamily: SANS, whiteSpace: 'nowrap' }}>
+                    {emailing ? 'Enviando…' : 'Enviar'}
+                  </button>
+                </div>
+              )}
+              {accionMsg && (
+                <div style={{ marginTop: 10, fontSize: 12, textAlign: 'center',
+                  color: accionMsg.startsWith('✓') ? G : '#dc2626' }}>
+                  {accionMsg}
+                </div>
+              )}
+            </div>
+          )}
+
           <button onClick={onConfirm} style={{
             width: '100%', padding: '12px 0', background: G, color: '#fff', border: 'none',
             borderRadius: 50, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
@@ -1266,6 +1494,18 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               Pedido mínimo de {fmt.currency(minOrderAmount)}. Te faltan {fmt.currency(faltaParaMinimo)} para confirmar.
             </div>
           )}
+          <button onClick={() => { setErr(''); setShowPreview(true); }}
+            disabled={lineas.length === 0 || !cumpleMinimo} style={{
+            width: '100%', padding: '11px 0', marginBottom: 8, background: '#fff',
+            color: lineas.length === 0 || !cumpleMinimo ? '#b0b0a8' : '#1a1a18',
+            border: '1px solid #e0e0d8', borderRadius: 10, fontSize: 13, fontWeight: 600,
+            cursor: (lineas.length === 0 || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            Previsualizar orden
+          </button>
           <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
             width: '100%', padding: '13px 0',
             background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
@@ -1862,7 +2102,7 @@ export default function PedidosPage() {
       )}
 
       {showCart && (
-        <CartDrawer carrito={carrito} items={items} session={session} brandCfg={brandCfg}
+        <CartDrawer carrito={carrito} items={items} session={session} brandCfg={brandCfg} brandNombre={brandNombre}
           coBuy={coBuy} recommended={recommended}
           onAdd={addItem} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
