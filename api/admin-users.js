@@ -140,7 +140,8 @@ export default async function handler(req, res) {
       const newAuthId = authData.id;
 
       // Insert the matching public.users row with service_role (bypasses RLS).
-      // id = auth uid so the profile row and the login user stay linked.
+      // NOTE: public.users.id is an auto-increment integer — do NOT set it. The
+      // link to the auth user is by email (that's how login resolves the row).
       const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
       const insRes = await fetch(`${SB_URL}/rest/v1/users`, {
         method: 'POST',
@@ -148,7 +149,7 @@ export default async function handler(req, res) {
           apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
           'Content-Type': 'application/json', Prefer: 'return=representation',
         },
-        body: JSON.stringify({ id: newAuthId, username, name, email, role, org_id: admin.orgId }),
+        body: JSON.stringify({ username, name, email, role, org_id: admin.orgId }),
       });
 
       if (!insRes.ok) {
