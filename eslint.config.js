@@ -69,6 +69,25 @@ export default [
     },
   },
 
+  // ── Edge Middleware (Web + Node globals: fetch, URL, Response, process) ────
+  {
+    files: ['middleware.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+        ...globals.es2022,
+      },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-undef': 'error',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+    },
+  },
+
   // ── API serverless files (Node env, no JSX) ───────────────────────────────
   {
     files: ['api/**/*.js'],
