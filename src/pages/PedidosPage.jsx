@@ -1,5 +1,5 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fmt } from '../lib/constants.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
@@ -66,6 +66,19 @@ function loadSession() {
   } catch { return null; }
 }
 function saveSession(s) { localStorage.setItem(SK, JSON.stringify(s)); }
+
+// Carrito persistente por cliente: se guarda en localStorage para que sobreviva
+// a un refresh / cierre de pestaña y siga ahí hasta que el cliente compre.
+// La clave incluye org + clienteId para que dos clientes en el mismo dispositivo
+// (o el modo demo) no compartan carrito. Sólo guardamos cantidades por producto;
+// los precios siempre se recalculan del catálogo fresco, así nunca quedan viejos.
+function cartStorageKey(clienteId) { return `aryes-pedidos-cart::${ORG}::${clienteId || 'anon'}`; }
+function loadCart(clienteId) {
+  try {
+    const c = JSON.parse(localStorage.getItem(cartStorageKey(clienteId)) || '{}');
+    return c && typeof c === 'object' && !Array.isArray(c) ? c : {};
+  } catch { return {}; }
+}
 
 const PAISES = [
   { code: 'UY', label: 'UY', prefix: '598', flag: '🇺🇾' },
@@ -1286,7 +1299,7 @@ export default function PedidosPage() {
   const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');
   const [busq,     setBusq]     = useState('');
-  const [carrito,  setCarrito]  = useState({});
+  const [carrito,  setCarrito]  = useState(() => loadCart(loadSession()?.clienteId));
   const [showCart, setShowCart] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
@@ -1301,6 +1314,26 @@ export default function PedidosPage() {
   }, [reorderMsg]);
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
+
+  // ── Persistencia del carrito por cliente ──────────────────────────────────
+  // Identidad del carrito: cliente logueado, o un slot propio por dataset demo.
+  const cartCli = isPortalDemo ? `demo-${portalDemo}` : (session?.clienteId || null);
+  const loadedCliRef = useRef(loadSession()?.clienteId || null);
+  const skipPersistRef = useRef(false);
+  // Al cambiar de identidad (login / logout / cambio de demo) cargamos el carrito
+  // guardado de ESE cliente, sin pisar lo que ya tenía.
+  useEffect(() => {
+    if (loadedCliRef.current === cartCli) return;
+    loadedCliRef.current = cartCli;
+    skipPersistRef.current = true;   // evita que el efecto de guardado escriba el carrito viejo en la clave nueva
+    setCarrito(loadCart(cartCli));
+  }, [cartCli]);
+  // Guardamos el carrito cada vez que cambia, bajo la clave del cliente actual.
+  useEffect(() => {
+    if (skipPersistRef.current) { skipPersistRef.current = false; return; }
+    try { localStorage.setItem(cartStorageKey(cartCli), JSON.stringify(carrito)); } catch { /* storage lleno / bloqueado */ }
+  }, [carrito, cartCli]);
+
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 768);
