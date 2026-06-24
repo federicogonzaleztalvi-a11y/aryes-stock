@@ -1556,7 +1556,7 @@ export default function PedidosPage() {
 
         <nav aria-label="Categorías" style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
           display: 'flex', alignItems: 'center',
-          height: 44, position: 'relative', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
+          height: 44, position: 'relative', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
           {buyAgain.length > 0 && (vista === 'catalogo' || vista === 'habituales') && (
             <button onClick={() => { setVista('habituales'); setDetalle(null); setDdOpen(false); }} style={{
               padding: '0 14px', height: 44, border: 'none', background: 'transparent',
