@@ -1773,6 +1773,17 @@ export default function PedidosPage() {
       if (cancelled) return;
       if (resolved) ORG = resolved;
       setOrgReady(true);
+      // Branding temprano (antes del login): el nombre del "Agregar a inicio" de
+      // iOS sale del título / apple-mobile-web-app-title. Lo tomamos del manifest
+      // (que resuelve el org por el dominio) para que diga la marca, no "Pazque".
+      try {
+        const m = await fetch('/api/manifest').then(r => r.json());
+        if (!cancelled && m?.name) {
+          document.title = m.name;
+          const t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (t) t.setAttribute('content', m.short_name || m.name);
+        }
+      } catch { /* sin red → queda el default */ }
     })();
     return () => { cancelled = true; };
   }, [orgReady]);
