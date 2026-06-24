@@ -17,12 +17,16 @@ function getToken() {
 }
 
 async function apiCall(action, method, body) {
+  const token = getToken();
+  if (!token) throw new Error('Tu sesión expiró. Cerrá sesión y volvé a entrar para crear usuarios.');
   const res = await fetch(`/api/admin-users?action=${action}`, {
     method,
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 || res.status === 403)
+    throw new Error('Tu sesión expiró o no tenés permisos de administrador. Cerrá sesión y volvé a entrar.');
   if (!res.ok) throw new Error(data.error || 'Error desconocido');
   return data;
 }
@@ -54,7 +58,9 @@ export default function UsersTab({ session }) {
     try {
       const data = await apiCall('list', 'GET');
       setUsers(Array.isArray(data) ? data : []);
-    } catch { /* non-blocking */ } finally {
+    } catch (e) {
+      showMsg(e.message || 'No se pudieron cargar los usuarios', 'err');
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -76,7 +82,9 @@ export default function UsersTab({ session }) {
       setForm(emptyForm);
       setView('list');
       await loadUsers();
-    } catch { /* non-blocking */ } finally {
+    } catch (e) {
+      showMsg(e.message || 'No se pudo crear el usuario', 'err');
+    } finally {
       setSaving(false);
     }
   };
@@ -86,7 +94,9 @@ export default function UsersTab({ session }) {
       await apiCall('update', 'PATCH', { email, role });
       setUsers(us => us.map(u => u.email === email ? { ...u, role } : u));
       showMsg('✓ Rol actualizado');
-    } catch { /* non-blocking */ }
+    } catch (e) {
+      showMsg(e.message || 'No se pudo actualizar el rol', 'err');
+    }
   };
 
   const handleToggleActive = async (user) => {
@@ -98,7 +108,9 @@ export default function UsersTab({ session }) {
       await apiCall('update', 'PATCH', { email: user.email, active: newActive });
       setUsers(us => us.map(u => u.email === user.email ? { ...u, active: newActive } : u));
       showMsg(`✓ Usuario ${newActive ? 'activado' : 'desactivado'}`);
-    } catch { /* non-blocking */ }
+    } catch (e) {
+      showMsg(e.message || 'No se pudo cambiar el estado', 'err');
+    }
   };
 
   const handleResetPassword = async () => {
@@ -112,7 +124,9 @@ export default function UsersTab({ session }) {
       setNewPassword('');
       setView('list');
       setSelected(null);
-    } catch { /* non-blocking */ } finally {
+    } catch (e) {
+      showMsg(e.message || 'No se pudo cambiar la contraseña', 'err');
+    } finally {
       setSaving(false);
     }
   };
@@ -127,7 +141,9 @@ export default function UsersTab({ session }) {
       await apiCall('delete', 'DELETE', { email: user.email });
       setUsers(us => us.filter(u => u.email !== user.email));
       showMsg('✓ Usuario eliminado');
-    } catch { /* non-blocking */ }
+    } catch (e) {
+      showMsg(e.message || 'No se pudo eliminar el usuario', 'err');
+    }
   };
 
   const MsgBanner = () => {
