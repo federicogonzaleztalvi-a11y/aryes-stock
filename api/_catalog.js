@@ -134,7 +134,8 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   let portalActivo = true;
   let descGlobal = 0;
   let dtosCategoria = {};
-  let itemMap = {};
+  let itemMap = {};      // product_uuid -> precio fijo de la lista
+  let itemDtoMap = {};   // product_uuid -> % de descuento del producto en la lista
 
   if (clienteId) {
     const cliRes = await fetch(
@@ -160,12 +161,15 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
         }
 
         const itemsRes = await fetch(
-          `${SB_URL}/rest/v1/price_list_items?lista_id=eq.${listaId}&select=product_uuid,precio`,
+          `${SB_URL}/rest/v1/price_list_items?lista_id=eq.${listaId}&select=product_uuid,precio,descuento`,
           { headers }
         );
         if (itemsRes.ok) {
           (await itemsRes.json()).forEach(it => {
+            // Precio fijo tiene prioridad; si no hay, guardamos el % de descuento
+            // del producto. El editor del admin usa esta misma jerarquía (calcFinal).
             if (it.precio > 0) itemMap[it.product_uuid] = Number(it.precio);
+            else if (Number(it.descuento) > 0) itemDtoMap[it.product_uuid] = Number(it.descuento);
           });
         }
       }
@@ -179,14 +183,17 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
 
     if (clienteId && listaId) {
       const dtoCat = Number(dtosCategoria[p.category || ''] || 0);
+      const dtoItem = Number(itemDtoMap[p.uuid] || 0);
       if (itemMap[p.uuid] !== undefined) {
         precio = itemMap[p.uuid];                                  // 1. precio fijo del producto en la lista
+      } else if (dtoItem > 0) {
+        precio = Math.round(base * (1 - dtoItem / 100) * 100) / 100; // 2. dto por producto en la lista
       } else if (dtoCat > 0) {
-        precio = Math.round(base * (1 - dtoCat / 100) * 100) / 100; // 2. dto por categoría
+        precio = Math.round(base * (1 - dtoCat / 100) * 100) / 100; // 3. dto por categoría
       } else if (descGlobal > 0) {
-        precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100; // 3. dto global
+        precio = Math.round(base * (1 - descGlobal / 100) * 100) / 100; // 4. dto global
       } else {
-        precio = base;                                             // 4. sin precio especial → precio general
+        precio = base;                                             // 5. sin precio especial → precio general
       }
     }
 
