@@ -98,6 +98,59 @@ async function buildComprobantePdf(session, orderId) {
   return { pdfBuf, ref, empresa, total, filename: 'comprobante-' + ref + '.pdf' };
 }
 
+// Genera el PDF de una orden AÚN NO guardada (descarga desde la vista previa,
+// antes de confirmar). Enriquece los items del carrito con precios base + datos
+// fiscales del cliente, igual que el mail de pedido. No persiste nada.
+// SECURITY: usa cliente_id/org_id de la sesión, nunca del body.
+async function buildPreviewPdf(session, items, notas, total) {
+  const key = SB_SVC || SB_ANON;
+  const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
+  const orgRes = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.org_id) + '&select=name', hdr);
+  const empresa = (orgRes.ok ? (await orgRes.json())[0]?.name : '') || 'Pazque';
+  const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(session.cliente_id) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
+  const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
+  const ids = (items || []).map(i => i.id || i.productId).filter(Boolean);
+  let baseMap = {};
+  if (ids.length) {
+    const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
+    if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
+  }
+  const lineas = (items || []).map(i => {
+    const unit = Number(i.precioUnit) || 0;
+    const pid = i.id || i.productId;
+    const qty = Number(i.cantidad || i.qty) || 0;
+    return {
+      codigo: baseMap[pid]?.codigo || '',
+      nombre: i.nombre || i.productName || '',
+      unidad: i.unidad || i.unit || '',
+      qty,
+      precioBase: (baseMap[pid]?.precio) || unit,
+      precioUnit: unit,
+      subtotal: Number(i.subtotal) || (unit * qty),
+    };
+  });
+  const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
+  const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+  const tot = Number(total) || subtotal;
+  const iva = Math.round(tot - subtotal);
+  const pdfBuf = await generarOrdenPDF({
+    titulo: 'Orden de compra (vista previa)',
+    footer: 'Vista previa generada por ' + empresa + ' vía Pazque',
+    nroOrden: 'VISTA PREVIA',
+    fecha: new Date().toISOString(),
+    empresa, currencySymbol: '$',
+    cliente: {
+      nombre: cli.name, codigo: cli.codigo, rut: cli.rut,
+      direccion: cli.address, ciudad: cli.ciudad,
+      horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
+      zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
+    },
+    lineas, subtotal, descuentoTotal, iva, total: tot,
+    notas: notas || '',
+  });
+  return { pdfBuf, empresa, filename: 'orden-vista-previa.pdf' };
+}
+
 async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -175,6 +228,25 @@ async function handler(req, res) {
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── POST ?action=preview-pdf — PDF de la orden ANTES de confirmar (descarga) ──
+  if (req.query?.action === 'preview-pdf') {
+    const authHeaderP = req.headers['authorization'] || '';
+    const tokenP = authHeaderP.startsWith('Bearer ') ? authHeaderP.slice(7) : null;
+    const sessionP = await validatePortalSession(tokenP);
+    if (!sessionP) return res.status(401).json({ error: 'Sesión inválida' });
+    const { items = [], notas = '', total = 0 } = req.body || {};
+    if (!items.length) return res.status(400).json({ error: 'El pedido no tiene productos' });
+    try {
+      const built = await buildPreviewPdf(sessionP, items, notas, total);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="' + built.filename + '"');
+      return res.status(200).send(built.pdfBuf);
+    } catch (e) {
+      log.warn('pedido', 'preview-pdf failed', { error: e.message });
+      return res.status(500).json({ error: 'No se pudo generar la vista previa' });
+    }
+  }
 
   // ── POST ?action=email-comprobante — envía el comprobante por mail al cliente ──
   // Lo dispara el cliente desde el portal tras confirmar; manda a una casilla que

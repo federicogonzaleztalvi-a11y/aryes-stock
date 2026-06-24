@@ -1002,6 +1002,33 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
     finally { setLoading(false); }
   };
 
+  // Descarga el PDF de la orden ANTES de confirmar (desde la vista previa).
+  const descargarPreviewPDF = async () => {
+    if (isDemo) { setAccionMsg('La descarga está disponible en tu cuenta real.'); return; }
+    setDownloading(true); setAccionMsg('');
+    try {
+      const r = await fetch(`${window.location.origin}/api/pedido?action=preview-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({
+          items: lineasConCalc.map(l => ({
+            productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
+            cantidad: l.qty, precioUnit: l.precioConDto, subtotal: l.netoLinea,
+          })),
+          notas, total,
+        }),
+      });
+      if (!r.ok) throw new Error();
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'orden-vista-previa.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { setAccionMsg('No se pudo descargar el PDF. Intentá de nuevo.'); }
+    finally { setDownloading(false); }
+  };
+
   // Descarga el comprobante en PDF del pedido recién confirmado (id real).
   const descargarPDF = async () => {
     if (!lastOrderId || isDemo) return;
@@ -1144,20 +1171,40 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           )}
 
           {/* Acciones */}
-          <div style={{ padding: '4px 24px 28px', display: 'flex', gap: 10 }}>
-            <button onClick={() => setShowPreview(false)} style={{
-              flex: '0 0 auto', padding: '12px 18px', background: '#fff', color: '#1a1a18',
-              border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', fontFamily: SANS }}>
-              ← Editar
-            </button>
-            <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
-              flex: 1, padding: '12px 0',
-              background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
-              color: '#fff', border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 600,
-              cursor: (loading || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
-              {loading ? 'Enviando…' : 'Confirmar pedido'}
-            </button>
+          <div style={{ padding: '4px 24px 28px' }}>
+            {!isDemo && (
+              <button onClick={descargarPreviewPDF} disabled={downloading} style={{
+                width: '100%', padding: '11px 0', marginBottom: 10, background: '#fff', color: '#1a1a18',
+                border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13, fontWeight: 600,
+                cursor: downloading ? 'wait' : 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                {downloading ? 'Generando…' : 'Descargar PDF'}
+              </button>
+            )}
+            {accionMsg && (
+              <div style={{ marginBottom: 10, fontSize: 12, textAlign: 'center',
+                color: accionMsg.startsWith('✓') ? G : '#dc2626' }}>
+                {accionMsg}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowPreview(false)} style={{
+                flex: '0 0 auto', padding: '12px 18px', background: '#fff', color: '#1a1a18',
+                border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: SANS }}>
+                ← Editar
+              </button>
+              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
+                flex: 1, padding: '12px 0',
+                background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
+                color: '#fff', border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 600,
+                cursor: (loading || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
+                {loading ? 'Enviando…' : 'Confirmar pedido'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
