@@ -1447,34 +1447,6 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               </div>
             </div>
           ))}
-          {sugeridos.length > 0 && (
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid #f0ede8' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>
-                Quienes pidieron esto también sumaron
-              </div>
-              <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 1, marginBottom: 10 }}>
-                Completá tu pedido con lo que suele ir junto
-              </div>
-              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-                {sugeridos.map(p => (
-                  <div key={p.id} style={{ flex: '0 0 134px', width: 134, border: '1px solid #ececec',
-                    borderRadius: 12, padding: 10, display: 'flex', flexDirection: 'column', gap: 6, background: '#fff' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1a18', lineHeight: 1.3,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden', minHeight: 31 }}>
-                      {p.nombre}
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
-                    <button onClick={() => onAdd && onAdd(p)} aria-label={`Agregar ${p.nombre}`} style={{
-                      marginTop: 'auto', padding: '7px 0', background: G, color: '#fff', border: 'none',
-                      borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
-                      + Agregar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
           {addresses.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Dirección de entrega</div>
@@ -1508,6 +1480,33 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
                 boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
           </div>
         </div>
+        {/* Sugeridos — tira fija arriba del total: siempre visible aunque el carrito
+            tenga muchos productos (antes scrolleaba al fondo y no se veía). */}
+        {sugeridos.length > 0 && (
+          <div style={{ padding: '10px 20px 0', borderTop: '1px solid #f0ede8', background: '#fcfcfa', flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#1a1a18' }}>
+              Quienes pidieron esto también sumaron
+            </div>
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '8px 0 10px' }}>
+              {sugeridos.map(p => (
+                <div key={p.id} style={{ flex: '0 0 116px', width: 116, border: '1px solid #ececec',
+                  borderRadius: 10, padding: 8, display: 'flex', flexDirection: 'column', gap: 5, background: '#fff' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#1a1a18', lineHeight: 1.25,
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden', minHeight: 27 }}>
+                    {p.nombre}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
+                  <button onClick={() => onAdd && onAdd(p)} aria-label={`Agregar ${p.nombre}`} style={{
+                    marginTop: 'auto', padding: '6px 0', background: G, color: '#fff', border: 'none',
+                    borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
+                    + Agregar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
