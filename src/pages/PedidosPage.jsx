@@ -848,6 +848,7 @@ function HistorialPedidos({ session, onReordenar }) {
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
 function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
+  const [notasOpen, setNotasOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
@@ -1402,6 +1403,34 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
           </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+          {/* Sugeridos — arriba de todo: se ven apenas se abre el carrito, sin
+              scrollear. Antes estaban fijos sobre el total y le robaban lugar a las
+              notas; ahora viven en el flujo natural del scroll, al tope. */}
+          {sugeridos.length > 0 && (
+            <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: '1px solid #f0ede8' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>
+                Quienes pidieron esto también sumaron
+              </div>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                {sugeridos.map(p => (
+                  <div key={p.id} style={{ flex: '0 0 116px', width: 116, border: '1px solid #ececec',
+                    borderRadius: 10, padding: 8, display: 'flex', flexDirection: 'column', gap: 5, background: '#fff' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#1a1a18', lineHeight: 1.25,
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', minHeight: 27 }}>
+                      {p.nombre}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
+                    <button onClick={() => onAdd && onAdd(p)} aria-label={`Agregar ${p.nombre}`} style={{
+                      marginTop: 'auto', padding: '6px 0', background: G, color: '#fff', border: 'none',
+                      borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
+                      + Agregar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descPct, precioConDto, netoLinea }) => (
             <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1469,45 +1498,40 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               )}
             </div>
           )}
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Notas del pedido</div>
-            <textarea value={notas} onChange={e => setNotas(e.target.value)}
-              placeholder="Ej: entregar antes del mediodia..." aria-label="Notas del pedido"
-              onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
-              onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
-              rows={3} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
-                borderRadius: 8, fontSize: 16, fontFamily: SANS, resize: 'none',
-                boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
-          </div>
         </div>
-        {/* Sugeridos — tira fija arriba del total: siempre visible aunque el carrito
-            tenga muchos productos (antes scrolleaba al fondo y no se veía). */}
-        {sugeridos.length > 0 && (
-          <div style={{ padding: '10px 20px 0', borderTop: '1px solid #f0ede8', background: '#fcfcfa', flexShrink: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#1a1a18' }}>
-              Quienes pidieron esto también sumaron
-            </div>
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '8px 0 10px' }}>
-              {sugeridos.map(p => (
-                <div key={p.id} style={{ flex: '0 0 116px', width: 116, border: '1px solid #ececec',
-                  borderRadius: 10, padding: 8, display: 'flex', flexDirection: 'column', gap: 5, background: '#fff' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#1a1a18', lineHeight: 1.25,
-                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden', minHeight: 27 }}>
-                    {p.nombre}
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
-                  <button onClick={() => onAdd && onAdd(p)} aria-label={`Agregar ${p.nombre}`} style={{
-                    marginTop: 'auto', padding: '6px 0', background: G, color: '#fff', border: 'none',
-                    borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
-                    + Agregar
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
+          {/* Nota del pedido — acceso siempre visible en el footer. Antes vivía dentro
+              del scroll y con muchos productos quedaba al fondo, sin descubrirse. */}
+          {(notasOpen || notas) ? (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68' }}>Nota del pedido</span>
+                {!notas && (
+                  <button onClick={() => setNotasOpen(false)} aria-label="Cerrar nota" style={{
+                    background: 'none', border: 'none', color: '#9a9a98', fontSize: 12,
+                    cursor: 'pointer', fontFamily: SANS, padding: 0 }}>Cerrar</button>
+                )}
+              </div>
+              <textarea value={notas} onChange={e => setNotas(e.target.value)} autoFocus
+                placeholder="Ej: entregar antes del mediodia..." aria-label="Notas del pedido"
+                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+                rows={2} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
+                  borderRadius: 8, fontSize: 16, fontFamily: SANS, resize: 'none',
+                  boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
+            </div>
+          ) : (
+            <button onClick={() => setNotasOpen(true)} aria-label="Agregar nota al pedido" style={{
+              width: '100%', padding: '9px 0', marginBottom: 12, background: '#fafaf7',
+              color: '#6a6a68', border: '1px dashed #d8d8d0', borderRadius: 8, fontSize: 12,
+              fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Agregar nota al pedido
+            </button>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
