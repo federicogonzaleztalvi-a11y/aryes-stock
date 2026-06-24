@@ -394,6 +394,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               window.location.href = '/reset-password' + window.location.hash;
               return <div/>;
             }
+            // Dominio de cliente (ej. pedidos.aryes.com.uy): la raíz "/" es SU portal,
+            // no la web de Pazque. Genérico: cualquier host que no sea de Pazque
+            // (pazque.com, *.vercel.app, localhost, aryes-stock) se trata como
+            // dominio de distribuidora → portal de pedidos en la raíz.
+            const h = window.location.hostname;
+            const esHostPazque = h === 'localhost' || h === '127.0.0.1'
+              || h.includes('vercel.app') || h.includes('aryes-stock')
+              || h === 'pazque.com' || h === 'www.pazque.com';
+            if (!esHostPazque) return <PedidosPage />;
             return <Suspense fallback={<div/>}><LandingPage /></Suspense>;
           })()} />
           <Route path="/landing" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
