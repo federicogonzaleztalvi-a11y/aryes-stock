@@ -251,12 +251,12 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('Precios');
 
-      // Columnas: A Nombre · B Unidad · C Operación · D Factor · E Precio · F Descuento% · G Precio Final
-      const widths = [42, 10, 11, 9, 13, 12, 14];
+      // Columnas: A Código · B Nombre · C Unidad · D Operación · E Factor · F Precio · G Descuento% · H Precio Final
+      const widths = [14, 42, 10, 11, 9, 13, 12, 14];
       widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
       // Fila 1 — instrucciones
-      ws.mergeCells('A1:G1');
+      ws.mergeCells('A1:H1');
       const inst = ws.getCell('A1');
       inst.value = 'Completá solo "Precio" con el número de tu lista. El "Precio Final" se calcula solo aplicando la regla: × Factor (ej. horma 4kg), ÷ Factor (ej. caja de 12), o directo. La regla ya viene pre-cargada; revisala una vez y listo.';
       inst.font = { italic: true, color: { argb: 'FF6B7280' }, size: 11 };
@@ -265,7 +265,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
       ws.getRow(1).height = 34;
 
       // Fila 2 — encabezados (verde Pazque, negrita, texto blanco)
-      const headers = ['Nombre Pazque', 'Unidad', 'Operación', 'Factor', 'Precio', 'Descuento%', 'Precio Final'];
+      const headers = ['Código', 'Nombre Pazque', 'Unidad', 'Operación', 'Factor', 'Precio', 'Descuento%', 'Precio Final'];
       const hr = ws.getRow(2);
       headers.forEach((h, i) => {
         const c = hr.getCell(i + 1);
@@ -288,32 +288,35 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         // Regla pre-cargada: si el nombre tiene un tamaño fijo (4kg, 25kg, 5L) → × factor; si no → directo
         const oper = packSize != null ? '×' : 'directo';
         const factor = packSize != null ? packSize : null;
+        const codigo = p.codigo || p.barcode || '';
         const row = ws.getRow(r);
-        row.getCell(1).value = nombre;
-        row.getCell(2).value = unidad;
-        row.getCell(3).value = oper;       // Operación (editable, con dropdown)
-        row.getCell(4).value = factor;     // Factor (editable)
-        row.getCell(5).value = null;       // Precio — lo completa el usuario
-        row.getCell(6).value = null;       // Descuento%
+        row.getCell(1).value = codigo;     // Código (referencia, no editable)
+        row.getCell(2).value = nombre;
+        row.getCell(3).value = unidad;
+        row.getCell(4).value = oper;       // Operación (editable, con dropdown)
+        row.getCell(5).value = factor;     // Factor (editable)
+        row.getCell(6).value = null;       // Precio — lo completa el usuario
+        row.getCell(7).value = null;       // Descuento%
         // Fórmula viva: ÷ → Precio/Factor · × → Precio×Factor · directo → Precio
-        row.getCell(7).value = { formula: `IF(E${r}="","",IF(AND(C${r}="÷",D${r}<>"",D${r}<>0),E${r}/D${r},IF(AND(C${r}="×",D${r}<>"",D${r}<>0),E${r}*D${r},E${r})))` };
+        row.getCell(8).value = { formula: `IF(F${r}="","",IF(AND(D${r}="÷",E${r}<>"",E${r}<>0),F${r}/E${r},IF(AND(D${r}="×",E${r}<>"",E${r}<>0),F${r}*E${r},F${r})))` };
         // Dropdown de Operación
-        row.getCell(3).dataValidation = { type: 'list', allowBlank: false, formulae: ['"×,÷,directo"'] };
+        row.getCell(4).dataValidation = { type: 'list', allowBlank: false, formulae: ['"×,÷,directo"'] };
         // Estilos
-        [1, 2].forEach(ci => { row.getCell(ci).fill = grisFill; });
-        row.getCell(3).fill = azulFill;
+        [1, 2, 3].forEach(ci => { row.getCell(ci).fill = grisFill; });
+        row.getCell(1).font = { color: { argb: 'FF6B7280' } };
         row.getCell(4).fill = azulFill;
-        row.getCell(4).numFmt = '#,##0.###';
-        row.getCell(5).fill = amarilloFill;       // Precio resaltado
-        row.getCell(5).numFmt = '#,##0.00';
-        row.getCell(7).fill = grisFill;
-        row.getCell(7).font = { bold: true, color: { argb: 'FF374151' } };
-        row.getCell(7).numFmt = '#,##0.00';
+        row.getCell(5).fill = azulFill;
+        row.getCell(5).numFmt = '#,##0.###';
+        row.getCell(6).fill = amarilloFill;       // Precio resaltado
+        row.getCell(6).numFmt = '#,##0.00';
+        row.getCell(8).fill = grisFill;
+        row.getCell(8).font = { bold: true, color: { argb: 'FF374151' } };
+        row.getCell(8).numFmt = '#,##0.00';
       });
 
       // Encabezado fijo + filtros
       ws.views = [{ state: 'frozen', ySplit: 2 }];
-      ws.autoFilter = 'A2:G2';
+      ws.autoFilter = 'A2:H2';
 
       const buf = await wb.xlsx.writeBuffer();
       const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
