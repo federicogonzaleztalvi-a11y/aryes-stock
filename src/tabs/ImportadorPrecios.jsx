@@ -202,6 +202,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
             matchScore: bestScore,
             productoId: bestScore >= 0.4 ? bestMatch?.id : null,
             productoNombre: bestScore >= 0.4 ? bestMatch?.name : '',
+            productoCodigo: bestScore >= 0.4 ? (bestMatch?.codigo || bestMatch?.barcode || '') : '',
             precioFinal: precioUnit,
             incluir: bestScore >= 0.4,
           };
@@ -407,7 +408,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: '#f9fafb' }}>
-              {['✓', 'Nombre en Excel', 'Precio', 'Dto%', 'Producto Pazque', 'Precio final', 'Match'].map(h => (
+              {['Código', '✓', 'Nombre en Excel', 'Precio', 'Dto%', 'Producto Pazque', 'Precio final', 'Match'].map(h => (
                 <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600, color: '#6b7280', fontSize: 11, borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
@@ -415,6 +416,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
           <tbody>
             {rows.map((row, i) => (
               <tr key={i} style={{ borderBottom: '1px solid #f3f4f6', background: !row.productoId ? '#fffbeb' : row.incluir ? '#fff' : '#f9fafb', opacity: row.incluir ? 1 : 0.5 }}>
+                <td style={{ padding: '6px 12px', fontFamily: 'monospace', color: row.productoCodigo ? '#374151' : '#c0c0bc', whiteSpace: 'nowrap' }}>{row.productoCodigo || '—'}</td>
                 <td style={{ padding: '6px 12px' }}>
                   <input type="checkbox" checked={row.incluir && !!row.productoId} disabled={!row.productoId}
                     onChange={e => updateRow(i, 'incluir', e.target.checked)} />
