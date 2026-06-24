@@ -307,22 +307,29 @@ function LoginStep({ onLogin }) {
                   </>
                 )}
               </button>
-              <div style={{ position: 'relative', margin: '20px 0 4px', textAlign: 'center' }}>
-                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '0.5px', background: '#e8e8e0' }}/>
-                <span style={{ position: 'relative', background: '#f7f7f4', padding: '0 12px', fontSize: 11, color: '#b0b0a8' }}>o</span>
-              </div>
-              <button onClick={() => window.location.href='/pedidos?demo=true'}
-                style={{
-                  width: '100%', padding: '11px 0', background: 'transparent',
-                  color: '#6a6a68', border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13,
-                  fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}>
-                Explorar catálogo de prueba
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                </svg>
-              </button>
+              {/* Botón de demo: solo en el contexto genérico de Pazque (org 'aryes'),
+                  para prospectos que evalúan la plataforma. En el portal de un cliente
+                  real (Eric / futuros) se oculta — no debe verse "catálogo de prueba". */}
+              {ORG === 'aryes' && (
+                <>
+                  <div style={{ position: 'relative', margin: '20px 0 4px', textAlign: 'center' }}>
+                    <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '0.5px', background: '#e8e8e0' }}/>
+                    <span style={{ position: 'relative', background: '#f7f7f4', padding: '0 12px', fontSize: 11, color: '#b0b0a8' }}>o</span>
+                  </div>
+                  <button onClick={() => window.location.href='/pedidos?demo=true'}
+                    style={{
+                      width: '100%', padding: '11px 0', background: 'transparent',
+                      color: '#6a6a68', border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13,
+                      fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}>
+                    Explorar catálogo de prueba
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                  </button>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -379,7 +386,24 @@ function LoginStep({ onLogin }) {
             </>
           )}
         </div>
+        <PoweredByPazque style={{ paddingBottom: 0, marginTop: 24 }} />
       </div>
+    </div>
+  );
+}
+
+// "Powered by Pazque" — atribución sutil al pie (estilo Shopify/Stripe). Discreto,
+// gris, con link a pazque.com. Sirve de marketing pasivo: cada cliente que ve el
+// portal de Eric descubre la plataforma. Genérico, no depende del org.
+function PoweredByPazque({ style }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '20px 0 24px', ...style }}>
+      <a href="https://pazque.com" target="_blank" rel="noopener noreferrer"
+        style={{ fontSize: 11, color: '#a0a098', textDecoration: 'none',
+          fontFamily: SANS, letterSpacing: '0.2px',
+          display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+        Powered by <span style={{ fontWeight: 600, color: '#6b6b66' }}>Pazque</span>
+      </a>
     </div>
   );
 }
@@ -2285,6 +2309,8 @@ export default function PedidosPage() {
           }} />
         </main>
       )}
+
+      <PoweredByPazque />
 
       {reorderMsg && (
         <div role="status" style={{ position: 'fixed', bottom: 84, left: '50%', transform: 'translateX(-50%)',
