@@ -52,6 +52,12 @@ export function useRole(): RoleFlags {
   const { session } = useApp();
   const role = session?.role ?? 'admin';
 
+  // Roles personalizados (armados en Config → Roles, modelo "solo pestañas"):
+  // no están en LEGACY_PERMS ni traen permissions explícitos. Les damos acceso
+  // de trabajo completo dentro de las pestañas que sí ven (el sidebar ya filtra
+  // qué pestañas aparecen). canDelete sigue siendo solo admin.
+  const isCustomRole = !(role in LEGACY_PERMS) && !(session as any)?.permissions;
+
   // Use dynamic permissions from session if available, fallback to legacy
   const permissions: Record<string, PermLevel> =
     (session as any)?.permissions || LEGACY_PERMS[role] || LEGACY_PERMS.admin;
@@ -68,9 +74,9 @@ export function useRole(): RoleFlags {
     isContador: role === 'contador',
     isOperador: role === 'operador',
     isVendedor: role === 'vendedor',
-    canWrite:   role === 'admin' || role === 'operador',
+    canWrite:   role === 'admin' || role === 'operador' || isCustomRole,
     canDelete:  role === 'admin',
-    canSell:    role === 'admin' || role === 'vendedor',
+    canSell:    role === 'admin' || role === 'vendedor' || isCustomRole,
     perm,
     canView:    (m) => hasLevel(m, 'view'),
     canEdit:    (m) => hasLevel(m, 'edit'),

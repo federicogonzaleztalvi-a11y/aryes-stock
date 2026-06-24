@@ -339,7 +339,7 @@ export default function ConfigInline({
 
           {/* ── USUARIOS ─────────────────────────────────────────────────── */}
           {settingsTab==="usuarios" && (
-            <UsersTab session={session} />
+            <UsersTab session={session} brandCfg={brandCfg} />
           )}
 
           {settingsTab==="roles" && (

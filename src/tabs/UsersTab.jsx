@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from '../components/ConfirmDialog.jsx';
 
 const G = '#059669';
-const ROLES = ['admin', 'operador', 'vendedor'];
-const ROLE_COLORS = { admin: '#7c3aed', operador: '#2563eb', vendedor: '#059669' };
-const ROLE_LABELS = { admin: 'Administrador', operador: 'Operador', vendedor: 'Vendedor' };
+const ROLE_COLORS = { admin: '#7c3aed', operador: '#2563eb', vendedor: '#059669', contador: '#d97706' };
+const ROLE_LABELS = { admin: 'Administrador', operador: 'Operador', vendedor: 'Vendedor', contador: 'Contador' };
+const DEFAULT_ROLE_IDS = ['admin', 'operador', 'vendedor', 'contador'];
 
 const inp = {
   padding: '8px 12px', border: '1px solid #e2e2de', borderRadius: 6,
@@ -31,8 +31,24 @@ async function apiCall(action, method, body) {
   return data;
 }
 
-export default function UsersTab({ session }) {
+const CUSTOM_COLORS = ['#0891b2', '#db2777', '#65a30d', '#9333ea', '#ea580c', '#0d9488'];
+
+export default function UsersTab({ session, brandCfg }) {
   const { confirm } = useConfirm();
+
+  // Roles disponibles: los que armó el cliente en Config → Roles (solo pestañas),
+  // con fallback a los 4 roles por defecto.
+  const customRoles = brandCfg?.custom_roles && Object.keys(brandCfg.custom_roles).length
+    ? brandCfg.custom_roles : null;
+  const roleDefs = customRoles
+    ? Object.keys(customRoles).map(k => ({ id: k, label: customRoles[k]?.label || ROLE_LABELS[k] || k }))
+    : DEFAULT_ROLE_IDS.map(k => ({ id: k, label: ROLE_LABELS[k] || k }));
+  const colorFor = (id) => {
+    if (ROLE_COLORS[id]) return ROLE_COLORS[id];
+    const idx = roleDefs.findIndex(r => r.id === id);
+    return CUSTOM_COLORS[(idx < 0 ? 0 : idx) % CUSTOM_COLORS.length];
+  };
+  const labelFor = (id) => roleDefs.find(r => r.id === id)?.label || ROLE_LABELS[id] || id;
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: '', type: 'ok' });
@@ -183,11 +199,11 @@ export default function UsersTab({ session }) {
         ))}
         <div>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 5 }}>Rol</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {ROLES.map(r => (
-              <button key={r} onClick={() => setForm(v => ({ ...v, role: r }))}
-                style={{ flex: 1, padding: '8px 0', border: `2px solid ${form.role === r ? ROLE_COLORS[r] : '#e2e2de'}`, borderRadius: 8, background: form.role === r ? ROLE_COLORS[r] : '#fff', color: form.role === r ? '#fff' : '#444', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
-                {ROLE_LABELS[r]}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {roleDefs.map(r => (
+              <button key={r.id} onClick={() => setForm(v => ({ ...v, role: r.id }))}
+                style={{ flex: '1 1 calc(50% - 4px)', padding: '8px 0', border: `2px solid ${form.role === r.id ? colorFor(r.id) : '#e2e2de'}`, borderRadius: 8, background: form.role === r.id ? colorFor(r.id) : '#fff', color: form.role === r.id ? '#fff' : '#444', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>
+                {r.label}
               </button>
             ))}
           </div>
@@ -288,8 +304,9 @@ export default function UsersTab({ session }) {
                       <select value={u.role || 'operador'}
                         onChange={e => handleUpdateRole(u.email, e.target.value)}
                         disabled={isSelf}
-                        style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${ROLE_COLORS[u.role] || '#e2e2de'}`, background: '#fff', fontSize: 12, fontWeight: 600, color: ROLE_COLORS[u.role] || '#444', cursor: isSelf ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                        {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                        style={{ padding: '4px 8px', borderRadius: 6, border: `1px solid ${colorFor(u.role)}`, background: '#fff', fontSize: 12, fontWeight: 600, color: colorFor(u.role), cursor: isSelf ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                        {roleDefs.some(r => r.id === u.role) ? null : <option value={u.role}>{labelFor(u.role)}</option>}
+                        {roleDefs.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                       </select>
                     </td>
                     <td style={{ padding: '12px 16px' }}>

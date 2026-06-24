@@ -112,7 +112,7 @@ export default async function handler(req, res) {
 
       if (!email || !password || !name || !role)
         return res.status(400).json({ error: 'email, password, name y role son requeridos' });
-      if (!['admin', 'operador', 'vendedor'].includes(role))
+      if (!/^[a-z0-9_]{2,32}$/i.test(role))
         return res.status(400).json({ error: 'Rol inválido' });
       if (password.length < 6)
         return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
