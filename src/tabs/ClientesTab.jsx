@@ -202,6 +202,7 @@ function DescuentosPanel({ clientId, orgId }) {
   const [formValor, setFormValor] = React.useState('');
   const [formNotas, setFormNotas] = React.useState('');
   const [busqueda, setBusqueda] = React.useState('');
+  const [mostrarLista, setMostrarLista] = React.useState(false);
 
   const URL = import.meta.env.VITE_SUPABASE_URL;
   // Use the logged-in user's JWT so RLS allows access to products/clients.
@@ -255,7 +256,7 @@ function DescuentosPanel({ clientId, orgId }) {
         throw new Error(err);
       }
       setShowForm(false);
-      setFormProd(''); setFormValor(''); setFormNotas(''); setFormTipo('pct');
+      setFormProd(''); setFormValor(''); setFormNotas(''); setFormTipo('pct'); setBusqueda(''); setMostrarLista(false);
       cargar();
     } catch (e) {
       alert('Error al guardar: ' + e.message);
@@ -297,15 +298,30 @@ function DescuentosPanel({ clientId, orgId }) {
       {showForm && (
         <div style={{background:'#fafafa',padding:16,borderRadius:10,marginBottom:16,border:'1px solid #e5e5e5'}}>
           <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:10,marginBottom:10}}>
-            <div>
+            <div style={{position:'relative'}}>
               <label style={{fontSize:11,color:'#666',display:'block',marginBottom:4,fontWeight:600}}>Producto</label>
-              <input type="text" placeholder="Buscar producto..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13,marginBottom:4}} />
-              <select value={formProd} onChange={e => setFormProd(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}}>
-                <option value="">Elegir producto...</option>
-                {filtrados.slice(0,50).map(p => (
-                  <option key={p.uuid} value={p.uuid}>{p.name}</option>
-                ))}
-              </select>
+              <input type="text" placeholder="Escribí el nombre del producto..." value={busqueda}
+                onChange={e => { setBusqueda(e.target.value); setFormProd(''); setMostrarLista(true); }}
+                onFocus={() => setMostrarLista(true)}
+                style={{width:'100%',padding:'8px 10px',border:`1px solid ${formProd ? '#059669' : '#ddd'}`,borderRadius:6,fontSize:13}} />
+              {formProd
+                ? <div style={{fontSize:11,color:'#059669',marginTop:4,fontWeight:600}}>✓ Producto seleccionado</div>
+                : null}
+              {mostrarLista && busqueda.trim() && !formProd && (
+                <div style={{position:'absolute',zIndex:30,left:0,right:0,top:'100%',marginTop:4,background:'#fff',border:'1px solid #ddd',borderRadius:8,maxHeight:240,overflowY:'auto',boxShadow:'0 8px 24px rgba(0,0,0,.12)'}}>
+                  {filtrados.length === 0
+                    ? <div style={{padding:'10px 12px',fontSize:13,color:'#999'}}>Sin resultados para “{busqueda}”</div>
+                    : filtrados.slice(0,50).map(p => (
+                      <div key={p.uuid}
+                        onMouseDown={e => { e.preventDefault(); setFormProd(p.uuid); setBusqueda(p.name); setMostrarLista(false); }}
+                        style={{padding:'8px 12px',fontSize:13,cursor:'pointer',borderBottom:'1px solid #f3f4f6',color:'#1a1a1a'}}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f0fdf4'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                        {p.name}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
             <div>
               <label style={{fontSize:11,color:'#666',display:'block',marginBottom:4,fontWeight:600}}>Tipo</label>
@@ -324,7 +340,7 @@ function DescuentosPanel({ clientId, orgId }) {
             <input type="text" placeholder="Ej: acuerdo desde mar/2026" value={formNotas} onChange={e => setFormNotas(e.target.value)} style={{width:'100%',padding:'8px 10px',border:'1px solid #ddd',borderRadius:6,fontSize:13}} />
           </div>
           <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-            <button onClick={() => { setShowForm(false); setFormProd(''); setFormValor(''); setFormNotas(''); }} style={{padding:'8px 16px',background:'#fff',color:'#666',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:13}}>Cancelar</button>
+            <button onClick={() => { setShowForm(false); setFormProd(''); setFormValor(''); setFormNotas(''); setBusqueda(''); setMostrarLista(false); }} style={{padding:'8px 16px',background:'#fff',color:'#666',border:'1px solid #ddd',borderRadius:6,cursor:'pointer',fontSize:13}}>Cancelar</button>
             <button onClick={agregar} style={{padding:'8px 16px',background:'#1a1a1a',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:13,fontWeight:600}}>Guardar</button>
           </div>
         </div>
