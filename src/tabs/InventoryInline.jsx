@@ -3,12 +3,14 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useApp } from '../context/AppContext.tsx';
 import { T, Btn, AlertPill, StockBar, Spark, totalLead , downloadCSV } from '../lib/ui.jsx';
 import { useRole } from '../hooks/useRole.ts';
+import CategoriasManager from '../components/CategoriasManager.jsx';
 
 export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}) {
   const { isAdmin } = useRole();
   const { products, enriched, deleteProduct, brandCfg } = useApp();
   const { confirm, ConfirmDialog } = useConfirm();
   const [q, setQ] = React.useState('');
+  const [showCats, setShowCats] = React.useState(false);
   const handleDelete = async (id) => {
     const ok = await confirm({ title: '¿Eliminar este producto?', description: 'Esta acción no se puede deshacer.', variant: 'danger' });
     if (ok) await deleteProduct(id);
@@ -24,10 +26,12 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
   return (
     <>
     {ConfirmDialog}
+    {showCats && <CategoriasManager onClose={()=>setShowCats(false)} />}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
               <h1 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em"}}>Inventario</h1>
               <div style={{display:"flex",gap:10}}>
+                <Btn onClick={()=>setShowCats(true)} variant="ghost">🏷 Categorías</Btn>
                 <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
                 <Btn variant="ghost" onClick={()=>{
           const rows=(enriched||[]).map(p=>({
