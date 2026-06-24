@@ -8,10 +8,19 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
   const { isAdmin } = useRole();
   const { products, enriched, deleteProduct, brandCfg } = useApp();
   const { confirm, ConfirmDialog } = useConfirm();
+  const [q, setQ] = React.useState('');
   const handleDelete = async (id) => {
     const ok = await confirm({ title: '¿Eliminar este producto?', description: 'Esta acción no se puede deshacer.', variant: 'danger' });
     if (ok) await deleteProduct(id);
   };
+  const term = q.trim().toLowerCase();
+  const shown = term
+    ? (enriched||[]).filter(p =>
+        (p.name||'').toLowerCase().includes(term) ||
+        (p.barcode||'').toLowerCase().includes(term) ||
+        (p.codigo||'').toLowerCase().includes(term) ||
+        (p.sup?.name||'').toLowerCase().includes(term))
+    : enriched;
   return (
     <>
     {ConfirmDialog}
@@ -36,12 +45,25 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
           <Btn onClick={()=>{setEditProd(null);setModal({type:"product"});}}>+ Nuevo producto</Btn>
               </div>
             </div>
+            <div style={{position:"relative",maxWidth:420}}>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:T.textXs,pointerEvents:"none"}}>🔍</span>
+              <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar por nombre, código o proveedor…"
+                style={{width:"100%",boxSizing:"border-box",padding:"9px 34px 9px 34px",border:`1px solid ${T.border}`,borderRadius:8,fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,outline:"none"}}/>
+              {q&&<button onClick={()=>setQ('')} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.textXs}}>✕</button>}
+            </div>
             <div style={{border:`1px solid ${T.border}`,borderRadius:8,overflow:"auto",background:T.card}}>
               <table style={{width:"100%",borderCollapse:"collapse"}}>
                 <thead><tr style={{background:T.muted,borderBottom:`1px solid ${T.border}`,position:"sticky",top:0,zIndex:2}}>
                   {["Producto","Proveedor","Stock","ROP","Safety","EOQ","/día","Tendencia","Lead","Estado",""].map(h=><th key={h} style={{padding:"11px 13px",textAlign:"left",fontFamily:T.sans,fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:T.textSm,whiteSpace:"nowrap",background:T.muted}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
+                  {term && shown.length === 0 && enriched.length > 0 && (
+                    <tr><td colSpan={11} style={{padding:"48px 20px",textAlign:"center"}}>
+                      <div style={{fontSize:36,marginBottom:10}}>🔍</div>
+                      <div style={{fontFamily:T.sans,fontSize:14,fontWeight:600,color:T.text}}>Sin resultados para “{q}”</div>
+                      <div style={{fontFamily:T.sans,fontSize:13,color:T.textSm,marginTop:4}}>Probá con otro nombre, código o proveedor</div>
+                    </td></tr>
+                  )}
                   {enriched.length === 0 && (
                     <tr><td colSpan={11} style={{padding:"60px 20px",textAlign:"center"}}>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
@@ -58,7 +80,7 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
                       </div>
                     </td></tr>
                   )}
-                  {enriched.map((p,i)=>(
+                  {shown.map((p,i)=>(
                     <tr key={p.id} style={{borderBottom:`1px solid ${T.border}`,background:i%2===0?T.card:T.cardWarm,transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background=T.hover}
                       onMouseLeave={e=>e.currentTarget.style.background=i%2===0?T.card:T.cardWarm}>
