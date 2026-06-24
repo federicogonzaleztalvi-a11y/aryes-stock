@@ -117,33 +117,51 @@ export default async function handler(req, res) {
       if (password.length < 6)
         return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
 
-      // Create auth user via SECURITY DEFINER RPC (avoids GoTrue "User not allowed" error)
-      const { ok: authOk, data: authData } = await rpc('create_auth_user', {
-        user_email: email, user_password: password, user_name: name, user_role: role, user_org_id: admin.orgId,
+      // Create the auth user via Supabase Auth Admin API (service_role). This is
+      // the officially supported, version-stable path — no fragile RPC nor direct
+      // auth.users SQL that breaks across GoTrue versions.
+      const authRes = await fetch(`${SB_URL}/auth/v1/admin/users`, {
+        method: 'POST',
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email, password, email_confirm: true,
+          user_metadata: { name, org_id: admin.orgId },
+          app_metadata: { role, org_id: admin.orgId },
+        }),
       });
-
-      if (!authOk) {
-        const raw = typeof authData === 'string' ? authData
-          : (authData?.message || authData?.msg || authData?.error || JSON.stringify(authData));
-        console.log(`[CREATE] auth rpc failed: ${raw}`);
-        if (raw.includes('duplicate') || raw.includes('already exists') || raw.includes('unique'))
+      const authData = await authRes.json().catch(() => ({}));
+      if (!authRes.ok || !authData?.id) {
+        const raw = authData?.msg || authData?.message || authData?.error_description || authData?.error || '';
+        if (authRes.status === 422 || /already|registered|exists|duplicate/i.test(raw))
           return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
-        return res.status(400).json({ error: raw || 'Error al crear usuario' });
+        console.log(`[CREATE] auth admin create failed (${authRes.status}): ${raw}`);
+        return res.status(400).json({ error: raw || 'Error al crear el usuario' });
       }
+      const newAuthId = authData.id;
 
-      // Insert into public.users via SECURITY DEFINER RPC (bypasses RLS + PostgREST cache)
+      // Insert the matching public.users row with service_role (bypasses RLS).
+      // id = auth uid so the profile row and the login user stay linked.
       const username = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
-      const { ok: dbOk, data: dbData } = await rpc('insert_user', {
-        p_username: username, p_name: name, p_email: email, p_role: role, p_org_id: admin.orgId,
+      const insRes = await fetch(`${SB_URL}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+          'Content-Type': 'application/json', Prefer: 'return=representation',
+        },
+        body: JSON.stringify({ id: newAuthId, username, name, email, role, org_id: admin.orgId }),
       });
 
-      if (!dbOk) {
-        await rpc('delete_auth_user', { user_email: email }); // rollback
-        const dbErr = typeof dbData === 'string' ? dbData : (dbData?.message || 'Error al guardar en DB. Auth revertido.');
-        return res.status(400).json({ error: dbErr });
+      if (!insRes.ok) {
+        // Roll back the auth user so we don't leave an orphan login.
+        await fetch(`${SB_URL}/auth/v1/admin/users/${newAuthId}`, {
+          method: 'DELETE', headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+        });
+        const dbErr = await insRes.text().catch(() => '');
+        console.log(`[CREATE] public.users insert failed (${insRes.status}): ${dbErr}`);
+        return res.status(400).json({ error: 'Error al guardar el usuario. Se revirtió la creación.' });
       }
-
-      return res.status(201).json({ success: true, user: Array.isArray(dbData) ? dbData[0] : dbData });
+      const dbRows = await insRes.json().catch(() => null);
+      return res.status(201).json({ success: true, user: Array.isArray(dbRows) ? dbRows[0] : dbRows });
     }
 
     // ── Revoke portal sessions for a client ───────────────────────────────────
