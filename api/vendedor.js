@@ -29,6 +29,11 @@ const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Roles habilitados para el modo vendedor. Admin entra también (para probar/cargar).
 const ALLOWED_ROLES = ['vendedor', 'admin'];
 
+// TTL de la sesión de portal que el vendedor "abre" en nombre del cliente.
+// Corta (8h = una jornada) porque es una sesión operativa del vendedor, no del
+// cliente final (cuyo OTP dura 90 días).
+const OPEN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+
 // Valida el access_token de Supabase y resuelve el usuario interno (rol, username,
 // org) desde la tabla users. Devuelve null si el token es inválido o el usuario no
 // tiene rol habilitado. La identidad SIEMPRE sale de acá, nunca del body/query.
@@ -64,7 +69,7 @@ async function resolveVendedor(req) {
 async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
   if (!(await checkRateLimit('vendedor:' + _ip, 60, 60, { failClosed: true })))
@@ -78,7 +83,65 @@ async function handler(req, res) {
   const vendedor = await resolveVendedor(req);
   if (!vendedor) return res.status(401).json({ error: 'No autorizado. Iniciá sesión como vendedor.' });
 
+  const svcKey = SB_SVC || SB_ANON;
   const action = req.query?.action || 'me';
+
+  // ── POST ?action=open — abrir el portal EN NOMBRE de un cliente del vendedor ──
+  // Mintamos una sesión real de portal (portal_sessions) para ese cliente, igual
+  // que la que sale del OTP, pero verificando en el servidor que el cliente sea
+  // de ESTE vendedor (vendedor_id == username) y de su org. Con esa sesión el
+  // front reusa el portal del cliente tal cual (catálogo con su lista, carrito,
+  // pedido por el mismo motor) → mismo mail/PDF/push a la distribuidora.
+  if (action === 'open') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const clienteId = req.body?.clienteId;
+    if (!clienteId) return res.status(400).json({ error: 'clienteId requerido' });
+
+    // SECURITY: el cliente debe pertenecer a este vendedor y a su org. Nunca se
+    // confía en el navegador: se valida acá contra la DB.
+    const cRes = await fetch(
+      `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clienteId)}` +
+      `&org_id=eq.${encodeURIComponent(vendedor.org)}` +
+      `&vendedor_id=eq.${encodeURIComponent(vendedor.username)}` +
+      `&select=id,name,lista_id,phone&limit=1`,
+      { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
+    );
+    if (!cRes.ok) {
+      const err = await cRes.text();
+      log.error('vendedor', 'open client lookup error', { status: cRes.status, body: err.substring(0, 200) });
+      return res.status(502).json({ error: 'No se pudo abrir el cliente' });
+    }
+    const cRows = await cRes.json();
+    const cli = cRows?.[0];
+    if (!cli) return res.status(403).json({ error: 'Ese cliente no está asignado a vos.' });
+
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + OPEN_SESSION_TTL_MS).toISOString();
+    const tel = (cli.phone || '').replace(/\D/g, '') || 'vendedor';
+    const sRes = await fetch(`${SB_URL}/rest/v1/portal_sessions`, {
+      method: 'POST',
+      headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ token, cliente_id: cli.id, tel, org_id: vendedor.org, expires_at: expiresAt }),
+    });
+    if (!sRes.ok) {
+      const err = await sRes.text();
+      log.error('vendedor', 'open session insert error', { status: sRes.status, body: err.substring(0, 200) });
+      return res.status(502).json({ error: 'No se pudo abrir el cliente' });
+    }
+    log.info('vendedor', 'portal abierto por vendedor', { vendedor: vendedor.username, cliente: cli.id, org: vendedor.org });
+    return res.status(200).json({
+      session: {
+        token, expiresAt,
+        clienteId: cli.id,
+        nombre: cli.name,
+        listaId: cli.lista_id || null,
+        tel,
+        org: vendedor.org,
+      },
+    });
+  }
+
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── ?action=me — datos del vendedor logueado ──
   if (action === 'me') {
@@ -89,11 +152,10 @@ async function handler(req, res) {
 
   // ── ?action=clients — sólo los clientes asignados a ESTE vendedor ──
   if (action === 'clients') {
-    const svcKey = SB_SVC || SB_ANON;
     const r = await fetch(
       `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(vendedor.org)}` +
       `&vendedor_id=eq.${encodeURIComponent(vendedor.username)}` +
-      `&select=id,name,codigo,tipo,ciudad,phone,lista_id&order=name.asc`,
+      `&select=id,name,codigo,ciudad,phone,lista_id&order=name.asc`,
       { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
     );
     if (!r.ok) {

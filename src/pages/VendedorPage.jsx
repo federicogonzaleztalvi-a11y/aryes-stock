@@ -8,6 +8,7 @@
 // confirmar + historial.
 import React, { useState, useEffect, useCallback } from 'react';
 import { SB_URL, SKEY } from '../lib/constants.js';
+import PedidosPage from './PedidosPage.jsx';
 
 const G = '#059669';
 const SANS = "'Inter', system-ui, -apple-system, sans-serif";
@@ -30,6 +31,25 @@ function VendedorLogin({ onLogin }) {
   const [pass, setPass]   = useState('');
   const [err, setErr]     = useState('');
   const [loading, setLoading] = useState(false);
+  // Marca de la distribuidora (genérico por org): el manifest resuelve el org por
+  // dominio/?org= y nos da el logo. Así el portal del vendedor de Eric muestra el
+  // logo de Aryes, sin hardcodear nada.
+  const [brandLogo, setBrandLogo] = useState(null);
+  const [brandName, setBrandName] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const m = await fetch('/api/manifest').then(r => r.json());
+        if (cancelled) return;
+        const icons = m?.icons || [];
+        const src = icons[icons.length - 1]?.src || icons[0]?.src || null;
+        if (src && !src.includes('pazque-logo')) setBrandLogo(src);
+        if (m?.name && m.name !== 'Pazque') setBrandName(m.name);
+      } catch { /* sin red → queda el ícono genérico */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handle = async (e) => {
     e && e.preventDefault && e.preventDefault();
@@ -85,13 +105,18 @@ function VendedorLogin({ onLogin }) {
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: SANS }}>
       <div style={{ background: '#fff', border: '1px solid #e2e2de', borderRadius: 14, padding: '36px 32px', width: '100%', maxWidth: 400, boxShadow: '0 8px 40px rgba(0,0,0,.06)' }}>
         <div style={{ textAlign: 'center', marginBottom: 26 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: G, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18M3 12h18M3 18h12" />
-            </svg>
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#1a1a18' }}>Portal de vendedores</div>
-          <div style={{ fontSize: 13, color: '#6a6a68', marginTop: 4 }}>Ingresá para pasar pedidos de tus clientes</div>
+          {brandLogo ? (
+            <img src={brandLogo} alt={brandName || 'Logo'}
+              style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'contain', background: '#fff', marginBottom: 14, display: 'inline-block' }} />
+          ) : (
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: G, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M3 12h18M3 18h12" />
+              </svg>
+            </div>
+          )}
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#1a1a18' }}>{brandName || 'Portal de vendedores'}</div>
+          <div style={{ fontSize: 13, color: '#6a6a68', marginTop: 4 }}>{brandName ? 'Portal de vendedores · pasá pedidos de tus clientes' : 'Ingresá para pasar pedidos de tus clientes'}</div>
         </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <div>
@@ -188,7 +213,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 600, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
                 <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>
-                  {[c.codigo, c.tipo, c.ciudad].filter(Boolean).join(' · ') || 'Sin datos'}
+                  {[c.codigo, c.ciudad].filter(Boolean).join(' · ') || 'Sin datos'}
                 </div>
               </div>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -202,22 +227,59 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
   );
 }
 
-// ── Placeholder Fase B — armar pedido del cliente elegido ───────────────────
-function PedidoClientePlaceholder({ cliente, onBack }) {
-  return (
-    <div style={{ minHeight: '100vh', background: '#f9f9f7', fontFamily: SANS, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
-      <div style={{ background: '#fff', border: '1px solid #e6e9e6', borderRadius: 14, padding: '32px 28px', maxWidth: 420 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1a18', marginBottom: 6 }}>{cliente.name}</div>
-        <div style={{ fontSize: 13.5, color: '#6a6a68', lineHeight: 1.6 }}>
-          Acá vas a armar el pedido de este cliente: catálogo con su lista de precios, carrito e historial.
-          <br /><span style={{ color: G, fontWeight: 600 }}>Próximamente (Fase B).</span>
+// ── Fase B — armar el pedido del cliente elegido ────────────────────────────
+// Minteamos en el servidor una sesión REAL de portal para ese cliente (verifica
+// que sea del vendedor) y reusamos el portal del cliente tal cual: catálogo con
+// su lista, carrito y pedido por el mismo motor (mail/PDF/push). El vendedor ve
+// arriba una barra para volver / cambiar de cliente.
+function PedidoCliente({ session, cliente, onBack }) {
+  const [portalSession, setPortalSession] = useState(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/vendedor?action=open', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+          body: JSON.stringify({ clienteId: cliente.id }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!r.ok || !data.session) { setErr(data.error || 'No pudimos abrir el catálogo de este cliente.'); return; }
+        setPortalSession(data.session);
+      } catch {
+        if (!cancelled) setErr('Error de conexión.');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.access_token, cliente.id]);
+
+  if (err) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f9f9f7', fontFamily: SANS, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+        <div style={{ background: '#fff', border: '1px solid #e6e9e6', borderRadius: 14, padding: '32px 28px', maxWidth: 420 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18', marginBottom: 8 }}>{cliente.name}</div>
+          <div style={{ fontSize: 13.5, color: '#dc2626', lineHeight: 1.6 }}>{err}</div>
+          <button onClick={onBack} style={{ marginTop: 22, background: 'transparent', color: '#1a1a18', border: '1px solid #e2e2de', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontFamily: SANS, fontSize: 13.5, fontWeight: 600 }}>
+            ← Volver a mis clientes
+          </button>
         </div>
-        <button onClick={onBack} style={{ marginTop: 22, background: 'transparent', color: '#1a1a18', border: '1px solid #e2e2de', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontFamily: SANS, fontSize: 13.5, fontWeight: 600 }}>
-          ← Volver a mis clientes
-        </button>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!portalSession) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f9f9f7', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 30, height: 30, border: `3px solid ${G}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
+        <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+      </div>
+    );
+  }
+
+  return <PedidosPage vendorSession={portalSession} onVendorExit={onBack} vendorName={session.name} />;
 }
 
 export default function VendedorPage() {
@@ -231,6 +293,6 @@ export default function VendedorPage() {
   }, []);
 
   if (!session) return <VendedorLogin onLogin={setSession} />;
-  if (selected) return <PedidoClientePlaceholder cliente={selected} onBack={() => setSelected(null)} />;
+  if (selected) return <PedidoCliente session={session} cliente={selected} onBack={() => setSelected(null)} />;
   return <ClientesAsignados session={session} onLogout={logout} onSelect={setSelected} />;
 }

@@ -1779,10 +1779,18 @@ function InstallAppBanner({ brandNombre }) {
 }
 
 // ── Pagina principal ──────────────────────────────────────────────────────────
-export default function PedidosPage() {
+export default function PedidosPage({ vendorSession = null, onVendorExit = null, vendorName = '' }) {
+  // Modo vendedor: el vendedor ya eligió un cliente y entramos con una sesión de
+  // portal real minteada en el servidor (api/vendedor?action=open). Reusamos TODO
+  // el portal del cliente tal cual (catálogo con su lista, carrito, pedido) → mismo
+  // mail/PDF/push. La diferencia visible es una barra arriba para cambiar de cliente.
+  const vendorMode = !!vendorSession;
+  const onVendorExitRef = useRef(onVendorExit);
+  onVendorExitRef.current = onVendorExit;
+
   const [portalDemo, setPortalDemo] = useState(null); // null | 'selecting' | dataset key
   const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
-  const [session,  setSession]  = useState(() => loadSession());
+  const [session,  setSession]  = useState(() => vendorSession || loadSession());
   const [vista,    setVista]    = useState('catalogo');
   const [detalle,  setDetalle]  = useState(null); // producto abierto en la PDP (null = grilla)
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
@@ -1797,7 +1805,7 @@ export default function PedidosPage() {
   const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');
   const [busq,     setBusq]     = useState('');
-  const [carrito,  setCarrito]  = useState(() => loadCart(loadSession()?.clienteId));
+  const [carrito,  setCarrito]  = useState(() => loadCart((vendorSession || loadSession())?.clienteId));
   const [showCart, setShowCart] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
@@ -1819,7 +1827,7 @@ export default function PedidosPage() {
   // ── Persistencia del carrito por cliente ──────────────────────────────────
   // Identidad del carrito: cliente logueado, o un slot propio por dataset demo.
   const cartCli = isPortalDemo ? `demo-${portalDemo}` : (session?.clienteId || null);
-  const loadedCliRef = useRef(loadSession()?.clienteId || null);
+  const loadedCliRef = useRef((vendorSession || loadSession())?.clienteId || null);
   const skipPersistRef = useRef(false);
   // Al cambiar de identidad (login / logout / cambio de demo) cargamos el carrito
   // guardado de ESE cliente, sin pisar lo que ya tenía.
@@ -1941,6 +1949,9 @@ export default function PedidosPage() {
       // limpiamos la sesión local y volvemos al login. (El TTL es de 7 días, así que
       // esto cubre sobre todo la revocación, no la expiración normal.)
       if (r.status === 401 && ses.token && ses.token !== 'demo-token') {
+        // En modo vendedor la sesión es la del cliente abierta por el vendedor:
+        // si expira/revoca, volvemos a la lista de clientes, no al login por OTP.
+        if (onVendorExitRef.current) { setItems([]); setCarrito({}); onVendorExitRef.current(); return; }
         localStorage.removeItem(SK);
         setSession(null); setItems([]); setCarrito({});
         return;
@@ -2046,6 +2057,9 @@ export default function PedidosPage() {
 
   const logout = () => {
     if (isPortalDemo) { setPortalDemo(null); setItems([]); setCarrito({}); window.location.href = '/pedidos'; return; }
+    // Modo vendedor: no hay sesión propia en localStorage que limpiar; volvemos a
+    // la lista de clientes del vendedor.
+    if (vendorMode && onVendorExitRef.current) { setItems([]); setCarrito({}); onVendorExitRef.current(); return; }
 
     localStorage.removeItem(SK);
     setSession(null); setItems([]); setCarrito({});
@@ -2074,6 +2088,21 @@ export default function PedidosPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS }}>
+
+      {vendorMode && (
+        <div style={{ background: '#0f3d2e', color: '#fff', padding: '8px 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+          fontFamily: SANS, flexWrap: 'wrap', position: 'sticky', top: 0, zIndex: Z.header + 1 }}>
+          <span style={{ fontSize: 12.5 }}>
+            {vendorName ? `${vendorName} · ` : ''}Pedido por cuenta de <strong>{session?.nombre}</strong>
+          </span>
+          <button onClick={() => { setItems([]); setCarrito({}); onVendorExitRef.current && onVendorExitRef.current(); }}
+            style={{ fontSize: 11.5, color: '#0f3d2e', background: '#fff', border: 'none',
+              borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 700, fontFamily: SANS }}>
+            Cambiar cliente
+          </button>
+        </div>
+      )}
 
       {isPortalDemo && (
         <div style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '8px 24px',
@@ -2273,7 +2302,7 @@ export default function PedidosPage() {
         </nav>
       </header>
 
-      {!isPortalDemo && <InstallAppBanner brandNombre={brandNombre} />}
+      {!isPortalDemo && !vendorMode && <InstallAppBanner brandNombre={brandNombre} />}
 
       {horarioInfo && (
         <div style={{ background:'#fffbeb', borderBottom:'1px solid #fde68a', padding:'6px 24px', fontSize:12, color:'#92400e', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
