@@ -307,6 +307,20 @@ function Root() {
   }
   if (!effectiveSession) return <LoginScreen onLogin={handleLogin} onExplore={() => setShowDemoSelector(true)} />;
 
+  // Guard por rol: un VENDEDOR no usa el panel de admin. Si entra por el login
+  // principal (la raíz), lo mandamos a SU portal (/vendedor) en vez de caer en el
+  // dashboard + wizard de onboarding (configurar logo, etc.), que es lo que veía mal.
+  // Genérico por rol, no atado a ninguna org. Demo (role admin) no se toca.
+  if (!demoMode && effectiveSession.role === 'vendedor') {
+    window.location.replace('/vendedor');
+    return (
+      <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, border: '3px solid #059669', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+      </div>
+    );
+  }
+
   if (effectiveSession && orgStatus === null && !demoMode) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: '3px solid #059669', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
