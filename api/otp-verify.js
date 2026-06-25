@@ -6,7 +6,10 @@ import { checkRateLimit } from './_rate-limit.js';
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON    = process.env.SUPABASE_ANON_KEY;
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+// 90 días: la web app instalada debe sentirse "siempre abierta" (como WhatsApp/
+// Mercado Libre). Antes eran 7 días → el cliente tenía que re-verificar por OTP
+// muy seguido, lo que rompía la sensación de app nativa.
+const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
 const CORS = {

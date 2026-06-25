@@ -251,6 +251,7 @@ function LoginStep({ onLogin }) {
   // tenemos brandCfg aún). /api/manifest ya resuelve el org por dominio/?org= y
   // devuelve el logo. Si es el fallback de Pazque, dejamos el ícono genérico.
   const [brandLogo, setBrandLogo] = useState(null);
+  const [brandName, setBrandName] = useState('');
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -258,6 +259,8 @@ function LoginStep({ onLogin }) {
         const m = await fetch('/api/manifest').then(r => r.json());
         const src = m?.icons?.[0]?.src;
         if (!cancelled && src && !src.includes('pazque-logo')) setBrandLogo(src);
+        // Nombre de marca para el banner de instalar app (si no es el fallback Pazque).
+        if (!cancelled && m?.name && m.name !== 'Pazque') setBrandName(m.name);
       } catch { /* sin red → ícono genérico */ }
     })();
     return () => { cancelled = true; };
@@ -297,7 +300,12 @@ function LoginStep({ onLogin }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      display: 'flex', flexDirection: 'column' }}>
+      {/* Banner "Instalá la app" arriba del login: es lo primero que ve el cliente,
+          así descubre que existe la app antes de ingresar. Se auto-oculta si ya
+          está instalada o si la cerró. */}
+      <InstallAppBanner brandNombre={brandName} />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           {brandLogo ? (
@@ -430,6 +438,7 @@ function LoginStep({ onLogin }) {
           )}
         </div>
         <PoweredByPazque style={{ paddingBottom: 0, marginTop: 24 }} />
+      </div>
       </div>
     </div>
   );
