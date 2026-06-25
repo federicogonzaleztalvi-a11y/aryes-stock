@@ -66,11 +66,11 @@ export default async function handler(req, res) {
   const isVendedor = String(req.query?.app || '') === 'vendedor';
 
   // short_name: máximo ~12 chars para que entre bajo el ícono en el homescreen.
-  const shortName = isVendedor ? 'Vendedores' : (name.length > 12 ? name.slice(0, 12) : name);
+  const shortName = isVendedor ? 'Ventas' : (name.length > 12 ? name.slice(0, 12) : name);
 
   const manifest = {
     id: isVendedor ? '/vendedor' : '/pedidos',
-    name: isVendedor ? `${name} · Vendedores` : name,
+    name: isVendedor ? `${name} · Ventas` : name,
     short_name: shortName,
     description: FALLBACK.description,
     start_url: isVendedor ? '/vendedor' : '/pedidos',

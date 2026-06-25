@@ -151,7 +151,7 @@ function useBrand() {
         if (cancelled) return;
         const icons = m?.icons || [];
         const src = icons[icons.length - 1]?.src || icons[0]?.src || null;
-        // El name viene como "Aryes · Vendedores"; nos quedamos con la marca.
+        // El name viene como "Aryes · Ventas"; nos quedamos con la marca.
         const baseName = (m?.name || '').split(' · ')[0];
         setBrand({
           logo: (src && !src.includes('pazque-logo')) ? src : null,
@@ -176,14 +176,16 @@ function iniciales(name) {
 // iPhone es manual (Compartir → Agregar a inicio). La app se instala apuntando a
 // /vendedor (manifest ?app=vendedor) → el ícono abre el login del vendedor.
 function InstallVendedorBanner() {
-  const [deferred, setDeferred]   = useState(null);
+  // Arranca con el evento que ya pudo haberse disparado antes del login (capturado
+  // temprano en index.html → window.__pwaInstallEvt). Si no, espera a que llegue.
+  const [deferred, setDeferred]   = useState(() => (typeof window !== 'undefined' ? window.__pwaInstallEvt : null) || null);
   const [iosHelp,  setIosHelp]    = useState(false);
   const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem('pazque-vendedor-install-dismissed') === '1'; } catch { return false; } });
   const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   useEffect(() => {
-    const onPrompt = (e) => { e.preventDefault(); setDeferred(e); };
-    const onInstalled = () => { setDeferred(null); setDismissed(true); };
+    const onPrompt = (e) => { e.preventDefault(); window.__pwaInstallEvt = e; setDeferred(e); };
+    const onInstalled = () => { window.__pwaInstallEvt = null; setDeferred(null); setDismissed(true); };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
@@ -420,7 +422,7 @@ export default function VendedorPage() {
     if (link) link.setAttribute('href', '/api/manifest?app=vendedor');
     const titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
     const prevTitle = titleMeta?.getAttribute('content');
-    if (titleMeta) titleMeta.setAttribute('content', 'Vendedores');
+    if (titleMeta) titleMeta.setAttribute('content', 'Ventas');
     return () => {
       if (link && prevHref) link.setAttribute('href', prevHref);
       if (titleMeta && prevTitle) titleMeta.setAttribute('content', prevTitle);
