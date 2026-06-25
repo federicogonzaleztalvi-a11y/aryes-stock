@@ -60,14 +60,20 @@ export default async function handler(req, res) {
   const theme = (brand.themeColor && String(brand.themeColor).trim()) || FALLBACK.theme_color;
   const icon  = (brand.logoUrl && String(brand.logoUrl).trim()) || FALLBACK.icon;
 
+  // Variante "vendedor": el portal del vendedor (/vendedor) se instala como una
+  // app PROPIA, distinta de la del cliente. Distinto id + start_url para que el
+  // sistema la trate como otra app y el ícono abra el login del vendedor.
+  const isVendedor = String(req.query?.app || '') === 'vendedor';
+
   // short_name: máximo ~12 chars para que entre bajo el ícono en el homescreen.
-  const shortName = name.length > 12 ? name.slice(0, 12) : name;
+  const shortName = isVendedor ? 'Vendedores' : (name.length > 12 ? name.slice(0, 12) : name);
 
   const manifest = {
-    name,
+    id: isVendedor ? '/vendedor' : '/pedidos',
+    name: isVendedor ? `${name} · Vendedores` : name,
     short_name: shortName,
     description: FALLBACK.description,
-    start_url: '/pedidos',
+    start_url: isVendedor ? '/vendedor' : '/pedidos',
     scope: '/',
     display: 'standalone',
     background_color: '#f5f5f7',
