@@ -205,14 +205,14 @@ const describeAction = (action: string, detail: string): string => {
     };
   }, [session?.refresh_token, session?.expiresAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load config from Supabase (admin only) ─────────────────────────────────
+  // ── Load config from Supabase ──────────────────────────────────────────────
+  // brandcfg (logo, nombre, color, impuestos) lo necesitan TODOS los roles para
+  // la UI — antes solo se cargaba para admin, por eso vendedor/operador/contador
+  // no veían el logo de la empresa. emailcfg sí queda admin-only (config sensible).
   useEffect(() => {
-    if (session?.role !== 'admin' || isDemoMode) return;
+    if (!session || isDemoMode) return;
     (async () => {
       try {
-        const rows = await db.get<Array<{value: EmailCfg}>>(`app_config?key=eq.emailcfg&org_id=eq.${getOrgId()}`);
-        if (rows?.[0]?.value) setEmailCfg(rows[0].value);
-        LS.remove('aryes9-emailcfg');
         const brandRows = await db.get<Array<{value: BrandCfg}>>(`app_config?key=eq.brandcfg&org_id=eq.${getOrgId()}`);
         if (brandRows?.[0]?.value) {
           const b = brandRows[0].value;
@@ -221,8 +221,15 @@ const describeAction = (action: string, detail: string): string => {
           if (b.name) document.title = b.name + ' · Stock';
         }
       } catch { /* offline */ }
+      if (session?.role === 'admin') {
+        try {
+          const rows = await db.get<Array<{value: EmailCfg}>>(`app_config?key=eq.emailcfg&org_id=eq.${getOrgId()}`);
+          if (rows?.[0]?.value) setEmailCfg(rows[0].value);
+          LS.remove('aryes9-emailcfg');
+        } catch { /* offline */ }
+      }
     })();
-  }, [session?.role]);  
+  }, [session?.role]);
 
   // ── Load operational data — parallelized into 3 independent batches ────────
   // REMEDIATION: was 15 sequential awaits in one try/catch.
