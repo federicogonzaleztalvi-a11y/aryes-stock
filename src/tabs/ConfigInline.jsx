@@ -746,8 +746,8 @@ export default function ConfigInline({
               <p style={{fontSize:13,color:'#6a6a68',marginBottom:20}}>Gestioná tu suscripción a Pazque.</p>
               <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:16,marginBottom:24}}>
                 <div style={{fontSize:13,fontWeight:600,color:'#059669',marginBottom:4}}>Plan activo</div>
-                <div style={{fontSize:24,fontWeight:700,color:'#1a1a18'}}>$5.990<span style={{fontSize:13,fontWeight:400,color:'#6a6a68'}}>/mes</span></div>
-                <div style={{fontSize:12,color:'#6a6a68',marginTop:4}}>Precio de lanzamiento por 3 meses. Luego $11.990/mes.</div>
+                <div style={{fontSize:24,fontWeight:700,color:'#1a1a18'}}>USD 149<span style={{fontSize:13,fontWeight:400,color:'#6a6a68'}}>/mes</span></div>
+                <div style={{fontSize:12,color:'#6a6a68',marginTop:4}}>Precio de lanzamiento por 3 meses. Luego USD 299/mes.</div>
               </div>
               <div style={{paddingTop:16,borderTop:'1px solid #e2e2de'}}>
                 <h4 style={{fontSize:14,fontWeight:600,color:'#dc2626',marginBottom:4}}>Cancelar suscripción</h4>
