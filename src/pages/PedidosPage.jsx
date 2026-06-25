@@ -1728,23 +1728,10 @@ function InstallAppBanner({ brandNombre }) {
   const puedeInstalar = !!deferred || isIOS;
   const marca = brandNombre ? `de ${brandNombre}` : 'de pedidos';
 
-  // Caso desktop (no se puede instalar acá): mostramos igual un aviso informativo
-  // de que existe la app para el celular — sin botón "Instalar", sólo el texto.
-  // Así en la compu el cliente se entera de que hay app aunque la baje desde el cel.
-  if (!puedeInstalar) {
-    return (
-      <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '8px 16px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, fontFamily: SANS }}>
-        <span style={{ fontSize: 13, color: '#166534', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 15 }}>📲</span> Tenemos app para tu celular — abrí este portal desde el cel para instalarla
-        </span>
-        <button onClick={cerrar} aria-label="Cerrar" style={{ fontSize: 18, lineHeight: 1, color: '#6a6a68',
-          background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
-          ×
-        </button>
-      </div>
-    );
-  }
+  // Caso desktop (no se puede instalar acá): no mostramos nada. Igual que Amazon/
+  // Shopify, la web no anuncia la app — el banner de instalar aparece solo en el
+  // celular, que es donde realmente se puede instalar.
+  if (!puedeInstalar) return null;
 
   return (
     <>
