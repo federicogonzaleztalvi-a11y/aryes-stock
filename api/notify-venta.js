@@ -17,10 +17,17 @@ import { checkRateLimit } from './_rate-limit.js';
 const SB_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Verifica que el caller sea admin — valida la firma del JWT vía Supabase Auth
-// (no decodificación insegura) y luego confirma el rol en la DB. Devuelve
-// { email, orgId } o null. Mismo patrón que api/admin-users.js.
-async function verifyAdmin(authHeader) {
+// Roles internos habilitados a disparar el mail de la venta. Cualquier usuario que
+// pueda cargar una venta (no solo el admin) debe poder mandar su mail. Antes esto
+// exigía 'admin' → con un vendedor/operador el mail NO salía y el destino por
+// defecto no figuraba (GET también daba 401). El org SIEMPRE sale del token, así
+// que ampliar los roles no abre cross-tenant.
+const ALLOWED_ROLES = ['admin', 'vendedor', 'operador', 'contador'];
+
+// Verifica que el caller sea un usuario interno habilitado — valida la firma del
+// JWT vía Supabase Auth (no decodificación insegura) y confirma el rol en la DB.
+// Devuelve { email, orgId, role } o null. Mismo patrón que api/admin-users.js.
+async function verifyUser(authHeader) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
   if (!SERVICE_KEY) return null;
@@ -38,7 +45,7 @@ async function verifyAdmin(authHeader) {
     body: JSON.stringify({ user_email: userData.email }),
   });
   const role = roleRes.ok ? await roleRes.json() : null;
-  if (role !== 'admin') return null;
+  if (!ALLOWED_ROLES.includes(role)) return null;
 
   let orgId = userData.user_metadata?.org_id || null;
   if (!orgId) {
@@ -48,7 +55,7 @@ async function verifyAdmin(authHeader) {
     );
     if (orgRes.ok) orgId = (await orgRes.json())?.[0]?.org_id || null;
   }
-  return { email: userData.email, orgId: orgId || 'aryes' };
+  return { email: userData.email, orgId: orgId || 'aryes', role };
 }
 
 export default async function handler(req, res) {
@@ -56,7 +63,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const admin = await verifyAdmin(req.headers['authorization'] || req.headers['Authorization']);
+  const admin = await verifyUser(req.headers['authorization'] || req.headers['Authorization']);
   if (!admin) return res.status(401).json({ error: 'No autorizado' });
 
   // GET → devuelve la casilla por defecto de la org (para mostrarla en el form
