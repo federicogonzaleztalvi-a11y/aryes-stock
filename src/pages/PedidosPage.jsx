@@ -1816,6 +1816,50 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [reorderMsg, setReorderMsg] = useState(''); // toast al reordenar (items no disponibles)
   const NAV_MAX = 10;
 
+  // ── Swipe-back (gesto "volver" tipo app nativa) ───────────────────────────
+  // Deslizar el dedo desde el borde izquierdo hacia la derecha vuelve a la
+  // pantalla anterior, respetando el MISMO orden que los botones "Volver":
+  // primero cierra lo más "encima" (drawer/menús), después sale de la ficha de
+  // producto (PDP → grilla), después de una vista secundaria al catálogo. Si no
+  // hay nada atrás, no hace nada (deja el back nativo del navegador). Sin libs.
+  const goBackRef = useRef(() => false);
+  goBackRef.current = () => {
+    if (showCart) { setShowCart(false); return true; }
+    if (ddOpen || udOpen) { setDdOpen(false); setUdOpen(false); return true; }
+    if (showEstadoCuenta) { setShowEstadoCuenta(false); return true; }
+    if (detalle) { setDetalle(null); return true; }
+    if (vista !== 'catalogo') { setVista('catalogo'); setDetalle(null); return true; }
+    return false;
+  };
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const EDGE = 28;     // px desde el borde izq donde puede arrancar el gesto
+    const THRESH = 70;   // px horizontales mínimos para disparar el "volver"
+    let startX = 0, startY = 0, tracking = false;
+    const onStart = (e) => {
+      const t = e.touches && e.touches[0]; if (!t) { tracking = false; return; }
+      if (t.clientX <= EDGE) { tracking = true; startX = t.clientX; startY = t.clientY; }
+      else tracking = false;
+    };
+    const onMove = (e) => {
+      if (!tracking) return;
+      const t = e.touches && e.touches[0]; if (!t) return;
+      const dx = t.clientX - startX, dy = t.clientY - startY;
+      if (dx > THRESH && Math.abs(dy) < 50) { tracking = false; goBackRef.current(); }
+    };
+    const onEnd = () => { tracking = false; };
+    window.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove',  onMove,  { passive: true });
+    window.addEventListener('touchend',   onEnd,   { passive: true });
+    window.addEventListener('touchcancel', onEnd,  { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchmove',  onMove);
+      window.removeEventListener('touchend',   onEnd);
+      window.removeEventListener('touchcancel', onEnd);
+    };
+  }, []);
+
   useEffect(() => {
     if (!reorderMsg) return;
     const t = setTimeout(() => setReorderMsg(''), 4000);
