@@ -63,7 +63,27 @@ async function resolveVendedor(req) {
 
   // El username es la clave con la que se asignan los clientes (clients.vendedor_id).
   const username = u.username || email.split('@')[0];
-  return { username, name: u.name || username, role: u.role, org: u.org_id };
+  return { username, name: u.name || username, role: u.role, org: u.org_id, email };
+}
+
+// Claves candidatas con las que un cliente pudo haber quedado asignado a ESTE
+// vendedor. Hoy el alta guarda el username, pero usuarios legacy (sin username)
+// quedaron asignados por NOMBRE o por la parte local del email. Aceptamos las
+// tres para que el vendedor vea sus clientes sin importar con cuál se guardó —
+// todas identifican a la misma persona y la query igual filtra por org_id.
+function vendedorKeys(vendedor) {
+  const keys = new Set();
+  if (vendedor.username) keys.add(vendedor.username);
+  if (vendedor.name) keys.add(vendedor.name);
+  if (vendedor.email) keys.add(vendedor.email.split('@')[0]);
+  return [...keys].filter(Boolean);
+}
+
+// Arma un filtro PostgREST `in.(...)` con cada valor entre comillas dobles
+// (los nombres tienen espacios). Devuelve el lado derecho del `=`, sin encodear.
+function vendedorIdFilter(vendedor) {
+  const list = vendedorKeys(vendedor).map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',');
+  return 'in.(' + list + ')';
 }
 
 async function handler(req, res) {
@@ -102,7 +122,7 @@ async function handler(req, res) {
     const cRes = await fetch(
       `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clienteId)}` +
       `&org_id=eq.${encodeURIComponent(vendedor.org)}` +
-      `&vendedor_id=eq.${encodeURIComponent(vendedor.username)}` +
+      `&vendedor_id=${encodeURIComponent(vendedorIdFilter(vendedor))}` +
       `&select=id,name,lista_id,phone&limit=1`,
       { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
     );
@@ -154,7 +174,7 @@ async function handler(req, res) {
   if (action === 'clients') {
     const r = await fetch(
       `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(vendedor.org)}` +
-      `&vendedor_id=eq.${encodeURIComponent(vendedor.username)}` +
+      `&vendedor_id=${encodeURIComponent(vendedorIdFilter(vendedor))}` +
       `&select=id,name,codigo,ciudad,phone,lista_id&order=name.asc`,
       { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
     );
