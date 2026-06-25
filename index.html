@@ -29,7 +29,11 @@
     <link rel="manifest" href="/api/manifest">
     <meta name="theme-color" content="#1a8a3c">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- "default" (no "black-translucent"): en la app instalada iOS RESERVA el
+         espacio de la barra de estado y el contenido arranca DEBAJO del reloj/batería.
+         Con "black-translucent" el contenido se dibujaba por encima y quedaba
+         superpuesto con la hora (la app no reservaba ese margen). -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Pazque">
     <!-- Ícono de "Agregar a inicio" (iOS) dinámico por dominio: en pedidos.aryes.com.uy
          baja el logo de Aryes, no el de Pazque. -->
