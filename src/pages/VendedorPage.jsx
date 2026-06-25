@@ -417,15 +417,16 @@ export default function VendedorPage() {
   // vendedor), separada de la app del cliente. También actualizamos el título que
   // iOS usa para "Agregar a inicio".
   useEffect(() => {
+    // El script inline de index.html ya apunta el manifest a la variante vendedor en
+    // la carga inicial (clave para iOS). Esto cubre la navegación interna (SPA) hacia
+    // /vendedor sin recarga. Al salir, restauramos el manifest del cliente por defecto.
     const link = document.querySelector('link[rel="manifest"]');
-    const prevHref = link?.getAttribute('href');
     if (link) link.setAttribute('href', '/api/manifest?app=vendedor');
     const titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-    const prevTitle = titleMeta?.getAttribute('content');
     if (titleMeta) titleMeta.setAttribute('content', 'Ventas');
     return () => {
-      if (link && prevHref) link.setAttribute('href', prevHref);
-      if (titleMeta && prevTitle) titleMeta.setAttribute('content', prevTitle);
+      if (link) link.setAttribute('href', '/api/manifest');
+      if (titleMeta) titleMeta.setAttribute('content', 'Pazque');
     };
   }, []);
 

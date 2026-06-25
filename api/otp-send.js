@@ -3,6 +3,7 @@
 
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
+import { findClientByPhone } from './_client-lookup.js';
 import { randomInt } from 'node:crypto';
 
 const SB_URL     = process.env.SUPABASE_URL;
@@ -96,34 +97,11 @@ export default async function handler(req, res) {
 
   const key = SB_SVC_KEY || SB_ANON;
 
-  // Buscar en tabla principal de clientes — SCOPED al org. El match por últimos 8
-  // dígitos tolera formatos con/sin código de país, pero ahora está acotado al org
-  // (antes era global → cross-tenant). PostgREST combina: org_id AND (phone OR like).
-  const cliRes = await fetch(
-    `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(org)}&or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-  );
-  let clients = await cliRes.json();
+  // Buscar el cliente por teléfono, SCOPED al org y tolerante al formato del número
+  // guardado (espacios/guiones/+ → ej. "+598 96 425 798"). Ver api/_client-lookup.js.
+  const cliente = await findClientByPhone({ SB_URL, key, org, telClean });
 
-  // Si no está en el teléfono principal, buscar en teléfonos adicionales (client_phones)
-  if (!clients?.length) {
-    const altRes = await fetch(
-      `${SB_URL}/rest/v1/client_phones?phone=eq.${encodeURIComponent(telClean)}&active=eq.true&select=client_id&limit=1`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-    );
-    const altPhones = await altRes.json();
-    if (altPhones?.length) {
-      const clientId = altPhones[0].client_id;
-      // El cliente del teléfono adicional también debe pertenecer al org solicitado.
-      const cliRes2 = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clientId)}&org_id=eq.${encodeURIComponent(org)}&select=id,name,lista_id&limit=1`,
-        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-      );
-      clients = await cliRes2.json();
-    }
-  }
-
-  if (!clients?.length) {
+  if (!cliente) {
     return res.status(404).json({ error: 'Número no registrado. Contactá a Pazque para activar tu acceso.' });
   }
 
@@ -188,7 +166,7 @@ export default async function handler(req, res) {
     try {
       const telE164 = toE164(telClean);
       await sendViaWhatsApp(telE164, code);
-      return res.status(200).json({ ok: true, clienteNombre: clients[0].name });
+      return res.status(200).json({ ok: true, clienteNombre: cliente.name });
     } catch (err) {
       console.error('[otp-send] WhatsApp failed:', err.message);
       // En prod NO se filtra el código — el usuario reintenta.
@@ -196,7 +174,7 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: 'No pudimos enviar el código. Probá de nuevo en unos segundos.' });
       }
       // Dev local: devolver el código para poder seguir probando.
-      return res.status(200).json({ ok: true, clienteNombre: clients[0].name, code, _devMode: true, _waError: err.message });
+      return res.status(200).json({ ok: true, clienteNombre: cliente.name, code, _devMode: true, _waError: err.message });
     }
   }
 
@@ -206,5 +184,5 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Servicio de mensajería no disponible. Contactá al proveedor.' });
   }
   console.warn('[otp-send] DEV MODE — código devuelto en respuesta (sin envío)');
-  return res.status(200).json({ ok: true, clienteNombre: clients[0].name, code, _devMode: true });
+  return res.status(200).json({ ok: true, clienteNombre: cliente.name, code, _devMode: true });
 }

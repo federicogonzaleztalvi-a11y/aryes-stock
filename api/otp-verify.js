@@ -2,6 +2,7 @@
 
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
+import { findClientByPhone } from './_client-lookup.js';
 
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -79,32 +80,12 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: `Código incorrecto. ${remaining} intento${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}.` });
   }
 
-  // 3. Buscar cliente — teléfono principal o adicional (client_phones), SCOPED al org.
-  // El cliente debe pertenecer al org solicitado, si no la sesión sería cross-tenant.
-  const cliRes = await fetch(
-    `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(org)}&or=(phone.eq.${encodeURIComponent(telClean)},phone.like.*${encodeURIComponent(telClean.slice(-8))})&select=id,name,lista_id&limit=1`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-  );
-  let clients = await cliRes.json();
+  // 3. Buscar cliente por teléfono, SCOPED al org y tolerante al formato del número
+  // guardado (espacios/guiones/+). El cliente debe pertenecer al org solicitado, si
+  // no la sesión sería cross-tenant. Ver api/_client-lookup.js.
+  const cliente = await findClientByPhone({ SB_URL, key, org, telClean });
 
-  if (!clients?.length) {
-    const altRes = await fetch(
-      `${SB_URL}/rest/v1/client_phones?phone=eq.${encodeURIComponent(telClean)}&active=eq.true&select=client_id&limit=1`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-    );
-    const altPhones = await altRes.json();
-    if (altPhones?.length) {
-      const cliRes2 = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(altPhones[0].client_id)}&org_id=eq.${encodeURIComponent(org)}&select=id,name,lista_id&limit=1`,
-        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
-      );
-      clients = await cliRes2.json();
-    }
-  }
-
-  if (!clients?.length) return res.status(404).json({ error: 'Cliente no encontrado' });
-
-  const cliente = clients[0];
+  if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
   const sessionToken = crypto.randomUUID();
   const expiresAt    = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 

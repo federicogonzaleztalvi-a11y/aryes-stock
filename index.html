@@ -34,6 +34,23 @@
     <!-- Ícono de "Agregar a inicio" (iOS) dinámico por dominio: en pedidos.aryes.com.uy
          baja el logo de Aryes, no el de Pazque. -->
     <link rel="apple-touch-icon" href="/api/touch-icon">
+    <!-- En /vendedor la app instalada debe ser la del VENDEDOR (nombre "Ventas",
+         start_url /vendedor), no la del cliente. iOS toma el manifest y el título del
+         HTML INICIAL y no ve los cambios que React hace después → hay que decidirlo
+         acá, en el parse, antes de que termine de cargar. Si no, instalar desde el
+         iPhone bajaba la app del cliente ("Aryes", abre /pedidos). -->
+    <script>
+      (function () {
+        try {
+          if (location.pathname.indexOf('/vendedor') === 0) {
+            var link = document.querySelector('link[rel="manifest"]');
+            if (link) link.setAttribute('href', '/api/manifest?app=vendedor');
+            var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+            if (t) t.setAttribute('content', 'Ventas');
+          }
+        } catch (e) { /* noop */ }
+      })();
+    </script>
     <meta name="description" content="Sistema de gestión para distribuidoras — inventario, ventas, rutas y portal B2B">
     <!-- Fuentes web — sin esto todo caía a system-ui (la marca/portal se veían genéricos).
          display=swap evita FOIT: muestra fallback y cambia al cargar. -->
