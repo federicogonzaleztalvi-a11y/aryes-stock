@@ -87,6 +87,28 @@ function loadCart(clienteId) {
   } catch { return {}; }
 }
 
+// ── Sync del carrito con el servidor (cross-device) ──────────────────────────
+// localStorage es la caché instantánea por-dispositivo; el servidor (por sesión)
+// es la fuente de verdad compartida entre la compu y el cel del mismo cliente.
+// La auth la maneja /api/cart validando el token (deriva org+cliente del server).
+async function fetchServerCart(token) {
+  try {
+    const r = await fetch(`${API}/api/cart`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d && d.items && typeof d.items === 'object' && !Array.isArray(d.items) ? d.items : null;
+  } catch { return null; }
+}
+async function saveServerCart(token, items) {
+  try {
+    await fetch(`${API}/api/cart`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ items }),
+    });
+  } catch { /* sin red → queda en localStorage hasta el próximo guardado */ }
+}
+
 const PAISES = [
   { code: 'UY', label: 'UY', prefix: '598', flag: '🇺🇾' },
   { code: 'AR', label: 'AR', prefix: '54',  flag: '🇦🇷' },
@@ -1796,6 +1818,44 @@ export default function PedidosPage() {
     if (skipPersistRef.current) { skipPersistRef.current = false; return; }
     try { localStorage.setItem(cartStorageKey(cartCli), JSON.stringify(carrito)); } catch { /* storage lleno / bloqueado */ }
   }, [carrito, cartCli]);
+
+  // ── Sync cross-device: traer el carrito del servidor al loguearse ─────────
+  // Caso de uso: armás el pedido en la compu y lo seguís en el cel. El server
+  // (por sesión) es la fuente de verdad; si tiene carrito, lo adoptamos. Si está
+  // vacío pero teníamos algo local, lo subimos para que esté en todos lados.
+  const serverCartLoadedRef = useRef(null);
+  useEffect(() => {
+    if (isPortalDemo) return;                         // el demo no sincroniza
+    const token = session?.token;
+    const cli = session?.clienteId;
+    if (!token || !cli) return;
+    if (serverCartLoadedRef.current === cli) return;  // ya cargado para este cliente
+    serverCartLoadedRef.current = cli;
+    let cancelled = false;
+    (async () => {
+      const remote = await fetchServerCart(token);
+      if (cancelled) return;
+      if (remote && Object.keys(remote).length > 0) {
+        setCarrito(remote);                           // adoptar carrito de otro dispositivo
+      } else {
+        const local = loadCart(cli);
+        if (Object.keys(local).length > 0) saveServerCart(token, local);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session?.token, session?.clienteId, isPortalDemo]);
+
+  // Guardado al servidor con debounce — sólo logueado, sólo tras la carga inicial
+  // (para no pisar el carrito remoto antes de haberlo traído).
+  useEffect(() => {
+    if (isPortalDemo) return;
+    const token = session?.token;
+    const cli = session?.clienteId;
+    if (!token || !cli) return;
+    if (serverCartLoadedRef.current !== cli) return;
+    const t = setTimeout(() => { saveServerCart(token, carrito); }, 800);
+    return () => clearTimeout(t);
+  }, [carrito, session?.token, session?.clienteId, isPortalDemo]);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
