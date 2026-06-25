@@ -40,9 +40,21 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
   const addVar=()=>setF(p=>{const cur=normVariants(p.variants);return{...p,variants:{...cur,options:[...cur.options,{id:"",label:"",sku:"",color_hex:""}]}};});
   const updVar=(i,k,v)=>setF(p=>{const cur=normVariants(p.variants);const o=[...cur.options];o[i]={...o[i],[k]:v};return{...p,variants:{...cur,options:o}};});
   const rmVar=(i)=>setF(p=>{const cur=normVariants(p.variants);return{...p,variants:{...cur,options:cur.options.filter((_,j)=>j!==i)}};});
-  // Mover una variante arriba/abajo. El orden del array es el orden en que el
-  // cliente las ve en el portal, así que reordenar acá = reordenar en el portal.
-  const moveVar=(i,dir)=>setF(p=>{const cur=normVariants(p.variants);const o=[...cur.options];const j=i+dir;if(j<0||j>=o.length)return p;[o[i],o[j]]=[o[j],o[i]];return{...p,variants:{...cur,options:o}};});
+  // Reordenar variantes arrastrando desde el agarre (⠿). El orden del array es el
+  // orden en que el cliente las ve en el portal, así que reordenar acá = reordenar
+  // en el portal. Pointer events → anda igual en mouse y touch.
+  const reorderVar=(from,to)=>setF(p=>{const cur=normVariants(p.variants);const o=[...cur.options];if(from<0||from>=o.length||to<0||to>=o.length||from===to)return p;const[m]=o.splice(from,1);o.splice(to,0,m);return{...p,variants:{...cur,options:o}};});
+  const [dragIdx,setDragIdx]=useState(null);
+  const rowRefs=useRef([]);
+  const onHandleDown=(i)=>(e)=>{e.preventDefault();setDragIdx(i);try{e.target.setPointerCapture(e.pointerId);}catch{/* noop */}};
+  const onHandleMove=(e)=>{
+    if(dragIdx===null)return;
+    const y=e.clientY;
+    let target=rowRefs.current.length-1;
+    for(let j=0;j<rowRefs.current.length;j++){const el=rowRefs.current[j];if(!el)continue;const r=el.getBoundingClientRect();if(y<r.top+r.height/2){target=j;break;}}
+    if(target!==dragIdx){reorderVar(dragIdx,target);setDragIdx(target);}
+  };
+  const onHandleUp=(e)=>{setDragIdx(null);try{e.target.releasePointerCapture(e.pointerId);}catch{/* noop */}};
   const cleanVariants=(v)=>{const cur=normVariants(v);const seen=new Set();const options=cur.options
     .map(o=>{const label=String(o.label||"").trim();if(!label)return null;const id=String(o.id||label).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||label;return{id,label,sku:String(o.sku||"").trim(),color_hex:/^#[0-9a-fA-F]{6}$/.test(String(o.color_hex||""))?o.color_hex:""};})
     .filter(o=>o&&!seen.has(o.id)&&seen.add(o.id));
@@ -138,19 +150,15 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
           )}
           {variants.options.length===0&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,margin:0}}>Sin variantes. Agregá una para que el cliente elija (ej: colores) en una sola card.</p>}
           {variants.options.map((o,i)=>(
-            <div key={i} style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div key={i} ref={el=>{rowRefs.current[i]=el;}} style={{display:"flex",gap:8,alignItems:"center",opacity:dragIdx===i?0.5:1,background:dragIdx===i?T.hover:"transparent",borderRadius:6,transition:"opacity .1s"}}>
+              <button onPointerDown={onHandleDown(i)} onPointerMove={onHandleMove} onPointerUp={onHandleUp} title="Arrastrar para reordenar"
+                style={{border:`1px solid ${T.border}`,background:T.muted,color:T.textSm,borderRadius:6,width:24,height:34,cursor:dragIdx===i?"grabbing":"grab",fontSize:14,lineHeight:1,padding:0,flexShrink:0,touchAction:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>⠿</button>
               <input type="color" value={o.color_hex||"#cccccc"} onChange={e=>updVar(i,"color_hex",e.target.value)} title="Color (opcional)"
                 style={{width:34,height:34,padding:0,border:`1px solid ${T.border}`,borderRadius:6,background:T.muted,cursor:"pointer",flexShrink:0}}/>
               <input value={o.label} onChange={e=>updVar(i,"label",e.target.value)} placeholder="Nombre (ej: Rojo)"
                 style={{flex:1,minWidth:0,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
               <input value={o.sku} onChange={e=>updVar(i,"sku",e.target.value)} placeholder="SKU (opcional)"
                 style={{width:120,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
-              <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-                <button onClick={()=>moveVar(i,-1)} disabled={i===0} title="Subir"
-                  style={{border:`1px solid ${T.border}`,background:T.muted,color:i===0?T.textXs:T.textSm,borderRadius:5,width:30,height:15,cursor:i===0?"default":"pointer",opacity:i===0?0.4:1,fontSize:9,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
-                <button onClick={()=>moveVar(i,1)} disabled={i===variants.options.length-1} title="Bajar"
-                  style={{border:`1px solid ${T.border}`,background:T.muted,color:i===variants.options.length-1?T.textXs:T.textSm,borderRadius:5,width:30,height:15,cursor:i===variants.options.length-1?"default":"pointer",opacity:i===variants.options.length-1?0.4:1,fontSize:9,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
-              </div>
               <button onClick={()=>rmVar(i)} title="Quitar variante" style={{border:`1px solid ${T.border}`,background:T.muted,color:T.red,borderRadius:6,width:30,height:30,cursor:"pointer",fontSize:16,lineHeight:1,flexShrink:0}}>×</button>
             </div>
           ))}
