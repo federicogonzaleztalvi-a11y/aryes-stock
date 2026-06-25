@@ -29,7 +29,7 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
     {showCats && <CategoriasManager onClose={()=>setShowCats(false)} />}
           <div className="au" style={{display:"grid",gap:22}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10}}>
-              <h1 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em"}}>Inventario</h1>
+              <h1 style={{fontFamily:T.serif,fontSize:28,fontWeight:500,color:T.text,marginTop:0,letterSpacing:"-.02em"}}>Productos</h1>
               <div style={{display:"flex",gap:10}}>
                 <Btn onClick={()=>setShowCats(true)} variant="ghost">🏷 Categorías</Btn>
                 <Btn onClick={()=>setModal({type:"excel"})} variant="ghost">↑ Importar Excel</Btn>
