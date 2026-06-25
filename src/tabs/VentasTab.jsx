@@ -237,11 +237,19 @@ function VentasTab(){
         }
       }
     }
+    const cant=Math.max(1, Math.round(Number(itemCant)));
+    // Descuento por volumen: la mejor escala (mayor %) cuyo mínimo alcanza la cantidad.
+    // Mismo criterio que el portal del cliente. Antes este descuento NO se aplicaba en
+    // Ventas (solo en el portal), por eso "no funcionaba". Se combina con el descuento
+    // manual de la línea tomando el MAYOR de los dos — no se acumulan, para no sobre-descontar.
+    const volDto=(Array.isArray(prod.volume_tiers)?prod.volume_tiers:[]).reduce((mx,t)=>{
+      const min=Math.floor(Number(t?.min)||0), d=Number(t?.dto)||0;
+      return (min>1 && cant>=min && d>mx) ? d : mx;
+    },0);
     // Descuento puntual de la línea: reduce el precio unitario de este producto.
     // precioLista guarda el precio antes del descuento (para mostrarlo tachado).
-    const dpct=Math.min(100,Math.max(0,Number(itemDesc)||0));
+    const dpct=Math.min(100,Math.max(0,Number(itemDesc)||0,volDto));
     const precioFinal=dpct>0?Math.round(Number(precio)*(1-dpct/100)*100)/100:Number(precio);
-    const cant=Math.max(1, Math.round(Number(itemCant)));
     setForm(f=>({...f,items:[...f.items,{
       productoId:prod.id,
       nombre:prod.nombre||prod.name,

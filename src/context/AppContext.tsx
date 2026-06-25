@@ -521,6 +521,7 @@ const describeAction = (action: string, detail: string): string => {
             supplierId:row.supplier_id||'', name:row.name||row.nombre||'', brand:row.brand||'',
             category:row.category||'', precioVenta:Number(row.precio_venta)||0, imagen_url:row.imagen_url||'', descripcion:row.descripcion||'',
             volume_tiers:Array.isArray(row.volume_tiers)?row.volume_tiers:[],
+            descuento_posible:Number(row.descuento_posible)||0,
             dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
           return [p, ...ps];
         }
@@ -724,6 +725,7 @@ const describeAction = (action: string, detail: string): string => {
       descripcion: (f.descripcion || '') as string,
       codigo: (f.codigo || '') as string,
       volume_tiers: (Array.isArray(f.volume_tiers) ? f.volume_tiers : []) as unknown[],
+      descuento_posible: Math.max(0, Math.min(100, Number(f.descuento_posible) || 0)),
       variants: (f.variants && typeof f.variants === 'object' && !Array.isArray(f.variants) ? f.variants : {}) as Record<string, unknown>,
       updated_at: now,
     };

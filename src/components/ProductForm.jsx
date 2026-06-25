@@ -104,6 +104,9 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
           placeholder="Usos, presentaciones, características técnicas, envases disponibles..."
           style={{width:"100%",minHeight:80,fontFamily:"inherit",fontSize:13,border:`1px solid ${T.border}`,borderRadius:6,padding:"9px 11px",resize:"vertical",background:T.muted,color:T.text,boxSizing:"border-box"}}/>
       </Field>
+      <Field label="Descuento posible (%)" hint="Opcional — descuento de referencia, suelto, que no depende de la cantidad. Solo se muestra en la pestaña Descuentos; no cambia precios.">
+        <Inp type="number" step="0.5" min="0" max="100" placeholder="0" value={f.descuento_posible||""} onChange={e=>set("descuento_posible",e.target.value===""?0:+e.target.value)}/>
+      </Field>
       <Field label="Descuentos por volumen" hint="Opcional — premiá la compra por bulto. Ej: 10+ unidades −5%. El cliente ve el descuento en el portal.">
         <div style={{display:"grid",gap:8}}>
           {tiers.length===0&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,margin:0}}>Sin escalas. Agregá una para dar descuento al comprar cantidad.</p>}

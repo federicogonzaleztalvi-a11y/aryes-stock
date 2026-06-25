@@ -1,24 +1,20 @@
 // src/tabs/DescuentosTab.jsx — Tabla de SOLO LECTURA: Producto | Precio | Descuento %
 //
 // Vista de referencia, sin edición. El precio sale del precio base del producto
-// (precioVenta) y el descuento posible se deriva del MEJOR descuento por volumen
-// ya cargado en cada producto (volume_tiers: [{min, dto}]). No toca la DB ni crea
-// datos nuevos — solo muestra lo que ya existe. Genérico por-org.
+// (precioVenta) y el descuento posible es el campo SUELTO `descuento_posible` que
+// se carga al editar cada producto — independiente de la cantidad (a diferencia de
+// los descuentos por volumen). No toca la DB ni crea datos nuevos — solo muestra lo
+// que ya existe. Genérico por-org.
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { fmt } from '../lib/constants.js';
 
 const G = '#059669';
 
-// Mejor descuento posible del producto = el % más alto entre sus escalas de volumen.
+// Descuento posible del producto = el campo suelto `descuento_posible` (referencia,
+// no depende de la cantidad). Si no está cargado, es 0.
 function dtoPosible(p) {
-  const tiers = Array.isArray(p.volume_tiers) ? p.volume_tiers : [];
-  let max = 0;
-  for (const t of tiers) {
-    const d = Number(t?.dto) || 0;
-    if (d > max) max = d;
-  }
-  return max;
+  return Number(p.descuento_posible) || 0;
 }
 
 export default function DescuentosTab() {
