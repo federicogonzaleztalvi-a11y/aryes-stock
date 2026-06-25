@@ -21,6 +21,9 @@
     },
     "api/historial.js": {
       "maxDuration": 10
+    },
+    "api/cron-carrito-abandonado.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -64,6 +67,9 @@
   "crons": [{
     "path": "/api/cron-trial",
     "schedule": "0 12 * * *"
+  }, {
+    "path": "/api/cron-carrito-abandonado",
+    "schedule": "0 * * * *"
   }],
   "version": 2
 }

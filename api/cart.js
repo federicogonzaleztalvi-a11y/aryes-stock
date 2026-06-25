@@ -106,6 +106,10 @@ async function handler(req, res) {
     client_id: clienteId,
     items,
     updated_at: new Date().toISOString(),
+    // El cliente tocó el carrito → reinicia el ciclo de recordatorios de carrito
+    // abandonado. Sin esto, un carrito ya "avisado" que el cliente vuelve a
+    // editar nunca recibiría un recordatorio nuevo. (Ver cron-carrito-abandonado.js)
+    reminder_stage: 0,
   };
 
   // Upsert por (org_id, client_id) — resolution=merge-duplicates pisa la fila.

@@ -129,6 +129,36 @@ export const templates = {
       </div>`,
   }),
 
+  // Recordatorio de carrito abandonado al CLIENTE del portal B2B. Lo dispara
+  // cron-carrito-abandonado.js cuando el cliente dejó productos sin confirmar.
+  // stage: 1 = primer aviso (~4h), 2 = segundo aviso (~24h, más insistente).
+  carritoAbandonado: ({ empresa, nombre, lineCount, portalUrl, logoUrl, stage }) => ({
+    subject: stage >= 2
+      ? `¿Seguís con tu pedido? Tu carrito te espera — ${empresa || 'Pazque'}`
+      : `Dejaste productos en tu carrito 🛒 — ${empresa || 'Pazque'}`,
+    html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(empresa || '')}" style="height:36px;max-width:180px;object-fit:contain;margin-bottom:24px" />` : ''}
+        <h1 style="font-size:21px;font-weight:700;color:#1a1a18;margin:0 0 10px">
+          ${stage >= 2 ? 'Tu carrito sigue esperándote' : 'Te quedaron productos en el carrito'}
+        </h1>
+        <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 8px">
+          Hola ${esc(nombre || '')}, dejaste <strong>${esc(lineCount)} ${Number(lineCount) === 1 ? 'producto' : 'productos'}</strong> en tu carrito en <strong>${esc(empresa || 'el portal')}</strong> y todavía no confirmaste el pedido.
+        </p>
+        <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 20px">
+          ${stage >= 2
+            ? 'Cuando quieras lo retomás — está guardado tal cual lo dejaste.'
+            : 'Confirmalo en un toque, está guardado tal cual lo dejaste.'}
+        </p>
+        <a href="${esc(portalUrl)}" style="display:inline-block;padding:13px 30px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">
+          Ver mi carrito →
+        </a>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px;line-height:1.5">
+          Si ya hiciste el pedido, ignorá este mensaje. Recordatorio automático de ${esc(empresa || 'Pazque')}.
+        </p>
+      </div>`,
+  }),
+
   trialExpiring: (empresa, daysLeft) => ({
     subject: daysLeft <= 1 ? 'Tu prueba de Pazque vence hoy' : `Te quedan ${daysLeft} días de prueba — Pazque`,
     html: `
