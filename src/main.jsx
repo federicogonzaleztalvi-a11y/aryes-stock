@@ -12,6 +12,7 @@ import { setSentryUser, Sentry } from './lib/sentry.js';
 const OnboardingWizard = lazyWithRetry(() => import('./tabs/OnboardingWizard.jsx'));
 const CatalogoPage     = lazyWithRetry(() => import('./pages/CatalogoPage.jsx'));
 const PedidosPage      = lazyWithRetry(() => import('./pages/PedidosPage.jsx'));
+const VendedorPage     = lazyWithRetry(() => import('./pages/VendedorPage.jsx'));
 const RegisterPage     = lazyWithRetry(() => import('./pages/RegisterPage.jsx'));
 const LandingPage      = lazyWithRetry(() => import('./pages/LandingPage.jsx'));
 const UpgradePage      = lazyWithRetry(() => import('./pages/UpgradePage.jsx'));
@@ -384,6 +385,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/catalogo" element={<CatalogoPage />} />
           {/* B2B order portal — OTP auth, no WMS session required */}
           <Route path="/pedidos" element={<PedidosPage />} />
+          {/* Portal del vendedor — login con usuario interno, pasa pedidos por sus clientes */}
+          <Route path="/vendedor" element={<VendedorPage />} />
           {/* Driver mobile view — no auth required, reads from Supabase directly */}
           <Route path="/driver" element={<DriverView />} />
           {/* Public client delivery tracking — no auth */}
