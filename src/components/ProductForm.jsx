@@ -40,6 +40,9 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
   const addVar=()=>setF(p=>{const cur=normVariants(p.variants);return{...p,variants:{...cur,options:[...cur.options,{id:"",label:"",sku:"",color_hex:""}]}};});
   const updVar=(i,k,v)=>setF(p=>{const cur=normVariants(p.variants);const o=[...cur.options];o[i]={...o[i],[k]:v};return{...p,variants:{...cur,options:o}};});
   const rmVar=(i)=>setF(p=>{const cur=normVariants(p.variants);return{...p,variants:{...cur,options:cur.options.filter((_,j)=>j!==i)}};});
+  // Mover una variante arriba/abajo. El orden del array es el orden en que el
+  // cliente las ve en el portal, así que reordenar acá = reordenar en el portal.
+  const moveVar=(i,dir)=>setF(p=>{const cur=normVariants(p.variants);const o=[...cur.options];const j=i+dir;if(j<0||j>=o.length)return p;[o[i],o[j]]=[o[j],o[i]];return{...p,variants:{...cur,options:o}};});
   const cleanVariants=(v)=>{const cur=normVariants(v);const seen=new Set();const options=cur.options
     .map(o=>{const label=String(o.label||"").trim();if(!label)return null;const id=String(o.id||label).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||label;return{id,label,sku:String(o.sku||"").trim(),color_hex:/^#[0-9a-fA-F]{6}$/.test(String(o.color_hex||""))?o.color_hex:""};})
     .filter(o=>o&&!seen.has(o.id)&&seen.add(o.id));
@@ -142,6 +145,12 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
                 style={{flex:1,minWidth:0,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
               <input value={o.sku} onChange={e=>updVar(i,"sku",e.target.value)} placeholder="SKU (opcional)"
                 style={{width:120,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                <button onClick={()=>moveVar(i,-1)} disabled={i===0} title="Subir"
+                  style={{border:`1px solid ${T.border}`,background:T.muted,color:i===0?T.textXs:T.textSm,borderRadius:5,width:30,height:15,cursor:i===0?"default":"pointer",opacity:i===0?0.4:1,fontSize:9,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>▲</button>
+                <button onClick={()=>moveVar(i,1)} disabled={i===variants.options.length-1} title="Bajar"
+                  style={{border:`1px solid ${T.border}`,background:T.muted,color:i===variants.options.length-1?T.textXs:T.textSm,borderRadius:5,width:30,height:15,cursor:i===variants.options.length-1?"default":"pointer",opacity:i===variants.options.length-1?0.4:1,fontSize:9,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}}>▼</button>
+              </div>
               <button onClick={()=>rmVar(i)} title="Quitar variante" style={{border:`1px solid ${T.border}`,background:T.muted,color:T.red,borderRadius:6,width:30,height:30,cursor:"pointer",fontSize:16,lineHeight:1,flexShrink:0}}>×</button>
             </div>
           ))}
