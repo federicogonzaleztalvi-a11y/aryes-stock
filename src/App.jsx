@@ -3,6 +3,7 @@ import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import Modal from './components/Modal.jsx';
 import { useNavigate, useParams } from "react-router-dom";
 import { db, getOrgId, refreshSession } from "./lib/constants.js";
+import useSwipeBack from "./hooks/useSwipeBack.js";
 
 // →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
 // GLOBAL STYLES
@@ -861,6 +862,19 @@ function PazqueApp({session, onLogout, onSessionUpdate: _onSessionUpdate, demoMo
   const [etiquetaProd,   setEtiquetaProd]   = useState(null);
   const [editSup,        setEditSup]        = useState(null);
   const [viewSup,        setViewSup]        = useState(null);
+
+  // Swipe-back tipo app (Pazque admin es desktop-first, pero queda listo para
+  // cuando se use en mobile): si hay un modal abierto lo cierra; si no, vuelve a
+  // la pestaña anterior por el historial del router. Hook compartido con los
+  // portales de cliente y vendedor.
+  useSwipeBack(() => {
+    if (modal || editProd || etiquetaProd || editSup || viewSup) {
+      setModal(null); setEditProd(null); setEtiquetaProd(null); setEditSup(null); setViewSup(null);
+      return true;
+    }
+    navigate(-1);
+    return true;
+  });
 
   // →→ Reactive localStorage state for CommandPalette →→→→→→→→→→→→→→→→→→→→→→→→
   // Read once on mount; refreshed when →K opens so data is fresh without polling.

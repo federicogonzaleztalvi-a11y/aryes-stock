@@ -1,6 +1,7 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fmt } from '../lib/constants.js';
+import useSwipeBack from '../hooks/useSwipeBack.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
 import IvaLine from '../components/IvaLine.jsx';
@@ -1817,48 +1818,26 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const NAV_MAX = 10;
 
   // ── Swipe-back (gesto "volver" tipo app nativa) ───────────────────────────
-  // Deslizar el dedo desde el borde izquierdo hacia la derecha vuelve a la
-  // pantalla anterior, respetando el MISMO orden que los botones "Volver":
-  // primero cierra lo más "encima" (drawer/menús), después sale de la ficha de
-  // producto (PDP → grilla), después de una vista secundaria al catálogo. Si no
-  // hay nada atrás, no hace nada (deja el back nativo del navegador). Sin libs.
-  const goBackRef = useRef(() => false);
-  goBackRef.current = () => {
+  // Deslizar desde el borde izquierdo hacia la derecha vuelve a la pantalla
+  // anterior, respetando el MISMO orden que los botones "Volver": primero cierra
+  // lo más "encima" (drawer/menús), después sale de la ficha de producto (PDP →
+  // grilla), después de una vista secundaria al catálogo, y en modo vendedor sale
+  // del catálogo del cliente ("a mis clientes"). Si no hay nada atrás, no hace
+  // nada (deja el back nativo del navegador). Hook compartido con los 3 portales.
+  useSwipeBack(() => {
     if (showCart) { setShowCart(false); return true; }
     if (ddOpen || udOpen) { setDdOpen(false); setUdOpen(false); return true; }
     if (showEstadoCuenta) { setShowEstadoCuenta(false); return true; }
     if (detalle) { setDetalle(null); return true; }
     if (vista !== 'catalogo') { setVista('catalogo'); setDetalle(null); return true; }
+    if (vendorMode && onVendorExitRef.current) { onVendorExitRef.current(); return true; }
     return false;
-  };
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const EDGE = 28;     // px desde el borde izq donde puede arrancar el gesto
-    const THRESH = 70;   // px horizontales mínimos para disparar el "volver"
-    let startX = 0, startY = 0, tracking = false;
-    const onStart = (e) => {
-      const t = e.touches && e.touches[0]; if (!t) { tracking = false; return; }
-      if (t.clientX <= EDGE) { tracking = true; startX = t.clientX; startY = t.clientY; }
-      else tracking = false;
-    };
-    const onMove = (e) => {
-      if (!tracking) return;
-      const t = e.touches && e.touches[0]; if (!t) return;
-      const dx = t.clientX - startX, dy = t.clientY - startY;
-      if (dx > THRESH && Math.abs(dy) < 50) { tracking = false; goBackRef.current(); }
-    };
-    const onEnd = () => { tracking = false; };
-    window.addEventListener('touchstart', onStart, { passive: true });
-    window.addEventListener('touchmove',  onMove,  { passive: true });
-    window.addEventListener('touchend',   onEnd,   { passive: true });
-    window.addEventListener('touchcancel', onEnd,  { passive: true });
-    return () => {
-      window.removeEventListener('touchstart', onStart);
-      window.removeEventListener('touchmove',  onMove);
-      window.removeEventListener('touchend',   onEnd);
-      window.removeEventListener('touchcancel', onEnd);
-    };
-  }, []);
+  });
+
+  // Al abrir la ficha de un producto (PDP) o cambiar de vista, la pantalla debe
+  // arrancar ARRIBA. Sin esto quedaba en el scroll del catálogo y el cliente
+  // entraba "por el medio/fondo" del producto y tenía que subir a mano.
+  useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [detalle, vista]);
 
   useEffect(() => {
     if (!reorderMsg) return;
@@ -2132,6 +2111,9 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
 
   return (
     <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS }}>
+      {/* Transición sutil al cambiar de pantalla (catálogo ↔ ficha): leve fade +
+          subida, como las apps nativas. Suave, no "salta". */}
+      <style>{'@keyframes pzFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.pz-fade{animation:pzFade .22s ease both}'}</style>
 
       {vendorMode && (
         <div style={{ background: '#0f3d2e', color: '#fff', padding: '8px 16px',
@@ -2354,11 +2336,13 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         </div>
       )}
       {vista === 'catalogo' && detalle && (
-        <ProductDetail item={detalle} carrito={carrito} onAdd={addItem} onRemove={removeItem} onSetQty={setItemQty}
-          brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)} />
+        <div key={detalle.id} className="pz-fade">
+          <ProductDetail item={detalle} carrito={carrito} onAdd={addItem} onRemove={removeItem} onSetQty={setItemQty}
+            brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)} />
+        </div>
       )}
       {vista === 'catalogo' && !detalle && (
-        <main style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
+        <main className="pz-fade" style={{ maxWidth: 1300, margin: '0 auto', padding: '20px 24px 60px' }}>
           <h1 style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
             Catálogo de productos{brandNombre ? ` — ${brandNombre}` : ''}
           </h1>
