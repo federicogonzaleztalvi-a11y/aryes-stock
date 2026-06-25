@@ -63,12 +63,12 @@ const Icon = ({ name, size = 15, color = 'currentColor' }) => {
 // ─── Nav definition ───────────────────────────────────────────────────────────
 const NAV_ALL = [
   { id: 'dashboard',      label: 'Dashboard',       icon: 'dashboard' },
-  { id: 'inventory',      label: 'Inventario',       icon: 'inventory' },
+  { id: 'inventory',      label: 'Productos',        icon: 'inventory' },
   { id: 'orders',         label: 'Pedidos',           icon: 'orders' },
   { id: 'suppliers',      label: 'Proveedores',       icon: 'suppliers' },
   { id: 'clientes',       label: 'Clientes',          icon: 'clientes' },
   { id: 'ventas',         label: 'Ventas',            icon: 'ventas' },
-  { id: 'portal',         label: 'Portal B2B',        icon: 'portal' },
+  { id: 'portal',         label: 'Órdenes enviadas',  icon: 'portal' },
   { id: 'facturacion',    label: 'Facturación',       icon: 'facturacion' },
   { id: 'movimientos',    label: 'Movimientos',       icon: 'movimientos' },
   { id: 'lotes',          label: 'Lotes/Venc.',       icon: 'lotes' },
@@ -115,9 +115,9 @@ function getNavRoles(brandCfg) {
 }
 
 const NAV_GROUPS = [
-  { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers'] },
+  { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers','precios'] },
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
-  { label: 'Comercial',   ids: ['clientes','precios','ventas','portal','facturacion'] },
+  { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion'] },
   { label: 'Análisis',    ids: ['kpis','resultados','informes','demanda','audit'] },
   { label: 'Sistema',     ids: ['importar','config'] },
 ];
