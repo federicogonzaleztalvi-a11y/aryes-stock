@@ -86,6 +86,7 @@ const NAV_ALL = [
   { id: 'informes',       label: 'Informes',          icon: 'informes' },
   { id: 'devoluciones',   label: 'Devoluciones',      icon: 'devoluciones' },
   { id: 'precios',        label: 'Precios',           icon: 'precios' },
+  { id: 'descuentos',     label: 'Descuentos',        icon: 'demanda' },
   { id: 'demanda',        label: 'Demanda',           icon: 'demanda' },
   { id: 'audit',          label: 'Auditoría',         icon: 'audit' },
   { id: 'importar',       label: 'Importar datos',    icon: 'importar' },
@@ -95,9 +96,9 @@ const NAV_ALL = [
 ];
 
 const DEFAULT_NAV_ROLES = {
-  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','importar-clientes','scanner','config','conteo','devoluciones','packing','precios','transferencias','batch-picking'],
+  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','importar-clientes','scanner','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
-  vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes'],
+  vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes','descuentos'],
   contador: ['dashboard','facturacion','movimientos','resultados','informes','clientes','compras'],
 };
 
@@ -117,7 +118,7 @@ function getNavRoles(brandCfg) {
 const NAV_GROUPS = [
   { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers','precios'] },
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
-  { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion'] },
+  { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion','descuentos'] },
   { label: 'Análisis',    ids: ['kpis','resultados','informes','demanda','audit'] },
   { label: 'Sistema',     ids: ['importar','config'] },
 ];

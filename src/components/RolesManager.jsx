@@ -7,16 +7,17 @@ const F = { sans: "'Inter',system-ui,sans-serif" };
 const ALL_TABS = [
   { group: 'Principal', tabs: [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'inventory', label: 'Inventario' },
+    { id: 'inventory', label: 'Productos' },
     { id: 'orders', label: 'Pedidos' },
     { id: 'suppliers', label: 'Proveedores' },
   ]},
   { group: 'Comercial', tabs: [
     { id: 'clientes', label: 'Clientes' },
     { id: 'ventas', label: 'Ventas' },
-    { id: 'portal', label: 'Portal B2B' },
+    { id: 'portal', label: 'Órdenes enviadas' },
     { id: 'facturacion', label: 'Facturacion' },
     { id: 'precios', label: 'Precios' },
+    { id: 'descuentos', label: 'Descuentos' },
   ]},
   { group: 'Operaciones', tabs: [
     { id: 'movimientos', label: 'Movimientos' },
