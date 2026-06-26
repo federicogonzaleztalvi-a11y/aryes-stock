@@ -229,6 +229,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
   const [clients, setClients] = useState(null); // null = cargando
   const [error, setError]     = useState('');
   const [q, setQ]             = useState('');
+  const [showNuevo, setShowNuevo] = useState(false);
   const brand = useBrand();
   const firstName = String(session.name || '').trim().split(/\s+/)[0] || 'vendedor';
 
@@ -280,13 +281,20 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '22px 16px 48px' }}>
         {/* Saludo */}
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em' }}>Hola, {firstName}</div>
-          <div style={{ fontSize: 13.5, color: '#6a6a68', marginTop: 3 }}>
-            {clients === null ? 'Cargando tus clientes…'
-              : clients.length === 0 ? 'Sin clientes asignados'
-              : `${clients.length} cliente${clients.length !== 1 ? 's' : ''} asignado${clients.length !== 1 ? 's' : ''} · elegí uno para armar su pedido`}
+        <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em' }}>Hola, {firstName}</div>
+            <div style={{ fontSize: 13.5, color: '#6a6a68', marginTop: 3 }}>
+              {clients === null ? 'Cargando tus clientes…'
+                : clients.length === 0 ? 'Sin clientes asignados'
+                : `${clients.length} cliente${clients.length !== 1 ? 's' : ''} asignado${clients.length !== 1 ? 's' : ''} · elegí uno para armar su pedido`}
+            </div>
           </div>
+          <button onClick={() => setShowNuevo(true)}
+            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, background: G, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: SANS, boxShadow: '0 2px 8px rgba(5,150,105,.22)' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            Nuevo cliente
+          </button>
         </div>
 
         {/* Buscador */}
@@ -348,6 +356,116 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
             </button>
           ))}
         </div>
+      </div>
+
+      {showNuevo && (
+        <NuevoClienteModal
+          session={session}
+          onClose={() => setShowNuevo(false)}
+          onCreated={(cli) => { setShowNuevo(false); fetchClients(); if (cli) onSelect(cli); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Alta de cliente nuevo (lo crea el propio vendedor) ──────────────────────
+// Postea a /api/vendedor?action=create-client. El servidor fija org_id y lo
+// auto-asigna a este vendedor, así aparece de una en su lista. El teléfono es
+// con lo que el cliente después entra al portal por OTP.
+function NuevoClienteModal({ session, onClose, onCreated }) {
+  const TIPOS = ['Panadería', 'Heladería', 'Pastelería', 'HORECA', 'Catering', 'Supermercado', 'Otro'];
+  const [f, setF] = useState({ nombre: '', telefono: '', tipo: 'Panadería', ciudad: '', direccion: '', codigo: '', email: '', contacto: '' });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const set = (k) => (e) => setF(prev => ({ ...prev, [k]: e.target.value }));
+
+  const inputStyle = { width: '100%', fontFamily: SANS, fontSize: 15, color: '#1a1a18', background: '#fff', border: '1.5px solid #e6e6e2', padding: '11px 13px', borderRadius: 10, boxSizing: 'border-box', outline: 'none' };
+  const labelStyle = { fontSize: 12.5, fontWeight: 600, color: '#4a4a48', marginBottom: 5, display: 'block' };
+
+  const guardar = async () => {
+    setErr('');
+    if (!f.nombre.trim()) { setErr('El nombre es obligatorio.'); return; }
+    if (f.email && !/^[^@]+@[^@]+\.[^@]+$/.test(f.email)) { setErr('Email inválido.'); return; }
+    setSaving(true);
+    try {
+      const r = await fetch('/api/vendedor?action=create-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify(f),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { setErr(data.error || 'No se pudo guardar el cliente.'); setSaving(false); return; }
+      onCreated(data.client || null);
+    } catch {
+      setErr('Error de conexión.'); setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', fontFamily: SANS }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '18px 18px 0 0', padding: '22px 20px calc(28px + env(safe-area-inset-bottom))', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 -8px 40px rgba(0,0,0,.22)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a18' }}>Nuevo cliente</div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9a9a96', padding: 4, display: 'inline-flex' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 13 }}>
+          <div>
+            <label style={labelStyle}>Nombre del comercio *</label>
+            <input value={f.nombre} onChange={set('nombre')} placeholder="Panadería La Esquina" style={inputStyle}
+              onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} autoFocus />
+          </div>
+          <div>
+            <label style={labelStyle}>Teléfono <span style={{ color: '#9a9a96', fontWeight: 500 }}>(con lo que entra al portal)</span></label>
+            <input value={f.telefono} onChange={set('telefono')} placeholder="099 123 456" inputMode="tel" style={inputStyle}
+              onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+            <div>
+              <label style={labelStyle}>Tipo</label>
+              <select value={f.tipo} onChange={set('tipo')} style={{ ...inputStyle, appearance: 'none' }}>
+                {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Código</label>
+              <input value={f.codigo} onChange={set('codigo')} placeholder="Opcional" style={inputStyle}
+                onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
+            </div>
+          </div>
+          <div>
+            <label style={labelStyle}>Ciudad</label>
+            <input value={f.ciudad} onChange={set('ciudad')} placeholder="Montevideo" style={inputStyle}
+              onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
+          </div>
+          <div>
+            <label style={labelStyle}>Dirección</label>
+            <input value={f.direccion} onChange={set('direccion')} placeholder="Opcional" style={inputStyle}
+              onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11 }}>
+            <div>
+              <label style={labelStyle}>Contacto</label>
+              <input value={f.contacto} onChange={set('contacto')} placeholder="Opcional" style={inputStyle}
+                onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
+            </div>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input value={f.email} onChange={set('email')} placeholder="Opcional" inputMode="email" style={inputStyle}
+                onFocus={e => e.target.style.borderColor = G} onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
+            </div>
+          </div>
+        </div>
+
+        {err && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 12px', fontSize: 13, marginTop: 14 }}>{err}</div>}
+
+        <button onClick={guardar} disabled={saving}
+          style={{ marginTop: 18, width: '100%', padding: '13px 0', background: saving ? '#9ca3af' : G, color: '#fff', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: saving ? 'default' : 'pointer', fontFamily: SANS }}>
+          {saving ? 'Guardando…' : 'Guardar y armar pedido'}
+        </button>
       </div>
     </div>
   );

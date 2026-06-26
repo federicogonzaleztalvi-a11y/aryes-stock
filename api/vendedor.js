@@ -161,6 +161,55 @@ async function handler(req, res) {
     });
   }
 
+  // ── POST ?action=create-client — el vendedor da de alta un cliente nuevo ──
+  // Igual que el alta del admin, pero acotado: org_id e identidad salen DEL
+  // SERVIDOR. El cliente queda auto-asignado a ESTE vendedor (vendedor_id = su
+  // email) → aparece de una en su lista (action=clients) sin pasar por el admin.
+  // El teléfono es clave: es con lo que el cliente entra al portal por OTP.
+  if (action === 'create-client') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const b = req.body || {};
+    const nombre = String(b.nombre || '').trim();
+    if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio.' });
+    if (nombre.length > 200) return res.status(400).json({ error: 'Nombre demasiado largo (máx 200).' });
+    const email = String(b.email || '').trim();
+    if (email && !/^[^@]+@[^@]+\.[^@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido.' });
+    const phone = String(b.telefono || '').trim().slice(0, 30);
+
+    const row = {
+      id:          crypto.randomUUID(),
+      name:        nombre,
+      type:        String(b.tipo || 'Otro').slice(0, 40),
+      phone,
+      email,
+      contact:     String(b.contacto || '').slice(0, 120),
+      contacto:    String(b.contacto || '').slice(0, 120),
+      address:     String(b.direccion || '').slice(0, 200),
+      ciudad:      String(b.ciudad || '').slice(0, 120),
+      codigo:      String(b.codigo || '').slice(0, 60) || null,
+      cond_pago:   'credito_30',
+      org_id:      vendedor.org,          // ← del servidor, nunca del body
+      vendedor_id: vendedor.email,        // ← auto-asignado a este vendedor
+      created_at:  new Date().toISOString(),
+    };
+
+    const insRes = await fetch(`${SB_URL}/rest/v1/clients`, {
+      method: 'POST',
+      headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify(row),
+    });
+    if (!insRes.ok) {
+      const err = await insRes.text();
+      log.error('vendedor', 'create-client insert error', { status: insRes.status, org: vendedor.org, body: err.substring(0, 200) });
+      return res.status(502).json({ error: 'No se pudo guardar el cliente.' });
+    }
+    const created = (await insRes.json())?.[0] || row;
+    log.info('vendedor', 'cliente creado por vendedor', { vendedor: vendedor.username, cliente: created.id, org: vendedor.org });
+    return res.status(200).json({
+      client: { id: created.id, name: created.name, codigo: created.codigo, ciudad: created.ciudad, phone: created.phone, lista_id: created.lista_id || null },
+    });
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── ?action=me — datos del vendedor logueado ──
