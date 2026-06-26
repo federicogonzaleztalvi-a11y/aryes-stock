@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-// useSwipeBack — gesto "volver" tipo app nativa.
+// useSwipeBack — gesto "volver" tipo app nativa + botón físico "atrás" de Android.
 // ----------------------------------------------------------------------------
 // Deslizar el dedo DESDE EL BORDE IZQUIERDO de la pantalla hacia la derecha
 // ejecuta onBack(). onBack decide qué significa "volver" en cada pantalla y
@@ -10,6 +10,14 @@ import { useEffect, useRef } from 'react';
 // al borde izquierdo (EDGE) y el arrastre es claramente horizontal hacia la
 // derecha (THRESH) — así no choca con el scroll vertical de la página.
 //
+// ADEMÁS engancha el botón "atrás" de hardware/gesto de Android (e iOS Chrome):
+// ese botón NO dispara los touch events, dispara el evento `popstate` del
+// historial. Como la app es una SPA y no empuja entradas al historial, antes
+// el back de Android se salía del portal. Acá dejamos "armada" una entrada
+// trampa: al apretar atrás cae el popstate, llamamos al MISMO onBack y, si hubo
+// algo que cerrar (devolvió true), re-armamos la trampa para la próxima. Si no
+// hay nada atrás (false), dejamos que el back salga de verdad.
+//
 // Se usa igual en el portal del cliente, el de vendedores y la app de admin;
 // cada uno pasa su propia lógica de onBack.
 export default function useSwipeBack(onBack) {
@@ -17,6 +25,26 @@ export default function useSwipeBack(onBack) {
   // (que depende del estado actual de la pantalla) sin re-registrar el listener.
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
+
+  // ── Botón físico "atrás" de Android (popstate del historial) ──────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    // Armamos una entrada "trampa" en el historial para tener algo que "pop".
+    window.history.pushState(null, '');
+    const onPop = () => {
+      let handled = false;
+      try { handled = !!(onBackRef.current && onBackRef.current()); } catch { /* noop */ }
+      if (handled) {
+        // Cerramos algo interno: re-armamos la trampa para la próxima vez.
+        window.history.pushState(null, '');
+      } else {
+        // No había nada atrás: dejamos salir de verdad (cerrar/atrás del navegador).
+        window.history.back();
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;

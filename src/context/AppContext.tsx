@@ -448,7 +448,7 @@ const describeAction = (action: string, detail: string): string => {
       try {
         const prods = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null, codigo:p.codigo||'', volume_tiers:Array.isArray(p.volume_tiers)?p.volume_tiers:[], descuento_posible:Number(p.descuento_posible)||0, variants:(p.variants&&typeof p.variants==='object'&&!Array.isArray(p.variants))?p.variants:{} }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null, codigo:p.codigo||'', volume_tiers:Array.isArray(p.volume_tiers)?p.volume_tiers:[], descuento_posible:Number(p.descuento_posible)||0, unidades_por_caja:Number(p.unidades_por_caja)||0, descuento_caja:Number(p.descuento_caja)||0, variants:(p.variants&&typeof p.variants==='object'&&!Array.isArray(p.variants))?p.variants:{} }));
           setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', `org_id=eq.${getOrgId()}&order=name.asc`);
@@ -536,6 +536,7 @@ const describeAction = (action: string, detail: string): string => {
             category:row.category||'', precioVenta:Number(row.precio_venta)||0, imagen_url:row.imagen_url||'', descripcion:row.descripcion||'',
             volume_tiers:Array.isArray(row.volume_tiers)?row.volume_tiers:[],
             descuento_posible:Number(row.descuento_posible)||0,
+            unidades_por_caja:Number(row.unidades_por_caja)||0, descuento_caja:Number(row.descuento_caja)||0,
             variants:(row.variants&&typeof row.variants==='object'&&!Array.isArray(row.variants))?row.variants:{},
             dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
           return [p, ...ps];
@@ -549,6 +550,8 @@ const describeAction = (action: string, detail: string): string => {
                 unitCost: row.unit_cost != null ? Number(row.unit_cost) : p.unitCost,
                 precioVenta: row.precio_venta != null ? Number(row.precio_venta) : p.precioVenta, imagen_url: row.imagen_url||p.imagen_url||'',
                 descuento_posible: row.descuento_posible != null ? Number(row.descuento_posible) : p.descuento_posible,
+                unidades_por_caja: row.unidades_por_caja != null ? Number(row.unidades_por_caja) : p.unidades_por_caja,
+                descuento_caja: row.descuento_caja != null ? Number(row.descuento_caja) : p.descuento_caja,
                 variants: (row.variants && typeof row.variants === 'object' && !Array.isArray(row.variants)) ? row.variants : p.variants,
                 updatedAt: row.updated_at||'' }
             : p);
@@ -743,6 +746,8 @@ const describeAction = (action: string, detail: string): string => {
       codigo: (f.codigo || '') as string,
       volume_tiers: (Array.isArray(f.volume_tiers) ? f.volume_tiers : []) as unknown[],
       descuento_posible: Math.max(0, Math.min(100, Number(f.descuento_posible) || 0)),
+      unidades_por_caja: Math.max(0, Math.floor(Number(f.unidades_por_caja) || 0)),
+      descuento_caja: Math.max(0, Math.min(100, Number(f.descuento_caja) || 0)),
       variants: (f.variants && typeof f.variants === 'object' && !Array.isArray(f.variants) ? f.variants : {}) as Record<string, unknown>,
       updated_at: now,
     };

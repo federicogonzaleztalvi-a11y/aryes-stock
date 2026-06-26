@@ -93,6 +93,14 @@ function calcFromRule(precio, oper, factor, nombre) {
   return precio; // directo
 }
 
+// Aplica el descuento por producto (columna Dto%) sobre el precio base.
+// 10 → 10% menos. Se ignora si es <=0 o >=100 (evita precios 0 o negativos).
+function aplicarDto(precio, dto) {
+  const d = Number(dto) || 0;
+  if (d <= 0 || d >= 100) return precio;
+  return Math.round(precio * (1 - d / 100) * 100) / 100;
+}
+
 export default function ImportadorPrecios({ products = [], listas = [], onPreciosGuardados }) {
   const [rows, setRows] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -193,17 +201,19 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
               if (score > bestScore) { bestScore = score; bestMatch = p; }
             }
           }
+          const descuento = item.descuento || 0;
           return {
             nombreExcel: item.nombreExcel,
             precioKg: item.precioKg,
             precioUnit,
+            precioBase: precioUnit,            // precio sin descuento (para recalcular si editás el %)
             unidad: item.unidad,
-            descuento: item.descuento || 0,
+            descuento,
             matchScore: bestScore,
             productoId: bestScore >= 0.4 ? bestMatch?.id : null,
             productoNombre: bestScore >= 0.4 ? bestMatch?.name : '',
             productoCodigo: bestScore >= 0.4 ? (bestMatch?.codigo || bestMatch?.barcode || '') : '',
-            precioFinal: precioUnit,
+            precioFinal: aplicarDto(precioUnit, descuento),  // Dto% por producto ya aplicado
             incluir: bestScore >= 0.4,
           };
         });
@@ -217,7 +227,13 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
   };
 
   const updateRow = (i, field, val) => {
-    setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
+    setRows(prev => prev.map((r, idx) => {
+      if (idx !== i) return r;
+      const next = { ...r, [field]: val };
+      // Al cambiar el Dto%, recalculamos el Precio Final desde el precio base.
+      if (field === 'descuento') next.precioFinal = aplicarDto(r.precioBase ?? r.precioFinal, val);
+      return next;
+    }));
   };
 
   const guardar = async () => {

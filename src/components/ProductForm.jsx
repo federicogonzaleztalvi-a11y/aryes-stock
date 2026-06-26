@@ -140,6 +140,17 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[]})=>{
           <Btn onClick={addTier} variant="ghost" small>+ Agregar escala</Btn>
         </div>
       </Field>
+      <Field label="Caja cerrada (distribuidores)" hint="Opcional — descuento que se gana comprando cajas completas. Solo aplica a clientes con una lista de precios que tenga habilitado el descuento por caja cerrada. El cliente ve el descuento solo en las unidades que completan caja.">
+        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Caja de</span>
+          <input type="number" min={0} step={1} value={f.unidades_por_caja||""} onChange={e=>set("unidades_por_caja",e.target.value===""?0:Math.max(0,Math.floor(+e.target.value)))} placeholder="6"
+            style={{width:80,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+          <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>unidades →</span>
+          <input type="number" min={0} max={100} step={0.5} value={f.descuento_caja||""} onChange={e=>set("descuento_caja",e.target.value===""?0:Math.max(0,Math.min(100,+e.target.value)))} placeholder="10"
+            style={{width:70,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+          <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>% off por caja completa</span>
+        </div>
+      </Field>
       <Field label="Variantes" hint="Opcional — opciones que el cliente elige en el portal (colores, sabores, talles...). Comparten precio, IVA y stock de este producto. Ej: un colorante con 16 colores en una sola card.">
         <div style={{display:"grid",gap:8}}>
           {variants.options.length>0&&(

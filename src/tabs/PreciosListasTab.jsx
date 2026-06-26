@@ -51,7 +51,16 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
   const [copiarUuid, setCopiarUuid] = useState(null);
   const [copiarSel, setCopiarSel] = useState({});
   const [dtosCat, setDtosCat] = useState(lista.descuentos_categoria || {});
+  const [cajaCerrada, setCajaCerrada] = useState(lista.habilitar_caja_cerrada === true);
   const flash = t => { setMsg(t); setTimeout(() => setMsg(''), 2500); };
+  const saveCaja = async val => {
+    setCajaCerrada(val);
+    try {
+      await sb(`price_lists?id=eq.${lista.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ habilitar_caja_cerrada: val }) });
+      onListaUpdated({ ...lista, habilitar_caja_cerrada: val });
+      flash(val ? '✅ Descuento por caja cerrada habilitado' : '✅ Descuento por caja cerrada deshabilitado');
+    } catch (e) { setCajaCerrada(!val); flash('❌ ' + e.message); }
+  };
   useEffect(() => { sb(`price_list_items?lista_id=eq.${lista.id}`).then(d => setItems(d || [])).catch(() => {}); }, [lista.id]);
   const saveGlobal = async val => {
     const v = parseFloat(val); if (isNaN(v) || v < 0 || v > 100) return;
@@ -122,6 +131,10 @@ function EditorPrecios({ lista, onBack, onListaUpdated, listas }) {
           <input type="number" min={0} max={100} step="0.5" value={dtoGlobal} onChange={e => setDtoGlobal(e.target.value)} onBlur={e => saveGlobal(e.target.value)} style={{ width: 60, padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: 7, fontSize: 14, textAlign: 'center', fontWeight: 700 }} />
           <span style={{ fontSize: 12, color: '#6b7280' }}>%</span>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, background: cajaCerrada ? '#f0fdf4' : '#f9fafb', padding: '8px 14px', borderRadius: 10, border: `1px solid ${cajaCerrada ? '#bbf7d0' : '#e5e7eb'}`, cursor: 'pointer', userSelect: 'none' }} title="Los clientes de esta lista ganan el descuento por caja completa configurado en cada producto.">
+          <input type="checkbox" checked={cajaCerrada} onChange={e => saveCaja(e.target.checked)} />
+          <span style={{ fontSize: 12, color: cajaCerrada ? G : '#6b7280', fontWeight: 600 }}>Descuento por caja cerrada</span>
+        </label>
       </div>
       {msg && <div style={{ background: msg.startsWith('❌') ? '#fef2f2' : '#f0fdf4', border: `1px solid ${msg.startsWith('❌') ? '#fecaca' : '#bbf7d0'}`, borderRadius: 8, padding: '8px 14px', marginBottom: 12, fontSize: 13, color: msg.startsWith('❌') ? '#dc2626' : G, fontWeight: 600 }}>{msg}</div>}
       {sinPrecioCount > 0 && (
@@ -235,6 +248,7 @@ export default function PreciosListasTab() {
   const [fNombre, setFNombre] = useState('');
   const [fDesc, setFDesc] = useState('');
   const [fDto, setFDto] = useState('0');
+  const [fCaja, setFCaja] = useState(false);
   const flash = t => { setMsg(t); setTimeout(() => setMsg(''), 3000); };
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -252,10 +266,10 @@ export default function PreciosListasTab() {
     if (!fNombre.trim()) { flash('❌ Nombre requerido'); return; }
     setSaving(true);
     try {
-      const n = await sb('price_lists', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ id: 'lista_' + Math.random().toString(36).slice(2, 10), org_id: getOrgId(), nombre: fNombre.trim(), descuento: Number(fDto) || 0, activa: true }) });
+      const n = await sb('price_lists', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ id: 'lista_' + Math.random().toString(36).slice(2, 10), org_id: getOrgId(), nombre: fNombre.trim(), descuento: Number(fDto) || 0, activa: true, habilitar_caja_cerrada: fCaja }) });
       const lista = n?.[0]; if (!lista) throw new Error('Sin respuesta');
       setListas(ls => [lista, ...ls]); setListItems(m => ({ ...m, [lista.id]: [] })); setCliMap(m => ({ ...m, [lista.id]: [] }));
-      setFNombre(''); setFDesc(''); setFDto('0'); setShowForm(false); flash(`✅ Lista "${lista.nombre}" creada`);
+      setFNombre(''); setFDesc(''); setFDto('0'); setFCaja(false); setShowForm(false); flash(`✅ Lista "${lista.nombre}" creada`);
     } catch (e) { flash('❌ ' + e.message); }
     setSaving(false);
   };
@@ -291,6 +305,11 @@ export default function PreciosListasTab() {
             <button onClick={crearLista} disabled={saving} style={{ padding: '9px 18px', background: G, color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, opacity: saving ? .7 : 1, whiteSpace: 'nowrap' }}>{saving ? '...' : 'Crear'}</button>
             <button onClick={() => setShowForm(false)} style={{ padding: '9px 14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Cancelar</button>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, fontSize: 13, color: '#374151', cursor: 'pointer', userSelect: 'none' }}>
+            <input type="checkbox" checked={fCaja} onChange={e => setFCaja(e.target.checked)} />
+            <span style={{ fontWeight: 600 }}>Habilitar descuento por caja cerrada</span>
+            <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 400 }}>— los clientes de esta lista ganan el descuento por caja completa configurado en cada producto.</span>
+          </label>
         </div>
       )}
       {loading ? <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>Cargando listas...</div> : listas.length === 0 ? (

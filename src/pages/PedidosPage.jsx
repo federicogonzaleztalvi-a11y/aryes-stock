@@ -1030,10 +1030,35 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
     // alcanza la cantidad pedida. El descuento por volumen premia comprar en bulto.
     const volDto = volTierDto(item, qty);
     const descPct = Math.max(item.descGlobal || 0, volDto);
-    const precioConDto = descPct > 0 ? Math.round(item.precio * (1 - descPct / 100) * 100) / 100 : item.precio;
-    const netoLinea = precioConDto * qty;
+    const precioReg = descPct > 0 ? Math.round(item.precio * (1 - descPct / 100) * 100) / 100 : item.precio;
+
+    // Caja cerrada: el descuento por caja completa SOLO aplica a las unidades que
+    // completan cajas enteras. El resto va al precio normal. El descuento de caja
+    // REEMPLAZA al puntual (no se suman): se usa el mayor de los dos.
+    const cajaUnid = Number(item.unidades_por_caja) || 0;
+    const cajaDtoCfg = Number(item.descuento_caja) || 0;
+    const aplicaCaja = cajaUnid > 0 && cajaDtoCfg > 0;
+    let netoLinea, precioConDto, faltanParaCaja = 0, ahorroSiCompleta = 0;
+    if (aplicaCaja) {
+      const cajas = Math.floor(qty / cajaUnid);
+      const unidConCaja = cajas * cajaUnid;
+      const unidResto = qty - unidConCaja;
+      const descPctCaja = Math.max(cajaDtoCfg, descPct);
+      const precioCaja = Math.round(item.precio * (1 - descPctCaja / 100) * 100) / 100;
+      netoLinea = unidConCaja * precioCaja + unidResto * precioReg;
+      precioConDto = qty > 0 ? Math.round((netoLinea / qty) * 100) / 100 : precioReg;
+      // Nudge "vendedor": si faltan pocas unidades para completar otra caja,
+      // calculamos cuánto ahorraría llevándolas a precio de caja en vez de suelto.
+      if (unidResto > 0 && precioCaja < precioReg) {
+        faltanParaCaja = cajaUnid - unidResto;
+        ahorroSiCompleta = Math.round((precioReg - precioCaja) * cajaUnid * 100) / 100;
+      }
+    } else {
+      precioConDto = precioReg;
+      netoLinea = precioReg * qty;
+    }
     const ivaLinea = netoLinea * (ivaRate / 100);
-    return { key, item, qty, variantId, variantSku, ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea };
+    return { key, item, qty, variantId, variantSku, ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea, cajaUnid: aplicaCaja ? cajaUnid : 0, faltanParaCaja, ahorroSiCompleta };
   });
   const subtotalNeto = lineasConCalc.reduce((s, l) => s + l.netoLinea, 0);
   const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
@@ -1257,9 +1282,9 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
               display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ececec', paddingBottom: 6 }}>
               <span>PRODUCTO</span><span>SUBTOTAL</span>
             </div>
-            {lineasConCalc.map(({ key, item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
+            {lineasConCalc.map(({ key, item, qty, variantId, descPct, precioConDto, netoLinea, ivaRate, faltanParaCaja, ahorroSiCompleta }) => (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
-                padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
+                padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
@@ -1269,6 +1294,17 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
                   </div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{fmt.currency(netoLinea)}</div>
+                {faltanParaCaja > 0 && (
+                  <div style={{ flexBasis: '100%', marginTop: 6 }}>
+                    <button type="button" onClick={() => { for (let n = 0; n < faltanParaCaja; n++) onAdd(item, variantId); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+                        background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '7px 10px',
+                        fontSize: 11.5, color: '#166534', cursor: 'pointer', fontWeight: 500 }}>
+                      <span>📦</span>
+                      <span>Agregá {faltanParaCaja} más y completás la caja — ahorrás {fmt.currency(ahorroSiCompleta)}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

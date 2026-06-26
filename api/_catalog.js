@@ -82,7 +82,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
 
   // ── 1. Productos + reservas activas (ATP) + overrides del cliente ──────────
   const prodQuery = [
-    'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants',
+    'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja',
     `org_id=eq.${org}`,
     'order=category.asc,name.asc',
     'limit=500',
@@ -133,6 +133,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   let horarioHasta = null;
   let portalActivo = true;
   let descGlobal = 0;
+  let cajaCerrada = false; // ¿la lista del cliente habilita el descuento por caja cerrada?
   let dtosCategoria = {};
   let itemMap = {};      // product_uuid -> precio fijo de la lista
   let itemDtoMap = {};   // product_uuid -> % de descuento del producto en la lista
@@ -151,13 +152,14 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
         listaId = cliData[0].lista_id;
 
         const listRes = await fetch(
-          `${SB_URL}/rest/v1/price_lists?id=eq.${listaId}&select=id,descuento,descuentos_categoria&limit=1`,
+          `${SB_URL}/rest/v1/price_lists?id=eq.${listaId}&select=id,descuento,descuentos_categoria,habilitar_caja_cerrada&limit=1`,
           { headers }
         );
         if (listRes.ok) {
           const listData = await listRes.json();
           descGlobal = Number(listData?.[0]?.descuento || 0);
           dtosCategoria = listData?.[0]?.descuentos_categoria || {};
+          cajaCerrada = listData?.[0]?.habilitar_caja_cerrada === true;
         }
 
         const itemsRes = await fetch(
@@ -224,6 +226,10 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       descripcion: p.descripcion || '',
       volume_tiers: sanitizeVolumeTiers(p.volume_tiers),
       variants: sanitizeVariants(p.variants),
+      // Caja cerrada: solo se expone si la lista del cliente lo habilita.
+      // Si no, va en 0 y el portal ni se entera (no aplica descuento por caja).
+      unidades_por_caja: cajaCerrada ? (Number(p.unidades_por_caja) || 0) : 0,
+      descuento_caja: cajaCerrada ? (Number(p.descuento_caja) || 0) : 0,
     };
   });
 
@@ -247,6 +253,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
     categorias,
     hasLista: !!listaId,
     descGlobal,
+    cajaCerrada,
     horarioDesde,
     horarioHasta,
     portalActivo,
