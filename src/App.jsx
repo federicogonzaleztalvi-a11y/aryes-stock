@@ -14,6 +14,7 @@ const DepositoTab = lazyWithRetry(() => import('./tabs/DepositoTab.jsx'));
 const RecepcionTab = lazyWithRetry(() => import('./tabs/RecepcionTab.jsx'));
 const RutasTab = lazyWithRetry(() => import('./tabs/RutasTab.jsx'));
 const InformesTab = lazyWithRetry(() => import('./tabs/InformesTab.jsx'));
+const AnalyticsTab = lazyWithRetry(() => import('./tabs/AnalyticsTab.jsx'));
 const PortalAdminTab = lazyWithRetry(() => import('./tabs/PortalAdminTab.jsx'));
 const LotesTab = lazyWithRetry(() => import('./tabs/LotesTab.jsx'));
 const MovimientosTab = lazyWithRetry(() => import('./tabs/MovimientosTab.jsx'));
@@ -1077,7 +1078,8 @@ Generado desde Pazque.`;
         {activeTab==="importar-clientes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ImportClientesTab /></Suspense></ErrorBoundary>}
         
         {activeTab==="informes"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><InformesTab /></Suspense></ErrorBoundary>}
-        
+        {activeTab==="analytics"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><AnalyticsTab /></Suspense></ErrorBoundary>}
+
         {activeTab==="conteo"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ConteoTab /></Suspense></ErrorBoundary>}
         {activeTab==="packing"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PackingTab /></Suspense></ErrorBoundary>}
         {activeTab==="batch-picking"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><BatchPickingTab /></Suspense></ErrorBoundary>}

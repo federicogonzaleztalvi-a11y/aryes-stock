@@ -110,6 +110,61 @@ async function saveServerCart(token, items) {
   } catch { /* sin red → queda en localStorage hasta el próximo guardado */ }
 }
 
+// ── Analítica web propia (panel del admin) ───────────────────────────────────
+// Manda TANDAS de eventos a /api/track (páginas vistas, productos vistos/
+// agregados, pedidos, búsquedas, tiempo en pantalla). Batching a propósito:
+// juntamos eventos y los despachamos cada pocos segundos o al cerrar la pestaña,
+// para NO pegarle al servidor —ni a la factura de Supabase— en cada click.
+// Best-effort total: si algo falla, se descarta en silencio. La analítica nunca
+// debe romper ni frenar el portal.
+const _SID_KEY = 'pazque-sid';
+function _getSid() {
+  try {
+    let sid = localStorage.getItem(_SID_KEY);
+    if (!sid) { sid = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem(_SID_KEY, sid); }
+    return sid;
+  } catch { return null; }
+}
+const _evtQueue = [];
+let _flushTimer = null;
+function _flushEvents(useBeacon) {
+  if (!_evtQueue.length) return;
+  const batch = _evtQueue.splice(0, 50);
+  let token = null;
+  try { token = JSON.parse(localStorage.getItem(SK) || 'null')?.token || null; } catch { /* noop */ }
+  const payload = JSON.stringify({ org: ORG, session_id: _getSid(), events: batch });
+  const url = `${API}/api/track`;
+  try {
+    // Al cerrar la pestaña usamos sendBeacon (no admite Authorization, así que ese
+    // último envío queda como anónimo — aceptable). En vivo usamos fetch con token
+    // para que el evento quede atribuido al cliente logueado.
+    if (useBeacon && navigator.sendBeacon) {
+      navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  } catch { /* noop */ }
+}
+function trackWeb(event, props = {}, path = null) {
+  try {
+    // No registramos el modo demo (no es uso real de un cliente).
+    if (typeof window !== 'undefined' && window.location.search.includes('demo=true')) return;
+    _evtQueue.push({ event, props: props || {}, path, ts: Date.now() });
+    if (_evtQueue.length >= 20) { _flushEvents(false); return; }
+    if (!_flushTimer) _flushTimer = setTimeout(() => { _flushTimer = null; _flushEvents(false); }, 4000);
+  } catch { /* noop */ }
+}
+if (typeof window !== 'undefined') {
+  // Al ocultar o cerrar la pestaña, vaciar lo pendiente (incluye el tiempo en pantalla).
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') _flushEvents(true); });
+  window.addEventListener('pagehide', () => _flushEvents(true));
+}
+
 const PAISES = [
   { code: 'UY', label: 'UY', prefix: '598', flag: '🇺🇾' },
   { code: 'AR', label: 'AR', prefix: '54',  flag: '🇦🇷' },
@@ -1044,8 +1099,9 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
       .catch(console.error);
   }, [session?.clienteId]);
 
-  // Analytics helper — no-op si posthog no está cargado
+  // Analytics helper — manda al panel propio (api/track) + posthog si está cargado
   const track = (event, props = {}) => {
+    trackWeb(event, props);
     try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {}
   };
 
@@ -2017,6 +2073,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         setCats(['Todos', ...(d.categorias || [])]);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
+        trackWeb('catalogo_visto', { productos: prods.length }, 'catalogo');
         try { window.posthog?.capture('catalogo_visto', { org: ORG, productos: prods.length }); } catch {}
         if (Array.isArray(d.recommended)) setRecommended(d.recommended);
         if (Array.isArray(d.buyAgain)) setBuyAgain(d.buyAgain);
@@ -2055,7 +2112,25 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   }), [items, catFil, busq]);
 
   // Analytics — PedidosPage scope
-  const track = (event, props = {}) => { try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
+  const track = (event, props = {}) => { trackWeb(event, props); try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
+
+  // page_view: cada vez que el cliente cambia de pantalla (catálogo, historial,
+  // habituales, ...). El tiempo en cada pantalla se reconstruye en el panel a
+  // partir de los timestamps de los eventos de la misma sesión.
+  useEffect(() => { trackWeb('page_view', { vista }, vista); }, [vista]);
+
+  // producto_visto: cuando abre la ficha (PDP) de un producto.
+  useEffect(() => {
+    if (detalle) trackWeb('producto_visto', { producto: detalle.nombre, precio: detalle.precio, categoria: detalle.categoria || '' }, 'pdp');
+  }, [detalle]);
+
+  // busqueda: con debounce, para no registrar cada tecla.
+  useEffect(() => {
+    const q = (busq || '').trim();
+    if (q.length < 2) return undefined;
+    const t = setTimeout(() => { trackWeb('busqueda', { q: q.slice(0, 60), resultados: filtered.length }); }, 800);
+    return () => clearTimeout(t);
+  }, [busq, filtered.length]);
 
   // Clave de carrito: producto simple -> "id". Con variante -> "id::variantId".
   // Retrocompatible: los productos sin variante siguen usando su id pelado.

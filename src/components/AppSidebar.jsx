@@ -48,6 +48,7 @@ const Icon = ({ name, size = 15, color = 'currentColor' }) => {
     precios:       <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" fill={color}/>,
     packing:       <path d="M20 7l-8-4-8 4v10l8 4 8-4V7zm-8 1.62L18.47 12 12 15.38 5.53 12 12 8.62z" fill={color}/>,
     'batch-picking':<path d="M3 3h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm4-8h14v2H7zm0 4h14v2H7zm0 4h14v2H7z" fill={color}/>,
+    analytics:     <path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z" fill={color}/>,
   };
 
   const path = icons[name];
@@ -84,6 +85,7 @@ const NAV_ALL = [
   { id: 'packing',        label: 'Packing',           icon: 'packing' },
   { id: 'batch-picking',  label: 'Batch Picking',     icon: 'batch-picking' },
   { id: 'informes',       label: 'Informes',          icon: 'informes' },
+  { id: 'analytics',      label: 'Analítica web',     icon: 'analytics' },
   { id: 'devoluciones',   label: 'Devoluciones',      icon: 'devoluciones' },
   { id: 'precios',        label: 'Precios',           icon: 'precios' },
   { id: 'descuentos',     label: 'Descuentos',        icon: 'demanda' },
@@ -96,7 +98,7 @@ const NAV_ALL = [
 ];
 
 const DEFAULT_NAV_ROLES = {
-  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','demanda','audit','importar','importar-clientes','scanner','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
+  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','analytics','demanda','audit','importar','importar-clientes','scanner','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
   vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes','descuentos'],
   contador: ['dashboard','facturacion','movimientos','resultados','informes','clientes','compras'],
