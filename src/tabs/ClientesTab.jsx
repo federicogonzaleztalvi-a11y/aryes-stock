@@ -374,7 +374,7 @@ function DescuentosPanel({ clientId, orgId }) {
 
 function ClientesTab(){
   const { clientes: items, setClientes: setItems, ventas, cfes, priceListas, session, products, brandCfg = {} } = useApp();
-  const { isAdmin } = useRole();
+  const { isAdmin, isVendedor } = useRole();
   const navigate = useNavigate();
   const G="#3a7d1e";
   const [agingOpen, setAgingOpen] = useState(false);
@@ -569,6 +569,9 @@ function ClientesTab(){
     const record = isNew
       ? {...form, id: newId, creado: new Date().toISOString(), lat: null, lng: null, geocodedAt: null, horarioDesde: null, horarioHasta: null}
       : {...items.find(x=>x.id===editId), ...form};
+    // Si lo crea un vendedor, queda auto-asignado a él (su email) para que
+    // aparezca en su lista. El admin asigna manualmente con el selector.
+    if (isNew && isVendedor) record.vendedorId = session?.email || session?.username || '';
     const upd = isNew
       ? [...items, record]
       : items.map(x=>x.id===editId ? record : x);
@@ -908,9 +911,9 @@ function ClientesTab(){
       <section style={{padding:'32px 40px',maxWidth:1100,margin:'0 auto'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <h2 style={{fontFamily:'Playfair Display,serif',fontSize:28,color:'#1a1a1a',margin:0}}>Clientes <span style={{fontSize:16,color:'#888',fontWeight:400}}>({filtered.length})</span></h2>
-        {isAdmin&&<div style={{display:'flex',gap:8}}>
+        {(isAdmin||isVendedor)&&<div style={{display:'flex',gap:8}}>
         <button onClick={()=>setVista('form')} style={{background:G,color:'#fff',border:'none',padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>+ Nuevo cliente</button>
-        <button onClick={()=>window.location.href='/app/importar-clientes'} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>↑ Importar clientes</button>
+        {isAdmin&&<button onClick={()=>window.location.href='/app/importar-clientes'} style={{background:'#fff',color:G,border:`1px solid ${G}`,padding:'9px 20px',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>↑ Importar clientes</button>}
       </div>}
       </div>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 16px',marginBottom:16,color:G,fontSize:13}}>{msg}</div>}
