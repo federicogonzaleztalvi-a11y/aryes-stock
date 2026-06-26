@@ -75,7 +75,7 @@ function vendedorKeys(vendedor) {
   const keys = new Set();
   if (vendedor.username) keys.add(vendedor.username);
   if (vendedor.name) keys.add(vendedor.name);
-  if (vendedor.email) keys.add(vendedor.email.split('@')[0]);
+  if (vendedor.email) { keys.add(vendedor.email); keys.add(vendedor.email.split('@')[0]); }
   return [...keys].filter(Boolean);
 }
 

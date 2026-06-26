@@ -658,7 +658,7 @@ function ClientesTab(){
           <label style={{fontSize:11,fontWeight:600,color:'#888',display:'block',marginBottom:4}}>VENDEDOR ASIGNADO</label>
           <select value={form.vendedorId||''} onChange={e=>setForm(p=>({...p,vendedorId:e.target.value}))} style={{...inp,background:'#fff'}}>
             <option value="">Sin asignar (visible para todos)</option>
-            {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.username||u.name)).map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name||u.username} ({u.role})</option>)}
+            {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.email||u.username||u.name)).map(u=><option key={u.email||u.username||u.name} value={u.email||u.username||u.name}>{u.name||u.username} ({u.role})</option>)}
           </select>
         </div>}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8,borderTop:'1px solid #f0f0ed',paddingTop:16}}>
@@ -922,7 +922,7 @@ function ClientesTab(){
         <select value={filtroVendedor} onChange={e=>setFiltroVendedor(e.target.value)} style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
           <option value=''>Todos los vendedores</option>
           <option value='sin-asignar'>Sin asignar</option>
-          {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.username||u.name)).map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name||u.username}{u.codigo?' ('+u.codigo+')':''}</option>)}
+          {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.email||u.username||u.name)).map(u=><option key={u.email||u.username||u.name} value={u.email||u.username||u.name}>{u.name||u.username}{u.codigo?' ('+u.codigo+')':''}</option>)}
         </select>
         <select value={filtroLista} onChange={e=>setFiltroLista(e.target.value)} style={{padding:'8px 12px',border:'1px solid #e5e7eb',borderRadius:8,fontSize:13,fontFamily:'inherit',background:'#fff'}}>
           <option value=''>Todas las listas</option>
@@ -944,7 +944,7 @@ function ClientesTab(){
         <select value={accionMasiva.vendedor} onChange={e=>setAccionMasiva(a=>({...a,vendedor:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
           <option value=''>Vendedor...</option>
           <option value='__quitar__'>Sin asignar</option>
-          {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.username||u.name)).map(u=><option key={u.username||u.name} value={u.username||u.name}>{u.name||u.username}</option>)}
+          {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.email||u.username||u.name)).map(u=><option key={u.email||u.username||u.name} value={u.email||u.username||u.name}>{u.name||u.username}</option>)}
         </select>
         <select value={accionMasiva.condPago} onChange={e=>setAccionMasiva(a=>({...a,condPago:e.target.value}))} style={{padding:'6px 10px',borderRadius:6,fontSize:12,border:'none',background:'#333',color:'#fff'}}>
           <option value=''>Condición de pago...</option>
