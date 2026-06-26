@@ -121,7 +121,7 @@ const NAV_GROUPS = [
   { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers','precios'] },
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
   { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion','descuentos'] },
-  { label: 'Análisis',    ids: ['kpis','resultados','informes','demanda','audit'] },
+  { label: 'Análisis',    ids: ['kpis','resultados','informes','analytics','demanda','audit'] },
   { label: 'Sistema',     ids: ['importar','config'] },
 ];
 
