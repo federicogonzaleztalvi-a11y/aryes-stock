@@ -274,6 +274,7 @@ const describeAction = (action: string, detail: string): string => {
             rut: r.rut||'', telefono: r.telefono||r.phone||'',
             email: r.email||'', emailFacturacion: r.email_facturacion||'',
             contacto: r.contacto||r.contact||'', direccion: r.direccion||r.address||'',
+            direccionFiscal: r.direccion_fiscal||'',
             ciudad: r.ciudad||'', condPago: r.cond_pago||'credito_30',
             limiteCredito: r.limite_credito ? String(r.limite_credito) : '',
             listaId: r.lista_id || null,

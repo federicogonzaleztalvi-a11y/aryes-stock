@@ -12,7 +12,7 @@ const HORAS_DIA = Array.from({length:48},(_, i)=>String(Math.floor(i/2)).padStar
 // ── Panel de teléfonos adicionales ───────────────────────────────────────
 function AddressesPanel({ clientId, orgId }) {
   const [addresses, setAddresses] = React.useState([]);
-  const [form, setForm] = React.useState({ label:'Sucursal', direccion:'', ciudad:'', referencia:'' });
+  const [form, setForm] = React.useState({ label:'Sucursal', direccion:'', ciudad:'', telefono:'', referencia:'' });
   const [saving, setSaving] = React.useState(false);
   const [show, setShow] = React.useState(false);
   const SB = import.meta.env.VITE_SUPABASE_URL;
@@ -40,7 +40,7 @@ function AddressesPanel({ clientId, orgId }) {
         headers: getAuthHeaders({ Prefer: 'return=minimal' }),
         body: JSON.stringify({ client_id: clientId, org_id: orgId||getOrgId(), ...form }),
       });
-      setForm({ label:'Sucursal', direccion:'', ciudad:'', referencia:'' });
+      setForm({ label:'Sucursal', direccion:'', ciudad:'', telefono:'', referencia:'' });
       setShow(false);
       await cargar();
     } catch(e) { console.error(e); }
@@ -60,7 +60,7 @@ function AddressesPanel({ clientId, orgId }) {
     <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid #e5e5e0'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
         <div style={{fontSize:12,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'0.08em'}}>
-          Direcciones de entrega
+          Sucursales / Direcciones de entrega
         </div>
         <button onClick={()=>setShow(!show)} style={{background:'none',border:'1px solid #e5e5e0',borderRadius:6,padding:'4px 12px',fontSize:12,cursor:'pointer',color:'#4a4a48'}}>
           {show ? '× Cancelar' : '+ Agregar'}
@@ -75,6 +75,7 @@ function AddressesPanel({ clientId, orgId }) {
             <span style={{fontSize:10,fontWeight:700,color:'#059669',textTransform:'uppercase',letterSpacing:'0.05em'}}>{a.label}</span>
             <div style={{fontWeight:600,color:'#1a1a18',marginTop:2}}>{a.direccion}</div>
             {a.ciudad && <div style={{fontSize:12,color:'#9a9a98'}}>{a.ciudad}</div>}
+            {a.telefono && <div style={{fontSize:12,color:'#9a9a98'}}>📞 {a.telefono}</div>}
             {a.referencia && <div style={{fontSize:11,color:'#bbb',fontStyle:'italic'}}>{a.referencia}</div>}
           </div>
           <button onClick={()=>eliminar(a.id)} style={{background:'none',border:'none',color:'#dc2626',cursor:'pointer',fontSize:16,padding:'0 4px',flexShrink:0}}>×</button>
@@ -99,6 +100,11 @@ function AddressesPanel({ clientId, orgId }) {
           <div>
             <div style={{fontSize:11,color:'#888',marginBottom:4}}>Dirección *</div>
             <input value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))} placeholder="Av. 18 de Julio 1234"
+              style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:'#888',marginBottom:4}}>Teléfono de la sucursal</div>
+            <input value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))} placeholder="099 123 456"
               style={{width:'100%',border:'1px solid #e5e5e0',borderRadius:6,padding:'7px 10px',fontSize:13,outline:'none',boxSizing:'border-box'}}/>
           </div>
           <div>
@@ -505,7 +511,7 @@ function ClientesTab(){
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',rut:'',telefono:'',email:'',direccion:'',ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
+  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
@@ -537,6 +543,7 @@ function ClientesTab(){
       contact:           client.contacto          || '',
       contacto:          client.contacto          || '',
       address:           client.direccion         || '',
+      direccion_fiscal:  client.direccionFiscal    || '',
       ciudad:            client.ciudad            || '',
       cond_pago:         client.condPago          || 'credito_30',
       limite_credito:    client.limiteCredito ? Number(client.limiteCredito) : null,
@@ -645,7 +652,7 @@ function ClientesTab(){
         </div>
       )}
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'Nombre *',k:'nombre',full:true},{l:'Código',k:'codigo'},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección',k:'direccion',full:true},{l:'Ciudad',k:'ciudad'},{l:'Zona de entrega',k:'zonaEntrega'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito ('+(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+')',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>(
+        {[{l:'Nombre *',k:'nombre',full:true},{l:'Código',k:'codigo'},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección de entrega',k:'direccion',full:true},{l:'Dirección fiscal',k:'direccionFiscal',full:true},{l:'Ciudad',k:'ciudad'},{l:'Zona de entrega',k:'zonaEntrega'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito ('+(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+')',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>(
           <div key={fld.k} style={{gridColumn:fld.full?'1/-1':'auto'}}>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{fld.l}</label>
             {fld.sel?<select value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={{...inp,background:'#fff'}}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select>
@@ -735,7 +742,7 @@ function ClientesTab(){
       <ClientInsights cliente={sel} metrics={crmMetrics} ventas={ventas} products={products} />
 
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección',v:sel.direccion||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+' '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(row=>(
+        {[{l:'RUT',v:sel.rut||'—'},{l:'Teléfono',v:sel.telefono||'—'},{l:'Email',v:sel.email||'—'},{l:'Contacto',v:sel.contacto||'—'},{l:'Dirección de entrega',v:sel.direccion||'—',full:true},{l:'Dirección fiscal',v:sel.direccionFiscal||'—',full:true},{l:'Ciudad',v:sel.ciudad||'—'},{l:'Cond. pago',v:{contado:'Contado',credito_15:'Crédito 15d',credito_30:'Crédito 30d',credito_60:'Crédito 60d',credito_90:'Crédito 90d'}[sel.condPago]||'—'},{l:'Lista de precios',v:sel.listaId?((priceListas.find(l=>l.id===sel.listaId)?.nombre)||sel.listaId):'Sin lista'},{l:'Horario recepción',v:(sel.horarioDesde||sel.horarioHasta)?(sel.horarioDesde||'?')+' – '+(sel.horarioHasta||'?'):'Sin restricción'},{l:'Límite crédito',v:sel.limiteCredito?(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+' '+sel.limiteCredito:'Sin límite'},{l:'Cliente desde',v:sel.creado?new Date(sel.creado).toLocaleDateString('es'):'—'},{l:'Notas',v:sel.notas||'—',full:true}].map(row=>(
           <div key={row.l} style={{gridColumn:row.full?'1/-1':'auto'}}>
             <div style={{fontSize:11,fontWeight:600,color:'#999',textTransform:'uppercase',letterSpacing:.5,marginBottom:3}}>{row.l}</div>
             <div style={{fontSize:14,color:'#1a1a1a'}}>{row.v}</div>

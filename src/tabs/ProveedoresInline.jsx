@@ -38,9 +38,9 @@ function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_produ
                       <div>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
                           <span style={{background:sup.color+"22",color:sup.color,fontFamily:T.sans,fontSize:11,fontWeight:700,padding:"2px 7px",borderRadius:3}}>{sup.flag}</span>
-                          <span style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:T.text}}>{sup.name}</span>
+                          <span style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:T.text}}>{sup.company||sup.name}</span>
                         </div>
-                        {sup.company&&<p style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.company}</p>}
+                        {sup.company&&sup.name&&<p style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.name}</p>}
                         {sup.contact&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:1}}>👤 {sup.contact}</p>}
                       </div>
                       <div style={{textAlign:"right"}}>

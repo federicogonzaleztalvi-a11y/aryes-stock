@@ -305,6 +305,7 @@ export interface Cliente {
   emailFacturacion: string;
   contacto:         string;
   direccion:        string;
+  direccionFiscal?: string;
   ciudad:           string;
   condPago:         string;
   limiteCredito:    string;
