@@ -323,7 +323,7 @@ function LoginStep({ onLogin }) {
   }, []);
 
   const sendOTP = async () => {
-    if (!tel.trim()) { setErr('Ingresa tu numero de WhatsApp'); return; }
+    if (!tel.trim()) { setErr('Ingresá tu número de WhatsApp'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/otp-send`, {
@@ -331,16 +331,16 @@ function LoginStep({ onLogin }) {
         body: JSON.stringify({ tel: tel.replace(/\D/g,''), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Error al enviar el codigo'); return; }
+      if (!r.ok) { setErr(d.error || 'Error al enviar el código'); return; }
       setNombre(d.clienteNombre || '');
       if (d._devMode && d.code) setDevCode(d.code);
       setStep('code');
-    } catch { setErr('Error de conexion.'); }
+    } catch { setErr('Error de conexión.'); }
     finally { setLoading(false); }
   };
 
   const verifyOTP = async () => {
-    if (!code.trim()) { setErr('Ingresa el codigo recibido'); return; }
+    if (!code.trim()) { setErr('Ingresá el código recibido'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/otp-verify`, {
@@ -348,9 +348,9 @@ function LoginStep({ onLogin }) {
         body: JSON.stringify({ tel: tel.replace(/\D/g,''), code: code.trim(), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Codigo incorrecto'); return; }
+      if (!r.ok) { setErr(d.error || 'Código incorrecto'); return; }
       saveSession(d.session); onLogin(d.session);
-    } catch { setErr('Error de conexion.'); }
+    } catch { setErr('Error de conexión.'); }
     finally { setLoading(false); }
   };
 
@@ -378,7 +378,7 @@ function LoginStep({ onLogin }) {
             Portal de pedidos
           </div>
           <div style={{ fontSize: 13, color: '#6a6a68' }}>
-            {step === 'tel' ? 'Ingresa tu numero para recibir un codigo' : `Enviamos un codigo a ${tel}`}
+            {step === 'tel' ? 'Ingresá tu número para recibir un código' : `Enviamos un código a ${tel}`}
           </div>
         </div>
 
@@ -393,7 +393,7 @@ function LoginStep({ onLogin }) {
           {step === 'tel' ? (
             <>
               <div style={{ marginBottom: 8, fontSize: 12, color: '#6a6a68', letterSpacing: '0.1px' }}>
-                Numero de WhatsApp
+                Número de WhatsApp
               </div>
               <PhoneInput value={tel} onChange={setTel} placeholder="9X XXX XXX"
                 style={{ marginBottom: 16 }} />
@@ -406,7 +406,7 @@ function LoginStep({ onLogin }) {
               }}>
                 {loading ? 'Enviando...' : (
                   <>
-                    Enviar codigo
+                    Enviar código
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="5" y1="12" x2="19" y2="12"/>
                       <polyline points="12 5 19 12 12 19"/>
@@ -450,11 +450,11 @@ function LoginStep({ onLogin }) {
               {devCode && (
                 <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
                   padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#92400e' }}>
-                  Dev - codigo: <strong style={{ fontSize: 18, letterSpacing: 4 }}>{devCode}</strong>
+                  Dev - código: <strong style={{ fontSize: 18, letterSpacing: 4 }}>{devCode}</strong>
                 </div>
               )}
               <label htmlFor="otp-code" style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 600, color: '#5a5a58' }}>
-                Codigo de 6 digitos
+                Código de 6 dígitos
               </label>
               <input id="otp-code" type="text" inputMode="numeric" placeholder="000000" aria-label="Código de 6 dígitos"
                 value={code}
@@ -488,7 +488,7 @@ function LoginStep({ onLogin }) {
                   border: 'none', borderRadius: 50, fontSize: 13,
                   color: '#6a6a68', cursor: 'pointer', fontFamily: SANS,
                   textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                Cambiar numero
+                Cambiar número
               </button>
             </>
           )}
@@ -694,7 +694,9 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label }) {
 // Página de detalle estilo Amazon/Shopify: el cliente hace clic en una card y entra
 // a la ficha completa (imagen grande, descripción, ficha técnica y acción de compra).
 // Se puede comprar desde acá — la PDP es donde más convierte. Reusa VariantPicker.
-const SERIF = "Georgia,'Times New Roman',serif";
+// Detalle de producto: usamos la MISMA tipografía sans del portal (DM Sans) en vez
+// del serif Georgia que abarataba el look y rompía la consistencia con el resto.
+const SERIF = SANS;
 function FichaRow({ label, value, last }) {
   if (value == null || value === '') return null;
   return (
@@ -1235,7 +1237,10 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
     finally { setEmailing(false); }
   };
 
-  const pedidoRef = Math.random().toString(36).slice(2,8).toUpperCase();
+  // Ref del pedido = el MISMO identificador que usa el PDF/comprobante (OC-XXXXXXXX
+  // derivado del orderId real del server). Antes era un random que no coincidía con
+  // el del comprobante, lo que confundía al cliente. En demo no hay orderId real.
+  const pedidoRef = lastOrderId ? `OC-${String(lastOrderId).slice(0, 8).toUpperCase()}` : 'DEMO';
   const fechaHoy  = new Date().toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
   // ── Vista previa de la orden (antes de confirmar) ────────────────────────────
@@ -1559,11 +1564,15 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay,
+      animation: 'pzCartFade .2s ease both' }}
       onClick={onClose}>
+      {/* El panel entra deslizándose desde la derecha en vez de aparecer de golpe. */}
+      <style>{'@keyframes pzCartFade{from{opacity:0}to{opacity:1}}@keyframes pzCartSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}'}</style>
       <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0,
         width: Math.min(400, window.innerWidth), background: '#fff',
-        display: 'flex', flexDirection: 'column', fontFamily: SANS }}
+        display: 'flex', flexDirection: 'column', fontFamily: SANS,
+        animation: 'pzCartSlide .26s cubic-bezier(.32,.72,0,1) both' }}
         onClick={e => e.stopPropagation()}>
         <div style={{ padding: '18px 20px', borderBottom: '1px solid #f0ede8',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
