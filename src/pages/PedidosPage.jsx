@@ -1,6 +1,7 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fmt } from '../lib/constants.js';
+import { calcLinea, calcTotales } from '../lib/pricing.js';
 import useSwipeBack from '../hooks/useSwipeBack.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
@@ -519,14 +520,8 @@ function PoweredByPazque({ style }) {
   );
 }
 
-// Descuento por volumen: devuelve el % de la mejor escala cuyo mínimo alcanza qty.
-// Las escalas (item.volume_tiers = [{min,dto}]) vienen saneadas y ordenadas del API.
-function volTierDto(item, qty) {
-  const tiers = Array.isArray(item?.volume_tiers) ? item.volume_tiers : [];
-  let dto = 0;
-  for (const t of tiers) { if (qty >= t.min) dto = t.dto; }
-  return dto;
-}
+// volTierDto / calcLinea / calcTotales: la matemática de precios vive en
+// ../lib/pricing.js (módulo puro, testeado). Acá sólo se consume.
 // Primera escala (la de menor cantidad) — para mostrar un hint en la tarjeta.
 function primerTier(item) {
   const tiers = Array.isArray(item?.volume_tiers) ? item.volume_tiers : [];
@@ -1110,45 +1105,10 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
     })
     .filter(Boolean);
 
-  const lineasConCalc = lineas.map(({ key, item, qty, variantId, variantSku }) => {
-    const ivaRate = item.iva_rate != null ? Number(item.iva_rate) : 0;
-    // Descuento aplicable = el mayor entre el dto del item y la escala por volumen que
-    // alcanza la cantidad pedida. El descuento por volumen premia comprar en bulto.
-    const volDto = volTierDto(item, qty);
-    const descPct = Math.max(item.descGlobal || 0, volDto);
-    const precioReg = descPct > 0 ? Math.round(item.precio * (1 - descPct / 100) * 100) / 100 : item.precio;
-
-    // Caja cerrada: el descuento por caja completa SOLO aplica a las unidades que
-    // completan cajas enteras. El resto va al precio normal. El descuento de caja
-    // REEMPLAZA al puntual (no se suman): se usa el mayor de los dos.
-    const cajaUnid = Number(item.unidades_por_caja) || 0;
-    const cajaDtoCfg = Number(item.descuento_caja) || 0;
-    const aplicaCaja = cajaUnid > 0 && cajaDtoCfg > 0;
-    let netoLinea, precioConDto, faltanParaCaja = 0, ahorroSiCompleta = 0;
-    if (aplicaCaja) {
-      const cajas = Math.floor(qty / cajaUnid);
-      const unidConCaja = cajas * cajaUnid;
-      const unidResto = qty - unidConCaja;
-      const descPctCaja = Math.max(cajaDtoCfg, descPct);
-      const precioCaja = Math.round(item.precio * (1 - descPctCaja / 100) * 100) / 100;
-      netoLinea = unidConCaja * precioCaja + unidResto * precioReg;
-      precioConDto = qty > 0 ? Math.round((netoLinea / qty) * 100) / 100 : precioReg;
-      // Nudge "vendedor": si faltan pocas unidades para completar otra caja,
-      // calculamos cuánto ahorraría llevándolas a precio de caja en vez de suelto.
-      if (unidResto > 0 && precioCaja < precioReg) {
-        faltanParaCaja = cajaUnid - unidResto;
-        ahorroSiCompleta = Math.round((precioReg - precioCaja) * cajaUnid * 100) / 100;
-      }
-    } else {
-      precioConDto = precioReg;
-      netoLinea = precioReg * qty;
-    }
-    const ivaLinea = netoLinea * (ivaRate / 100);
-    return { key, item, qty, variantId, variantSku, ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea, cajaUnid: aplicaCaja ? cajaUnid : 0, faltanParaCaja, ahorroSiCompleta };
-  });
-  const subtotalNeto = lineasConCalc.reduce((s, l) => s + l.netoLinea, 0);
-  const ivaTotal = lineasConCalc.reduce((s, l) => s + l.ivaLinea, 0);
-  const total = subtotalNeto + ivaTotal;
+  const lineasConCalc = lineas.map(({ key, item, qty, variantId, variantSku }) => ({
+    key, item, qty, variantId, variantSku, ...calcLinea(item, qty),
+  }));
+  const { subtotalNeto, ivaTotal, total } = calcTotales(lineasConCalc);
 
   // Cross-sell: productos que suelen pedirse JUNTO con lo que ya hay en el carrito.
   // Se arma desde la co-ocurrencia real de pedidos (coBuy). Si no alcanza para
