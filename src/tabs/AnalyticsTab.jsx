@@ -149,6 +149,55 @@ export default function AnalyticsTab() {
             })()}
           </div>
 
+          {/* ¿Vende el vendedor digital? — adds empujados por recomendaciones */}
+          {(() => {
+            const reco = data.recomendaciones || { porOrigen: [], totalAdds: 0, recoAdds: 0, recoRevenue: 0, recoSharePct: 0 };
+            const max = Math.max(1, ...reco.porOrigen.map(o => o.adds));
+            const money = (n) => '$ ' + Number(n || 0).toLocaleString('es-UY');
+            return (
+              <div style={{ background: T.card, padding: '18px 20px', borderRadius: 14, border: '1px solid ' + T.border, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 2 }}>¿Vende el vendedor digital?</div>
+                <div style={{ fontSize: 12, color: T.textSm, marginBottom: 14 }}>
+                  De cada producto que el cliente suma al carrito, cuántos los empujó el portal (sugeridos, volver a comprar) vs. los buscó él solo.
+                </div>
+                {reco.totalAdds === 0 ? (
+                  <div style={{ fontSize: 13, color: T.textXs, padding: '8px 0' }}>Sin datos todavía. Se empieza a medir desde ahora.</div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
+                      <div style={{ flex: '1 1 140px', background: T.greenBg, borderRadius: 12, padding: '14px 16px', border: '1px solid #dcfce7' }}>
+                        <div style={{ fontSize: 30, fontWeight: 800, color: T.green, lineHeight: 1 }}>{reco.recoSharePct}%</div>
+                        <div style={{ fontSize: 12, color: T.textSm, marginTop: 5 }}>de los agregados los empujó el portal</div>
+                      </div>
+                      <div style={{ flex: '1 1 140px', background: T.bg, borderRadius: 12, padding: '14px 16px', border: '1px solid ' + T.border }}>
+                        <div style={{ fontSize: 30, fontWeight: 800, color: T.text, lineHeight: 1 }}>{reco.recoAdds}</div>
+                        <div style={{ fontSize: 12, color: T.textSm, marginTop: 5 }}>agregados desde recomendaciones</div>
+                      </div>
+                      <div style={{ flex: '1 1 140px', background: T.bg, borderRadius: 12, padding: '14px 16px', border: '1px solid ' + T.border }}>
+                        <div style={{ fontSize: 30, fontWeight: 800, color: T.text, lineHeight: 1 }}>{money(reco.recoRevenue)}</div>
+                        <div style={{ fontSize: 12, color: T.textSm, marginTop: 5 }}>en mercadería que sugirió el portal</div>
+                      </div>
+                    </div>
+                    {reco.porOrigen.map((o, i) => (
+                      <div key={i} style={{ marginBottom: 11 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: T.text, marginBottom: 4 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {o.label}
+                            {o.esReco && <span style={{ fontSize: 10, fontWeight: 700, color: T.green, background: T.greenBg, borderRadius: 5, padding: '1px 6px' }}>portal</span>}
+                          </span>
+                          <span style={{ fontWeight: 700, color: T.textSm }}>{o.adds} · {money(o.revenue)}</span>
+                        </div>
+                        <div style={{ height: 7, background: T.bg, borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: (o.adds / max * 100) + '%', height: '100%', background: o.esReco ? T.green : '#cbd5d0', borderRadius: 4 }} />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Visitas por día */}
           <div style={{ background: T.card, padding: '18px 20px', borderRadius: 14, border: '1px solid ' + T.border, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 14 }}>Visitas por día</div>

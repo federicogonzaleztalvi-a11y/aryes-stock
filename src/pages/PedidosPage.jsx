@@ -1069,7 +1069,7 @@ function HistorialPedidos({ session, onReordenar }) {
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemove, onRemoveLine, brandCfg, brandNombre, coBuy, recommended }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddSugerido, onRemove, onRemoveLine, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
   const [notasOpen, setNotasOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1653,7 +1653,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onRemo
                       {p.nombre}
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
-                    <button onClick={() => onAdd && onAdd(p)} aria-label={`Agregar ${p.nombre}`} style={{
+                    <button onClick={() => onAddSugerido && onAddSugerido(p)} aria-label={`Agregar ${p.nombre}`} style={{
                       marginTop: 'auto', padding: '6px 0', background: G, color: '#fff', border: 'none',
                       borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
                       + Agregar
@@ -2224,7 +2224,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // Clave de carrito: producto simple -> "id". Con variante -> "id::variantId".
   // Retrocompatible: los productos sin variante siguen usando su id pelado.
   const cartKey = (item, variantId) => variantId ? `${item.id}::${variantId}` : item.id;
-  const addItem = (item, variantId) => { track('producto_agregado', { producto: item.nombre, precio: item.precio, variante: variantId || null }); setCarrito(c => { const k = cartKey(item, variantId); const cur = c[k] || 0; const min = item.min_order_qty || 1; return { ...c, [k]: cur === 0 ? min : cur + 1 }; }); };
+  // origen: de qué superficie salió el "+". 'catalogo'/'ficha' = el cliente lo
+  // buscó; 'carrito_sugerido'/'volver_a_pedir' = lo empujó el vendedor digital.
+  // Permite medir en Analítica si las recomendaciones realmente venden (moat).
+  const addItem = (item, variantId, origen = 'catalogo') => { track('producto_agregado', { producto: item.nombre, precio: item.precio, variante: variantId || null, origen }); setCarrito(c => { const k = cartKey(item, variantId); const cur = c[k] || 0; const min = item.min_order_qty || 1; return { ...c, [k]: cur === 0 ? min : cur + 1 }; }); };
   const removeItem = (item, variantId) => setCarrito(c => {
     const k = cartKey(item, variantId);
     const q = (c[k] || 0) - 1;
@@ -2501,7 +2504,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       )}
       {vista === 'catalogo' && detalle && (
         <div key={detalle.id} className="pz-fade">
-          <ProductDetail item={detalle} carrito={carrito} onAdd={addItem} onRemove={removeItem} onSetQty={setItemQty}
+          <ProductDetail item={detalle} carrito={carrito} onAdd={(it, v) => addItem(it, v, 'ficha')} onRemove={removeItem} onSetQty={setItemQty}
             brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)} />
         </div>
       )}
@@ -2586,7 +2589,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
                 {habituales.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
-                    qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem}
+                    qty={carrito[item.id] || 0} onAdd={(it, v) => addItem(it, v, 'volver_a_pedir')} onRemove={removeItem}
                     onOpen={(it) => { setVista('catalogo'); setDetalle(it); }} />
                 ))}
               </div>
@@ -2673,7 +2676,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       {showCart && (
         <CartDrawer carrito={carrito} items={items} session={session} brandCfg={brandCfg} brandNombre={brandNombre}
           coBuy={coBuy} recommended={recommended}
-          onAdd={addItem} onRemove={removeItem} onRemoveLine={removeLine}
+          onAdd={(it, v) => addItem(it, v, 'carrito_mas')} onAddSugerido={(it) => addItem(it, undefined, 'carrito_sugerido')} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />
       )}

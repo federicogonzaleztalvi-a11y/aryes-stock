@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     if (r.ok) rows = await r.json();
     else if (r.status === 404 || r.status === 400) {
       // Tabla aún no creada → devolvemos vacío con una pista para el panel.
-      return res.status(200).json({ pendingSetup: true, resumen: {}, porDia: [], topPaginas: [], topProductos: [], topAgregados: [], busquedas: [], embudo: {}, tiempos: {} });
+      return res.status(200).json({ pendingSetup: true, resumen: {}, porDia: [], topPaginas: [], topProductos: [], topAgregados: [], busquedas: [], embudo: {}, tiempos: {}, recomendaciones: { porOrigen: [], totalAdds: 0, recoAdds: 0, recoRevenue: 0, recoSharePct: 0 } });
     }
   } catch {
     return res.status(502).json({ error: 'Error al leer analítica' });
@@ -91,6 +91,7 @@ export default async function handler(req, res) {
   const pageTime = {};           // vista -> ms acumulados
   const prodVistos = {};         // producto -> count
   const prodAgregados = {};      // producto -> count
+  const addsPorOrigen = {};      // origen -> { adds, revenue }  (¿vende el vendedor digital?)
   const searches = {};           // q -> count
   const sessionSpan = {};        // sid -> { min, max }
   const perSession = {};         // sid -> [ {event, path, t} ]
@@ -119,6 +120,13 @@ export default async function handler(req, res) {
     if (e.event === 'producto_agregado') {
       const p = (e.props && e.props.producto) || '—';
       prodAgregados[p] = (prodAgregados[p] || 0) + 1;
+      // origen: de qué superficie salió el "+". Eventos viejos (previos a esta
+      // métrica) no traen origen → caen en 'catalogo'.
+      const origen = (e.props && e.props.origen) || 'catalogo';
+      const precio = Number(e.props && e.props.precio) || 0;
+      if (!addsPorOrigen[origen]) addsPorOrigen[origen] = { adds: 0, revenue: 0 };
+      addsPorOrigen[origen].adds++;
+      addsPorOrigen[origen].revenue += precio;
     }
     if (e.event === 'busqueda') {
       const q = ((e.props && e.props.q) || '').toString().trim().toLowerCase();
@@ -162,6 +170,29 @@ export default async function handler(req, res) {
     pedido: evCount['pedido_confirmado'] || 0,
   };
 
+  // ¿Vende el vendedor digital? Adds que empujó el portal (recomendaciones)
+  // vs adds que el cliente buscó por su cuenta. Es la métrica del moat: si las
+  // sugerencias mueven carrito, el portal vende solo.
+  const ETIQUETAS_ORIGEN = {
+    catalogo: 'Catálogo', ficha: 'Ficha de producto', carrito_mas: 'Carrito (+)',
+    carrito_sugerido: 'Sugeridos en carrito', volver_a_pedir: 'Volver a comprar',
+    comprados_juntos: 'Comprados juntos', recomendado: 'Recomendado',
+  };
+  const SURFACES_RECO = ['carrito_sugerido', 'volver_a_pedir', 'comprados_juntos', 'recomendado'];
+  const origenes = Object.keys(addsPorOrigen).map(o => ({
+    origen: o, label: ETIQUETAS_ORIGEN[o] || o, esReco: SURFACES_RECO.includes(o),
+    adds: addsPorOrigen[o].adds, revenue: Math.round(addsPorOrigen[o].revenue),
+  })).sort((a, b) => b.adds - a.adds);
+  const totalAdds   = origenes.reduce((a, o) => a + o.adds, 0);
+  const recoOrig    = origenes.filter(o => o.esReco);
+  const recoAdds    = recoOrig.reduce((a, o) => a + o.adds, 0);
+  const recoRevenue = recoOrig.reduce((a, o) => a + o.revenue, 0);
+  const recomendaciones = {
+    porOrigen: origenes,
+    totalAdds, recoAdds, recoRevenue,
+    recoSharePct: totalAdds ? Math.round((recoAdds / totalAdds) * 100) : 0,
+  };
+
   return res.status(200).json({
     rango: { days, since: sinceISO, sampled: rows.length >= MAX_ROWS },
     resumen: {
@@ -180,5 +211,6 @@ export default async function handler(req, res) {
     topAgregados: sortTop(prodAgregados),
     busquedas: sortTop(searches),
     embudo,
+    recomendaciones,
   });
 }
