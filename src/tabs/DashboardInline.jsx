@@ -482,11 +482,14 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     const pedThis = thisWeek.length, pedLast = lastWeek.length;
     const ticketThis = pedThis > 0 ? totalThis / pedThis : 0;
     const ticketLast = pedLast > 0 ? totalLast / pedLast : 0;
+    const uniq = arr => new Set(arr.map(v => v.clienteId || v.clienteNombre).filter(Boolean)).size;
+    const cliThis = uniq(thisWeek), cliLast = uniq(lastWeek);
     const pct = (cur, prev) => prev <= 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
     return {
       totalThis, ventasPct: pct(totalThis, totalLast),
       pedThis, pedidosPct: pct(pedThis, pedLast),
       ticketThis, ticketPct: pct(ticketThis, ticketLast),
+      cliThis, clientesPct: pct(cliThis, cliLast),
     };
   }, [ventasActivas]);
 
@@ -624,9 +627,8 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           <KpiCard label="Ticket promedio"
             value={tusNumeros.ticketThis>0?fmt.currencyCompact(tusNumeros.ticketThis):'—'}
             sub={trendSub(tusNumeros.ticketPct,'vs semana pasada')} accent="#0891b2"/>
-          <KpiCard label="Producto estrella" value={topProductosMes[0]?.nombre || '—'}
-            sub={topProductosMes[0]?`${Math.round(topProductosMes[0].unidades)} u. este mes`:'Sin ventas este mes'}
-            accent="#d97706" click={()=>setTab('ventas')}/>
+          <KpiCard label="Clientes que compraron" value={tusNumeros.cliThis}
+            sub={trendSub(tusNumeros.clientesPct,'vs semana pasada')} accent="#d97706"/>
         </div>
 
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:12}}>
