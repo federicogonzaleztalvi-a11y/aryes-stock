@@ -722,6 +722,33 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
   const waLink = tel ? `https://wa.me/${tel}?text=${encodeURIComponent('Hola, quiero consultar disponibilidad de: ' + item.nombre)}` : null;
 
+  // Criterio Amazon (mobile): la barra de compra fija NO está siempre. Aparece sólo
+  // cuando el bloque de compra (precio + botón) NO está a la vista; si está visible,
+  // la barra sería ruido y tapa contenido. Usamos un listener de scroll con
+  // getBoundingClientRect en vez de IntersectionObserver (más simple y fiable).
+  const compraRef = useRef(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    if (!isMobile) { setShowStickyBar(false); return undefined; }
+    const update = () => {
+      const el = compraRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      // Fuera de vista = el bloque está arriba del viewport (scrolleado) o aún no se
+      // llegó (debajo del fold). 72px = alto aprox. de la barra para no solaparse.
+      const fueraDeVista = r.bottom < 72 || r.top > vh - 72;
+      setShowStickyBar(fueraDeVista);
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [isMobile, item.id]);
+
   const imgBox = (
     <div style={{ background: '#fff', border: '1px solid #efefeb', borderRadius: 16,
       minHeight: isMobile ? 260 : 460, display: 'flex', alignItems: 'center',
@@ -741,7 +768,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   );
 
   return (
-    <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '16px 18px 60px' : '24px 24px 80px' }}>
+    <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '16px 18px 100px' : '24px 24px 80px' }}>
       {/* Botón de volver — affordance clara para regresar al catálogo (patrón mobile Amazon/Shopify) */}
       <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
         background: 'none', border: 'none', color: G, fontSize: 14, fontWeight: 600, cursor: 'pointer',
@@ -782,7 +809,10 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
             <FichaRow label="Categoría" value={item.categoria || null} last />
           </div>
 
-          {/* Acción de compra */}
+          {/* Acción de compra — el ref envuelve TODO el bloque (precio + botón) para que
+              la barra fija (mobile) sepa cuándo salió de pantalla (criterio Amazon).
+              Tiene que tener área real: un div de altura 0 no dispara IntersectionObserver. */}
+          <div ref={compraRef}>
           {item.precio > 0 && (
             <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
               {fmt.currency(item.precio)}
@@ -848,8 +878,61 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               <div style={{ textAlign: 'center', fontSize: 12, color: GRAY, marginTop: 10 }}>Te respondemos por WhatsApp</div>
             </div>
           )}
+          </div>
         </div>
       </div>
+
+      {/* Barra de compra fija (sólo celular): precio + Agregar quedan SIEMPRE visibles
+          aunque el cliente baje a leer la descripción/ficha. Patrón mobile de ML/Amazon/
+          Rappi — el botón nunca se pierde. En productos con variante se mantiene el
+          selector inline (no entra en la barra). */}
+      {isMobile && showStickyBar && (item.precio > 0 ? !variantOpts : true) && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: Z.fab,
+          background: '#fff', borderTop: '1px solid #ececE6',
+          padding: '10px 16px calc(10px + env(safe-area-inset-bottom))',
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 -4px 16px rgba(0,0,0,.06)', fontFamily: SANS,
+          animation: 'pzFade .18s ease both' }}>
+          {item.precio > 0 ? (
+            <>
+              <div style={{ flexShrink: 0, fontSize: 18, fontWeight: 700, color: G, lineHeight: 1.1 }}>
+                {fmt.currency(item.precio)}
+                {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+              </div>
+              {qty > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                  <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
+                    width: 44, height: 44, border: `1.5px solid ${G}`, borderRadius: 10, background: '#fff',
+                    color: G, fontSize: 20, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{'\u2212'}</button>
+                  <div style={{ minWidth: 38, textAlign: 'center', fontSize: 17, fontWeight: 700, color: '#1a1a18' }}>{qty}</div>
+                  <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
+                    width: 44, height: 44, background: G, border: 'none', borderRadius: 10, color: '#fff',
+                    fontSize: 20, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
+                </div>
+              ) : (
+                <button onClick={() => onAdd(item)} style={{
+                  marginLeft: 'auto', flex: 1, maxWidth: 240, padding: '14px 0', background: G, color: '#fff',
+                  border: 'none', borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: SANS }}>
+                  {item.min_order_qty > 1 ? `Agregar (mín. ${item.min_order_qty})` : 'Agregar'}
+                </button>
+              )}
+            </>
+          ) : (
+            waLink ? (
+              <a href={waLink} target="_blank" rel="noreferrer" style={{
+                flex: 1, textAlign: 'center', padding: '14px 0', background: '#1f2d24', color: '#fff',
+                borderRadius: 12, fontSize: 15, fontWeight: 700, fontFamily: SANS, textDecoration: 'none' }}>
+                Consultar disponibilidad
+              </a>
+            ) : (
+              <div style={{ flex: 1, textAlign: 'center', padding: '14px 0', background: '#f0f0ec',
+                color: GRAY, borderRadius: 12, fontSize: 15, fontWeight: 700 }}>Consultar disponibilidad</div>
+            )
+          )}
+        </div>
+      )}
     </main>
   );
 }
