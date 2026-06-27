@@ -466,6 +466,83 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 5);
   }, [ventasActivas]);
 
+  // ── "Tus números" — resumen comercial (¿cómo vengo vendiendo?) ──────────────
+  // Semana actual vs semana anterior. Datos 100% derivados de ventasActivas.
+  const tusNumeros = React.useMemo(() => {
+    const now = Date.now();
+    const wk  = 7 * 86400000;
+    const inWin = (creadoEn, start, end) => {
+      const t = new Date(creadoEn).getTime();
+      return t >= start && t < end;
+    };
+    const thisWeek = ventasActivas.filter(v => inWin(v.creadoEn, now - wk, now));
+    const lastWeek = ventasActivas.filter(v => inWin(v.creadoEn, now - 2 * wk, now - wk));
+    const sum = arr => arr.reduce((s, v) => s + Number(v.total || 0), 0);
+    const totalThis = sum(thisWeek), totalLast = sum(lastWeek);
+    const pedThis = thisWeek.length, pedLast = lastWeek.length;
+    const ticketThis = pedThis > 0 ? totalThis / pedThis : 0;
+    const ticketLast = pedLast > 0 ? totalLast / pedLast : 0;
+    const pct = (cur, prev) => prev <= 0 ? (cur > 0 ? 100 : 0) : Math.round(((cur - prev) / prev) * 100);
+    return {
+      totalThis, ventasPct: pct(totalThis, totalLast),
+      pedThis, pedidosPct: pct(pedThis, pedLast),
+      ticketThis, ticketPct: pct(ticketThis, ticketLast),
+    };
+  }, [ventasActivas]);
+
+  // Top 5 productos vendidos — este mes (por facturación)
+  const topProductosMes = React.useMemo(() => {
+    const map = {};
+    ventasActivas
+      .filter(v => { const d = new Date(v.creadoEn); return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear(); })
+      .forEach(v => {
+        (v.items || []).forEach(it => {
+          const k = it.productoId || it.nombre;
+          if (!k) return;
+          if (!map[k]) {
+            const prod = products.find(p => p.id === it.productoId);
+            map[k] = { nombre: prod?.nombre || prod?.name || it.nombre || 'Producto', unidades: 0, total: 0 };
+          }
+          map[k].unidades += Number(it.cantidad || 0);
+          map[k].total    += Number(it.cantidad || 0) * Number(it.precioUnit || 0);
+        });
+      });
+    return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 5);
+  }, [ventasActivas, products]);
+
+  // Clientes que aflojaron — pedían con cierto ritmo y se atrasaron >50%
+  const clientesEnPausa = React.useMemo(() => {
+    return clientes
+      .map(cli => {
+        const cliV = ventasActivas
+          .filter(v => v.clienteId === cli.id)
+          .sort((a, b) => new Date(a.creadoEn) - new Date(b.creadoEn));
+        if (cliV.length < 3) return null; // sin historial suficiente no hay "ritmo"
+        let totalDays = 0;
+        for (let i = 1; i < cliV.length; i++)
+          totalDays += Math.abs(new Date(cliV[i].creadoEn) - new Date(cliV[i - 1].creadoEn)) / 86400000;
+        const avgInterval = totalDays / (cliV.length - 1);
+        const lastOrder   = new Date(cliV[cliV.length - 1].creadoEn);
+        const diasDesde   = Math.floor((Date.now() - lastOrder) / 86400000);
+        const ratio       = avgInterval > 0 ? diasDesde / avgInterval : 0;
+        if (ratio < 1.5) return null; // 50% más allá de su ritmo habitual
+        return { id: cli.id, nombre: cli.nombre, diasDesde, telefono: cli.telefono || '' };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.diasDesde - a.diasDesde)
+      .slice(0, 5);
+  }, [clientes, ventasActivas]);
+
+  // sub con flecha de tendencia (↑ verde / ↓ rojo / → gris)
+  const trendSub = (pct, label) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ color: pct > 0 ? '#059669' : pct < 0 ? '#dc2626' : '#9a9a98', fontWeight: 600 }}>
+        {pct > 0 ? '↑' : pct < 0 ? '↓' : '→'} {Math.abs(pct)}%
+      </span>
+      <span>{label}</span>
+    </span>
+  );
+
   // ── Billing bar chart (last 6 months) ──────────────────────────────────────
 
   return (
@@ -533,6 +610,68 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
           Exportar
         </button>
       </div>
+      </div>
+
+      {/* ── Tus números — resumen comercial (¿cómo vengo vendiendo?) ── */}
+      <div>
+        <SectionHeader title="Tus números" action={()=>setTab('ventas')} actionLabel="Ver ventas"/>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
+          <KpiCard label="Ventas esta semana"
+            value={tusNumeros.totalThis>0?fmt.currencyCompact(tusNumeros.totalThis):'—'}
+            sub={trendSub(tusNumeros.ventasPct,'vs semana pasada')} accent={T.green}/>
+          <KpiCard label="Pedidos esta semana" value={tusNumeros.pedThis}
+            sub={trendSub(tusNumeros.pedidosPct,'vs semana pasada')} accent="#6366f1"/>
+          <KpiCard label="Ticket promedio"
+            value={tusNumeros.ticketThis>0?fmt.currencyCompact(tusNumeros.ticketThis):'—'}
+            sub={trendSub(tusNumeros.ticketPct,'vs semana pasada')} accent="#0891b2"/>
+          <KpiCard label="Producto estrella" value={topProductosMes[0]?.nombre || '—'}
+            sub={topProductosMes[0]?`${Math.round(topProductosMes[0].unidades)} u. este mes`:'Sin ventas este mes'}
+            accent="#d97706" click={()=>setTab('ventas')}/>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:12}}>
+          {/* Más vendidos este mes */}
+          <div style={{background:'#fff',borderRadius:16,border:'1px solid #f0ede8',
+            boxShadow:'0 2px 12px rgba(0,0,0,.06)',padding:'18px 20px'}}>
+            <div style={{fontFamily:F.sans,fontSize:11,fontWeight:600,color:'#b0aca6',marginBottom:14}}>Más vendidos este mes</div>
+            {topProductosMes.length===0 ? (
+              <div style={{fontFamily:F.sans,fontSize:13,color:'#9a9a98'}}>Todavía no hay ventas este mes.</div>
+            ) : topProductosMes.map((p,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',
+                borderTop:i>0?'1px solid #f4f1ec':'none'}}>
+                <span style={{width:18,fontFamily:F.serif,fontSize:15,fontWeight:500,color:'#c0bcb4'}}>{i+1}</span>
+                <span style={{flex:1,fontFamily:F.sans,fontSize:13,color:'#1a1a18',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.nombre}</span>
+                <span style={{fontFamily:F.sans,fontSize:12,color:'#9a9a98'}}>{Math.round(p.unidades)} u.</span>
+                <span style={{fontFamily:F.sans,fontSize:13,fontWeight:600,color:'#1a1a18',
+                  minWidth:60,textAlign:'right'}}>{fmt.currencyCompact(p.total)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Clientes que aflojaron */}
+          <div style={{background:'#fff',borderRadius:16,border:'1px solid #f0ede8',
+            boxShadow:'0 2px 12px rgba(0,0,0,.06)',padding:'18px 20px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <div style={{fontFamily:F.sans,fontSize:11,fontWeight:600,color:'#b0aca6'}}>Clientes que aflojaron</div>
+              {clientesEnPausa.length>0 && <span style={{fontFamily:F.sans,fontSize:10,fontWeight:600,
+                color:'#d97706',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:20,padding:'2px 8px'}}>{clientesEnPausa.length}</span>}
+            </div>
+            {clientesEnPausa.length===0 ? (
+              <div style={{fontFamily:F.sans,fontSize:13,color:'#9a9a98'}}>Tus clientes están comprando a buen ritmo.</div>
+            ) : clientesEnPausa.map((c,i)=>(
+              <div key={c.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',
+                borderTop:i>0?'1px solid #f4f1ec':'none'}}>
+                <span style={{flex:1,fontFamily:F.sans,fontSize:13,color:'#1a1a18',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.nombre}</span>
+                <span style={{fontFamily:F.sans,fontSize:12,color:'#9a9a98'}}>hace {c.diasDesde}d</span>
+                {c.telefono && <a href={`https://wa.me/${c.telefono.replace(/[^0-9]/g,'')}`}
+                  target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                  style={{fontFamily:F.sans,fontSize:12,fontWeight:600,color:'#059669',textDecoration:'none'}}>Escribir →</a>}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ── KPI Row 1: Operaciones ────────────────────────────────── */}
