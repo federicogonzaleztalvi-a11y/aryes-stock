@@ -9,6 +9,7 @@ import RemitoPDF from '../components/RemitoPDF.jsx';
 import EtiquetasPDF from '../components/EtiquetasPDF.jsx';
 import PedidosPortalPanel from '../components/PedidosPortalPanel.jsx';
 import { sendPush } from '../hooks/usePushNotifications';
+import { totalVenta, validarStock, snapshotStock, deducirStock, restaurarStock } from '../lib/stock.js';
 
 // ── fetchNextNroVenta — calls Postgres sequence via RPC ───────────────────────
 // Atomic: impossible to produce duplicates regardless of concurrent users.
@@ -195,10 +196,6 @@ function VentasTab(){
       .catch(()=>{});
   },[isDemoMode]);
 
-  const totalVenta=(items,desc=0)=>{
-    const sub=items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.precioUnit),0);
-    return sub*(1-Number(desc)/100);
-  };
   // eslint-disable-next-line no-unused-vars
   const costoTotal=(items)=>items.reduce((a,it)=>a+Number(it.cantidad)*Number(it.costoUnit||0),0);
   // eslint-disable-next-line no-unused-vars
@@ -281,16 +278,7 @@ function VentasTab(){
     if(form.items.length===0){showMsg('Agregá al menos un producto','err');return;}
 
     // STOCK VALIDATION at save time
-    const stockErrors=[];
-    const updProds=[...products];
-    form.items.forEach(it=>{
-      const idx=updProds.findIndex(p=>p.id===it.productoId);
-      if(idx>-1){
-        if(Number(it.cantidad)>Number(updProds[idx].stock||0)){
-          stockErrors.push(`Stock insuficiente: ${it.nombre} → disponible ${updProds[idx].stock||0}, solicitado ${it.cantidad}`);
-        }
-      }
-    });
+    const stockErrors=validarStock(form.items, products);
     if(stockErrors.length>0){showMsg(stockErrors[0],'err');return;}
 
     // CREDIT LIMIT VALIDATION — Amazon: correctness before committing
@@ -340,16 +328,8 @@ function VentasTab(){
       // DESCUENTA STOCK INMEDIATAMENTE al crear la venta
       const now=new Date().toISOString();
       // Capture stock BEFORE deduction → needed as lock value for patchWithLock
-      const stockBefore=Object.fromEntries(
-        form.items.map(it=>[it.productoId, Number(updProds.find(p=>p.id===it.productoId)?.stock||0)])
-      );
-      form.items.forEach(it=>{
-        const idx=updProds.findIndex(p=>p.id===it.productoId);
-        if(idx>-1){
-          const newStock=Math.max(0,Number(updProds[idx].stock||0)-Number(it.cantidad));
-          updProds[idx]={...updProds[idx],stock:newStock,updatedAt:now};
-        }
-      });
+      const stockBefore=snapshotStock(form.items, products);
+      const updProds=deducirStock(form.items, products, now);
       setProducts(updProds);
 
       // ── DEMO MODE: skip RPC, just commit optimistic state ────────────────
@@ -529,15 +509,8 @@ function VentasTab(){
     }
     if(estado==='cancelada'&&venta&&venta.estado!=='cancelada'){
       // Optimistic UI: restore stock locally immediately
-      const updProds=[...products];
       const now=new Date().toISOString();
-      venta.items?.forEach(it=>{
-        const idx=updProds.findIndex(p=>p.id===it.productoId);
-        if(idx>-1){
-          const restoredStock=(updProds[idx].stock||0)+Number(it.cantidad);
-          updProds[idx]={...updProds[idx],stock:restoredStock,updatedAt:now};
-        }
-      });
+      const updProds=restaurarStock(venta.items||[], products, now);
       setProducts(updProds);
 
       // ── DEMO MODE: skip cancel RPC ──────────────────────────────────────

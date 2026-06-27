@@ -1,66 +1,30 @@
 /**
- * Tests for the stock mutation logic used in guardarVenta (VentasTab).
+ * Tests de la lógica de STOCK y total de una venta (admin / VentasTab).
  *
- * This is the most financially critical path in the codebase:
- * a bug here means selling stock that doesn't exist, or failing to
- * deduct stock on a confirmed sale (double-spending inventory).
+ * A diferencia de la versión vieja (que re-declaraba la lógica DENTRO del test,
+ * o sea probaba una copia que nunca refleja producción), estos importan las
+ * funciones REALES de ../lib/stock.js — las mismas que usa guardarVenta para
+ * validar disponibilidad, descontar inventario al crear la venta y restaurarlo
+ * al cancelarla. Si la lógica de stock cambia, estos tests lo detectan.
  *
- * We test the pure business logic functions in isolation —
- * no React, no Supabase, no DOM.
+ * Camino más crítico del negocio: un bug acá = vender stock que no existe o no
+ * descontar el inventario de una venta confirmada (doble gasto de stock).
  */
 import { describe, it, expect } from 'vitest';
-
-// ── Pure business logic extracted for testing ─────────────────────────────────
-// These mirror the logic in VentasTab.guardarVenta exactly.
-
-/** Calculate venta total with optional discount */
-function totalVenta(items, descuento = 0) {
-  const sub = items.reduce((a, it) => a + Number(it.cantidad) * Number(it.precioUnit), 0);
-  return descuento > 0 ? sub * (1 - descuento / 100) : sub;
-}
-
-/**
- * Validate stock availability before creating a venta.
- * Returns array of error strings (empty = valid).
- */
-function validarStock(items, products) {
-  const errors = [];
-  const updProds = [...products];
-  items.forEach(it => {
-    const idx = updProds.findIndex(p => p.id === it.productoId);
-    if (idx > -1) {
-      if (Number(it.cantidad) > Number(updProds[idx].stock || 0)) {
-        errors.push(
-          `Stock insuficiente: ${it.nombre} — disponible ${updProds[idx].stock || 0}, solicitado ${it.cantidad}`
-        );
-      }
-    }
-  });
-  return errors;
-}
-
-/**
- * Apply stock deductions optimistically (mirrors the state update in guardarVenta).
- * Returns a new products array with updated stock values.
- */
-function aplicarStockDeduccion(items, products) {
-  const updProds = [...products];
-  items.forEach(it => {
-    const idx = updProds.findIndex(p => p.id === it.productoId);
-    if (idx > -1) {
-      const newStock = Math.max(0, Number(updProds[idx].stock || 0) - Number(it.cantidad));
-      updProds[idx] = { ...updProds[idx], stock: newStock };
-    }
-  });
-  return updProds;
-}
+import {
+  totalVenta,
+  validarStock,
+  snapshotStock,
+  deducirStock,
+  restaurarStock,
+} from './stock.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const PRODUCTS = [
   { id: 'prod-1', name: 'Chocolate Selecta 1kg', stock: 10, unitCost: 5, precioVenta: 7 },
   { id: 'prod-2', name: 'Pasta MEC3 500g',       stock: 0,  unitCost: 3, precioVenta: 4.5 },
-  { id: 'prod-3', name: 'Colorante Duas Rodas',   stock: 5,  unitCost: 2, precioVenta: 3 },
+  { id: 'prod-3', name: 'Colorante Duas Rodas',  stock: 5,  unitCost: 2, precioVenta: 3 },
 ];
 
 const makeItem = (productoId, nombre, cantidad, precioUnit) =>
@@ -69,7 +33,7 @@ const makeItem = (productoId, nombre, cantidad, precioUnit) =>
 // ── totalVenta ─────────────────────────────────────────────────────────────────
 
 describe('totalVenta', () => {
-  it('calculates sum of (cantidad × precioUnit) across all items', () => {
+  it('suma (cantidad × precioUnit) de todas las líneas', () => {
     const items = [
       makeItem('prod-1', 'Chocolate', 2, 7),   // 14
       makeItem('prod-3', 'Colorante', 3, 3),   // 9
@@ -77,26 +41,26 @@ describe('totalVenta', () => {
     expect(totalVenta(items)).toBe(23);
   });
 
-  it('applies percentage discount correctly', () => {
+  it('aplica el descuento global en %', () => {
     const items = [makeItem('prod-1', 'Chocolate', 2, 10)]; // 20 subtotal
     expect(totalVenta(items, 10)).toBe(18); // 20 * 0.90
   });
 
-  it('returns 0 for empty items', () => {
+  it('carrito vacío → 0', () => {
     expect(totalVenta([])).toBe(0);
   });
 
-  it('handles 0% discount (no change)', () => {
+  it('0% de descuento → sin cambios', () => {
     const items = [makeItem('prod-1', 'Chocolate', 1, 7)];
     expect(totalVenta(items, 0)).toBe(7);
   });
 
-  it('handles 100% discount (returns 0)', () => {
+  it('100% de descuento → 0', () => {
     const items = [makeItem('prod-1', 'Chocolate', 1, 7)];
     expect(totalVenta(items, 100)).toBe(0);
   });
 
-  it('handles decimal quantities and prices correctly', () => {
+  it('maneja cantidades y precios decimales', () => {
     const items = [makeItem('prod-1', 'Chocolate', 1.5, 3.33)];
     expect(totalVenta(items)).toBeCloseTo(4.995);
   });
@@ -105,16 +69,16 @@ describe('totalVenta', () => {
 // ── validarStock ──────────────────────────────────────────────────────────────
 
 describe('validarStock', () => {
-  it('returns no errors when all items have sufficient stock', () => {
+  it('sin errores cuando hay stock suficiente para todo', () => {
     const items = [
-      makeItem('prod-1', 'Chocolate', 5, 7),  // 5 of 10 available
-      makeItem('prod-3', 'Colorante', 3, 3),  // 3 of 5 available
+      makeItem('prod-1', 'Chocolate', 5, 7),  // 5 de 10
+      makeItem('prod-3', 'Colorante', 3, 3),  // 3 de 5
     ];
     expect(validarStock(items, PRODUCTS)).toHaveLength(0);
   });
 
-  it('returns error when requested quantity exceeds stock', () => {
-    const items = [makeItem('prod-1', 'Chocolate', 15, 7)]; // 15 of 10 available
+  it('error cuando la cantidad pedida supera el stock', () => {
+    const items = [makeItem('prod-1', 'Chocolate', 15, 7)]; // 15 de 10
     const errors = validarStock(items, PRODUCTS);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/Stock insuficiente/);
@@ -123,92 +87,126 @@ describe('validarStock', () => {
     expect(errors[0]).toMatch(/solicitado 15/);
   });
 
-  it('CRITICAL: rejects sale when product has 0 stock', () => {
-    // prod-2 has stock=0 — must not allow selling any quantity
+  it('CRÍTICO: rechaza la venta si el producto tiene stock 0', () => {
     const items = [makeItem('prod-2', 'Pasta MEC3', 1, 4.5)];
     const errors = validarStock(items, PRODUCTS);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatch(/disponible 0/);
   });
 
-  it('catches multiple insufficient items in one pass', () => {
+  it('detecta varias líneas insuficientes en una sola pasada', () => {
     const items = [
-      makeItem('prod-1', 'Chocolate', 15, 7), // exceeds stock (10)
-      makeItem('prod-2', 'Pasta',     1,  4.5), // 0 stock
+      makeItem('prod-1', 'Chocolate', 15, 7), // supera stock (10)
+      makeItem('prod-2', 'Pasta',     1,  4.5), // stock 0
     ];
-    const errors = validarStock(items, PRODUCTS);
-    expect(errors).toHaveLength(2);
+    expect(validarStock(items, PRODUCTS)).toHaveLength(2);
   });
 
-  it('allows exact stock quantity (boundary: stock=5, request=5)', () => {
-    const items = [makeItem('prod-3', 'Colorante', 5, 3)]; // exactly 5 of 5
+  it('permite la cantidad exacta del stock (límite: stock=5, pide=5)', () => {
+    const items = [makeItem('prod-3', 'Colorante', 5, 3)];
     expect(validarStock(items, PRODUCTS)).toHaveLength(0);
   });
 
-  it('rejects one unit over stock (boundary: stock=5, request=6)', () => {
-    const items = [makeItem('prod-3', 'Colorante', 6, 3)]; // 6 of 5
+  it('rechaza una unidad por encima del stock (límite: stock=5, pide=6)', () => {
+    const items = [makeItem('prod-3', 'Colorante', 6, 3)];
     expect(validarStock(items, PRODUCTS)).toHaveLength(1);
+  });
+
+  it('ignora ítems cuyo producto no existe (no rompe ni falsea)', () => {
+    const items = [makeItem('prod-fantasma', 'No existe', 99, 1)];
+    expect(validarStock(items, PRODUCTS)).toHaveLength(0);
   });
 });
 
-// ── aplicarStockDeduccion ─────────────────────────────────────────────────────
+// ── deducirStock ──────────────────────────────────────────────────────────────
 
-describe('aplicarStockDeduccion', () => {
-  it('deducts sold quantities from product stock', () => {
+describe('deducirStock', () => {
+  it('descuenta las cantidades vendidas del stock', () => {
     const items = [makeItem('prod-1', 'Chocolate', 3, 7)];
-    const updated = aplicarStockDeduccion(items, PRODUCTS);
-    const prod = updated.find(p => p.id === 'prod-1');
-    expect(prod.stock).toBe(7); // 10 - 3
+    const updated = deducirStock(items, PRODUCTS);
+    expect(updated.find(p => p.id === 'prod-1').stock).toBe(7); // 10 - 3
   });
 
-  it('CRITICAL: does not allow stock to go below 0', () => {
-    // If validation was bypassed and we somehow sell more than available,
-    // stock must floor at 0, not go negative
-    const items = [makeItem('prod-1', 'Chocolate', 100, 7)]; // way more than stock
-    const updated = aplicarStockDeduccion(items, PRODUCTS);
+  it('CRÍTICO: el stock nunca baja de 0', () => {
+    // Si la validación se saltea y se vende más de lo disponible,
+    // el stock debe quedar en 0, nunca negativo.
+    const items = [makeItem('prod-1', 'Chocolate', 100, 7)];
+    const updated = deducirStock(items, PRODUCTS);
     const prod = updated.find(p => p.id === 'prod-1');
     expect(prod.stock).toBe(0);
     expect(prod.stock).toBeGreaterThanOrEqual(0);
   });
 
-  it('does not modify other products (isolation)', () => {
+  it('no toca otros productos (aislamiento)', () => {
     const items = [makeItem('prod-1', 'Chocolate', 2, 7)];
-    const updated = aplicarStockDeduccion(items, PRODUCTS);
-    // prod-3 must be unchanged
-    const unchanged = updated.find(p => p.id === 'prod-3');
-    expect(unchanged.stock).toBe(5); // original value
+    const updated = deducirStock(items, PRODUCTS);
+    expect(updated.find(p => p.id === 'prod-3').stock).toBe(5); // sin cambios
   });
 
-  it('handles multiple items in a single venta', () => {
+  it('maneja varias líneas en una misma venta', () => {
     const items = [
       makeItem('prod-1', 'Chocolate', 3, 7),
       makeItem('prod-3', 'Colorante', 2, 3),
     ];
-    const updated = aplicarStockDeduccion(items, PRODUCTS);
-    expect(updated.find(p => p.id === 'prod-1').stock).toBe(7);  // 10-3
-    expect(updated.find(p => p.id === 'prod-3').stock).toBe(3);  // 5-2
+    const updated = deducirStock(items, PRODUCTS);
+    expect(updated.find(p => p.id === 'prod-1').stock).toBe(7); // 10-3
+    expect(updated.find(p => p.id === 'prod-3').stock).toBe(3); // 5-2
   });
 
-  it('CRITICAL: does not mutate the original products array (pure function)', () => {
-    const original = [...PRODUCTS];
+  it('CRÍTICO: no muta el array original (función pura)', () => {
+    const original = PRODUCTS.map(p => ({ ...p }));
     const items = [makeItem('prod-1', 'Chocolate', 5, 7)];
-    aplicarStockDeduccion(items, PRODUCTS);
-    // Original must be unchanged
+    deducirStock(items, PRODUCTS);
     expect(PRODUCTS[0].stock).toBe(original[0].stock);
   });
 
-  it('captures stock BEFORE deduction correctly (lockValue pattern)', () => {
-    // The lockValue used in patchWithLock must be the stock BEFORE deduction
-    const items   = [makeItem('prod-1', 'Chocolate', 3, 7)];
-    const stockBefore = Object.fromEntries(
-      items.map(it => [it.productoId, PRODUCTS.find(p => p.id === it.productoId)?.stock || 0])
-    );
-    const updated  = aplicarStockDeduccion(items, PRODUCTS);
-    const newStock = updated.find(p => p.id === 'prod-1')?.stock;
+  it('setea updatedAt sólo si se pasa `now`', () => {
+    const items = [makeItem('prod-1', 'Chocolate', 1, 7)];
+    const sinNow = deducirStock(items, PRODUCTS);
+    expect(sinNow.find(p => p.id === 'prod-1').updatedAt).toBeUndefined();
+    const conNow = deducirStock(items, PRODUCTS, '2026-06-27T00:00:00Z');
+    expect(conNow.find(p => p.id === 'prod-1').updatedAt).toBe('2026-06-27T00:00:00Z');
+  });
+});
 
-    // Lock value is the BEFORE stock — the delta is consistent
-    expect(stockBefore['prod-1']).toBe(10);
+// ── snapshotStock (lock value para patchWithLock) ─────────────────────────────
+
+describe('snapshotStock', () => {
+  it('captura el stock ANTES de descontar', () => {
+    const items = [makeItem('prod-1', 'Chocolate', 3, 7)];
+    const before = snapshotStock(items, PRODUCTS);
+    const updated = deducirStock(items, PRODUCTS);
+    const newStock = updated.find(p => p.id === 'prod-1').stock;
+    expect(before['prod-1']).toBe(10);          // valor de lock = stock previo
     expect(newStock).toBe(7);
-    expect(stockBefore['prod-1'] - newStock).toBe(3); // cantidad sold
+    expect(before['prod-1'] - newStock).toBe(3); // delta = cantidad vendida
+  });
+});
+
+// ── restaurarStock (cancelar venta) ───────────────────────────────────────────
+
+describe('restaurarStock', () => {
+  it('suma de vuelta las cantidades al cancelar', () => {
+    const items = [makeItem('prod-1', 'Chocolate', 3, 7)];
+    const updated = restaurarStock(items, PRODUCTS);
+    expect(updated.find(p => p.id === 'prod-1').stock).toBe(13); // 10 + 3
+  });
+
+  it('CRÍTICO: descontar y luego restaurar deja el stock igual (round-trip)', () => {
+    const items = [
+      makeItem('prod-1', 'Chocolate', 4, 7),
+      makeItem('prod-3', 'Colorante', 2, 3),
+    ];
+    const afterDeduc = deducirStock(items, PRODUCTS);
+    const afterRestore = restaurarStock(items, afterDeduc);
+    expect(afterRestore.find(p => p.id === 'prod-1').stock).toBe(10);
+    expect(afterRestore.find(p => p.id === 'prod-3').stock).toBe(5);
+  });
+
+  it('no muta el array original (función pura)', () => {
+    const original = PRODUCTS.map(p => ({ ...p }));
+    const items = [makeItem('prod-1', 'Chocolate', 5, 7)];
+    restaurarStock(items, PRODUCTS);
+    expect(PRODUCTS[0].stock).toBe(original[0].stock);
   });
 });
