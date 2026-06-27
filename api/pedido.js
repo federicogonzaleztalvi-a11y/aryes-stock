@@ -11,6 +11,7 @@ import { checkRateLimit } from './_rate-limit.js';
 import { log, withObservability } from './_log.js';
 import { setCorsHeaders } from './_cors.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
+import { buildLineas, sumLineas, mapClienteFiscal } from './_pedido-data.js';
 import { sendEmail, templates } from './_email.js';
 // Núcleo compartido de creación de pedido (mismo cierre para portal y bot WhatsApp).
 import { createB2BOrder } from './_create-order.js';
@@ -61,22 +62,8 @@ async function buildComprobantePdf(session, orderId) {
     const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
     if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
   }
-  const lineas = orderItems.map(i => {
-    const unit = Number(i.precioUnit) || 0;
-    const pid = i.id || i.productId;
-    const qty = Number(i.cantidad || i.qty) || 0;
-    return {
-      codigo: baseMap[pid]?.codigo || '',
-      nombre: i.nombre || i.productName || '',
-      unidad: i.unidad || i.unit || '',
-      qty,
-      precioBase: (baseMap[pid]?.precio) || unit,
-      precioUnit: unit,
-      subtotal: Number(i.subtotal) || (unit * qty),
-    };
-  });
-  const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
-  const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+  const lineas = buildLineas(orderItems, baseMap);
+  const { subtotal, descuentoTotal } = sumLineas(lineas);
   const total = Number(pedido.total) || subtotal;
   const iva = Math.round(total - subtotal);
   const ref = 'OC-' + String(orderId).slice(0, 8).toUpperCase();
@@ -86,12 +73,7 @@ async function buildComprobantePdf(session, orderId) {
     nroOrden: ref,
     fecha: pedido.creado_en || new Date().toISOString(),
     empresa, currencySymbol: '$',
-    cliente: {
-      nombre: cli.name, codigo: cli.codigo, rut: cli.rut,
-      direccion: cli.address, ciudad: cli.ciudad,
-      horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
-      zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
-    },
+    cliente: mapClienteFiscal(cli),
     lineas, subtotal, descuentoTotal, iva, total,
     notas: pedido.notas || '',
   });
@@ -115,22 +97,8 @@ async function buildPreviewPdf(session, items, notas, total) {
     const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
     if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
   }
-  const lineas = (items || []).map(i => {
-    const unit = Number(i.precioUnit) || 0;
-    const pid = i.id || i.productId;
-    const qty = Number(i.cantidad || i.qty) || 0;
-    return {
-      codigo: baseMap[pid]?.codigo || '',
-      nombre: i.nombre || i.productName || '',
-      unidad: i.unidad || i.unit || '',
-      qty,
-      precioBase: (baseMap[pid]?.precio) || unit,
-      precioUnit: unit,
-      subtotal: Number(i.subtotal) || (unit * qty),
-    };
-  });
-  const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
-  const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+  const lineas = buildLineas(items, baseMap);
+  const { subtotal, descuentoTotal } = sumLineas(lineas);
   const tot = Number(total) || subtotal;
   const iva = Math.round(tot - subtotal);
   const pdfBuf = await generarOrdenPDF({
@@ -139,12 +107,7 @@ async function buildPreviewPdf(session, items, notas, total) {
     nroOrden: 'VISTA PREVIA',
     fecha: new Date().toISOString(),
     empresa, currencySymbol: '$',
-    cliente: {
-      nombre: cli.name, codigo: cli.codigo, rut: cli.rut,
-      direccion: cli.address, ciudad: cli.ciudad,
-      horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
-      zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
-    },
+    cliente: mapClienteFiscal(cli),
     lineas, subtotal, descuentoTotal, iva, total: tot,
     notas: notas || '',
   });

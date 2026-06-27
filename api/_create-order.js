@@ -30,6 +30,7 @@ import webpush from 'web-push';
 import { log } from './_log.js';
 import { sendEmail, templates } from './_email.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
+import { buildLineas, sumLineas, mapClienteFiscal } from './_pedido-data.js';
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -334,32 +335,14 @@ export async function sendOrderEmail({ org, clienteId, clienteNombre, items, tot
       const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
       if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
     }
-    const lineas = (items || []).map(i => {
-      const unit = Number(i.precioUnit) || 0;
-      const pid = i.id || i.productId || i.productoId;
-      return {
-        codigo: baseMap[pid]?.codigo || '',
-        nombre: i.nombre || i.productName || '',
-        unidad: i.unidad || i.unit || '',
-        qty: Number(i.cantidad || i.qty) || 0,
-        precioBase: (baseMap[pid]?.precio) || unit,
-        precioUnit: unit,
-        subtotal: Number(i.subtotal) || (unit * (Number(i.cantidad || i.qty) || 0)),
-      };
-    });
-    const subtotal = lineas.reduce((a, l) => a + l.subtotal, 0);
-    const descuentoTotal = lineas.reduce((a, l) => a + Math.max(0, (l.precioBase - l.precioUnit) * l.qty), 0);
+    const lineas = buildLineas(items, baseMap);
+    const { subtotal, descuentoTotal } = sumLineas(lineas);
     const iva = Math.round(Number(total) - subtotal);
     const pdfBuf = await generarOrdenPDF({
       nroOrden: 'OC-' + String(orderId).slice(0, 8).toUpperCase(),
       fecha: new Date().toISOString(),
       empresa, currencySymbol,
-      cliente: {
-        nombre: cli.name || clienteNombre, codigo: cli.codigo, rut: cli.rut,
-        direccion: cli.address, ciudad: cli.ciudad,
-        horarioDesde: cli.horario_desde, horarioHasta: cli.horario_hasta,
-        zonaEntrega: cli.zona_entrega, condPago: cli.cond_pago,
-      },
+      cliente: mapClienteFiscal(cli, clienteNombre),
       lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
       notas: notas || '',
     });
