@@ -1,6 +1,6 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fmt } from '../lib/constants.js';
+import { fmt, getOrgId } from '../lib/constants.js';
 import { calcLinea, calcTotales } from '../lib/pricing.js';
 import useSwipeBack from '../hooks/useSwipeBack.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
@@ -967,6 +967,7 @@ function HistorialPedidos({ session, onReordenar }) {
   const EST = {
     pendiente:  { label: 'Pendiente',  color: '#d97706', bg: '#fffbeb' },
     importada:  { label: 'Confirmado', color: '#059669', bg: '#f0fdf4' },
+    importado:  { label: 'Confirmado', color: '#059669', bg: '#f0fdf4' },
     confirmada: { label: 'Confirmado', color: '#059669', bg: '#f0fdf4' },
     preparada:  { label: 'Preparando', color: '#7c3aed', bg: '#f5f3ff' },
     en_ruta:    { label: 'En camino',  color: '#f97316', bg: '#fff7ed' },
@@ -1030,6 +1031,41 @@ function HistorialPedidos({ session, onReordenar }) {
             </div>
             {isExp && (
               <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f5f5f0' }}>
+                {/* Seguimiento del pedido — Recibido -> Preparando -> En camino -> Entregado.
+                    El estado lo avanza el distribuidor desde su panel (y en el futuro
+                    SimpliRoute marca 'Entregado' solo). Si esta cancelado, no se muestra. */}
+                {p.estado === 'cancelada' ? (
+                  <div style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: '#ef4444',
+                    background: '#fef2f2', borderRadius: 8, padding: '8px 12px' }}>
+                    Este pedido fue cancelado.
+                  </div>
+                ) : (() => {
+                  const PASOS = ['Recibido', 'Preparando', 'En camino', 'Entregado'];
+                  const IDX = { pendiente: 0, importada: 0, importado: 0, confirmada: 0, preparada: 1, en_ruta: 2, entregada: 3 };
+                  const cur = IDX[p.estado] != null ? IDX[p.estado] : 0;
+                  return (
+                    <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start' }}>
+                      {PASOS.map((paso, i) => {
+                        const done = i <= cur;
+                        return (
+                          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                            {i > 0 && (
+                              <div style={{ position: 'absolute', top: 9, right: '50%', width: '100%', height: 2,
+                                background: i <= cur ? G : '#e5e5e0' }} />
+                            )}
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', zIndex: 1,
+                              background: done ? G : '#fff', border: '2px solid ' + (done ? G : '#d8d8d2'),
+                              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {done && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                            </div>
+                            <span style={{ fontSize: 10, marginTop: 5, fontWeight: i === cur ? 700 : 500,
+                              color: done ? '#1a1a18' : '#9a9a98', textAlign: 'center' }}>{paso}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {(p.items || []).map((it, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between',
@@ -1940,6 +1976,9 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [vista,    setVista]    = useState('catalogo');
   const [detalle,  setDetalle]  = useState(null); // producto abierto en la PDP (null = grilla)
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
+  // Resumen de cuenta corriente (deuda) para el banner del portal. null = sin datos
+  // o sin deuda; { saldo, vencido, nVencidas } cuando el cliente debe plata.
+  const [cuentaResumen, setCuentaResumen] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [buyAgain, setBuyAgain] = useState([]);
   const [coBuy, setCoBuy] = useState({}); // productoId -> [ids que suele pedirse junto]
@@ -2048,6 +2087,46 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     const t = setTimeout(() => { saveServerCart(token, carrito); }, 800);
     return () => clearTimeout(t);
   }, [carrito, session?.token, session?.clienteId, isPortalDemo]);
+
+  // ── Resumen de cuenta corriente (deuda) ───────────────────────────────────
+  // Trae una sola vez la cuenta del cliente y calcula cuánto debe, para mostrar
+  // un banner glance-able en el portal (antes la deuda estaba enterrada en el
+  // menú de usuario). Genérico multi-tenant: si la org no usa cuenta corriente
+  // no hay CFEs → saldo 0 → no se muestra nada. El detalle completo sigue en el
+  // modal de Estado de cuenta (reusa los mismos datos).
+  const cuentaLoadedRef = useRef(null);
+  useEffect(() => {
+    if (isPortalDemo) { setCuentaResumen(null); return; }
+    const token = session?.token;
+    const cli = session?.clienteId;
+    if (!token || !cli) { setCuentaResumen(null); return; }
+    if (cuentaLoadedRef.current === cli) return;
+    cuentaLoadedRef.current = cli;
+    const org = session?.org || new URLSearchParams(window.location.search).get('org') || getOrgId();
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`/api/historial?action=cuenta&cliente_id=${encodeURIComponent(cli)}&org=${encodeURIComponent(org)}`,
+          { headers: { Authorization: 'Bearer ' + token } });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (cancelled) return;
+        const cfes = data.cfes || [];
+        const cobros = data.cobros || [];
+        // Saldo = facturado − cobrado (misma lógica que el Estado de cuenta).
+        const saldo = cfes.reduce((s, c) => s + (c.total || 0), 0) - cobros.reduce((s, c) => s + (c.monto || 0), 0);
+        // Vencido = CFEs con saldo pendiente y fecha de vencimiento ya pasada.
+        const hoy = Date.now();
+        let vencido = 0, nVencidas = 0;
+        cfes.forEach(c => {
+          const pend = c.saldoPendiente || 0;
+          if (pend > 0 && c.fechaVenc && new Date(c.fechaVenc).getTime() < hoy) { vencido += pend; nVencidas++; }
+        });
+        setCuentaResumen(saldo > 0 ? { saldo, vencido, nVencidas } : null);
+      } catch { /* sin cuenta / error de red → no mostramos banner */ }
+    })();
+    return () => { cancelled = true; };
+  }, [session?.token, session?.clienteId, session?.org, isPortalDemo]);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => {
@@ -2502,6 +2581,30 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           {Icon.clock} <span>Horario de recepción: <strong>{horarioInfo.desde||'?'} – {horarioInfo.hasta||'?'}</strong></span>
         </div>
       )}
+      {/* Banner de cuenta corriente — el cliente ve su deuda de un vistazo.
+          Sólo aparece si debe plata. Si tiene facturas vencidas, en rojo. */}
+      {!isPortalDemo && cuentaResumen && !detalle && (vista === 'catalogo' || vista === 'habituales') && (() => {
+        const vencido = cuentaResumen.vencido > 0;
+        return (
+          <div role="status" style={{
+            background: vencido ? '#fef2f2' : '#fffbeb',
+            borderBottom: `1px solid ${vencido ? '#fecaca' : '#fde68a'}`,
+            padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 12, flexWrap: 'wrap', fontFamily: SANS }}>
+            <span style={{ fontSize: 13, color: vencido ? '#991b1b' : '#92400e' }}>
+              {vencido
+                ? <>Tenés <strong>{cuentaResumen.nVencidas}</strong> factura{cuentaResumen.nVencidas !== 1 ? 's' : ''} vencida{cuentaResumen.nVencidas !== 1 ? 's' : ''} por <strong>{fmt.currency(cuentaResumen.vencido)}</strong>. Saldo total: <strong>{fmt.currency(cuentaResumen.saldo)}</strong>.</>
+                : <>Saldo en tu cuenta: <strong>{fmt.currency(cuentaResumen.saldo)}</strong>.</>}
+            </span>
+            <button onClick={() => setShowEstadoCuenta(true)} style={{
+              padding: '5px 14px', borderRadius: 50, border: 'none', cursor: 'pointer',
+              fontSize: 12.5, fontWeight: 600, fontFamily: SANS,
+              background: vencido ? '#dc2626' : G, color: '#fff' }}>
+              Ver estado de cuenta
+            </button>
+          </div>
+        );
+      })()}
       {vista === 'catalogo' && detalle && (
         <div key={detalle.id} className="pz-fade">
           <ProductDetail item={detalle} carrito={carrito} onAdd={(it, v) => addItem(it, v, 'ficha')} onRemove={removeItem} onSetQty={setItemQty}

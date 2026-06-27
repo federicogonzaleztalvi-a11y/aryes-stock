@@ -160,6 +160,15 @@ export default function AnalyticsTab() {
                 <div style={{ fontSize: 12, color: T.textSm, marginBottom: 14 }}>
                   De cada producto que el cliente suma al carrito, cuántos los empujó el portal (sugeridos, volver a comprar) vs. los buscó él solo.
                 </div>
+                {reco.recoRevenuePedido > 0 && (
+                  <div style={{ background: T.green, borderRadius: 12, padding: '16px 18px', marginBottom: 16, color: '#fff' }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, opacity: .92, marginBottom: 3 }}>El portal te vendió de más</div>
+                    <div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1 }}>{money(reco.recoRevenuePedido)}</div>
+                    <div style={{ fontSize: 11.5, opacity: .9, marginTop: 6 }}>
+                      en mercadería que sugirió el portal y terminó en {reco.pedidosConReco} pedido{reco.pedidosConReco === 1 ? '' : 's'} confirmado{reco.pedidosConReco === 1 ? '' : 's'} ({reco.recoAddsPedido} producto{reco.recoAddsPedido === 1 ? '' : 's'}).
+                    </div>
+                  </div>
+                )}
                 {reco.totalAdds === 0 ? (
                   <div style={{ fontSize: 13, color: T.textXs, padding: '8px 0' }}>Sin datos todavía. Se empieza a medir desde ahora.</div>
                 ) : (

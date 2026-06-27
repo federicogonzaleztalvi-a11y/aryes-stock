@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     if (r.ok) rows = await r.json();
     else if (r.status === 404 || r.status === 400) {
       // Tabla aún no creada → devolvemos vacío con una pista para el panel.
-      return res.status(200).json({ pendingSetup: true, resumen: {}, porDia: [], topPaginas: [], topProductos: [], topAgregados: [], busquedas: [], embudo: {}, tiempos: {}, recomendaciones: { porOrigen: [], totalAdds: 0, recoAdds: 0, recoRevenue: 0, recoSharePct: 0 } });
+      return res.status(200).json({ pendingSetup: true, resumen: {}, porDia: [], topPaginas: [], topProductos: [], topAgregados: [], busquedas: [], embudo: {}, tiempos: {}, recomendaciones: { porOrigen: [], totalAdds: 0, recoAdds: 0, recoRevenue: 0, recoSharePct: 0, recoRevenuePedido: 0, recoAddsPedido: 0, pedidosConReco: 0 } });
     }
   } catch {
     return res.status(502).json({ error: 'Error al leer analítica' });
@@ -136,7 +136,12 @@ export default async function handler(req, res) {
     const span = sessionSpan[sid] || { min: t, max: t };
     span.min = Math.min(span.min, t); span.max = Math.max(span.max, t);
     sessionSpan[sid] = span;
-    (perSession[sid] = perSession[sid] || []).push({ path: (e.props && e.props.vista) || e.path || 'otra', t });
+    (perSession[sid] = perSession[sid] || []).push({
+      path: (e.props && e.props.vista) || e.path || 'otra', t,
+      event: e.event,
+      origen: (e.props && e.props.origen) || (e.event === 'producto_agregado' ? 'catalogo' : null),
+      precio: Number(e.props && e.props.precio) || 0,
+    });
   }
 
   // Tiempo por pantalla: diferencia entre eventos consecutivos de la misma sesión
@@ -187,10 +192,36 @@ export default async function handler(req, res) {
   const recoOrig    = origenes.filter(o => o.esReco);
   const recoAdds    = recoOrig.reduce((a, o) => a + o.adds, 0);
   const recoRevenue = recoOrig.reduce((a, o) => a + o.revenue, 0);
+
+  // "El portal te vendió $X de más" — atribución HONESTA: solo cuenta la
+  // mercadería sugerida (superficies de recomendación) que se agregó en una
+  // sesión que TERMINÓ en pedido confirmado. Así no infla con carritos
+  // abandonados: es plata que el portal realmente ayudó a vender.
+  let recoRevenuePedido = 0;   // $ sugerido por el portal que terminó en pedido
+  let recoAddsPedido    = 0;   // nº de esos agregados
+  let pedidosConReco    = 0;   // pedidos donde al menos 1 ítem lo empujó el portal
+  for (const sid of Object.keys(perSession)) {
+    const evs = perSession[sid];
+    if (!evs.some(e => e.event === 'pedido_confirmado')) continue;  // sin pedido → no cuenta
+    let huboReco = false;
+    for (const e of evs) {
+      if (e.event === 'producto_agregado' && SURFACES_RECO.includes(e.origen)) {
+        recoRevenuePedido += e.precio;
+        recoAddsPedido++;
+        huboReco = true;
+      }
+    }
+    if (huboReco) pedidosConReco++;
+  }
+
   const recomendaciones = {
     porOrigen: origenes,
     totalAdds, recoAdds, recoRevenue,
     recoSharePct: totalAdds ? Math.round((recoAdds / totalAdds) * 100) : 0,
+    // atribuido a pedido confirmado (la métrica que se le muestra al distribuidor)
+    recoRevenuePedido: Math.round(recoRevenuePedido),
+    recoAddsPedido,
+    pedidosConReco,
   };
 
   return res.status(200).json({

@@ -98,6 +98,30 @@ export default async function handler(req, res) {
         const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
         const svcHeaders = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
 
+        // Margen por producto — SOLO para desempatar recomendaciones igual de
+        // relevantes. La relevancia (cuántos clientes parecidos lo compran) manda;
+        // el margen es un nudge sutil entre productos con la misma relevancia.
+        // Vive solo en el server: nunca se manda el costo/margen al navegador del
+        // cliente (revelaría los márgenes del distribuidor). Si no hay costo
+        // cargado (Eric no controla inventario), el margen queda neutro (0) y no
+        // penaliza al producto.
+        var margenPct = {};  // uuid -> margen 0..1
+        try {
+          const costRes = await fetch(
+            SB_URL + '/rest/v1/products?org_id=eq.' + org + '&select=uuid,unit_cost,precio_venta',
+            { headers: svcHeaders }
+          );
+          if (costRes.ok) {
+            (await costRes.json()).forEach(function(p) {
+              const venta = Number(p.precio_venta) || 0;
+              const costo = Number(p.unit_cost) || 0;
+              margenPct[p.uuid] = (venta > 0 && costo > 0 && costo < venta)
+                ? (venta - costo) / venta
+                : 0;
+            });
+          }
+        } catch { /* margen neutro si falla */ }
+
         // Historial de compras del cliente para "Volver a pedir". Combina dos
         // fuentes para que aparezca apenas el cliente hace su primer pedido por
         // el portal, sin esperar a que el admin lo importe a ventas:
@@ -184,10 +208,16 @@ export default async function handler(req, res) {
             });
           });
 
-          // Sort by number of clients who buy it (popularity among peers)
+          // Orden: relevancia primero (cuántos clientes parecidos lo compran),
+          // y SOLO ante empate de relevancia, el de mayor margen. Así el portal
+          // nunca empuja lo más caro por sobre lo que el cliente realmente lleva;
+          // el margen apenas elige entre productos igual de relevantes.
           var ranked = Object.entries(prodClients)
             .map(function(e) { return { id: e[0], clientCount: e[1].size }; })
-            .sort(function(a, b) { return b.clientCount - a.clientCount; })
+            .sort(function(a, b) {
+              if (b.clientCount !== a.clientCount) return b.clientCount - a.clientCount;
+              return (margenPct[b.id] || 0) - (margenPct[a.id] || 0);
+            })
             .slice(0, 6);
 
           // Match with catalog items to get full product data

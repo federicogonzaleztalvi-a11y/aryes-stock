@@ -22,11 +22,26 @@ export function usePushNotifications(role = 'admin') {
     const perm = Notification.permission;
     if (perm === 'denied') { setState('denied'); return; }
 
-    // Check if already subscribed
+    // Check if already subscribed — y validar que la suscripción exista CONTRA
+    // la VAPID public key vigente del server. Si las keys se rotaron, la sub
+    // vieja quedó atada a la key anterior: el server manda con la nueva privada y
+    // nunca llega (push "roto" en silencio). Cuando no coinciden, se descarta la
+    // sub vieja y se vuelve a 'prompt' para que el admin reactive con la key buena.
     navigator.serviceWorker.ready.then(reg =>
       reg.pushManager.getSubscription()
-    ).then(sub => {
-      setState(sub ? 'subscribed' : 'prompt');
+    ).then(async sub => {
+      if (!sub) { setState('prompt'); return; }
+      try {
+        const keyRes = await fetch(`${API_BASE}?action=vapid-key`);
+        const { publicKey } = keyRes.ok ? await keyRes.json() : { publicKey: '' };
+        const subKey = sub.options?.applicationServerKey;
+        if (publicKey && subKey && !bytesEqual(new Uint8Array(subKey), urlBase64ToUint8Array(publicKey))) {
+          await sub.unsubscribe().catch(() => {});
+          setState('prompt');
+          return;
+        }
+      } catch { /* si no se puede validar, no rompemos: se asume vigente */ }
+      setState('subscribed');
     }).catch(() => setState('prompt'));
   }, []);
 
@@ -87,6 +102,13 @@ export async function sendPush(orgId: string, payload: {
     body:    JSON.stringify({ orgId, ...payload }),
   });
   return r.ok;
+}
+
+// Compara dos arrays de bytes (para detectar rotación de VAPID key)
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
 }
 
 // Utility — convert VAPID public key to Uint8Array

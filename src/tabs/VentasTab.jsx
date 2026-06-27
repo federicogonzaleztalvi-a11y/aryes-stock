@@ -478,6 +478,30 @@ function VentasTab(){
     // Handle side effects + auto-notifications (MercadoLibre: transitions generate events)
     const estado=nuevoEstado;
 
+    // Espejar el estado al pedido del portal (b2b_orders) para que el CLIENTE vea
+    // el avance en su historial: Confirmado -> Preparando -> En camino -> Entregado.
+    // Sin esto, el portal quedaba congelado en "Confirmado" aunque la venta avanzara.
+    // (En la Fase 4, SimpliRoute disparará 'entregada' por webhook y caerá acá igual.)
+    if (venta?.orderId) {
+      const SB_URL_B2B=import.meta.env.VITE_SUPABASE_URL;
+      if (SB_URL_B2B) fetch(`${SB_URL_B2B}/rest/v1/b2b_orders?id=eq.${venta.orderId}&org_id=eq.${getOrgId()}`,{
+        method:'PATCH',
+        headers:getAuthHeaders({Prefer:'return=minimal'}),
+        body:JSON.stringify({estado}),
+      }).catch(()=>{});
+
+      // Fase 4 — al PREPARAR el pedido, lo mandamos a ruta en SimpliRoute. El
+      // endpoint es no-op si la org no conectó SimpliRoute o lo tiene apagado,
+      // así que es seguro dispararlo siempre (fire-and-forget, sin bloquear la UI).
+      if (estado === 'preparada') {
+        fetch('/api/simpliroute?action=push', {
+          method:'POST',
+          headers:getAuthHeaders({'Content-Type':'application/json'}),
+          body:JSON.stringify({orderId:venta.orderId}),
+        }).catch(()=>{});
+      }
+    }
+
     // Web Push — notificar al admin en otros dispositivos (Delivery Hero automatic events)
     const orgId = (getSession()?.orgId || getOrgId());
     if (estado === 'en_ruta') {

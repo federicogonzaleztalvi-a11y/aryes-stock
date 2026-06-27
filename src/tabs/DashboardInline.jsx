@@ -197,7 +197,27 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setPushState('unsupported'); return; }
     if (Notification.permission === 'denied') { setPushState('denied'); return; }
     navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription())
-      .then(sub => setPushState(sub ? 'subscribed' : 'prompt'))
+      .then(async sub => {
+        if (!sub) { setPushState('prompt'); return; }
+        // Validar la sub contra la VAPID key vigente. Si se rotaron las keys, la
+        // sub vieja quedó atada a la key anterior y el push nunca llega (roto en
+        // silencio). Si no coinciden, se descarta y se vuelve a 'prompt' para
+        // reactivar con la key buena (auto-cura tras cualquier rotacion futura).
+        try {
+          const kr = await fetch('/api/push?action=vapid-key');
+          const { publicKey } = kr.ok ? await kr.json() : { publicKey: '' };
+          const subKey = sub.options?.applicationServerKey;
+          if (publicKey && subKey) {
+            const raw = atob((publicKey + '='.repeat((4 - publicKey.length % 4) % 4)).replace(/-/g,'+').replace(/_/g,'/'));
+            const cur = Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+            const old = new Uint8Array(subKey);
+            let same = cur.length === old.length;
+            for (let i = 0; same && i < cur.length; i++) if (cur[i] !== old[i]) same = false;
+            if (!same) { await sub.unsubscribe().catch(() => {}); setPushState('prompt'); return; }
+          }
+        } catch { /* si no se puede validar, se asume vigente */ }
+        setPushState('subscribed');
+      })
       .catch(() => setPushState('prompt'));
   }, []);
 
