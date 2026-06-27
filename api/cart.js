@@ -72,7 +72,7 @@ async function handler(req, res) {
   const svcH = { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' };
 
   const sessRes = await fetch(
-    `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&select=org_id,cliente_id&limit=1`,
+    `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&revoked=eq.false&select=org_id,cliente_id&limit=1`,
     { headers: svcH }
   );
   if (!sessRes.ok) return res.status(401).json({ error: 'Sesión inválida' });

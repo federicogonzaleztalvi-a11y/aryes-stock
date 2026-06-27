@@ -48,7 +48,7 @@ async function handler(req, res) {
 
   const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_ANON;
   const sessRes = await fetch(
-    `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&select=org_id,cliente_id,tel&limit=1`,
+    `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(sessionToken)}&expires_at=gte.${new Date().toISOString()}&revoked=eq.false&select=org_id,cliente_id,tel&limit=1`,
     { headers: { apikey: svcKey, Authorization: `Bearer ${svcKey}`, Accept: 'application/json' } }
   );
   if (!sessRes.ok) return res.status(401).json({ error: 'Sesión inválida' });

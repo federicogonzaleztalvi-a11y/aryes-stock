@@ -724,29 +724,30 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
 
   // Criterio Amazon (mobile): la barra de compra fija NO está siempre. Aparece sólo
   // cuando el bloque de compra (precio + botón) NO está a la vista; si está visible,
-  // la barra sería ruido y tapa contenido. Usamos un listener de scroll con
-  // getBoundingClientRect en vez de IntersectionObserver (más simple y fiable).
+  // la barra sería ruido y tapa contenido.
+  //
+  // Mecanismo: IntersectionObserver (estándar web moderno, lo que usan Amazon/Shopify).
+  // El navegador nos avisa cuando el bloque entra/sale de pantalla — más eficiente que
+  // recalcular en cada scroll. Hacemos un chequeo inicial con getBoundingClientRect
+  // para fijar el estado de arranque correcto antes del primer evento del observer.
   const compraRef = useRef(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
   useEffect(() => {
     if (!isMobile) { setShowStickyBar(false); return undefined; }
-    const update = () => {
-      const el = compraRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      // Fuera de vista = el bloque está arriba del viewport (scrolleado) o aún no se
-      // llegó (debajo del fold). 72px = alto aprox. de la barra para no solaparse.
-      const fueraDeVista = r.bottom < 72 || r.top > vh - 72;
-      setShowStickyBar(fueraDeVista);
-    };
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
+    const el = compraRef.current;
+    if (!el) return undefined;
+
+    // Estado inicial: ¿el bloque ya está fuera de pantalla al entrar a la ficha?
+    const r0 = el.getBoundingClientRect();
+    setShowStickyBar(r0.bottom < 72 || r0.top > window.innerHeight - 72);
+
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { rootMargin: '-72px 0px 0px 0px' } // descuenta el alto de la barra para no solaparse
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
   }, [isMobile, item.id]);
 
   const imgBox = (

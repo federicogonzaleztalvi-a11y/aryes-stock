@@ -114,7 +114,7 @@ export default async function handler(req, res) {
     // Sesión válida → org + cliente DEL SERVIDOR (autoritativo)
     try {
       const sr = await fetch(
-        `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gte.${new Date().toISOString()}&select=org_id,cliente_id&limit=1`,
+        `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(token)}&expires_at=gte.${new Date().toISOString()}&revoked=eq.false&select=org_id,cliente_id&limit=1`,
         { headers: svcH }
       );
       if (sr.ok) {
