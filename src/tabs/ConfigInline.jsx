@@ -383,8 +383,8 @@ function WhatsAppCard() {
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0ec' }}>
           {WA_ES_CONFIG_ID ? (
             <button onClick={conectar} disabled={busy}
-              style={{ padding: '9px 20px', background: G, color: '#fff', border: 'none', borderRadius: 6,
-                fontSize: 13, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+              style={{ padding: '8px 18px', background: G, color: '#fff', border: 'none', borderRadius: 6,
+                fontSize: 13, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: busy ? 0.6 : 1 }}>
               {busy ? 'Conectando…' : 'Conectar WhatsApp'}
             </button>
           ) : (
@@ -1152,11 +1152,7 @@ export default function ConfigInline({
               <SimpliRouteCard />
               <div style={{display:'grid',gap:10}}>
                 {[
-                  {icon:'📊',name:'Google Sheets',desc:'Exportá inventario y movimientos automáticamente a una hoja de cálculo.',status:'disponible',color:'#16a34a'},
-                  {icon:'🏦',name:'BROU / Santander',desc:'Importá extractos bancarios automáticamente para conciliación.',status:'pronto',color:'#d97706'},
-                  {icon:'🛍',name:'Portal B2B de pedidos',desc:'Tus clientes hacen pedidos directamente desde su portal personalizado.',status:'pronto',color:'#d97706'},
-                  {icon:'📦',name:'MercadoLibre / eCommerce',desc:'Sincronizá stock con tu tienda online automáticamente.',status:'pronto',color:'#d97706'},
-                  {icon:'📄',name:'API REST pública',desc:'Conectá cualquier sistema externo con la API documentada.',status:'próximamente',color:'#6366f1'},
+                  {icon:'🧾',name:'Facturación / ERP',desc:'Pasá tus pedidos a factura automáticamente en tu sistema (Saico, Mercado y otros).',status:'próximamente',color:'#6366f1'},
                 ].map(i=>(
                   <div key={i.name} style={{border:'1px solid #e2e2de',borderRadius:10,padding:'14px 16px',
                     display:'flex',alignItems:'center',gap:14}}>
