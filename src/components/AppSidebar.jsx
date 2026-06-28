@@ -50,6 +50,7 @@ const Icon = ({ name, size = 15, color = 'currentColor' }) => {
     'batch-picking':<path d="M3 3h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm4-8h14v2H7zm0 4h14v2H7zm0 4h14v2H7z" fill={color}/>,
     analytics:     <path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z" fill={color}/>,
     integraciones: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" fill={color}/>,
+    'portal-vende':<path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" fill={color}/>,
   };
 
   const path = icons[name];
@@ -70,7 +71,7 @@ const NAV_ALL = [
   { id: 'suppliers',      label: 'Proveedores',       icon: 'suppliers' },
   { id: 'clientes',       label: 'Clientes',          icon: 'clientes' },
   { id: 'ventas',         label: 'Ventas',            icon: 'ventas' },
-  { id: 'portal-vende',   label: 'El portal vende',   icon: 'ventas' },
+  { id: 'portal-vende',   label: 'El portal vende',   icon: 'portal-vende' },
   { id: 'portal',         label: 'Órdenes enviadas',  icon: 'portal' },
   { id: 'facturacion',    label: 'Facturación',       icon: 'facturacion' },
   { id: 'movimientos',    label: 'Movimientos',       icon: 'movimientos' },
