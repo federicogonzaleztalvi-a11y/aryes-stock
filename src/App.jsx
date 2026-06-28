@@ -17,6 +17,7 @@ const InformesTab = lazyWithRetry(() => import('./tabs/InformesTab.jsx'));
 const AnalyticsTab = lazyWithRetry(() => import('./tabs/AnalyticsTab.jsx'));
 const MensajesTab = lazyWithRetry(() => import('./tabs/MensajesTab.jsx'));
 const PortalAdminTab = lazyWithRetry(() => import('./tabs/PortalAdminTab.jsx'));
+const PortalVendeTab = lazyWithRetry(() => import('./tabs/PortalVendeTab.jsx'));
 const LotesTab = lazyWithRetry(() => import('./tabs/LotesTab.jsx'));
 const MovimientosTab = lazyWithRetry(() => import('./tabs/MovimientosTab.jsx'));
 const ConteoTab = lazyWithRetry(() => import('./tabs/ConteoTab.jsx'));
@@ -1074,6 +1075,7 @@ Generado desde Pazque.`;
         
         {activeTab==="ventas"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><VentasTab /></Suspense></ErrorBoundary>}
         {activeTab==="portal"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PortalAdminTab /></Suspense></ErrorBoundary>}
+        {activeTab==="portal-vende"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><PortalVendeTab /></Suspense></ErrorBoundary>}
         {activeTab==="facturacion"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><FacturacionTab products={products}/></Suspense></ErrorBoundary>}
         
         {activeTab==="importar"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ImportTab /></Suspense></ErrorBoundary>}
