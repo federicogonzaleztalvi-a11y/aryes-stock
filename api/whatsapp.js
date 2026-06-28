@@ -84,6 +84,16 @@ async function handleWebhook(req, res) {
       for (const change of changes) {
         const value = change.value || {};
 
+        // ── Estado de plantilla (Embedded Signup self-service) ───────────────
+        // Cuando Meta aprueba/rechaza una plantilla del distribuidor, llega acá.
+        // entry.id es la WABA del distribuidor → matcheamos la org por
+        // whatsapp_sender->>waba_id y guardamos el estado por nombre de plantilla.
+        if (change.field === 'message_template_status_update') {
+          await handleTemplateStatus(entry.id, value).catch((e) =>
+            console.error('[whatsapp] template status update error (non-fatal):', e.message));
+          continue;
+        }
+
         // Incoming messages
         if (value.messages) {
           for (const msg of value.messages) {
@@ -162,6 +172,38 @@ async function handleWebhook(req, res) {
 
   // Always return 200 quickly — Meta retries if it doesn't get 200 within 20s
   return res.status(200).json({ received: true });
+}
+
+// ── Actualiza el estado de una plantilla del distribuidor en su org ──────────
+// El front (WhatsAppCard) crea pazque_broadcast (avisos) y pazque_otp (código de
+// acceso). Acá guardamos APPROVED/REJECTED/etc. en organizations.whatsapp_sender
+// según el nombre. Matcheamos la org por la WABA que mandó el evento.
+async function handleTemplateStatus(wabaId, value) {
+  if (!SB_URL || !SB_SVC || !wabaId) return;
+  const tplName = value?.message_template_name;
+  const event   = value?.event;            // APPROVED | REJECTED | PENDING | ...
+  if (!tplName || !event) return;
+
+  const h = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json', 'Content-Type': 'application/json' };
+
+  // Buscar la org cuyo número conectado pertenece a esta WABA.
+  const r = await fetch(
+    `${SB_URL}/rest/v1/organizations?whatsapp_sender->>waba_id=eq.${encodeURIComponent(String(wabaId))}&select=id,whatsapp_sender&limit=1`,
+    { headers: h }
+  );
+  if (!r.ok) return;
+  const org = (await r.json())?.[0];
+  if (!org?.id) return;
+
+  const sender = org.whatsapp_sender || {};
+  if (tplName === 'pazque_broadcast') sender.template_status = event;
+  else if (tplName === 'pazque_otp')  sender.otp_status = event;
+  else return;   // plantilla ajena a Pazque → ignorar
+
+  await fetch(`${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org.id)}`, {
+    method: 'PATCH', headers: { ...h, Prefer: 'return=minimal' },
+    body: JSON.stringify({ whatsapp_sender: sender }),
+  });
 }
 
 // ── Send WhatsApp message via Cloud API ──

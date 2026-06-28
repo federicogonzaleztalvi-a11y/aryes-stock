@@ -181,6 +181,224 @@ function SimpliRouteCard() {
   );
 }
 
+// ── Tarjeta de conexión de WhatsApp (Embedded Signup, self-service) ───────
+// El distribuidor conecta su PROPIO número de WhatsApp con un click (flujo de
+// Meta). Una vez conectado, los broadcasts y el código de acceso (OTP) salen de
+// SU número, con su foto de perfil (white-label). Modelo: SimpliRouteCard.
+//
+// Necesita dos datos públicos de la app Meta de Pazque:
+//   - App ID (hardcodeado como default, overridable por VITE_WA_APP_ID)
+//   - config_id del Embedded Signup (VITE_WA_ES_CONFIG_ID) — lo crea Pazque en Meta.
+// Si falta el config_id, la tarjeta degrada con gracia (botón deshabilitado).
+const WA_APP_ID   = import.meta.env.VITE_WA_APP_ID || '1031176906086563';
+const WA_ES_CONFIG_ID = import.meta.env.VITE_WA_ES_CONFIG_ID || '';
+
+// Carga el SDK de Facebook una sola vez y lo inicializa con el App ID de Pazque.
+let _fbSdkPromise = null;
+function loadFbSdk() {
+  if (_fbSdkPromise) return _fbSdkPromise;
+  _fbSdkPromise = new Promise((resolve, reject) => {
+    if (window.FB) { resolve(window.FB); return; }
+    window.fbAsyncInit = function () {
+      window.FB.init({ appId: WA_APP_ID, autoLogAppEvents: true, xfbml: false, version: 'v21.0' });
+      resolve(window.FB);
+    };
+    const s = document.createElement('script');
+    s.src = 'https://connect.facebook.net/en_US/sdk.js';
+    s.async = true; s.defer = true; s.crossOrigin = 'anonymous';
+    s.onerror = () => reject(new Error('No se pudo cargar el conector de Meta.'));
+    document.body.appendChild(s);
+  });
+  return _fbSdkPromise;
+}
+
+function WhatsAppCard() {
+  const [st, setSt] = React.useState(null);   // { connected, number, name, template_status, otp_status }
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
+  // Datos que llegan por el evento de Embedded Signup (waba_id + phone_number_id).
+  const signupRef = React.useRef(null);
+
+  const cargar = React.useCallback(async () => {
+    try {
+      const r = await fetch('/api/whatsapp-connect?action=status', { headers: getAuthHeaders() });
+      const d = r.ok ? await r.json() : { connected: false };
+      setSt(d);
+    } catch { setSt({ connected: false }); }
+    setLoading(false);
+  }, []);
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  // Escucha el postMessage de Meta durante el Embedded Signup para capturar los IDs.
+  React.useEffect(() => {
+    const onMsg = (event) => {
+      // Solo aceptamos mensajes que vengan de un origen de Facebook.
+      let host = '';
+      try { host = new URL(event.origin).hostname; } catch { return; }
+      if (!host.endsWith('facebook.com')) return;
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data?.type === 'WA_EMBEDDED_SIGNUP' && data?.data) {
+          if (data.data.phone_number_id && data.data.waba_id) {
+            signupRef.current = { phone_number_id: data.data.phone_number_id, waba_id: data.data.waba_id };
+          }
+        }
+      } catch { /* mensajes ajenos al flujo */ }
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const conectar = async () => {
+    if (busy) return;
+    setErr('');
+    if (!WA_ES_CONFIG_ID) { setErr('La conexión todavía no está habilitada por Pazque.'); return; }
+    setBusy(true);
+    try {
+      const FB = await loadFbSdk();
+      signupRef.current = null;
+      const response = await new Promise((resolve) => {
+        FB.login(resolve, {
+          config_id: WA_ES_CONFIG_ID,
+          response_type: 'code',
+          override_default_response_type: true,
+          extras: { setup: {}, featureType: '', sessionInfoVersion: '3' },
+        });
+      });
+      const code = response?.authResponse?.code;
+      const ids = signupRef.current;
+      if (!code || !ids) { setErr('Conexión cancelada. Probá de nuevo.'); setBusy(false); return; }
+
+      const r = await fetch('/api/whatsapp-connect?action=connect', {
+        method: 'POST', headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ code, waba_id: ids.waba_id, phone_number_id: ids.phone_number_id }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'No se pudo conectar.');
+      // Las plantillas se crean solas al conectar (turnkey); usamos el estado que vuelve.
+      setSt({ connected: true, number: d.number, name: d.name, template_status: d.template_status || null, otp_status: d.otp_status || null });
+    } catch (e) { setErr(e.message || 'No se pudo conectar.'); }
+    setBusy(false);
+  };
+
+  const crearPlantilla = async () => {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/whatsapp-connect?action=create-template', {
+        method: 'POST', headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'No se pudo crear la plantilla.');
+      setSt(s => ({ ...s, template_status: d.template_status, otp_status: d.otp_status }));
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  };
+
+  const desconectar = async () => {
+    if (!window.confirm('¿Desconectar WhatsApp? Los mensajes volverán a salir desde el número de Pazque.')) return;
+    setBusy(true); setErr('');
+    try {
+      await fetch('/api/whatsapp-connect?action=disconnect', { method: 'POST', headers: getAuthHeaders() });
+      setSt({ connected: false });
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  };
+
+  const G = '#16a34a';
+  // Badge legible para el estado de una plantilla.
+  const tplBadge = (status) => {
+    if (status === 'APPROVED') return { t: 'Aprobada ✓', bg: '#f0fdf4', c: '#16a34a' };
+    if (status === 'REJECTED') return { t: 'Rechazada', bg: '#fef2f2', c: '#dc2626' };
+    if (status === 'PENDING')  return { t: 'En revisión ⏳', bg: '#fffbeb', c: '#d97706' };
+    return { t: 'Sin crear', bg: '#f0f0ec', c: '#6a6a68' };
+  };
+  const bB = tplBadge(st?.template_status), bO = tplBadge(st?.otp_status);
+
+  return (
+    <div style={{ border: '1px solid #e2e2de', borderRadius: 10, padding: '14px 16px', marginBottom: 14, background: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span style={{ fontSize: 24, flexShrink: 0 }}>📱</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: 'DM Sans,Inter,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>WhatsApp Business</div>
+          <div style={{ fontFamily: 'DM Sans,Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2 }}>
+            Conectá tu número para que los avisos y el código de acceso de tus clientes salgan desde tu propio WhatsApp.
+          </div>
+        </div>
+        {st?.connected && (
+          <span style={{ background: '#f0fdf4', color: G, fontSize: 11, fontWeight: 700, padding: '4px 11px',
+            borderRadius: 20, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Conectado</span>
+        )}
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: 12, color: '#9a9a98', marginTop: 12 }}>Cargando…</div>
+      ) : st?.connected ? (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0ec' }}>
+          <div style={{ fontSize: 12, color: '#6a6a68', marginBottom: 12 }}>
+            Número: <b>{st.number || '—'}</b>{st.name ? <> · {st.name}</> : null}
+          </div>
+
+          {/* Explicación: por qué hacen falta las plantillas (WhatsApp las exige) */}
+          <div style={{ background: '#f7f6f3', border: '1px solid #e8e4de', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#6a6a68', lineHeight: 1.5 }}>
+            WhatsApp exige <b>plantillas aprobadas</b> para poder enviar mensajes. Las creamos automáticamente al conectar tu número — Meta las revisa en unos minutos. Vas a poder enviar avisos y códigos de acceso recién cuando figuren <b>Aprobadas</b>.
+          </div>
+
+          {/* Estado de las plantillas (necesarias para que Meta deje enviar) */}
+          <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ fontSize: 12.5, color: '#1a1a18' }}>Plantilla de avisos (broadcasts)</span>
+              <span style={{ background: bB.bg, color: bB.c, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{bB.t}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ fontSize: 12.5, color: '#1a1a18' }}>Plantilla de código de acceso</span>
+              <span style={{ background: bO.bg, color: bO.c, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{bO.t}</span>
+            </div>
+          </div>
+
+          {(!st.template_status || !st.otp_status || st.template_status === 'REJECTED' || st.otp_status === 'REJECTED') && (
+            <>
+              <button onClick={crearPlantilla} disabled={busy}
+                style={{ padding: '8px 18px', background: G, color: '#fff', border: 'none', borderRadius: 6,
+                  fontSize: 13, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+                {busy ? 'Creando…' : 'Reintentar plantillas'}
+              </button>
+              <div style={{ fontSize: 11.5, color: '#9a9a98', marginTop: 6 }}>
+                Si alguna plantilla quedó sin crear o fue rechazada, tocá acá para volver a intentar.
+              </div>
+            </>
+          )}
+          {(st.template_status === 'PENDING' || st.otp_status === 'PENDING') && (
+            <div style={{ fontSize: 11.5, color: '#9a9a98', marginTop: 8 }}>
+              Meta revisa las plantillas (suele tardar unos minutos). Te avisamos acá cuando estén aprobadas.
+            </div>
+          )}
+
+          <button onClick={desconectar} disabled={busy} style={{ display: 'block', marginTop: 12, background: 'none', border: 'none',
+            color: '#dc2626', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+            Desconectar
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0ec' }}>
+          {WA_ES_CONFIG_ID ? (
+            <button onClick={conectar} disabled={busy}
+              style={{ padding: '9px 20px', background: G, color: '#fff', border: 'none', borderRadius: 6,
+                fontSize: 13, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+              {busy ? 'Conectando…' : 'Conectar WhatsApp'}
+            </button>
+          ) : (
+            <div style={{ fontSize: 12, color: '#9a9a98', fontStyle: 'italic' }}>
+              La conexión de WhatsApp todavía no está habilitada por Pazque. Muy pronto.
+            </div>
+          )}
+        </div>
+      )}
+      {err && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 8 }}>{err}</div>}
+    </div>
+  );
+}
+
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
 // ── Gestión de zonas del depósito ────────────────────────────────────────
 function ZonasDeposito({ orgId }) {
@@ -930,10 +1148,10 @@ export default function ConfigInline({
               <p style={{fontFamily:'DM Sans,Inter,sans-serif',fontSize:13,color:'#6a6a68',marginBottom:20,lineHeight:1.6}}>
                 Conectá la plataforma con otros sistemas. Las integraciones se activan sin código — solo configurás las credenciales.
               </p>
+              <WhatsAppCard />
               <SimpliRouteCard />
               <div style={{display:'grid',gap:10}}>
                 {[
-                  {icon:'📱',name:'WhatsApp Business',desc:'Enviá alertas de stock, notificaciones de pedidos y remitos por WhatsApp.',status:'disponible',color:'#16a34a'},
                   {icon:'📊',name:'Google Sheets',desc:'Exportá inventario y movimientos automáticamente a una hoja de cálculo.',status:'disponible',color:'#16a34a'},
                   {icon:'🏦',name:'BROU / Santander',desc:'Importá extractos bancarios automáticamente para conciliación.',status:'pronto',color:'#d97706'},
                   {icon:'🛍',name:'Portal B2B de pedidos',desc:'Tus clientes hacen pedidos directamente desde su portal personalizado.',status:'pronto',color:'#d97706'},

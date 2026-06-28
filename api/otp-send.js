@@ -33,12 +33,11 @@ function toE164(tel) {
   return digits;
 }
 
-async function sendViaWhatsApp(to, code) {
-  const msg = 'Tu codigo de acceso a Pazque es: *' + code + '*\n\nValido por 10 minutos. No lo compartas.';
-  const res = await fetch('https://graph.facebook.com/v21.0/' + WA_PHONE_ID + '/messages', {
+async function sendViaWhatsApp(to, code, phoneId, token) {
+  const res = await fetch('https://graph.facebook.com/v21.0/' + phoneId + '/messages', {
     method: 'POST',
     headers: {
-      Authorization: 'Bearer ' + WA_TOKEN,
+      Authorization: 'Bearer ' + token,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -162,10 +161,18 @@ export default async function handler(req, res) {
   // Solo en desarrollo local se expone para poder probar sin enviar mensajes.
   const IS_PROD = (process.env.VERCEL_ENV || process.env.NODE_ENV) === 'production';
 
-  if (WA_TOKEN && WA_PHONE_ID) {
+  // Opción A (white-label): si el distribuidor conectó su WhatsApp y su plantilla
+  // pazque_otp ya está APROBADA en su WABA, el código sale desde SU número. Si no
+  // (sin conectar o plantilla aún en revisión), fallback al número de Pazque para
+  // no romper nunca el login.
+  const useOrgSender = !!(org_sender?.phone_id && org_sender?.token && org_sender?.otp_status === 'APPROVED');
+  const sendPhoneId = useOrgSender ? org_sender.phone_id : WA_PHONE_ID;
+  const sendToken   = useOrgSender ? org_sender.token   : WA_TOKEN;
+
+  if (sendToken && sendPhoneId) {
     try {
       const telE164 = toE164(telClean);
-      await sendViaWhatsApp(telE164, code);
+      await sendViaWhatsApp(telE164, code, sendPhoneId, sendToken);
       return res.status(200).json({ ok: true, clienteNombre: cliente.name });
     } catch (err) {
       console.error('[otp-send] WhatsApp failed:', err.message);
