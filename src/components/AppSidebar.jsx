@@ -49,6 +49,7 @@ const Icon = ({ name, size = 15, color = 'currentColor' }) => {
     packing:       <path d="M20 7l-8-4-8 4v10l8 4 8-4V7zm-8 1.62L18.47 12 12 15.38 5.53 12 12 8.62z" fill={color}/>,
     'batch-picking':<path d="M3 3h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm4-8h14v2H7zm0 4h14v2H7zm0 4h14v2H7z" fill={color}/>,
     analytics:     <path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z" fill={color}/>,
+    integraciones: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" fill={color}/>,
   };
 
   const path = icons[name];
@@ -95,11 +96,12 @@ const NAV_ALL = [
   { id: 'importar',       label: 'Importar datos',    icon: 'importar' },
   { id: 'importar-clientes', label: 'Importar clientes', icon: 'importar' },
   { id: 'scanner',        label: 'Scanner',           icon: 'scanner' },
+  { id: 'integraciones',  label: 'Integraciones',     icon: 'integraciones' },
   { id: 'config',         label: 'Configuración',     icon: 'config' },
 ];
 
 const DEFAULT_NAV_ROLES = {
-  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','analytics','mensajes','demanda','audit','importar','importar-clientes','scanner','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
+  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','analytics','mensajes','demanda','audit','importar','importar-clientes','scanner','integraciones','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
   vendedor: ['dashboard','clientes','ventas','facturacion','kpis','resultados','informes','descuentos'],
   contador: ['dashboard','facturacion','movimientos','resultados','informes','clientes','compras'],
@@ -123,7 +125,7 @@ const NAV_GROUPS = [
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
   { label: 'Comercial',   ids: ['clientes','ventas','portal','facturacion','descuentos','mensajes'] },
   { label: 'Análisis',    ids: ['kpis','resultados','informes','analytics','demanda','audit'] },
-  { label: 'Sistema',     ids: ['importar','config'] },
+  { label: 'Sistema',     ids: ['importar','integraciones','config'] },
 ];
 
 export function getNavForRole(role, brandCfg) {

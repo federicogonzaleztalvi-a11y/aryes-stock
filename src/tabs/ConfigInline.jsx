@@ -592,7 +592,8 @@ export default function ConfigInline({
   emailCfg, setEmailCfg,
   enriched, sendAlertEmail, EmailSettings,
   totalLead, tfCols,
-  brandCfg={}, setBrandCfg
+  brandCfg={}, setBrandCfg,
+  integrationsOnly=false
 }) {
   const { isAdmin } = useRole();
   // ── Brand config state — top level, no IIFE ──────────────────────────────
@@ -651,14 +652,14 @@ export default function ConfigInline({
       <div className="au" style={{display:"grid",gap:24}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}>
           <div>
-            <Cap style={{color:T.green}}>Sistema</Cap>
-            <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>Configuración</h1>
+            <Cap style={{color:T.green}}>{integrationsOnly?"Conexiones":"Sistema"}</Cap>
+            <h1 style={{fontFamily:T.serif,fontSize:40,fontWeight:500,color:T.text,marginTop:4,letterSpacing:"-.02em"}}>{integrationsOnly?"Integraciones":"Configuración"}</h1>
           </div>
         </div>
 
         <div>
           {/* Sub-tab bar */}
-          <div style={{display:"flex",gap:8,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
+          {!integrationsOnly && <div style={{display:"flex",gap:8,borderRadius:6,overflowX:"auto",marginBottom:24,scrollbarWidth:"none"}}>
             {[{id:"usuarios",l:"Usuarios"},{id:"roles",l:"Roles"},{id:"marca",l:"Marca"},{id:"facturacion_cfg",l:"Facturación DGI"},{id:"freight",l:"Flete"},{id:"email",l:"Emails"},{id:"integraciones",l:"Integraciones"},{id:"dominio",l:"Dominio"},{id:"zonas",l:"Zonas depósito"},{id:"portal",l:"Portal B2B"},{id:"datos",l:"Datos"},{id:"plan",l:"Plan"}].map(st=>(
               <button key={st.id} onClick={()=>setSettingsTab(st.id)}
                 style={{flex:"0 0 auto",padding:"10px 16px",cursor:"pointer",whiteSpace:"nowrap",fontFamily:T.sans,fontSize:12,fontWeight:600,
@@ -666,7 +667,7 @@ export default function ConfigInline({
                 {st.l}
               </button>
             ))}
-          </div>
+          </div>}
 
           {/* ── USUARIOS ─────────────────────────────────────────────────── */}
           {settingsTab==="usuarios" && (

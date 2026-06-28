@@ -102,6 +102,16 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
   
 
+  // Nudge de integraciones — descartable, se recuerda por-org en localStorage
+  const [integHint, setIntegHint] = React.useState(() => {
+    try { return localStorage.getItem('pazque-integ-hint-'+getOrgId()) !== 'off'; }
+    catch { return true; }
+  });
+  const dismissIntegHint = () => {
+    setIntegHint(false);
+    try { localStorage.setItem('pazque-integ-hint-'+getOrgId(), 'off'); } catch {}
+  };
+
   // Cargar pedidos a proveedores con ETA
   const [purchaseOrders, setPurchaseOrders] = React.useState([]);
   React.useEffect(() => {
@@ -634,6 +644,34 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
         </button>
       </div>
       </div>
+
+      {/* ── Nudge: conectá tus herramientas (WhatsApp, ruteo, ERP) ── */}
+      {!demoMode && integHint && (
+        <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',
+          background:'linear-gradient(90deg,#eef2ff 0%,#f0fdf4 100%)',
+          border:'1px solid #e0e7ff',borderRadius:12,padding:'14px 18px'}}>
+          <span style={{fontSize:22,lineHeight:1}}>🔌</span>
+          <div style={{flex:'1 1 240px',minWidth:0}}>
+            <div style={{fontFamily:F.sans,fontSize:14,fontWeight:700,color:'#1a1a18'}}>
+              Conectá tus herramientas
+            </div>
+            <div style={{fontFamily:F.sans,fontSize:12.5,color:'#5a5a68',marginTop:2}}>
+              WhatsApp para avisos y pedidos, ruteo de entregas y tu sistema de facturación — todo desde un lugar.
+            </div>
+          </div>
+          <button onClick={()=>setTab('integraciones')}
+            style={{flex:'0 0 auto',padding:'9px 18px',background:'#4f46e5',color:'#fff',
+              border:'none',borderRadius:8,cursor:'pointer',fontFamily:F.sans,fontSize:13,
+              fontWeight:600,whiteSpace:'nowrap'}}>
+            Ver integraciones
+          </button>
+          <button onClick={dismissIntegHint} aria-label="Descartar"
+            style={{flex:'0 0 auto',padding:'6px 10px',background:'transparent',color:'#9a9a98',
+              border:'none',borderRadius:8,cursor:'pointer',fontFamily:F.sans,fontSize:18,lineHeight:1}}>
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── Tus números — resumen comercial (¿cómo vengo vendiendo?) ── */}
       <div>
