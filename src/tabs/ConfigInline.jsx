@@ -68,6 +68,81 @@ function OrderNotifyEmailField({ orgId }) {
   );
 }
 
+// ── Control de inventario (self-service) ──────────────────────────────────
+// Toggle "Controlo inventario" ON/OFF. Edita organizations.no_controla_stock vía
+// api/stock-control.js, que además backfillea los productos existentes:
+//   • OFF (no controla): productos en 0/null → 99999 (nunca bloquean pedidos)
+//   • ON  (sí controla): productos en 99999  → 0     (para cargar stock real)
+// Genérico multi-tenant. Reemplaza el SQL manual del flag por un click del admin.
+function StockControlCard() {
+  const [controla, setControla] = React.useState(null); // null=cargando
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
+  const [msg, setMsg] = React.useState('');
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/stock-control?action=status', { headers: getAuthHeaders() });
+        const d = r.ok ? await r.json() : null;
+        if (alive && d) setControla(d.controla === true);
+      } catch { /* deja en cargando */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const cambiar = async (nuevo) => {
+    if (busy) return;
+    // Confirmación solo al PRENDER el control: limpia los stocks altos a 0.
+    if (nuevo === true && !window.confirm(
+      'Vas a activar el control de inventario.\n\n' +
+      'Los productos sin stock cargado quedarán en 0 y deberás cargar las cantidades reales. ' +
+      'Los pedidos se bloquearán cuando un producto esté en 0.\n\n¿Continuar?'
+    )) return;
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      const r = await fetch('/api/stock-control?action=set', {
+        method: 'POST', headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ controla: nuevo }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'No se pudo guardar');
+      setControla(nuevo);
+      setMsg(d.ajustados > 0 ? `Listo · ${d.ajustados} producto${d.ajustados === 1 ? '' : 's'} ajustado${d.ajustados === 1 ? '' : 's'}` : 'Guardado ✓');
+      setTimeout(() => setMsg(''), 3500);
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+        <div>
+          <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Controlo inventario</div>
+          <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2,maxWidth:520}}>
+            Si está <b>activado</b>, Pazque descuenta stock y bloquea pedidos cuando un producto se agota (necesitás cargar las cantidades reales).
+            Si está <b>desactivado</b>, los pedidos nunca se bloquean por falta de stock (ideal si todavía no cargaste tu inventario).
+          </div>
+        </div>
+        <label style={{position:'relative',display:'inline-block',width:44,height:24,cursor:controla===null||busy?'default':'pointer',flexShrink:0,opacity:controla===null?.4:1}}>
+          <input type="checkbox" checked={controla===true} disabled={controla===null||busy}
+            onChange={e=>cambiar(e.target.checked)} style={{opacity:0,width:0,height:0}}/>
+          <span style={{position:'absolute',inset:0,borderRadius:24,transition:'.2s',
+            background:controla===true?'#059669':'#cfcdc7'}}/>
+          <span style={{position:'absolute',top:3,left:controla===true?23:3,width:18,height:18,borderRadius:'50%',
+            background:'#fff',transition:'.2s',boxShadow:'0 1px 2px rgba(0,0,0,.2)'}}/>
+        </label>
+      </div>
+      {(err||msg)&&(
+        <div style={{marginTop:10,fontFamily:'Inter,sans-serif',fontSize:12,fontWeight:600,color:err?'#dc2626':'#059669'}}>
+          {err||msg}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tarjeta de integración con SimpliRoute (self-service) ─────────────────
 // El distribuidor pega su API token de SimpliRoute. Pazque lo valida, lo guarda
 // server-side (api/simpliroute) y registra el webhook de entregas. Una vez
@@ -995,6 +1070,9 @@ export default function ConfigInline({
 
                 {/* Email de notificación de pedidos */}
                 <OrderNotifyEmailField orgId={brandCfg?.orgId||getOrgId()} />
+
+                {/* Control de inventario (flag no_controla_stock, self-service) */}
+                <StockControlCard />
 
                 {/* Toggle: Recordatorio de carrito abandonado */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
