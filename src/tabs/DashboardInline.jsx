@@ -124,7 +124,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
 
 
   // Pull ventas reactively — avoids adding a prop to the parent call site
-  const { ventas = [], clientes = [], brandCfg = {} } = useApp();
+  const { ventas = [], clientes = [], rutas = [], priceListas = [], brandCfg = {} } = useApp();
 
   // today: stable reference that only changes when the calendar day changes
   // Using useMemo with a day-key prevents both stale-midnight and every-render issues
@@ -600,7 +600,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       {/* ── WhatsApp resumen diario ─────────────────────────────────── */}
 
       {/* ── Setup Progress Checklist — full width banner ── */}
-      {!demoMode && <SetupChecklist products={products} suppliers={suppliers} clientes={clientes} ventas={ventas} cfes={cfes} brandCfg={brandCfg} setTab={setTab} />}
+      {!demoMode && <SetupChecklist products={products} suppliers={suppliers} clientes={clientes} ventas={ventas} rutas={rutas} cfes={cfes} priceListas={priceListas} brandCfg={brandCfg} setTab={setTab} />}
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>

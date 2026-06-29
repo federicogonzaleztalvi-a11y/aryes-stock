@@ -8,6 +8,7 @@ const STEPS = [
   { id: 'brand',    label: 'Configurar nombre y logo',          icon: '🏷', tab: 'config',      desc: 'Dale identidad a tu plataforma' },
   { id: 'supplier', label: 'Agregar primer proveedor',           icon: '🏭', tab: 'suppliers',   desc: 'Necesario para calcular lead times' },
   { id: 'products', label: 'Cargar productos al inventario',     icon: '📦', tab: 'inventory',   desc: 'Importá desde Excel o uno por uno' },
+  { id: 'precios',  label: 'Crear lista de precios',             icon: '💲', tab: 'precios',     desc: 'Los precios que ve tu cliente en el portal' },
   { id: 'cliente',  label: 'Agregar primer cliente',             icon: '👥', tab: 'clientes',    desc: 'Con teléfono para activar el portal B2B' },
   { id: 'venta',    label: 'Registrar primera venta',            icon: '💰', tab: 'ventas',      desc: 'El corazón del sistema' },
   { id: 'ruta',     label: 'Crear primera ruta de entrega',      icon: '🚛', tab: 'rutas',       desc: 'Optimizá tus recorridos' },
@@ -19,7 +20,7 @@ function readLS(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
 }
 
-function SetupChecklist({ products = [], suppliers = [], clientes = [], ventas = [], rutas = [], cfes = [], brandCfg = null, setTab }) {
+function SetupChecklist({ products = [], suppliers = [], clientes = [], ventas = [], rutas = [], cfes = [], priceListas = [], brandCfg = null, setTab }) {
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(LS_DISMISSED) === 'true');
   const [expanded, setExpanded]   = useState(false);
 
@@ -38,6 +39,7 @@ function SetupChecklist({ products = [], suppliers = [], clientes = [], ventas =
     if (s.id === 'supplier') done = suppliers.length > 0;
     if (s.id === 'cliente')  done = clientes.length > 0;
     if (s.id === 'products') done = products.length > 0;
+    if (s.id === 'precios')  done = priceListas.length > 0;
     if (s.id === 'venta')    done = ventas.length > 0;
     if (s.id === 'ruta')     done = rutas.length > 0;
     if (s.id === 'portal')   done = clientes.some(c => c.portal_activo !== false && c.telefono);
