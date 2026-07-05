@@ -1707,17 +1707,30 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
             </div>
           )}
-          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, netoLinea }) => (
+          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, netoLinea, tramos }) => (
             <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <span>{fmt.currency(item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
-                    {descEfectivoPct > 0 && <span style={{ color: '#dc2626' }}>-{descEfectivoPct}%</span>}
+                    {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#dc2626' }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
                   </div>
-                  {unidEnCaja > 0 && (
+                  {/* Desglose por tramo: cuando parte de la cantidad lleva un descuento
+                      y otra parte otro (ej. caja cerrada + sueltas), se muestran
+                      separados en vez de un único % promedio que no le sirve a nadie. */}
+                  {tramos && tramos.length > 1 ? (
+                    <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {tramos.map((t, i) => (
+                        <div key={i} style={{ fontSize: 11, color: t.distribuidor ? G : '#6a6a68', fontWeight: t.distribuidor ? 600 : 400 }}>
+                          {t.distribuidor ? '✓ ' : '• '}{t.unidades} {item.unidad || 'u'} × {fmt.currency(t.precioUnit)}
+                          {t.dtoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{Math.round(t.dtoPct)}%</span>}
+                          {t.distribuidor && <span style={{ marginLeft: 4 }}>(precio distribuidor)</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : unidEnCaja > 0 && (
                     <div style={{ fontSize: 11, color: G, fontWeight: 600, marginTop: 3 }}>
                       ✓ {unidEnCaja} {item.unidad || 'u'} a precio distribuidor (caja cerrada)
                     </div>

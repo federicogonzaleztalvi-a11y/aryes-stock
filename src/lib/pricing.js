@@ -43,7 +43,11 @@ export function calcLinea(item, qty) {
   const cajaDtoCfg = Number(item.descuento_caja) || 0;
   const aplicaCaja = cajaUnid > 0 && cajaDtoCfg > 0;
 
-  let netoLinea, precioConDto, faltanParaCaja = 0, ahorroSiCompleta = 0;
+  // tramos: desglose de la línea por precio unitario. Cuando hay caja cerrada,
+  // las unidades que completan cajas pagan el precio distribuidor y las sueltas
+  // el precio normal → son dos tramos distintos, nunca un % promedio. dtoPct es
+  // el descuento de ese tramo respecto de la base (coincide con lo configurado).
+  let netoLinea, precioConDto, faltanParaCaja = 0, ahorroSiCompleta = 0, tramos;
   if (aplicaCaja) {
     const cajas = Math.floor(qty / cajaUnid);
     const unidConCaja = cajas * cajaUnid;
@@ -52,6 +56,13 @@ export function calcLinea(item, qty) {
     const precioCaja = round2(base * (1 - descPctCaja / 100));
     netoLinea = unidConCaja * precioCaja + unidResto * precioReg;
     precioConDto = qty > 0 ? round2(netoLinea / qty) : precioReg;
+    if (unidConCaja > 0 && precioCaja < precioReg) {
+      tramos = [{ unidades: unidConCaja, precioUnit: precioCaja, dtoPct: descPctCaja, distribuidor: true }];
+      if (unidResto > 0) tramos.push({ unidades: unidResto, precioUnit: precioReg, dtoPct: descPct, distribuidor: false });
+    } else {
+      // La caja no da precio mejor que el suelto (o no se completó ninguna) → precio uniforme.
+      tramos = [{ unidades: qty, precioUnit: precioReg, dtoPct: descPct, distribuidor: false }];
+    }
     // Nudge "vendedor": si faltan pocas unidades para completar otra caja,
     // cuánto ahorraría llevándolas a precio de caja en vez de suelto.
     if (unidResto > 0 && precioCaja < precioReg) {
@@ -61,10 +72,11 @@ export function calcLinea(item, qty) {
   } else {
     precioConDto = precioReg;
     netoLinea = precioReg * qty;
+    tramos = [{ unidades: qty, precioUnit: precioReg, dtoPct: descPct, distribuidor: false }];
   }
   const ivaLinea = netoLinea * (ivaRate / 100);
   return {
-    ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea,
+    ivaRate, descPct, volDto, precioConDto, netoLinea, ivaLinea, tramos,
     cajaUnid: aplicaCaja ? cajaUnid : 0, faltanParaCaja, ahorroSiCompleta,
   };
 }

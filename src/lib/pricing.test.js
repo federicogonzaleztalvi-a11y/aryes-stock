@@ -179,3 +179,32 @@ describe('calcLinea — modelo v2 (reglas, base sin descontar)', () => {
     expect(r.netoLinea).toBe(1650);
   });
 });
+
+// El carrito muestra los TRAMOS: qué cantidad lleva qué descuento, en vez de un
+// único % promedio mezclado (que no representa a ninguna unidad).
+describe('calcLinea — tramos (desglose por precio de la línea)', () => {
+  it('línea mixta caja+sueltas: dos tramos diferenciados', () => {
+    const item = { precioBase: 100, iva_rate: 0, descGlobal: 10,
+                   unidades_por_caja: 6, descuento_caja: 20, reglasV2: true };
+    const r = calcLinea(item, 8); // 1 caja (6) + 2 sueltas
+    expect(r.tramos).toEqual([
+      { unidades: 6, precioUnit: 80, dtoPct: 20, distribuidor: true },
+      { unidades: 2, precioUnit: 90, dtoPct: 10, distribuidor: false },
+    ]);
+  });
+
+  it('línea uniforme: un solo tramo', () => {
+    const r = calcLinea({ precio: 100, iva_rate: 0, descGlobal: 10 }, 5);
+    expect(r.tramos).toEqual([
+      { unidades: 5, precioUnit: 90, dtoPct: 10, distribuidor: false },
+    ]);
+  });
+
+  it('caja exacta (sin sueltas): un solo tramo distribuidor', () => {
+    const item = { precioBase: 100, iva_rate: 0, unidades_por_caja: 6, descuento_caja: 20, reglasV2: true };
+    const r = calcLinea(item, 12);
+    expect(r.tramos).toEqual([
+      { unidades: 12, precioUnit: 80, dtoPct: 20, distribuidor: true },
+    ]);
+  });
+});

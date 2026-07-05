@@ -252,12 +252,25 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
         descGlobalItem = 0; volTiers = []; cajaUnidItem = 0; cajaDtoItem = 0;
       } else {
         const { siempre, caja, tiers } = reglasToComponentes(reglas);
+        // PISO de compatibilidad: un producto con reglas v2 nunca puede quedar
+        // peor que con el modelo viejo. El descuento "siempre" efectivo es el
+        // MAYOR entre el de las reglas y los descuentos heredados de la lista:
+        // el dto por producto (que cargó el importador en price_list_items),
+        // el dto por categoría y el dto global de la lista. Es MAX, nunca suma.
+        // Así el 30% que trae la lista se respeta aunque el producto tenga además
+        // una escala por cantidad menor (ej. 15%) — el cliente paga el mayor.
+        const dtoCatLegacy = Number(dtosCategoria[p.category || ''] || 0);
+        const dtoItemLegacy = Number(itemDtoMap[p.uuid] || 0);
         precioBase = base;
-        descGlobalItem = siempre;
-        precio = siempre > 0 ? Math.round(base * (1 - siempre / 100) * 100) / 100 : base; // sticker qty=1
+        descGlobalItem = Math.max(siempre, dtoItemLegacy, dtoCatLegacy, descGlobal);
+        precio = descGlobalItem > 0 ? Math.round(base * (1 - descGlobalItem / 100) * 100) / 100 : base; // sticker qty=1
         volTiers = tiers;
-        cajaUnidItem = caja > 0 ? (Number(p.unidades_por_caja) || 0) : 0;
-        cajaDtoItem = caja;
+        // Caja: si las reglas no traen "caja" pero la lista tiene la caja cerrada
+        // habilitada, se respeta el descuento_caja del producto (modelo viejo),
+        // así los múltiplos de caja siguen teniendo su precio distribuidor.
+        const cajaDtoEff = Math.max(caja, cajaCerrada ? (Number(p.descuento_caja) || 0) : 0);
+        cajaUnidItem = cajaDtoEff > 0 ? (Number(p.unidades_por_caja) || 0) : 0;
+        cajaDtoItem = cajaDtoEff;
       }
       // Override cliente-producto: precio fijo gana; dto puntual se toma como
       // "siempre" (el mayor entre el de la regla y el del override).

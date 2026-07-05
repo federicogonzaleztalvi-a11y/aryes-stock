@@ -67,9 +67,18 @@ function saneaReglas(reglas) {
 // Reglas guardadas en el item (v2) o, si es una lista vieja, deriva el descuento
 // legacy como una regla "Siempre" para que Federico la vea y la migre al editar.
 function reglasDelItem(item) {
-  if (Array.isArray(item?.reglas) && item.reglas.length > 0) return saneaReglas(item.reglas);
-  if ((item?.descuento || 0) > 0) return [{ condicion: 'siempre', dto: Number(item.descuento) }];
-  return [];
+  const reglas = Array.isArray(item?.reglas) ? saneaReglas(item.reglas) : [];
+  // El dto legacy del item (price_list_items.descuento, que cargó el importador)
+  // se pliega como piso "Siempre" AUNQUE ya haya reglas: mismo criterio que el
+  // portal (MAX, nunca peor que el modelo viejo). Así el editor muestra el 30%
+  // de la lista y al guardar lo migra a una regla de verdad.
+  const legacyDto = Number(item?.descuento) || 0;
+  if (legacyDto > 0) {
+    const i = reglas.findIndex(r => r.condicion === 'siempre');
+    if (i >= 0) reglas[i] = { condicion: 'siempre', dto: Math.max(reglas[i].dto, legacyDto) };
+    else reglas.unshift({ condicion: 'siempre', dto: legacyDto });
+  }
+  return reglas;
 }
 
 // Moneda con 2 decimales — solo para el editor (fmt.currency redondea a entero en toda la app).
