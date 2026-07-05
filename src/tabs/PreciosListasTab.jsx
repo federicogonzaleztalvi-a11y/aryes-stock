@@ -25,12 +25,6 @@ async function sb(path, opts = {}) {
 // El motor (api/_catalog.js) toma la MEJOR regla que aplica por unidad — nunca suma.
 // Si hay precio especial (>0), ese ES el precio final y las reglas se ignoran.
 
-const CONDICIONES = {
-  siempre:  { label: 'Siempre',            hint: 'Se aplica a todas las unidades' },
-  caja:     { label: 'Con caja cerrada',   hint: 'Solo a las unidades que completan cajas enteras' },
-  cantidad: { label: 'Desde X unidades',   hint: 'Si la cantidad pedida alcanza el mínimo' },
-};
-
 // Mismo mapeo que reglasToComponentes en api/_catalog.js — solo para el preview
 // del editor. La matemática real la hace calcLinea (importado), igual que el carrito.
 function reglasComponentes(reglas) {
@@ -99,23 +93,37 @@ function ModalReglas({ prod, item, onClose, onSave }) {
   const unidCaja = Number(prod.unidades_por_caja || 0);
   const ivaRate = prod.iva_rate != null ? Number(prod.iva_rate) : 0;
   const [especial, setEspecial] = useState(item?.precio > 0 ? String(item.precio) : '');
-  const [reglas, setReglas] = useState(reglasDelItem(item));
+  // Tres slots FIJOS e independientes — el dominio tiene exactamente tres condiciones.
+  // Se llena la que se quiera y las demás quedan vacías; nada se colapsa ni se pisa.
+  const seed = reglasComponentes(reglasDelItem(item));
+  const [siempreDto, setSiempreDto] = useState(seed.siempre > 0 ? String(seed.siempre) : '');
+  const [cajaDto, setCajaDto] = useState(seed.caja > 0 ? String(seed.caja) : '');
+  const [tiers, setTiers] = useState(seed.tiers.length ? seed.tiers.map(t => ({ min: String(t.min), dto: String(t.dto) })) : []);
   const [saving, setSaving] = useState(false);
   const esp = parseFloat(especial) || 0;
   const usaEspecial = esp > 0;
-  const comps = reglasComponentes(reglas);
-  const cajaSinUnid = comps.caja > 0 && unidCaja <= 0;
 
-  const addRegla = () => setReglas(rs => [...rs, { condicion: 'siempre', dto: '' }]);
-  const setRegla = (i, patch) => setReglas(rs => rs.map((r, j) => j === i ? { ...r, ...patch } : r));
-  const delRegla = (i) => setReglas(rs => rs.filter((_, j) => j !== i));
+  // Arma el array de reglas a partir de los tres slots (para preview y guardado).
+  const reglasActuales = [];
+  if ((parseFloat(siempreDto) || 0) > 0) reglasActuales.push({ condicion: 'siempre', dto: parseFloat(siempreDto) });
+  if ((parseFloat(cajaDto) || 0) > 0) reglasActuales.push({ condicion: 'caja', dto: parseFloat(cajaDto) });
+  for (const t of tiers) {
+    const min = Math.floor(Number(t.min)); const dto = parseFloat(t.dto);
+    if (min > 1 && dto > 0) reglasActuales.push({ condicion: 'cantidad', dto, min_unidades: min });
+  }
+  const comps = reglasComponentes(reglasActuales);
+  const cajaSinUnid = (parseFloat(cajaDto) || 0) > 0 && unidCaja <= 0;
+
+  const addTier = () => setTiers(ts => [...ts, { min: '', dto: '' }]);
+  const setTier = (i, patch) => setTiers(ts => ts.map((t, j) => j === i ? { ...t, ...patch } : t));
+  const delTier = (i) => setTiers(ts => ts.filter((_, j) => j !== i));
 
   // Cantidades de ejemplo para el preview: 1, la primera escala por cantidad, y una caja.
   const qtys = [...new Set([1, ...comps.tiers.map(t => t.min), unidCaja > 0 && comps.caja > 0 ? unidCaja : null, unidCaja > 0 && comps.caja > 0 ? unidCaja + 2 : null].filter(q => q && q > 0))].sort((a, b) => a - b).slice(0, 4);
 
   const guardar = async () => {
     setSaving(true);
-    const limpias = usaEspecial ? [] : saneaReglas(reglas);
+    const limpias = usaEspecial ? [] : saneaReglas(reglasActuales);
     await onSave(prod.uuid || prod.id, esp, limpias);
     setSaving(false);
   };
@@ -137,33 +145,59 @@ function ModalReglas({ prod, item, onClose, onSave }) {
           <div style={{ fontSize: 11, color: '#b45309', marginTop: 6 }}>Si lo ponés, ese es el precio final para esta lista y <strong>no se aplican descuentos</strong>.</div>
         </div>
 
-        {/* Reglas de descuento */}
+        {/* Descuentos — tres condiciones fijas e independientes */}
         <div style={{ opacity: usaEspecial ? 0.45 : 1, pointerEvents: usaEspecial ? 'none' : 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Descuentos</span>
-            <button onClick={addRegla} style={{ background: '#f0fdf4', color: G, border: `1px solid #bbf7d0`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>+ Regla</button>
-          </div>
-          {reglas.length === 0 && <div style={{ fontSize: 12, color: '#9ca3af', padding: '8px 0' }}>Sin descuentos — se cobra el precio base.</div>}
-          {reglas.map((r, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-              <select value={r.condicion} onChange={e => setRegla(i, { condicion: e.target.value })} style={{ ...inp, cursor: 'pointer' }}>
-                {Object.entries(CONDICIONES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <input type="number" min={0} max={100} step="0.5" value={r.dto} onChange={e => setRegla(i, { dto: e.target.value })} placeholder="0" style={{ ...inp, width: 64, textAlign: 'center' }} />
-                <span style={{ fontSize: 12, color: '#6b7280' }}>%</span>
-              </div>
-              {r.condicion === 'cantidad' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>desde</span>
-                  <input type="number" min={2} step="1" value={r.min_unidades || ''} onChange={e => setRegla(i, { min_unidades: e.target.value })} placeholder="24" style={{ ...inp, width: 64, textAlign: 'center' }} />
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>u</span>
-                </div>
-              )}
-              <button onClick={() => delRegla(i)} title="Quitar regla" style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, marginLeft: 'auto' }}>✕</button>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Descuentos</div>
+          <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 12 }}>Llená las condiciones que quieras usar. Podés combinarlas — el cliente paga siempre el mayor descuento que corresponde, nunca se suman.</div>
+
+          {/* 1 · Siempre */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Siempre</div>
+              <div style={{ fontSize: 11, color: '#9ca3af' }}>Sobre cualquier cantidad</div>
             </div>
-          ))}
-          {cajaSinUnid && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>⚠️ Este producto no tiene "unidades por caja" definidas — el descuento por caja no se va a aplicar hasta cargarlas en el producto.</div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <input type="number" min={0} max={100} step="0.5" value={siempreDto} onChange={e => setSiempreDto(e.target.value)} placeholder="0" style={{ ...inp, width: 72, textAlign: 'center' }} />
+              <span style={{ fontSize: 13, color: '#6b7280' }}>%</span>
+            </div>
+          </div>
+
+          {/* 2 · Con caja cerrada */}
+          <div style={{ padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 10, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Con caja cerrada</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>Precio distribuidor{unidCaja > 0 ? ` · cajas de ${unidCaja} u` : ''}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <input type="number" min={0} max={100} step="0.5" value={cajaDto} onChange={e => setCajaDto(e.target.value)} placeholder="0" style={{ ...inp, width: 72, textAlign: 'center' }} />
+                <span style={{ fontSize: 13, color: '#6b7280' }}>%</span>
+              </div>
+            </div>
+            {cajaSinUnid && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 8 }}>⚠️ Este producto no tiene "unidades por caja" definidas — el descuento por caja no se va a aplicar hasta cargarlas en el producto.</div>}
+            {comps.caja > 0 && unidCaja > 0 && <div style={{ fontSize: 11, color: '#047857', marginTop: 8, background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, padding: '6px 10px' }}>ℹ️ El {comps.caja}% se aplica solo a las unidades que completan cajas de {unidCaja}. Las que sobran (no llenan una caja) van a precio pleno.</div>}
+          </div>
+
+          {/* 3 · Desde X unidades (escalas) */}
+          <div style={{ padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 150 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>Por cantidad</div>
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>Descuento a partir de X unidades</div>
+              </div>
+              <button onClick={addTier} style={{ background: '#f0fdf4', color: G, border: `1px solid #bbf7d0`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>+ Escala</button>
+            </div>
+            {tiers.map((t, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: '#6b7280' }}>desde</span>
+                <input type="number" min={2} step="1" value={t.min} onChange={e => setTier(i, { min: e.target.value })} placeholder="24" style={{ ...inp, width: 68, textAlign: 'center' }} />
+                <span style={{ fontSize: 12, color: '#6b7280' }}>u →</span>
+                <input type="number" min={0} max={100} step="0.5" value={t.dto} onChange={e => setTier(i, { dto: e.target.value })} placeholder="0" style={{ ...inp, width: 68, textAlign: 'center' }} />
+                <span style={{ fontSize: 12, color: '#6b7280' }}>%</span>
+                <button onClick={() => delTier(i)} title="Quitar escala" style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, marginLeft: 'auto' }}>✕</button>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Preview con la matemática real del carrito */}
@@ -177,11 +211,17 @@ function ModalReglas({ prod, item, onClose, onSave }) {
             </tr></thead>
             <tbody>
               {qtys.map(q => {
-                const r = calcLinea(previewItem(base, esp, usaEspecial ? [] : reglas, ivaRate, unidCaja), q);
+                const r = calcLinea(previewItem(base, esp, usaEspecial ? [] : reglasActuales, ivaRate, unidCaja), q);
+                const cajaOn = !usaEspecial && comps.caja > 0 && unidCaja > 0;
+                const cajas = cajaOn ? Math.floor(q / unidCaja) : 0;
+                const sueltas = q - cajas * unidCaja;
+                const detalle = !cajaOn ? '' : cajas > 0
+                  ? (sueltas > 0 ? `${cajas * unidCaja} en caja + ${sueltas} suelta${sueltas !== 1 ? 's' : ''} a precio pleno` : `${cajas} caja${cajas !== 1 ? 's' : ''} completa${cajas !== 1 ? 's' : ''}`)
+                  : 'no completa caja → precio pleno';
                 return (<tr key={q} style={{ borderTop: '1px solid #f0f0ec' }}>
-                  <td style={{ padding: '5px 4px', color: '#374151' }}>{q} u</td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: '#1a1a1a' }}>{fmtPrecio(r.precioConDto)}</td>
-                  <td style={{ padding: '5px 4px', textAlign: 'right', color: '#6b7280' }}>{fmtPrecio(r.netoLinea)}</td>
+                  <td style={{ padding: '5px 4px', color: '#374151' }}><div style={{ fontWeight: 600 }}>{q} u</div>{detalle && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 1 }}>{detalle}</div>}</td>
+                  <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: '#1a1a1a', verticalAlign: 'top' }}>{fmtPrecio(r.precioConDto)}</td>
+                  <td style={{ padding: '5px 4px', textAlign: 'right', color: '#6b7280', verticalAlign: 'top' }}>{fmtPrecio(r.netoLinea)}</td>
                 </tr>);
               })}
             </tbody>
