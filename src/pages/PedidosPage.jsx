@@ -1141,9 +1141,17 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
     })
     .filter(Boolean);
 
-  const lineasConCalc = lineas.map(({ key, item, qty, variantId, variantSku }) => ({
-    key, item, qty, variantId, variantSku, ...calcLinea(item, qty),
-  }));
+  const lineasConCalc = lineas.map(({ key, item, qty, variantId, variantSku }) => {
+    const c = calcLinea(item, qty);
+    // descPct es solo el descuento por unidad SUELTA (Siempre/cantidad). Cuando hay
+    // caja cerrada, las unidades de caja pagan menos, así que el ahorro real de la
+    // línea es mayor. descEfectivoPct = ahorro real vs el precio de lista mostrado.
+    const refUnit = Number(item.precio) || 0;
+    const descEfectivoPct = refUnit > 0 ? Math.max(0, Math.round(100 * (1 - c.netoLinea / (refUnit * qty)))) : 0;
+    // Unidades que efectivamente pagan precio distribuidor (completan cajas).
+    const unidEnCaja = c.cajaUnid > 0 ? Math.floor(qty / c.cajaUnid) * c.cajaUnid : 0;
+    return { key, item, qty, variantId, variantSku, ...c, descEfectivoPct, unidEnCaja };
+  });
   const { subtotalNeto, ivaTotal, total } = calcTotales(lineasConCalc);
 
   // Cross-sell: productos que suelen pedirse JUNTO con lo que ya hay en el carrito.
@@ -1367,14 +1375,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ececec', paddingBottom: 6 }}>
               <span>PRODUCTO</span><span>SUBTOTAL</span>
             </div>
-            {lineasConCalc.map(({ key, item, qty, variantId, descPct, precioConDto, netoLinea, ivaRate, faltanParaCaja, ahorroSiCompleta }) => (
+            {lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, faltanParaCaja, ahorroSiCompleta }) => (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
                 padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
                     {qty} {item.unidad || ''} × {fmt.currency(precioConDto)}
-                    {descPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descPct}%</span>}
+                    {descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                   </div>
                 </div>
@@ -1518,14 +1526,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
           <div style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 10 }}>
             DETALLE DEL PEDIDO
           </div>
-          {lineasConCalc.map(({ key, item, qty, descPct, precioConDto, netoLinea, ivaRate }) => (
+          {lineasConCalc.map(({ key, item, qty, descEfectivoPct, precioConDto, netoLinea, ivaRate }) => (
             <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
               padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                 <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
                   {qty} × {fmt.currency(item.precio)}
-                  {descPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descPct}%</span>}
+                  {descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
                   <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                 </div>
               </div>
@@ -1699,19 +1707,24 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
             </div>
           )}
-          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descPct, precioConDto, netoLinea }) => (
+          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, netoLinea }) => (
             <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <span>{fmt.currency(item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
-                    {descPct > 0 && <span style={{ color: '#dc2626' }}>-{descPct}%</span>}
+                    {descEfectivoPct > 0 && <span style={{ color: '#dc2626' }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
                   </div>
+                  {unidEnCaja > 0 && (
+                    <div style={{ fontSize: 11, color: G, fontWeight: 600, marginTop: 3 }}>
+                      ✓ {unidEnCaja} {item.unidad || 'u'} a precio distribuidor (caja cerrada)
+                    </div>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  {descPct > 0 && (
+                  {descEfectivoPct > 0 && (
                     <div style={{ fontSize: 11, color: '#b0b0a8', textDecoration: 'line-through' }}>
                       {fmt.currency(item.precio * qty)}
                     </div>
