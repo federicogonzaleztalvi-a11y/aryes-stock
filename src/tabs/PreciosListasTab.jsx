@@ -187,16 +187,23 @@ function ModalReglas({ prod, item, onClose, onSave }) {
               </div>
               <button onClick={addTier} style={{ background: '#f0fdf4', color: G, border: `1px solid #bbf7d0`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>+ Escala</button>
             </div>
-            {tiers.map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>desde</span>
-                <input type="number" min={2} step="1" value={t.min} onChange={e => setTier(i, { min: e.target.value })} placeholder="24" style={{ ...inp, width: 68, textAlign: 'center' }} />
-                <span style={{ fontSize: 12, color: '#6b7280' }}>u →</span>
-                <input type="number" min={0} max={100} step="0.5" value={t.dto} onChange={e => setTier(i, { dto: e.target.value })} placeholder="0" style={{ ...inp, width: 68, textAlign: 'center' }} />
-                <span style={{ fontSize: 12, color: '#6b7280' }}>%</span>
-                <button onClick={() => delTier(i)} title="Quitar escala" style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, marginLeft: 'auto' }}>✕</button>
+            {tiers.map((t, i) => {
+              const tMin = Math.floor(Number(t.min)), tDto = parseFloat(t.dto);
+              const incompleta = !(tMin > 1 && tDto > 0);
+              return (
+              <div key={i} style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>desde</span>
+                  <input type="number" min={2} step="1" value={t.min} onChange={e => setTier(i, { min: e.target.value })} placeholder="2" style={{ ...inp, width: 68, textAlign: 'center', borderColor: incompleta && !(tMin > 1) ? '#fca5a5' : '#d1d5db' }} />
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>u →</span>
+                  <input type="number" min={0} max={100} step="0.5" value={t.dto} onChange={e => setTier(i, { dto: e.target.value })} placeholder="0" style={{ ...inp, width: 68, textAlign: 'center', borderColor: incompleta && !(tDto > 0) ? '#fca5a5' : '#d1d5db' }} />
+                  <span style={{ fontSize: 12, color: '#6b7280' }}>%</span>
+                  <button onClick={() => delTier(i)} title="Quitar escala" style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 16, marginLeft: 'auto' }}>✕</button>
+                </div>
+                {incompleta && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>⚠️ Completá "desde" (mínimo 2) y el % para que esta escala se guarde.</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
