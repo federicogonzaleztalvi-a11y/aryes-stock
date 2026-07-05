@@ -144,3 +144,38 @@ describe('calcTotales — totales del carrito', () => {
     expect(t.total).toBe(0);
   });
 });
+
+// Modelo v2: el servidor manda precioBase SIN descontar + los descuentos por
+// separado (descGlobal='siempre', descuento_caja='caja', volume_tiers='cantidad')
+// y reglasV2:true. calcLinea resuelve con el MAYOR que aplica por unidad, sin apilar.
+describe('calcLinea — modelo v2 (reglas, base sin descontar)', () => {
+  it('solo regla caja (distribuidor Eric): caja completa con dto, sueltas a precio pleno', () => {
+    const item = { precioBase: 100, iva_rate: 0, descGlobal: 0,
+                   unidades_por_caja: 6, descuento_caja: 20, reglasV2: true };
+    const r = calcLinea(item, 8); // 1 caja (6) + 2 sueltas
+    expect(r.netoLinea).toBe(680);       // 6*80 + 2*100 (sueltas SIN descuento)
+    expect(r.faltanParaCaja).toBe(4);
+  });
+
+  it('regla siempre + regla caja: sueltas con "siempre", caja con el mayor', () => {
+    const item = { precioBase: 100, iva_rate: 0, descGlobal: 10,
+                   unidades_por_caja: 6, descuento_caja: 20, reglasV2: true };
+    const r = calcLinea(item, 8);
+    expect(r.netoLinea).toBe(660);       // 6*80 (caja 20%) + 2*90 (siempre 10%)
+  });
+
+  it('NO apila: siempre 30% + cantidad 15% → gana el mayor (30%), no 40,5%', () => {
+    const item = { precioBase: 100, iva_rate: 0, descGlobal: 30,
+                   volume_tiers: [{ min: 10, dto: 15 }], reglasV2: true };
+    const r = calcLinea(item, 12);
+    expect(r.descPct).toBe(30);          // max(30, 15)
+    expect(r.netoLinea).toBe(840);       // 12 * 70 (no 12 * 59,5)
+  });
+
+  it('precio especial fijo: es el precio final, sin descuentos', () => {
+    const item = { precioBase: 550, precio: 550, iva_rate: 0, descGlobal: 0, reglasV2: true };
+    const r = calcLinea(item, 3);
+    expect(r.precioConDto).toBe(550);
+    expect(r.netoLinea).toBe(1650);
+  });
+});

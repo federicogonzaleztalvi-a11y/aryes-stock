@@ -34,6 +34,47 @@ export function sanitizeVolumeTiers(raw) {
     .sort((a, b) => a.min - b.min);
 }
 
+// Sanea las reglas de descuento v2 de un price_list_item.
+// Forma: [{ condicion:'siempre'|'caja'|'cantidad', dto, min_unidades? }].
+// Devuelve SIEMPRE un array (vacío si no hay reglas válidas), así que un producto
+// "usa v2" solo si acá sale al menos una regla válida. Datos crudos o inválidos
+// se descartan sin romper.
+export function sanitizeReglas(raw) {
+  let arr = raw;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch { return []; } }
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map(r => {
+      const condicion = String(r?.condicion || '').trim();
+      const dto = Number(r?.dto);
+      if (!['siempre', 'caja', 'cantidad'].includes(condicion)) return null;
+      if (!Number.isFinite(dto) || dto <= 0 || dto > 100) return null;
+      if (condicion === 'cantidad') {
+        const min = Math.floor(Number(r?.min_unidades));
+        if (!Number.isFinite(min) || min <= 1) return null;
+        return { condicion, dto, min_unidades: min };
+      }
+      return { condicion, dto };
+    })
+    .filter(Boolean);
+}
+
+// A partir de reglas saneadas, deriva los componentes que consume el carrito
+// (calcLinea): descuento "siempre" (S), descuento de caja (C) y escalas por
+// cantidad (mismo formato que volume_tiers). Se toma el MAYOR de cada tipo.
+export function reglasToComponentes(reglas) {
+  let siempre = 0;
+  let caja = 0;
+  const tiers = [];
+  for (const r of reglas) {
+    if (r.condicion === 'siempre') siempre = Math.max(siempre, r.dto);
+    else if (r.condicion === 'caja') caja = Math.max(caja, r.dto);
+    else if (r.condicion === 'cantidad') tiers.push({ min: r.min_unidades, dto: r.dto });
+  }
+  tiers.sort((a, b) => a.min - b.min);
+  return { siempre, caja, tiers };
+}
+
 // Normaliza el JSONB `variants` del producto. Forma esperada:
 //   { label: "Color", options: [{ id, label, sku?, color_hex? }, ...] }
 // Las variantes comparten precio/IVA/stock del padre; sólo aportan etiqueta+SKU.
@@ -137,6 +178,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   let dtosCategoria = {};
   let itemMap = {};      // product_uuid -> precio fijo de la lista
   let itemDtoMap = {};   // product_uuid -> % de descuento del producto en la lista
+  let reglasMap = {};    // product_uuid -> reglas v2 saneadas (si las hay, gana v2)
 
   if (clienteId) {
     const cliRes = await fetch(
@@ -163,11 +205,14 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
         }
 
         const itemsRes = await fetch(
-          `${SB_URL}/rest/v1/price_list_items?lista_id=eq.${listaId}&select=product_uuid,precio,descuento`,
+          `${SB_URL}/rest/v1/price_list_items?lista_id=eq.${listaId}&select=product_uuid,precio,descuento,reglas`,
           { headers }
         );
         if (itemsRes.ok) {
           (await itemsRes.json()).forEach(it => {
+            // v2: si el ítem trae reglas válidas, ese producto usa el motor nuevo.
+            const reglas = sanitizeReglas(it.reglas);
+            if (reglas.length > 0) reglasMap[it.product_uuid] = reglas;
             // Precio fijo tiene prioridad; si no hay, guardamos el % de descuento
             // del producto. El editor del admin usa esta misma jerarquía (calcFinal).
             if (it.precio > 0) itemMap[it.product_uuid] = Number(it.precio);
@@ -181,9 +226,53 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   // ── 3. Armar items con el precio resuelto ──────────────────────────────────
   const items = products.map(p => {
     const base = Number(p.precio_venta) || 0;
-    let precio = base;
+    const reglas = reglasMap[p.uuid];
+    const usaReglas = !!(clienteId && listaId && Array.isArray(reglas) && reglas.length > 0);
 
-    if (clienteId && listaId) {
+    // Campos que consume el carrito (calcLinea). Por defecto: valores del camino
+    // viejo. Solo el motor v2 (abajo) los reemplaza, y solo para productos con
+    // reglas cargadas — por eso lo que hoy no tiene reglas no cambia en nada.
+    let precio = base;
+    let precioBase = base;
+    let descGlobalItem;   // undefined => calcLinea usa item.precio (comportamiento viejo)
+    let volTiers = sanitizeVolumeTiers(p.volume_tiers);
+    let cajaUnidItem = cajaCerrada ? (Number(p.unidades_por_caja) || 0) : 0;
+    let cajaDtoItem  = cajaCerrada ? (Number(p.descuento_caja) || 0) : 0;
+    let reglasV2 = false;
+
+    if (usaReglas) {
+      // ── Motor v2 (opt-in por producto con reglas) ──────────────────────────
+      // El PRECIO BASE va sin descontar; los descuentos van por separado y el
+      // carrito (calcLinea) toma el MAYOR que aplica por unidad — nunca suma.
+      reglasV2 = true;
+      const especial = itemMap[p.uuid];  // precio fijo de la lista (si hay)
+      if (especial !== undefined && especial > 0) {
+        // Precio especial fijo: ES el precio final, sin ningún descuento encima.
+        precioBase = especial; precio = especial;
+        descGlobalItem = 0; volTiers = []; cajaUnidItem = 0; cajaDtoItem = 0;
+      } else {
+        const { siempre, caja, tiers } = reglasToComponentes(reglas);
+        precioBase = base;
+        descGlobalItem = siempre;
+        precio = siempre > 0 ? Math.round(base * (1 - siempre / 100) * 100) / 100 : base; // sticker qty=1
+        volTiers = tiers;
+        cajaUnidItem = caja > 0 ? (Number(p.unidades_por_caja) || 0) : 0;
+        cajaDtoItem = caja;
+      }
+      // Override cliente-producto: precio fijo gana; dto puntual se toma como
+      // "siempre" (el mayor entre el de la regla y el del override).
+      if (overrideMap[p.uuid]) {
+        const ov = overrideMap[p.uuid];
+        if (ov.precio_override != null) {
+          precioBase = ov.precio_override; precio = ov.precio_override;
+          descGlobalItem = 0; volTiers = []; cajaUnidItem = 0; cajaDtoItem = 0;
+        } else if (ov.descuento_pct != null) {
+          descGlobalItem = Math.max(descGlobalItem || 0, ov.descuento_pct);
+          precio = Math.round(precioBase * (1 - descGlobalItem / 100) * 100) / 100;
+        }
+      }
+    } else if (clienteId && listaId) {
+      // ── Camino viejo (byte por byte) ───────────────────────────────────────
       const dtoCat = Number(dtosCategoria[p.category || ''] || 0);
       const dtoItem = Number(itemDtoMap[p.uuid] || 0);
       if (itemMap[p.uuid] !== undefined) {
@@ -197,12 +286,11 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       } else {
         precio = base;                                             // 5. sin precio especial → precio general
       }
-    }
-
-    if (clienteId && overrideMap[p.uuid]) {
-      const ov = overrideMap[p.uuid];
-      if (ov.precio_override != null) precio = ov.precio_override;
-      else if (ov.descuento_pct != null) precio = Math.round(precio * (1 - ov.descuento_pct / 100) * 100) / 100;
+      if (overrideMap[p.uuid]) {
+        const ov = overrideMap[p.uuid];
+        if (ov.precio_override != null) precio = ov.precio_override;
+        else if (ov.descuento_pct != null) precio = Math.round(precio * (1 - ov.descuento_pct / 100) * 100) / 100;
+      }
     }
 
     const physicalStock = Number(p.stock) || 0;
@@ -216,7 +304,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       categoria: p.category || 'General',
       marca: p.brand || '',
       precio,
-      precioBase: base,
+      precioBase,
       stock: physicalStock,
       available_stock: availableStock,
       reserved_stock: reservedStock,
@@ -224,12 +312,14 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       imagen_url: p.imagen_url || null,
       min_order_qty: p.min_order_qty != null ? Number(p.min_order_qty) : 1,
       descripcion: p.descripcion || '',
-      volume_tiers: sanitizeVolumeTiers(p.volume_tiers),
+      volume_tiers: volTiers,
       variants: sanitizeVariants(p.variants),
-      // Caja cerrada: solo se expone si la lista del cliente lo habilita.
-      // Si no, va en 0 y el portal ni se entera (no aplica descuento por caja).
-      unidades_por_caja: cajaCerrada ? (Number(p.unidades_por_caja) || 0) : 0,
-      descuento_caja: cajaCerrada ? (Number(p.descuento_caja) || 0) : 0,
+      // Caja cerrada: en el camino viejo solo si la lista lo habilita; en v2 la
+      // habilita la regla 'caja'. Si va en 0, el carrito no aplica descuento por caja.
+      unidades_por_caja: cajaUnidItem,
+      descuento_caja: cajaDtoItem,
+      // v2: le avisa a calcLinea que use precioBase (sin descontar) + descGlobal.
+      ...(reglasV2 ? { reglasV2: true, descGlobal: descGlobalItem } : {}),
     };
   });
 

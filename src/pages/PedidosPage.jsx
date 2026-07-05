@@ -1196,15 +1196,15 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
   const [selectedAddress, setSelectedAddress] = React.useState(null);
 
   React.useEffect(() => {
-    if (!session?.clienteId) return;
-    const SB = import.meta.env.VITE_SUPABASE_URL;
-    const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    fetch(`${SB}/rest/v1/client_addresses?client_id=eq.${session?.clienteId || 'none'}&active=eq.true&order=created_at.asc`,
-      { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } })
+    if (!session?.token) return;
+    // Se lee por el server (service role) y no directo desde el browser: la tabla
+    // client_addresses tiene RLS y la anon key devolvía [] en silencio → el
+    // selector de sucursal nunca aparecía aunque el cliente tuviera sucursales.
+    fetch(`${API}/api/client-addresses`, { headers: { Authorization: `Bearer ${session.token}` } })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data) && data.length > 0) { setAddresses(data); setSelectedAddress(data[0].id); } })
+      .then(data => { const a = data?.addresses; if (Array.isArray(a) && a.length > 0) { setAddresses(a); setSelectedAddress(a[0].id); } })
       .catch(console.error);
-  }, [session?.clienteId]);
+  }, [session?.token]);
 
   // Analytics helper — manda al panel propio (api/track) + posthog si está cargado
   const track = (event, props = {}) => {

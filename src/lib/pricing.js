@@ -29,9 +29,15 @@ export function volTierDto(item, qty) {
 // más los datos del nudge "te falta poco para completar caja".
 export function calcLinea(item, qty) {
   const ivaRate = item.iva_rate != null ? Number(item.iva_rate) : 0;
+  // Base sobre la que se aplican los descuentos. En el modelo v2 el servidor manda
+  // el precio base SIN descontar (precioBase) + los descuentos por separado, así
+  // que acá se resuelve todo junto con max() y nunca se apilan. En el modelo viejo
+  // (sin reglasV2) item.precio ya viene con el descuento de lista aplicado — se usa
+  // tal cual, igual que siempre.
+  const base = item.reglasV2 ? (Number(item.precioBase) || 0) : item.precio;
   const volDto = volTierDto(item, qty);
   const descPct = Math.max(item.descGlobal || 0, volDto);
-  const precioReg = descPct > 0 ? round2(item.precio * (1 - descPct / 100)) : item.precio;
+  const precioReg = descPct > 0 ? round2(base * (1 - descPct / 100)) : base;
 
   const cajaUnid = Number(item.unidades_por_caja) || 0;
   const cajaDtoCfg = Number(item.descuento_caja) || 0;
@@ -43,7 +49,7 @@ export function calcLinea(item, qty) {
     const unidConCaja = cajas * cajaUnid;
     const unidResto = qty - unidConCaja;
     const descPctCaja = Math.max(cajaDtoCfg, descPct);
-    const precioCaja = round2(item.precio * (1 - descPctCaja / 100));
+    const precioCaja = round2(base * (1 - descPctCaja / 100));
     netoLinea = unidConCaja * precioCaja + unidResto * precioReg;
     precioConDto = qty > 0 ? round2(netoLinea / qty) : precioReg;
     // Nudge "vendedor": si faltan pocas unidades para completar otra caja,
