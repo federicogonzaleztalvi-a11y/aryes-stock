@@ -222,9 +222,13 @@ function ModalReglas({ prod, item, onClose, onSave }) {
                 const cajaOn = !usaEspecial && comps.caja > 0 && unidCaja > 0;
                 const cajas = cajaOn ? Math.floor(q / unidCaja) : 0;
                 const sueltas = q - cajas * unidCaja;
+                // Las unidades sueltas NO llevan el dto de caja, pero sí el mayor
+                // dto que aplica (Siempre / Por cantidad). Solo es "precio pleno" si ese dto es 0.
+                const dtoSuelto = Math.round((r.descPct || 0) * 100) / 100;
+                const sueltoTxt = dtoSuelto > 0 ? `con ${dtoSuelto}% (sin dto de caja)` : 'a precio pleno';
                 const detalle = !cajaOn ? '' : cajas > 0
-                  ? (sueltas > 0 ? `${cajas * unidCaja} en caja + ${sueltas} suelta${sueltas !== 1 ? 's' : ''} a precio pleno` : `${cajas} caja${cajas !== 1 ? 's' : ''} completa${cajas !== 1 ? 's' : ''}`)
-                  : 'no completa caja → precio pleno';
+                  ? (sueltas > 0 ? `${cajas * unidCaja} en caja + ${sueltas} suelta${sueltas !== 1 ? 's' : ''} ${sueltoTxt}` : `${cajas} caja${cajas !== 1 ? 's' : ''} completa${cajas !== 1 ? 's' : ''}`)
+                  : `no completa caja → ${dtoSuelto > 0 ? `${dtoSuelto}% (sin dto de caja)` : 'precio pleno'}`;
                 return (<tr key={q} style={{ borderTop: '1px solid #f0f0ec' }}>
                   <td style={{ padding: '5px 4px', color: '#374151' }}><div style={{ fontWeight: 600 }}>{q} u</div>{detalle && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 1 }}>{detalle}</div>}</td>
                   <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: '#1a1a1a', verticalAlign: 'top' }}>{fmtPrecio(r.precioConDto)}</td>
