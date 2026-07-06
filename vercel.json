@@ -38,7 +38,7 @@
   ],
   "headers": [
     {
-      "source": "/index.html",
+      "source": "/((?!api/|assets/).*)",
       "headers": [
         {
           "key": "Cache-Control",
