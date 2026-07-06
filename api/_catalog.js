@@ -352,10 +352,22 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   let categorias, categoriasArbol;
   if (Array.isArray(catRows) && catRows.length > 0) {
     const madres = catRows.filter(c => !c.parent_id);
-    categoriasArbol = madres.map(m => ({
-      nombre: m.nombre,
-      subcategorias: catRows.filter(c => c.parent_id === m.id).map(s => s.nombre),
-    }));
+    categoriasArbol = madres.map(m => {
+      // Subcategorías: las de la taxonomía + las que los productos usan bajo esta
+      // madre aunque no tengan fila (no ocultar nada que exista en los datos).
+      const declaradas = catRows.filter(c => c.parent_id === m.id).map(s => s.nombre);
+      const usadas = [...new Set(items.filter(i => i.categoria === m.nombre && i.subcategoria).map(i => i.subcategoria))];
+      const subcategorias = [...new Set([...declaradas, ...usadas])];
+      return { nombre: m.nombre, subcategorias };
+    });
+    // Categorías que los productos usan pero que no están en la taxonomía → se
+    // agregan al final, para que nada desaparezca del portal por falta de fila.
+    const declaradas = new Set(categoriasArbol.map(m => m.nombre.toLowerCase()));
+    const huerfanas = [...new Set(items.map(i => i.categoria).filter(c => c && !declaradas.has(c.toLowerCase())))].sort();
+    for (const nombre of huerfanas) {
+      const usadas = [...new Set(items.filter(i => i.categoria === nombre && i.subcategoria).map(i => i.subcategoria))];
+      categoriasArbol.push({ nombre, subcategorias: usadas });
+    }
     categorias = categoriasArbol.map(m => m.nombre);
   } else {
     categorias = [...new Set(items.map(i => i.categoria))].sort();

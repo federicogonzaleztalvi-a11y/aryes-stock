@@ -31,8 +31,48 @@ export default function CategoriasManager({ onClose }) {
   const cargar = useCallback(async () => {
     const rows = await db.get('categories', `org_id=eq.${org}&order=orden.asc,nombre.asc`);
     setCats(Array.isArray(rows) ? rows : []);
+    return Array.isArray(rows) ? rows : [];
   }, [org]);
-  useEffect(() => { cargar(); }, [cargar]);
+
+  // Auto-reparación: toda categoría/subcategoría que un producto esté usando pero
+  // que no tenga fila en `categories` se crea sola. Así nada "desaparece" del
+  // editor por más que la siembra inicial no haya cargado — la fuente de verdad
+  // de qué EXISTE sigue siendo, como mínimo, lo que los productos ya usan.
+  const backfill = useCallback(async (rows) => {
+    const madresExist = new Map();  // nombre.toLowerCase() -> id
+    const subsExist = new Set();    // `${parent_id}::${nombre.toLowerCase()}`
+    rows.forEach((c) => {
+      if (!c.parent_id) madresExist.set(c.nombre.toLowerCase(), c.id);
+      else subsExist.add(`${c.parent_id}::${c.nombre.toLowerCase()}`);
+    });
+
+    // 1. Categorías madre que usan los productos y faltan en la tabla.
+    const madresProd = [...new Set((products || []).map(catOf).filter(Boolean))];
+    let ordenBase = rows.filter((c) => !c.parent_id).length;
+    let inserto = false;
+    for (const nombre of madresProd) {
+      if (madresExist.has(nombre.toLowerCase())) continue;
+      const r = await db.insert('categories', { org_id: org, nombre, parent_id: null, orden: ordenBase++ });
+      if (Array.isArray(r) && r[0]) { madresExist.set(nombre.toLowerCase(), r[0].id); inserto = true; }
+    }
+
+    // 2. Subcategorías (category + subcategoria) que faltan bajo su madre.
+    const paresProd = [...new Set((products || [])
+      .filter((p) => catOf(p) && subOf(p))
+      .map((p) => `${catOf(p)}::${subOf(p)}`))];
+    for (const par of paresProd) {
+      const [cat, sub] = par.split('::');
+      const parentId = madresExist.get(cat.toLowerCase());
+      if (!parentId) continue;
+      if (subsExist.has(`${parentId}::${sub.toLowerCase()}`)) continue;
+      const r = await db.insert('categories', { org_id: org, nombre: sub, parent_id: parentId, orden: 0 });
+      if (Array.isArray(r) && r[0]) { subsExist.add(`${parentId}::${sub.toLowerCase()}`); inserto = true; }
+    }
+
+    if (inserto) await cargar();
+  }, [org, products, cargar]);
+
+  useEffect(() => { cargar().then((rows) => backfill(rows)); }, [cargar, backfill]);
 
   // Conteo de productos por nombre de categoría madre y por subcategoría.
   const countMadre = useMemo(() => {
