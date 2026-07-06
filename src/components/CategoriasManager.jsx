@@ -86,15 +86,41 @@ export default function CategoriasManager({ onClose }) {
     return m;
   }, [products]);
 
-  // Árbol: madres ordenadas, cada una con sus subcategorías.
+  // Árbol: UNIÓN de la tabla `categories` y de lo que los productos ya usan.
+  // Regla de oro: si un producto tiene categoría, esa categoría SIEMPRE aparece
+  // en el editor — aunque la fila en la tabla no exista (siembra fallida, RLS,
+  // etc.). La tabla sólo agrega orden, categorías vacías y subcategorías encima.
+  // Las categorías "virtuales" (derivadas de productos, sin fila) se marcan con
+  // _virtual y sus operaciones caen en los productos, no en la tabla.
   const arbol = useMemo(() => {
-    if (!cats) return [];
-    const madres = cats.filter((c) => !c.parent_id).sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'));
-    return madres.map((madre) => ({
-      ...madre,
-      subs: cats.filter((c) => c.parent_id === madre.id).sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es')),
-    }));
-  }, [cats]);
+    const madres = new Map(); // nombre.toLowerCase() -> madre
+    // 1. Madres de la tabla (reales, con id y orden).
+    (cats || []).filter((c) => !c.parent_id).forEach((c) => {
+      madres.set(c.nombre.toLowerCase(), { id: c.id, nombre: c.nombre, orden: c.orden ?? 0, _virtual: false, subsMap: new Map() });
+    });
+    // 2. Madres que usan los productos y faltan en la tabla → virtuales.
+    (products || []).forEach((p) => {
+      const c = catOf(p); if (!c) return;
+      const k = c.toLowerCase();
+      if (!madres.has(k)) madres.set(k, { id: `v:${k}`, nombre: c, orden: 9990 + madres.size, _virtual: true, subsMap: new Map() });
+    });
+    // 3. Subcategorías de la tabla.
+    (cats || []).filter((c) => c.parent_id).forEach((c) => {
+      const madre = [...madres.values()].find((m) => m.id === c.parent_id);
+      if (!madre) return;
+      madre.subsMap.set(c.nombre.toLowerCase(), { id: c.id, nombre: c.nombre, orden: c.orden ?? 0, _virtual: false, parent_id: madre.id });
+    });
+    // 4. Subcategorías que usan los productos y faltan → virtuales.
+    (products || []).forEach((p) => {
+      const c = catOf(p), s = subOf(p); if (!c || !s) return;
+      const madre = madres.get(c.toLowerCase()); if (!madre) return;
+      const k = s.toLowerCase();
+      if (!madre.subsMap.has(k)) madre.subsMap.set(k, { id: `v:${c.toLowerCase()}::${k}`, nombre: s, orden: 9990 + madre.subsMap.size, _virtual: true, parent_id: madre.id });
+    });
+    return [...madres.values()]
+      .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
+      .map((m) => ({ ...m, subs: [...m.subsMap.values()].sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es')) }));
+  }, [cats, products]);
 
   const sinCategoria = useMemo(() => (products || []).filter((p) => !catOf(p)).length, [products]);
 
@@ -127,17 +153,19 @@ export default function CategoriasManager({ onClose }) {
     const nuevo = (edits[cat.id] ?? cat.nombre).trim();
     if (!nuevo || nuevo === cat.nombre) return;
     const esMadre = !cat.parent_id;
-    const hermanos = cats.filter((c) => c.parent_id === cat.parent_id && c.id !== cat.id);
-    if (hermanos.some((c) => c.nombre.toLowerCase() === nuevo.toLowerCase())) { flash('Ya existe otra con ese nombre en el mismo nivel', 'err'); return; }
+    const hermanos = esMadre ? arbol : (arbol.find((m) => m.id === cat.parent_id)?.subs || []);
+    if (hermanos.some((c) => c.id !== cat.id && c.nombre.toLowerCase() === nuevo.toLowerCase())) { flash('Ya existe otra con ese nombre en el mismo nivel', 'err'); return; }
     setBusy(cat.id);
     const snap = products;
-    // Optimista sobre productos + persistencia de la fila de categoría.
+    // Optimista sobre productos + persistencia de la fila de categoría (si existe).
     const campo = esMadre ? 'category' : 'subcategoria';
     const matchVal = cat.nombre;
     setProducts((ps) => ps.map((p) => ((esMadre ? catOf(p) : subOf(p)) === matchVal ? { ...p, [campo]: nuevo } : p)));
     try {
-      const rCat = await db.patch('categories', { nombre: nuevo }, { id: cat.id });
-      if (rCat === null) throw new Error('fail');
+      if (!cat._virtual) {
+        const rCat = await db.patch('categories', { nombre: nuevo }, { id: cat.id });
+        if (rCat === null) throw new Error('fail');
+      }
       await db.patch('products', { [campo]: nuevo }, { [campo]: matchVal });
       setEdits((e) => { const n = { ...e }; delete n[cat.id]; return n; });
       await cargar();
@@ -172,7 +200,7 @@ export default function CategoriasManager({ onClose }) {
         setProducts((ps) => ps.map((p) => (subNames.has(subOf(p).toLowerCase()) ? { ...p, subcategoria: '' } : p)));
         for (const s of cat.subs) await db.patch('products', { subcategoria: '' }, { subcategoria: s.nombre });
       }
-      await db.del('categories', { id: cat.id });
+      if (!cat._virtual) await db.del('categories', { id: cat.id });
       await db.patch('products', { [campo]: '' }, { [campo]: cat.nombre });
       await cargar();
       flash(`✓ “${cat.nombre}” quitada`);
@@ -182,17 +210,36 @@ export default function CategoriasManager({ onClose }) {
     } finally { setBusy(''); }
   };
 
+  // Asegura que una categoría tenga fila real en la tabla (crea la fila si es
+  // virtual). Devuelve el id real o null si no se pudo persistir.
+  const materializar = async (cat) => {
+    if (!cat._virtual) return cat.id;
+    let parent_id = null;
+    if (cat.parent_id) {
+      const madre = arbol.find((m) => m.id === cat.parent_id);
+      parent_id = madre ? await materializar(madre) : null;
+      if (!parent_id) return null;
+    }
+    const r = await db.insert('categories', { org_id: org, nombre: cat.nombre, parent_id, orden: cat.orden ?? 0 });
+    return Array.isArray(r) && r[0] ? r[0].id : null;
+  };
+
   // ── Reordenar (intercambia orden con el vecino) ─────────────────────────────
   const mover = async (lista, idx, dir) => {
     const otro = idx + dir;
     if (otro < 0 || otro >= lista.length) return;
     const a = lista[idx], b = lista[otro];
     setBusy(a.id);
-    // Persistir ambos órdenes intercambiados.
-    await db.patch('categories', { orden: b.orden }, { id: a.id });
-    await db.patch('categories', { orden: a.orden }, { id: b.id });
-    await cargar();
-    setBusy('');
+    try {
+      const aId = await materializar(a);
+      const bId = await materializar(b);
+      if (!aId || !bId) throw new Error('fail');
+      const ao = a.orden ?? idx, bo = b.orden ?? otro;
+      await db.patch('categories', { orden: bo }, { id: aId });
+      await db.patch('categories', { orden: ao }, { id: bId });
+      await cargar();
+    } catch { flash('No se pudo reordenar. Probá de nuevo.', 'err'); }
+    finally { setBusy(''); }
   };
 
   const inpBase = { padding: '8px 10px', border: '1px solid #e2e2de', borderRadius: 7, fontSize: 13, fontFamily: SANS, background: '#fff', outline: 'none' };
