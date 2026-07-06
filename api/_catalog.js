@@ -123,7 +123,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
 
   // ── 1. Productos + reservas activas (ATP) + overrides del cliente ──────────
   const prodQuery = [
-    'select=uuid,name,unit,category,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja',
+    'select=uuid,name,unit,category,subcategoria,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja',
     `org_id=eq.${org}`,
     'order=category.asc,name.asc',
     'limit=500',
@@ -141,13 +141,19 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
     ? `select=producto_uuid,descuento_pct,precio_override&org_id=eq.${org}&cliente_id=eq.${clienteId}`
     : null;
 
+  // Taxonomía de categorías (madre + subcategorías). Es opt-in: si la tabla no
+  // existe todavía o está vacía, el catálogo cae al comportamiento viejo (las
+  // categorías se derivan de los productos).
+  const catQuery = `select=id,nombre,parent_id,orden&org_id=eq.${org}&order=orden.asc`;
+
   const promises = [
     fetch(`${SB_URL}/rest/v1/products?${prodQuery}`, { headers }),
     fetch(`${SB_URL}/rest/v1/stock_reservations?${resQuery}`, { headers }),
+    fetch(`${SB_URL}/rest/v1/categories?${catQuery}`, { headers }),
   ];
   if (ovQuery) promises.push(fetch(`${SB_URL}/rest/v1/client_product_overrides?${ovQuery}`, { headers }));
 
-  const [prodRes, resRes, ovRes] = await Promise.all(promises);
+  const [prodRes, resRes, catRes, ovRes] = await Promise.all(promises);
   if (!prodRes.ok) throw new Error('products fetch failed: ' + prodRes.status);
   const products = await prodRes.json();
 
@@ -315,6 +321,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       nombre: p.name,
       unidad: normalizeUnit(p.unit),
       categoria: p.category || 'General',
+      subcategoria: p.subcategoria || '',
       marca: p.brand || '',
       precio,
       precioBase,
@@ -336,7 +343,24 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
     };
   });
 
-  const categorias = [...new Set(items.map(i => i.categoria))].sort();
+  // Categorías del portal: si hay taxonomía en la tabla `categories`, se usa esa
+  // (respeta el orden que definió el admin y trae las subcategorías anidadas).
+  // Si no, se cae al comportamiento viejo: derivarlas de los productos, ordenadas
+  // alfabéticamente. `categorias` queda como array de strings para no romper a los
+  // clientes viejos; `categoriasArbol` es la versión con orden + subcategorías.
+  const catRows = catRes && catRes.ok ? await catRes.json().catch(() => []) : [];
+  let categorias, categoriasArbol;
+  if (Array.isArray(catRows) && catRows.length > 0) {
+    const madres = catRows.filter(c => !c.parent_id);
+    categoriasArbol = madres.map(m => ({
+      nombre: m.nombre,
+      subcategorias: catRows.filter(c => c.parent_id === m.id).map(s => s.nombre),
+    }));
+    categorias = categoriasArbol.map(m => m.nombre);
+  } else {
+    categorias = [...new Set(items.map(i => i.categoria))].sort();
+    categoriasArbol = categorias.map(nombre => ({ nombre, subcategorias: [] }));
+  }
 
   // ── 4. Config del portal (brandcfg) de la org ──────────────────────────────
   let portalCfg = { portalCatalogo: true, portalPedidos: true };
@@ -354,6 +378,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   return {
     items,
     categorias,
+    categoriasArbol,
     hasLista: !!listaId,
     descGlobal,
     cajaCerrada,

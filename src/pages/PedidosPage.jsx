@@ -2010,6 +2010,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [coBuy, setCoBuy] = useState({}); // productoId -> [ids que suele pedirse junto]
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
+  const [catArbol, setCatArbol] = useState([]); // [{nombre, subcategorias:[]}] — orden del admin
+  const [subFil,   setSubFil]   = useState(''); // subcategoría activa dentro de la categoría madre
   const [brandNombre, setBrandNombre] = useState('');
   const [brandCfg, setBrandCfg] = useState(null);
   const [portalBloqueado, setPortalBloqueado] = useState(null); // mensaje si el portal está deshabilitado
@@ -2265,6 +2267,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         const prods = d.items;
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
+        setCatArbol(Array.isArray(d.categoriasArbol) ? d.categoriasArbol : []);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         trackWeb('catalogo_visto', { productos: prods.length }, 'catalogo');
@@ -2298,12 +2301,21 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
 
     useEffect(() => { if (orgReady && session) loadCatalogo(session); }, [orgReady, session, loadCatalogo]);
 
+  // Subcategorías de la categoría madre activa (según la taxonomía del admin).
+  const subActuales = useMemo(() => {
+    if (catFil === 'Todos') return [];
+    return catArbol.find(m => m.nombre === catFil)?.subcategorias || [];
+  }, [catArbol, catFil]);
+  // Al cambiar de categoría madre, se resetea la subcategoría seleccionada.
+  useEffect(() => { setSubFil(''); }, [catFil]);
+
   const filtered = useMemo(() => items.filter(i => {
     const mCat = catFil === 'Todos' || i.categoria === catFil;
+    const mSub = !subFil || i.subcategoria === subFil;
     const mQ   = !busq || i.nombre.toLowerCase().includes(busq.toLowerCase())
       || (i.marca || '').toLowerCase().includes(busq.toLowerCase());
-    return mCat && mQ;
-  }), [items, catFil, busq]);
+    return mCat && mSub && mQ;
+  }), [items, catFil, subFil, busq]);
 
   // Analytics — PedidosPage scope
   const track = (event, props = {}) => { trackWeb(event, props); try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
@@ -2599,6 +2611,27 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
 
         </nav>
       </header>
+
+      {/* Subcategorías: segundo nivel del filtro. Solo aparece cuando la categoría
+          madre activa tiene subcategorías definidas en la taxonomía del admin. */}
+      {(vista === 'catalogo' || vista === 'habituales') && subActuales.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '8px 24px', borderBottom: '1px solid #f0f0ee', background: '#fafaf8' }}>
+          <button onClick={() => setSubFil('')} style={{
+            flex: '0 0 auto', padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: SANS, fontSize: 12.5,
+            border: `1px solid ${subFil === '' ? G : '#e2e2de'}`, background: subFil === '' ? '#ecfdf5' : '#fff',
+            color: subFil === '' ? G : '#5a5a52', fontWeight: subFil === '' ? 600 : 400, whiteSpace: 'nowrap' }}>
+            Todo {catFil}
+          </button>
+          {subActuales.map(sub => (
+            <button key={sub} onClick={() => setSubFil(sub)} style={{
+              flex: '0 0 auto', padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontFamily: SANS, fontSize: 12.5,
+              border: `1px solid ${subFil === sub ? G : '#e2e2de'}`, background: subFil === sub ? '#ecfdf5' : '#fff',
+              color: subFil === sub ? G : '#5a5a52', fontWeight: subFil === sub ? 600 : 400, whiteSpace: 'nowrap' }}>
+              {sub}
+            </button>
+          ))}
+        </div>
+      )}
 
       {!isPortalDemo && !vendorMode && <InstallAppBanner brandNombre={brandNombre} />}
 

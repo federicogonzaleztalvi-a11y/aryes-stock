@@ -72,7 +72,7 @@ export default async function handler(req, res) {
       console.error('[catalogo] load failed:', e.message);
       return res.status(502).json({ error: 'Database error' });
     }
-    const { items, categorias, hasLista, descGlobal, horarioDesde, horarioHasta, portalActivo, portalCfg } = catalogo;
+    const { items, categorias, categoriasArbol, hasLista, descGlobal, horarioDesde, horarioHasta, portalActivo, portalCfg } = catalogo;
 
     setHeaders(res, { 'Cache-Control': clienteId
       ? 'private, max-age=60'                          // personalized — don't cache in CDN
@@ -274,6 +274,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       items,
       categorias,
+      categoriasArbol,
       org,
       clienteId: clienteId || null,
       recommended,
