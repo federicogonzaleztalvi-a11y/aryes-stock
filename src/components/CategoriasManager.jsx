@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext.tsx';
-import { db, getOrgId } from '../lib/constants.js';
 import { useConfirm } from './ConfirmDialog.jsx';
 
 const G = '#059669';
@@ -9,72 +8,53 @@ const SANS = 'Inter,system-ui,sans-serif';
 const catOf = (p) => String(p.category || p.categoria || '').trim();
 const subOf = (p) => String(p.subcategoria || '').trim();
 
-// Editor de la taxonomía de categorías. Fuente de verdad: tabla `categories`
-// (madre = parent_id null; subcategoría = parent_id apunta a la madre). Los
-// productos guardan la categoría madre en products.category (texto) y la
-// subcategoría en products.subcategoria (texto) — por eso al renombrar se
-// propaga a los productos, para que el portal siga agrupando bien.
+function getToken() {
+  try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.access_token || ''; }
+  catch { return ''; }
+}
+// Todas las escrituras van por /api/categories (service_role, bypassea RLS).
+// Las policies RLS de `categories` bloquean el INSERT desde el cliente, por eso
+// crear/renombrar/borrar/reordenar tienen que pasar por el server.
+async function apiCat(action, method, body) {
+  const token = getToken();
+  if (!token) throw new Error('Tu sesión expiró. Cerrá sesión y volvé a entrar.');
+  const res = await fetch(`/api/categories?action=${action}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 || res.status === 403) throw new Error('Tu sesión expiró o no tenés permisos de admin. Cerrá sesión y volvé a entrar.');
+  if (!res.ok) throw new Error(data?.error || 'Error');
+  return data;
+}
+
+// Editor de la taxonomía de categorías. El árbol que se ve es la UNIÓN de la
+// tabla `categories` (orden, categorías vacías, subcategorías) + lo que los
+// productos ya usan (products.category / products.subcategoria). Regla de oro:
+// si un producto tiene categoría, esa categoría SIEMPRE aparece, aunque no tenga
+// fila todavía (se marca _virtual y la primera escritura la materializa).
 export default function CategoriasManager({ onClose }) {
   const { products, setProducts } = useApp();
   const { confirm, ConfirmDialog } = useConfirm();
-  const org = getOrgId();
 
-  const [cats, setCats] = useState(null); // null = cargando
+  const [cats, setCats] = useState(null);   // filas de la tabla (null = cargando)
+  const [tree, setTree] = useState([]);     // árbol unión, mutable por arrastre
   const [edits, setEdits] = useState({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState(null);
   const [nuevaCat, setNuevaCat] = useState('');
-  const [nuevaSub, setNuevaSub] = useState({}); // { [madreId]: texto }
+  const [nuevaSub, setNuevaSub] = useState({});
 
   const flash = (text, type = 'ok') => { setMsg({ text, type }); setTimeout(() => setMsg(null), 3500); };
 
   const cargar = useCallback(async () => {
-    const rows = await db.get('categories', `org_id=eq.${org}&order=orden.asc,nombre.asc`);
-    setCats(Array.isArray(rows) ? rows : []);
-    return Array.isArray(rows) ? rows : [];
-  }, [org]);
+    try { const rows = await apiCat('list', 'GET'); setCats(Array.isArray(rows) ? rows : []); }
+    catch { setCats([]); }
+  }, []);
+  useEffect(() => { cargar(); }, [cargar]);
 
-  // Auto-reparación: toda categoría/subcategoría que un producto esté usando pero
-  // que no tenga fila en `categories` se crea sola. Así nada "desaparece" del
-  // editor por más que la siembra inicial no haya cargado — la fuente de verdad
-  // de qué EXISTE sigue siendo, como mínimo, lo que los productos ya usan.
-  const backfill = useCallback(async (rows) => {
-    const madresExist = new Map();  // nombre.toLowerCase() -> id
-    const subsExist = new Set();    // `${parent_id}::${nombre.toLowerCase()}`
-    rows.forEach((c) => {
-      if (!c.parent_id) madresExist.set(c.nombre.toLowerCase(), c.id);
-      else subsExist.add(`${c.parent_id}::${c.nombre.toLowerCase()}`);
-    });
-
-    // 1. Categorías madre que usan los productos y faltan en la tabla.
-    const madresProd = [...new Set((products || []).map(catOf).filter(Boolean))];
-    let ordenBase = rows.filter((c) => !c.parent_id).length;
-    let inserto = false;
-    for (const nombre of madresProd) {
-      if (madresExist.has(nombre.toLowerCase())) continue;
-      const r = await db.insert('categories', { org_id: org, nombre, parent_id: null, orden: ordenBase++ });
-      if (Array.isArray(r) && r[0]) { madresExist.set(nombre.toLowerCase(), r[0].id); inserto = true; }
-    }
-
-    // 2. Subcategorías (category + subcategoria) que faltan bajo su madre.
-    const paresProd = [...new Set((products || [])
-      .filter((p) => catOf(p) && subOf(p))
-      .map((p) => `${catOf(p)}::${subOf(p)}`))];
-    for (const par of paresProd) {
-      const [cat, sub] = par.split('::');
-      const parentId = madresExist.get(cat.toLowerCase());
-      if (!parentId) continue;
-      if (subsExist.has(`${parentId}::${sub.toLowerCase()}`)) continue;
-      const r = await db.insert('categories', { org_id: org, nombre: sub, parent_id: parentId, orden: 0 });
-      if (Array.isArray(r) && r[0]) { subsExist.add(`${parentId}::${sub.toLowerCase()}`); inserto = true; }
-    }
-
-    if (inserto) await cargar();
-  }, [org, products, cargar]);
-
-  useEffect(() => { cargar().then((rows) => backfill(rows)); }, [cargar, backfill]);
-
-  // Conteo de productos por nombre de categoría madre y por subcategoría.
+  // Conteos de productos por categoría / subcategoría (para los chips).
   const countMadre = useMemo(() => {
     const m = new Map();
     (products || []).forEach((p) => { const c = catOf(p); if (c) m.set(c.toLowerCase(), (m.get(c.toLowerCase()) || 0) + 1); });
@@ -86,191 +66,181 @@ export default function CategoriasManager({ onClose }) {
     return m;
   }, [products]);
 
-  // Árbol: UNIÓN de la tabla `categories` y de lo que los productos ya usan.
-  // Regla de oro: si un producto tiene categoría, esa categoría SIEMPRE aparece
-  // en el editor — aunque la fila en la tabla no exista (siembra fallida, RLS,
-  // etc.). La tabla sólo agrega orden, categorías vacías y subcategorías encima.
-  // Las categorías "virtuales" (derivadas de productos, sin fila) se marcan con
-  // _virtual y sus operaciones caen en los productos, no en la tabla.
+  // Árbol UNIÓN (tabla + productos). Cada nodo: { key, nombre, _virtual, subs }.
   const arbol = useMemo(() => {
-    const madres = new Map(); // nombre.toLowerCase() -> madre
-    // 1. Madres de la tabla (reales, con id y orden).
+    const madres = new Map();
     (cats || []).filter((c) => !c.parent_id).forEach((c) => {
-      madres.set(c.nombre.toLowerCase(), { id: c.id, nombre: c.nombre, orden: c.orden ?? 0, _virtual: false, subsMap: new Map() });
+      madres.set(c.nombre.toLowerCase(), { key: c.nombre.toLowerCase(), nombre: c.nombre, orden: c.orden ?? 0, _virtual: false, _subs: new Map() });
     });
-    // 2. Madres que usan los productos y faltan en la tabla → virtuales.
     (products || []).forEach((p) => {
       const c = catOf(p); if (!c) return;
       const k = c.toLowerCase();
-      if (!madres.has(k)) madres.set(k, { id: `v:${k}`, nombre: c, orden: 9990 + madres.size, _virtual: true, subsMap: new Map() });
+      if (!madres.has(k)) madres.set(k, { key: k, nombre: c, orden: 9990 + madres.size, _virtual: true, _subs: new Map() });
     });
-    // 3. Subcategorías de la tabla.
+    const madreById = new Map();
+    (cats || []).filter((c) => !c.parent_id).forEach((c) => { const m = madres.get(c.nombre.toLowerCase()); if (m) madreById.set(c.id, m); });
     (cats || []).filter((c) => c.parent_id).forEach((c) => {
-      const madre = [...madres.values()].find((m) => m.id === c.parent_id);
-      if (!madre) return;
-      madre.subsMap.set(c.nombre.toLowerCase(), { id: c.id, nombre: c.nombre, orden: c.orden ?? 0, _virtual: false, parent_id: madre.id });
+      const m = madreById.get(c.parent_id); if (!m) return;
+      m._subs.set(c.nombre.toLowerCase(), { key: c.nombre.toLowerCase(), nombre: c.nombre, orden: c.orden ?? 0, _virtual: false });
     });
-    // 4. Subcategorías que usan los productos y faltan → virtuales.
     (products || []).forEach((p) => {
       const c = catOf(p), s = subOf(p); if (!c || !s) return;
-      const madre = madres.get(c.toLowerCase()); if (!madre) return;
-      const k = s.toLowerCase();
-      if (!madre.subsMap.has(k)) madre.subsMap.set(k, { id: `v:${c.toLowerCase()}::${k}`, nombre: s, orden: 9990 + madre.subsMap.size, _virtual: true, parent_id: madre.id });
+      const m = madres.get(c.toLowerCase()); if (!m) return;
+      const sk = s.toLowerCase();
+      if (!m._subs.has(sk)) m._subs.set(sk, { key: sk, nombre: s, orden: 9990 + m._subs.size, _virtual: true });
     });
     return [...madres.values()]
       .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es'))
-      .map((m) => ({ ...m, subs: [...m.subsMap.values()].sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es')) }));
+      .map((m) => ({ key: m.key, nombre: m.nombre, _virtual: m._virtual, subs: [...m._subs.values()].sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre, 'es')) }));
   }, [cats, products]);
+
+  // Sincronizar árbol → tree, salvo mientras se arrastra (para no pisar el drag).
+  const dragging = useRef(false);
+  const treeRef = useRef([]);
+  useEffect(() => { treeRef.current = tree; }, [tree]);
+  useEffect(() => { if (!dragging.current) setTree(arbol); }, [arbol]);
 
   const sinCategoria = useMemo(() => (products || []).filter((p) => !catOf(p)).length, [products]);
 
-  // ── Crear ──────────────────────────────────────────────────────────────────
+  const editKey = (cat, parentNombre) => (parentNombre ? `s:${parentNombre.toLowerCase()}:${cat.key}` : `m:${cat.key}`);
+
+  // ── Crear ────────────────────────────────────────────────────────────────────
   const crearCat = async () => {
-    const nombre = nuevaCat.trim();
-    if (!nombre) return;
-    if (arbol.some((c) => c.nombre.toLowerCase() === nombre.toLowerCase())) { flash('Ya existe una categoría con ese nombre', 'err'); return; }
+    const nombre = nuevaCat.trim(); if (!nombre) return;
+    if (tree.some((m) => m.nombre.toLowerCase() === nombre.toLowerCase())) { flash('Ya existe una categoría con ese nombre', 'err'); return; }
     setBusy('nueva');
-    const orden = arbol.length;
-    const r = await db.insert('categories', { org_id: org, nombre, parent_id: null, orden });
-    if (r) { setNuevaCat(''); await cargar(); flash(`✓ Categoría “${nombre}” creada`); }
-    else flash('No se pudo crear la categoría. Probá de nuevo.', 'err');
-    setBusy('');
+    try { await apiCat('create', 'POST', { nombre }); setNuevaCat(''); await cargar(); flash(`✓ Categoría “${nombre}” creada`); }
+    catch (e) { flash(e.message || 'No se pudo crear la categoría.', 'err'); }
+    finally { setBusy(''); }
   };
 
   const crearSub = async (madre) => {
-    const nombre = (nuevaSub[madre.id] || '').trim();
-    if (!nombre) return;
+    const nombre = (nuevaSub[madre.key] || '').trim(); if (!nombre) return;
     if (madre.subs.some((s) => s.nombre.toLowerCase() === nombre.toLowerCase())) { flash('Ya existe esa subcategoría', 'err'); return; }
-    setBusy(`sub-${madre.id}`);
-    const r = await db.insert('categories', { org_id: org, nombre, parent_id: madre.id, orden: madre.subs.length });
-    if (r) { setNuevaSub((s) => ({ ...s, [madre.id]: '' })); await cargar(); flash(`✓ Subcategoría “${nombre}” creada`); }
-    else flash('No se pudo crear la subcategoría. Probá de nuevo.', 'err');
-    setBusy('');
+    setBusy(`sub-${madre.key}`);
+    try { await apiCat('create', 'POST', { nombre, parent_nombre: madre.nombre }); setNuevaSub((s) => ({ ...s, [madre.key]: '' })); await cargar(); flash(`✓ Subcategoría “${nombre}” creada`); }
+    catch (e) { flash(e.message || 'No se pudo crear la subcategoría.', 'err'); }
+    finally { setBusy(''); }
   };
 
-  // ── Renombrar (propaga a productos) ─────────────────────────────────────────
-  const renombrar = async (cat) => {
-    const nuevo = (edits[cat.id] ?? cat.nombre).trim();
+  // ── Renombrar (propaga a productos server-side) ──────────────────────────────
+  const renombrar = async (cat, esMadre, parentNombre) => {
+    const bk = editKey(cat, parentNombre);
+    const nuevo = (edits[bk] ?? cat.nombre).trim();
     if (!nuevo || nuevo === cat.nombre) return;
-    const esMadre = !cat.parent_id;
-    const hermanos = esMadre ? arbol : (arbol.find((m) => m.id === cat.parent_id)?.subs || []);
-    if (hermanos.some((c) => c.id !== cat.id && c.nombre.toLowerCase() === nuevo.toLowerCase())) { flash('Ya existe otra con ese nombre en el mismo nivel', 'err'); return; }
-    setBusy(cat.id);
+    const hermanos = esMadre ? tree : (tree.find((m) => m.nombre === parentNombre)?.subs || []);
+    if (hermanos.some((c) => c.key !== cat.key && c.nombre.toLowerCase() === nuevo.toLowerCase())) { flash('Ya existe otra con ese nombre en el mismo nivel', 'err'); return; }
+    setBusy(bk);
     const snap = products;
-    // Optimista sobre productos + persistencia de la fila de categoría (si existe).
     const campo = esMadre ? 'category' : 'subcategoria';
-    const matchVal = cat.nombre;
-    setProducts((ps) => ps.map((p) => ((esMadre ? catOf(p) : subOf(p)) === matchVal ? { ...p, [campo]: nuevo } : p)));
+    setProducts((ps) => ps.map((p) => ((esMadre ? catOf(p) : subOf(p)) === cat.nombre ? { ...p, [campo]: nuevo } : p)));
     try {
-      if (!cat._virtual) {
-        const rCat = await db.patch('categories', { nombre: nuevo }, { id: cat.id });
-        if (rCat === null) throw new Error('fail');
-      }
-      await db.patch('products', { [campo]: nuevo }, { [campo]: matchVal });
-      setEdits((e) => { const n = { ...e }; delete n[cat.id]; return n; });
+      await apiCat('rename', 'PATCH', { es_madre: esMadre, nombre_actual: cat.nombre, nombre_nuevo: nuevo, parent_nombre: parentNombre || '' });
+      setEdits((e) => { const n = { ...e }; delete n[bk]; return n; });
       await cargar();
       flash(`✓ Ahora se llama “${nuevo}”`);
-    } catch {
-      setProducts(snap);
-      flash('No se pudo guardar el cambio. Probá de nuevo.', 'err');
-    } finally { setBusy(''); }
+    } catch (e) { setProducts(snap); flash(e.message || 'No se pudo guardar el cambio.', 'err'); }
+    finally { setBusy(''); }
   };
 
-  // ── Borrar ──────────────────────────────────────────────────────────────────
-  const borrar = async (cat) => {
-    const esMadre = !cat.parent_id;
+  // ── Borrar ────────────────────────────────────────────────────────────────────
+  const borrar = async (cat, esMadre, parentNombre) => {
     const count = (esMadre ? countMadre : countSub).get(cat.nombre.toLowerCase()) || 0;
     const subInfo = esMadre && cat.subs?.length ? ` También se eliminan sus ${cat.subs.length} subcategoría${cat.subs.length !== 1 ? 's' : ''}.` : '';
     const ok = await confirm({
       title: `¿Quitar ${esMadre ? 'la categoría' : 'la subcategoría'} “${cat.nombre}”?`,
       description: `${count > 0 ? `Los ${count} producto${count !== 1 ? 's' : ''} quedan sin ${esMadre ? 'categoría' : 'subcategoría'} (no se eliminan).` : 'No tiene productos asignados.'}${subInfo}`,
-      variant: 'danger',
-      confirmText: 'Quitar',
+      variant: 'danger', confirmText: 'Quitar',
     });
     if (!ok) return;
-    setBusy(cat.id);
+    const bk = editKey(cat, parentNombre);
+    setBusy(bk);
     const snap = products;
     const campo = esMadre ? 'category' : 'subcategoria';
-    setProducts((ps) => ps.map((p) => ((esMadre ? catOf(p) : subOf(p)) === cat.nombre ? { ...p, [campo]: '' } : p)));
-    try {
-      // Al borrar una madre, la FK on delete cascade se lleva las subcategorías.
-      // Las subcategorías de esos productos también quedan huérfanas → limpiar.
-      if (esMadre && cat.subs?.length) {
-        const subNames = new Set(cat.subs.map((s) => s.nombre.toLowerCase()));
-        setProducts((ps) => ps.map((p) => (subNames.has(subOf(p).toLowerCase()) ? { ...p, subcategoria: '' } : p)));
-        for (const s of cat.subs) await db.patch('products', { subcategoria: '' }, { subcategoria: s.nombre });
-      }
-      if (!cat._virtual) await db.del('categories', { id: cat.id });
-      await db.patch('products', { [campo]: '' }, { [campo]: cat.nombre });
-      await cargar();
-      flash(`✓ “${cat.nombre}” quitada`);
-    } catch {
-      setProducts(snap);
-      flash('No se pudo quitar. Probá de nuevo.', 'err');
-    } finally { setBusy(''); }
-  };
-
-  // Asegura que una categoría tenga fila real en la tabla (crea la fila si es
-  // virtual). Devuelve el id real o null si no se pudo persistir.
-  const materializar = async (cat) => {
-    if (!cat._virtual) return cat.id;
-    let parent_id = null;
-    if (cat.parent_id) {
-      const madre = arbol.find((m) => m.id === cat.parent_id);
-      parent_id = madre ? await materializar(madre) : null;
-      if (!parent_id) return null;
-    }
-    const r = await db.insert('categories', { org_id: org, nombre: cat.nombre, parent_id, orden: cat.orden ?? 0 });
-    return Array.isArray(r) && r[0] ? r[0].id : null;
-  };
-
-  // ── Reordenar (intercambia orden con el vecino) ─────────────────────────────
-  const mover = async (lista, idx, dir) => {
-    const otro = idx + dir;
-    if (otro < 0 || otro >= lista.length) return;
-    const a = lista[idx], b = lista[otro];
-    setBusy(a.id);
-    try {
-      const aId = await materializar(a);
-      const bId = await materializar(b);
-      if (!aId || !bId) throw new Error('fail');
-      const ao = a.orden ?? idx, bo = b.orden ?? otro;
-      await db.patch('categories', { orden: bo }, { id: aId });
-      await db.patch('categories', { orden: ao }, { id: bId });
-      await cargar();
-    } catch { flash('No se pudo reordenar. Probá de nuevo.', 'err'); }
+    const subNames = esMadre && cat.subs?.length ? new Set(cat.subs.map((s) => s.nombre.toLowerCase())) : null;
+    setProducts((ps) => ps.map((p) => {
+      let np = p;
+      if ((esMadre ? catOf(p) : subOf(p)) === cat.nombre) np = { ...np, [campo]: '' };
+      if (subNames && subNames.has(subOf(p).toLowerCase())) np = { ...np, subcategoria: '' };
+      return np;
+    }));
+    try { await apiCat('delete', 'DELETE', { es_madre: esMadre, nombre: cat.nombre, parent_nombre: parentNombre || '' }); await cargar(); flash(`✓ “${cat.nombre}” quitada`); }
+    catch (e) { setProducts(snap); flash(e.message || 'No se pudo quitar.', 'err'); }
     finally { setBusy(''); }
+  };
+
+  // ── Reordenar por arrastre ───────────────────────────────────────────────────
+  const persistOrden = useCallback(async (nextTree) => {
+    const payload = { madres: nextTree.map((m) => ({ nombre: m.nombre, subs: m.subs.map((s) => s.nombre) })) };
+    try { const rows = await apiCat('reorder', 'POST', payload); setCats(Array.isArray(rows) ? rows : (c) => c); }
+    catch (e) { flash(e.message || 'No se pudo guardar el orden.', 'err'); await cargar(); }
+  }, [cargar]);
+
+  const drag = useRef(null);          // { kind:'madre'|'sub', key, madreKey? }
+  const [dragBk, setDragBk] = useState(null);
+  const madreRefs = useRef([]);
+  const subRefs = useRef({});
+
+  const targetIdx = (els, y) => {
+    let target = els.length - 1;
+    for (let j = 0; j < els.length; j++) { const el = els[j]; if (!el) continue; const r = el.getBoundingClientRect(); if (y < r.top + r.height / 2) { target = j; break; } }
+    return target;
+  };
+
+  const onMadreDown = (madre) => (e) => { e.preventDefault(); drag.current = { kind: 'madre', key: madre.key }; dragging.current = true; setDragBk(`m:${madre.key}`); try { e.target.setPointerCapture(e.pointerId); } catch { /* noop */ } };
+  const onMadreMove = (e) => {
+    const d = drag.current; if (d?.kind !== 'madre') return;
+    const target = targetIdx(madreRefs.current, e.clientY);
+    setTree((t) => { const cur = t.findIndex((m) => m.key === d.key); if (cur < 0 || target === cur) return t; const o = [...t]; const [mv] = o.splice(cur, 1); o.splice(target, 0, mv); return o; });
+  };
+  const onSubDown = (madreKey, sub) => (e) => { e.preventDefault(); drag.current = { kind: 'sub', madreKey, key: sub.key }; dragging.current = true; setDragBk(`s:${madreKey}:${sub.key}`); try { e.target.setPointerCapture(e.pointerId); } catch { /* noop */ } };
+  const onSubMove = (e) => {
+    const d = drag.current; if (d?.kind !== 'sub') return;
+    const target = targetIdx(subRefs.current[d.madreKey] || [], e.clientY);
+    setTree((t) => t.map((m) => {
+      if (m.key !== d.madreKey) return m;
+      const cur = m.subs.findIndex((s) => s.key === d.key); if (cur < 0 || target === cur) return m;
+      const o = [...m.subs]; const [mv] = o.splice(cur, 1); o.splice(target, 0, mv); return { ...m, subs: o };
+    }));
+  };
+  const onDragUp = async (e) => {
+    try { e.target.releasePointerCapture(e.pointerId); } catch { /* noop */ }
+    if (!drag.current) return;
+    drag.current = null; setDragBk(null);
+    const snapshot = treeRef.current;
+    dragging.current = false;
+    await persistOrden(snapshot);
   };
 
   const inpBase = { padding: '8px 10px', border: '1px solid #e2e2de', borderRadius: 7, fontSize: 13, fontFamily: SANS, background: '#fff', outline: 'none' };
   const chip = (n) => (
     <span title={`${n} producto${n !== 1 ? 's' : ''}`} style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', background: '#f0f0ee', borderRadius: 20, padding: '3px 10px', whiteSpace: 'nowrap' }}>{n} prod.</span>
   );
+  const handleStyle = (bk) => ({ border: '1px solid #e2e2de', background: '#f5f5f0', color: '#9a9a98', borderRadius: 6, width: 26, height: 32, cursor: dragBk === bk ? 'grabbing' : 'grab', fontSize: 14, lineHeight: 1, padding: 0, flexShrink: 0, touchAction: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' });
 
-  const filaCat = (cat, lista, idx, esMadre) => {
-    const val = edits[cat.id] ?? cat.nombre;
+  const filaCat = (cat, esMadre, parentNombre, onDown, onMove) => {
+    const bk = editKey(cat, parentNombre);
+    const val = edits[bk] ?? cat.nombre;
     const changed = val.trim() !== cat.nombre && val.trim() !== '';
-    const isBusy = busy === cat.id;
+    const isBusy = busy === bk;
     const n = (esMadre ? countMadre : countSub).get(cat.nombre.toLowerCase()) || 0;
+    const isDrag = dragBk === bk;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: esMadre ? '#fafafa' : '#fff', border: '1px solid #eee', borderRadius: 9, padding: esMadre ? '8px 10px 8px 12px' : '6px 8px 6px 10px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <button onClick={() => mover(lista, idx, -1)} disabled={idx === 0 || isBusy} title="Subir" style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? '#d4d4d0' : '#9a9a98', fontSize: 10, lineHeight: 1, padding: 0 }}>▲</button>
-          <button onClick={() => mover(lista, idx, 1)} disabled={idx === lista.length - 1 || isBusy} title="Bajar" style={{ background: 'none', border: 'none', cursor: idx === lista.length - 1 ? 'default' : 'pointer', color: idx === lista.length - 1 ? '#d4d4d0' : '#9a9a98', fontSize: 10, lineHeight: 1, padding: 0 }}>▼</button>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: isDrag ? '#ecfdf5' : (esMadre ? '#fafafa' : '#fff'), border: `1px solid ${isDrag ? '#a7f3d0' : '#eee'}`, borderRadius: 9, padding: esMadre ? '8px 10px' : '6px 8px', opacity: isDrag ? 0.9 : 1, transition: 'background .1s' }}>
+        <button onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onDragUp} title="Arrastrar para reordenar" style={handleStyle(bk)}>⠿</button>
         <input
           value={val}
-          onChange={(e) => setEdits((s) => ({ ...s, [cat.id]: e.target.value }))}
-          onKeyDown={(e) => { if (e.key === 'Enter' && changed) renombrar(cat); }}
+          onChange={(e) => setEdits((s) => ({ ...s, [bk]: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === 'Enter' && changed) renombrar(cat, esMadre, parentNombre); }}
           disabled={isBusy}
           style={{ ...inpBase, flex: 1, border: `1px solid ${changed ? G : '#e2e2de'}`, fontSize: esMadre ? 13 : 12.5, fontWeight: esMadre ? 600 : 400 }}
         />
         {chip(n)}
-        <button onClick={() => renombrar(cat)} disabled={!changed || isBusy}
+        <button onClick={() => renombrar(cat, esMadre, parentNombre)} disabled={!changed || isBusy}
           style={{ padding: '7px 12px', background: changed && !isBusy ? G : '#e5e7eb', color: changed && !isBusy ? '#fff' : '#9a9a98', border: 'none', borderRadius: 7, cursor: changed && !isBusy ? 'pointer' : 'default', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
           {isBusy ? '…' : 'Guardar'}
         </button>
-        <button onClick={() => borrar(cat)} disabled={isBusy} title="Quitar"
+        <button onClick={() => borrar(cat, esMadre, parentNombre)} disabled={isBusy} title="Quitar"
           style={{ padding: '7px 9px', background: '#fff', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 7, cursor: 'pointer', fontSize: 12 }}>✕</button>
       </div>
     );
@@ -285,7 +255,7 @@ export default function CategoriasManager({ onClose }) {
             <div>
               <h2 style={{ fontFamily: 'Playfair Display,serif', fontSize: 22, margin: 0, color: '#1a1a18' }}>Categorías</h2>
               <p style={{ fontSize: 12.5, color: '#6a6a68', margin: '6px 0 0', lineHeight: 1.5 }}>
-                Creá categorías y subcategorías a tu gusto, ordenalas y renombralas. Se ven así en el portal de tus clientes.
+                Creá categorías y subcategorías a tu gusto. Arrastrá el <span style={{ fontWeight: 700 }}>⠿</span> para ordenarlas — así se ven en el portal de tus clientes.
               </p>
             </div>
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: '#9a9a98', lineHeight: 1 }}>×</button>
@@ -312,27 +282,29 @@ export default function CategoriasManager({ onClose }) {
 
           {cats === null ? (
             <div style={{ textAlign: 'center', padding: '30px 20px', color: '#9a9a98', fontSize: 13 }}>Cargando…</div>
-          ) : arbol.length === 0 ? (
+          ) : tree.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px 20px', color: '#9a9a98', fontSize: 13 }}>
               Todavía no hay categorías. Creá la primera arriba.
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
-              {arbol.map((madre, i) => (
-                <div key={madre.id}>
-                  {filaCat(madre, arbol, i, true)}
+              {tree.map((madre, i) => (
+                <div key={madre.key} ref={(el) => { madreRefs.current[i] = el; }}>
+                  {filaCat(madre, true, '', onMadreDown(madre), onMadreMove)}
                   {/* Subcategorías */}
                   <div style={{ marginLeft: 22, marginTop: 6, display: 'grid', gap: 6, borderLeft: '2px solid #f0f0ee', paddingLeft: 12 }}>
                     {madre.subs.map((sub, j) => (
-                      <div key={sub.id}>{filaCat(sub, madre.subs, j, false)}</div>
+                      <div key={sub.key} ref={(el) => { (subRefs.current[madre.key] ||= [])[j] = el; }}>
+                        {filaCat(sub, false, madre.nombre, onSubDown(madre.key, sub), onSubMove)}
+                      </div>
                     ))}
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <input value={nuevaSub[madre.id] || ''} onChange={(e) => setNuevaSub((s) => ({ ...s, [madre.id]: e.target.value }))}
+                      <input value={nuevaSub[madre.key] || ''} onChange={(e) => setNuevaSub((s) => ({ ...s, [madre.key]: e.target.value }))}
                         onKeyDown={(e) => { if (e.key === 'Enter') crearSub(madre); }}
                         placeholder={`+ Subcategoría de ${madre.nombre}`} style={{ ...inpBase, flex: 1, fontSize: 12, padding: '6px 9px' }} />
-                      <button onClick={() => crearSub(madre)} disabled={!(nuevaSub[madre.id] || '').trim() || busy === `sub-${madre.id}`}
-                        style={{ padding: '6px 12px', background: (nuevaSub[madre.id] || '').trim() ? '#ecfdf5' : '#f5f5f0', color: (nuevaSub[madre.id] || '').trim() ? G : '#9a9a98', border: `1px solid ${(nuevaSub[madre.id] || '').trim() ? '#a7f3d0' : '#eee'}`, borderRadius: 7, cursor: (nuevaSub[madre.id] || '').trim() ? 'pointer' : 'default', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
-                        {busy === `sub-${madre.id}` ? '…' : '+ Sub'}
+                      <button onClick={() => crearSub(madre)} disabled={!(nuevaSub[madre.key] || '').trim() || busy === `sub-${madre.key}`}
+                        style={{ padding: '6px 12px', background: (nuevaSub[madre.key] || '').trim() ? '#ecfdf5' : '#f5f5f0', color: (nuevaSub[madre.key] || '').trim() ? G : '#9a9a98', border: `1px solid ${(nuevaSub[madre.key] || '').trim() ? '#a7f3d0' : '#eee'}`, borderRadius: 7, cursor: (nuevaSub[madre.key] || '').trim() ? 'pointer' : 'default', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
+                        {busy === `sub-${madre.key}` ? '…' : '+ Sub'}
                       </button>
                     </div>
                   </div>
