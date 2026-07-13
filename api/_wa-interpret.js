@@ -13,8 +13,17 @@
 // Para evitar que Claude alucine UUIDs y para ahorrar tokens, le pasamos una
 // lista NUMERADA (ref 1..N) y devuelve refs; nosotros resolvemos ref→producto.
 //
+// "Lo de siempre" (estilo Zapia):
+//   Si además le pasamos `habituales` (los productos que ESE cliente suele pedir,
+//   con su cantidad típica — ver api/_habituales.js), el modelo puede reconocer
+//   frases como "mandame lo de siempre" / "lo mismo que la última vez" y las
+//   marcamos con un flag. Nosotros expandimos ese flag a las líneas habituales
+//   del cliente (productId + cantidad típica), resolviendo precio/nombre contra
+//   el catálogo igual que siempre. Se combina con ítems explícitos en el mismo
+//   pedido ("2 de tomate y lo de siempre").
+//
 // Contrato:
-//   interpretarPedido({ texto, catalogo, model? }) → Promise<{
+//   interpretarPedido({ texto, catalogo, habituales?, model? }) → Promise<{
 //     ok,                         // false si no hay API key o falló el parseo
 //     lineas:   [{ productId, nombre, unidad, qty, precio, subtotal }],
 //     sinPrecio:[{ productId, nombre, qty }],  // matcheado pero precio 0 → consultar
@@ -22,7 +31,8 @@
 //     error?,                     // detalle si ok=false
 //   }>
 //
-//   catalogo: [{ id, nombre, unidad, precio, categoria?, marca? }]  (de api/catalogo.js)
+//   catalogo:   [{ id, nombre, unidad, precio, categoria?, marca? }]  (de api/catalogo.js)
+//   habituales: [{ productId, qtyTipica }]                            (de api/_habituales.js)
 // ============================================================================
 
 import { log } from './_log.js';
@@ -46,15 +56,16 @@ Reglas:
 - NO inventes refs que no estén en el catálogo. NO inventes precios.
 - Si el cliente repite un producto, sumá las cantidades en una sola línea.
 - Ignorá saludos, "gracias", "por favor", y texto que no sea un ítem de pedido.
+- "Lo de siempre": si el cliente pide su pedido habitual con frases como "lo de siempre", "lo mismo de siempre", "lo habitual", "lo mismo que la última vez", "lo de costumbre", poné "loDeSiempre":true. Esto NO reemplaza a los ítems explícitos: si dice "2 de tomate y lo de siempre", devolvé el tomate en "items" Y "loDeSiempre":true. Si no lo menciona, "loDeSiempre":false.
 
 Respondé ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
-{"items":[{"ref":<entero>,"qty":<número>}],"sinMatch":[<string>]}`;
+{"items":[{"ref":<entero>,"qty":<número>}],"sinMatch":[<string>],"loDeSiempre":<booleano>}`;
 
 /**
  * Interpreta un pedido en texto libre contra el catálogo del cliente.
  * Función pura respecto del estado de la app: no escribe en DB, no envía nada.
  */
-export async function interpretarPedido({ texto, catalogo = [], model } = {}) {
+export async function interpretarPedido({ texto, catalogo = [], habituales = [], model } = {}) {
   const out = { ok: false, lineas: [], sinPrecio: [], sinMatch: [], error: null };
 
   if (!ANTHROPIC_KEY) {
@@ -131,6 +142,21 @@ export async function interpretarPedido({ texto, catalogo = [], model } = {}) {
     const prev = acumulado.get(prod.id);
     if (prev) prev.qty += qty;                       // mismo producto repetido → sumar
     else acumulado.set(prod.id, { producto: prod, qty });
+  }
+
+  // "Lo de siempre": si el modelo detectó el pedido habitual, expandimos los
+  // productos habituales del cliente con su cantidad típica. Resolvemos cada
+  // productId contra el catálogo (precio/nombre/unidad SIEMPRE del catálogo).
+  // No pisa lo que el cliente pidió explícito: si ya está en el pedido, se saltea.
+  if (parsed.loDeSiempre === true && Array.isArray(habituales) && habituales.length) {
+    const porId = new Map(catalogo.map(p => [p.id, p]));
+    for (const h of habituales) {
+      const prod = porId.get(h?.productId);
+      if (!prod?.id) continue;                        // ya no está en el catálogo → ignorar
+      if (acumulado.has(prod.id)) continue;           // el cliente ya lo pidió explícito
+      const qty = Math.max(1, Math.floor(Number(h?.qtyTipica) || 1));
+      acumulado.set(prod.id, { producto: prod, qty });
+    }
   }
 
   for (const { producto, qty } of acumulado.values()) {

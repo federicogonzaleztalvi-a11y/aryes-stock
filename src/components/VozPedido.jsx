@@ -240,6 +240,14 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                     {escuchando ? 'Tocá de nuevo cuando termines' : 'Deciles qué querés pedir'}
                   </div>
 
+                  {/* Atajo "lo de siempre": arma el pedido habitual del cliente
+                      (sus productos frecuentes con la cantidad de costumbre). */}
+                  {!escuchando && !texto && (
+                    <button type="button" onClick={() => procesar('lo de siempre')} style={chipSiempre}>
+                      ↻ Pedí lo de siempre
+                    </button>
+                  )}
+
                   {(escuchando || texto) && (
                     <div style={{
                       width: '100%', minHeight: 60, borderRadius: 12, background: '#f7f7f4',
@@ -258,6 +266,11 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
               ) : (
                 <div style={{ padding: '8px 0' }}>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#141614' }}>Escribí tu pedido</label>
+                  <div style={{ marginTop: 8 }}>
+                    <button type="button" onClick={() => procesar('lo de siempre')} style={chipSiempre}>
+                      ↻ Pedí lo de siempre
+                    </button>
+                  </div>
                   <textarea
                     autoFocus value={texto} onChange={e => setTexto(e.target.value)}
                     placeholder='Ej.: 2 cajas de tomate, 5 de cebolla, 1 aceite'
@@ -422,3 +435,10 @@ const noteBox = (bg, border) => ({
   marginTop: 8, padding: '9px 12px', borderRadius: 10, background: bg,
   border: `1px solid ${border}`, fontSize: 12.5, lineHeight: 1.4,
 });
+const chipSiempre = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+  borderRadius: 999, border: '1.5px solid #d1fae5', background: '#ecfdf5',
+  color: G_DK, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+  marginBottom: 12,
+};
+

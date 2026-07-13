@@ -21,6 +21,7 @@ import { setCorsHeaders } from './_cors.js';
 import { getBearerToken, validatePortalSession } from './_session.js';
 import { getCatalogoCliente } from './_catalog.js';
 import { interpretarPedido } from './_wa-interpret.js';
+import { getHabituales } from './_habituales.js';
 
 // Rate limit: máx 20 pedidos por voz por IP por minuto (cada uno gasta 1 llamada
 // a Claude). Suficiente para uso real, freno para abuso.
@@ -73,7 +74,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
     }
 
-    const r = await interpretarPedido({ texto, catalogo: items });
+    // "Lo de siempre": productos habituales del cliente (frecuencia + cantidad
+    // típica) para que el intérprete pueda expandir "mandame lo de siempre".
+    // Nunca rompe el pedido: si falla, sigue como pedido normal sin habituales.
+    let habituales = [];
+    try {
+      habituales = await getHabituales({ org, clienteId });
+    } catch (e) {
+      console.error('[voz-pedido] habituales falló (sigue sin ellos):', e.message);
+    }
+
+    const r = await interpretarPedido({ texto, catalogo: items, habituales });
     if (!r.ok) {
       // anthropic_not_configured / empty_catalog / parse_error / etc.
       const code = r.error || 'interpret_error';
