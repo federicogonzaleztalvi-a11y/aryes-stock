@@ -36,33 +36,36 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
   const [interim, setInterim] = useState('');       // texto provisional (mientras habla)
   const [texto, setTexto]     = useState('');        // texto final acumulado / editable
   const [manual, setManual]   = useState(false);     // modo escribir (sin voz)
+  const [escuchando, setEscuchando] = useState(false); // micrófono activo (grabando)
   const [result, setResult]   = useState(null);      // { lineas, sinPrecio, sinMatch }
   const [qtys, setQtys]       = useState({});         // productId -> cantidad (editable en revisión)
   const [errMsg, setErrMsg]   = useState('');
 
   const recRef      = useRef(null);
   const finalRef    = useRef('');     // acumulado de tramos finales
-  const stoppedRef  = useRef(false);  // el usuario tocó "Listo" (no reiniciar)
+  const stoppedRef  = useRef(false);  // el usuario tocó para terminar (no reiniciar)
 
-  // ── Arranque / limpieza al abrir-cerrar ──────────────────────────────────
+  // ── Reset / limpieza al abrir-cerrar ──────────────────────────────────────
+  // No auto-arrancamos el micrófono: como en WhatsApp, el usuario TOCA para
+  // empezar y TOCA para terminar. Así siempre hay un control claro para frenar.
   useEffect(() => {
     if (!open) return undefined;
-    // reset
     setFase('listening'); setInterim(''); setTexto(''); setResult(null);
     setQtys({}); setErrMsg(''); finalRef.current = ''; stoppedRef.current = false;
+    setEscuchando(false);
     setManual(!SpeechRec);   // sin API de voz → directo a escribir
-
-    if (SpeechRec) startListening();
     return () => stopRec();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const stopRec = useCallback(() => {
+    stoppedRef.current = true;
     const rec = recRef.current;
     if (rec) {
       try { rec.onend = null; rec.onerror = null; rec.onresult = null; rec.stop(); } catch { /* ya parado */ }
       recRef.current = null;
     }
+    setEscuchando(false);
   }, []);
 
   const startListening = useCallback(() => {
@@ -87,21 +90,36 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
     rec.onerror = (e) => {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
         // Permiso de micrófono denegado → modo escribir.
-        setManual(true); setFase('listening'); stopRec();
-      } else if (e.error === 'no-speech') {
-        // silencio: dejamos que onend reinicie
+        stopRec(); setManual(true); setFase('listening');
       }
+      // 'no-speech'/'aborted': dejamos que onend decida si reinicia.
     };
     rec.onend = () => {
-      // Chrome corta la sesión sola cada tanto: si el usuario no tocó "Listo",
-      // reiniciamos para que la escucha se sienta continua.
-      if (!stoppedRef.current && recRef.current) {
-        try { rec.start(); } catch { /* no se pudo reanudar */ }
+      // Chrome corta la sesión sola cada tanto: si el usuario NO tocó para
+      // terminar, reiniciamos para que la escucha se sienta continua.
+      if (!stoppedRef.current && recRef.current === rec) {
+        try { rec.start(); } catch { setEscuchando(false); }
+      } else {
+        setEscuchando(false);
       }
     };
     recRef.current = rec;
-    try { rec.start(); } catch { setManual(true); }
+    try { rec.start(); setEscuchando(true); } catch { setManual(true); setEscuchando(false); }
   }, [stopRec]);
+
+  // Toque único sobre el micrófono: si está escuchando → termina y arma el
+  // pedido (o pasa a escribir si no captó nada); si está quieto → empieza.
+  const toggleMic = useCallback(() => {
+    if (escuchando) {
+      stopRec();
+      const capturado = (finalRef.current + interim).trim() || texto.trim();
+      if (capturado) procesar(capturado);
+      else setManual(true);   // no captó nada → dejarlo escribir, sin trabarse
+    } else {
+      startListening();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escuchando, texto, interim, startListening, stopRec]);
 
   // ── Enviar el texto al intérprete ─────────────────────────────────────────
   const procesar = useCallback(async (txt) => {
@@ -133,12 +151,6 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
       setFase('error');
     }
   }, [token]);
-
-  const handleListo = () => {
-    stoppedRef.current = true;
-    stopRec();
-    procesar(texto);
-  };
 
   // ── Revisión: editar cantidades ───────────────────────────────────────────
   const setQ = (id, v) => setQtys(q => {
@@ -204,30 +216,44 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
           {fase === 'listening' && (
             <>
               {!manual ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '18px 0 8px' }}>
-                  <div style={{ position: 'relative', width: 96, height: 96, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                    <span style={ring(0)} /><span style={ring(0.6)} /><span style={ring(1.2)} />
-                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: G,
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 6px' }}>
+                  {/* Micrófono = un solo botón: tocás para empezar, tocás para
+                      terminar (como mandar un audio en WhatsApp). */}
+                  <button type="button" onClick={toggleMic}
+                    aria-label={escuchando ? 'Terminar y armar pedido' : 'Empezar a hablar'}
+                    style={{ position: 'relative', width: 128, height: 128, border: 'none',
+                      background: 'transparent', cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                    {escuchando && (<><span style={ring(0)} /><span style={ring(0.6)} /><span style={ring(1.2)} /></>)}
+                    <div style={{ width: 84, height: 84, borderRadius: '50%',
+                      background: escuchando ? '#dc2626' : G,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 6px 18px rgba(5,150,105,.4)' }}>
-                      <MicIcon size={26} color="#fff" />
+                      boxShadow: escuchando ? '0 6px 20px rgba(220,38,38,.45)' : '0 6px 18px rgba(5,150,105,.4)',
+                      transition: 'background .2s' }}>
+                      {escuchando ? <StopIcon /> : <MicIcon size={32} color="#fff" />}
                     </div>
+                  </button>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: escuchando ? '#dc2626' : '#141614', marginBottom: 3 }}>
+                    {escuchando ? 'Escuchando…' : 'Tocá para hablar'}
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: G, marginBottom: 12 }}>Escuchando…</div>
-
-                  <div style={{
-                    width: '100%', minHeight: 64, borderRadius: 12, background: '#f7f7f4',
-                    border: '1px solid #eee', padding: '12px 14px', fontSize: 15, lineHeight: 1.5,
-                    color: texto ? '#141614' : GRAY,
-                  }}>
-                    {texto || 'Ej.: "Mandame 2 cajas de tomate, 5 de cebolla y una de aceite"'}
-                    {interim && <span style={{ color: GRAY }}> </span>}
+                  <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 14, textAlign: 'center' }}>
+                    {escuchando ? 'Tocá de nuevo cuando termines' : 'Deciles qué querés pedir'}
                   </div>
 
-                  <div style={{ display: 'flex', gap: 10, width: '100%', marginTop: 14 }}>
-                    <button onClick={() => { stopRec(); setManual(true); }} style={btnGhost}>Escribir</button>
-                    <button onClick={handleListo} disabled={!texto.trim()} style={btnPrimary(!texto.trim())}>Listo</button>
-                  </div>
+                  {(escuchando || texto) && (
+                    <div style={{
+                      width: '100%', minHeight: 60, borderRadius: 12, background: '#f7f7f4',
+                      border: '1px solid #eee', padding: '12px 14px', fontSize: 15, lineHeight: 1.5,
+                      color: texto ? '#141614' : GRAY,
+                    }}>
+                      {texto || 'Ej.: "Mandame 2 cajas de tomate, 5 de cebolla y una de aceite"'}
+                    </div>
+                  )}
+
+                  <button onClick={() => { stopRec(); setManual(true); }}
+                    style={{ ...btnGhost, width: '100%', marginTop: 14 }}>
+                    Prefiero escribirlo
+                  </button>
                 </div>
               ) : (
                 <div style={{ padding: '8px 0' }}>
@@ -314,7 +340,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
               )}
 
               <div style={{ display: 'flex', gap: 10, marginTop: 16, alignItems: 'center' }}>
-                <button onClick={() => { setResult(null); setFase('listening'); setManual(!SpeechRec); finalRef.current=''; setTexto(''); setInterim(''); if (SpeechRec) startListening(); }} style={btnGhost}>
+                <button onClick={() => { setResult(null); setFase('listening'); setManual(!SpeechRec); finalRef.current=''; setTexto(''); setInterim(''); setEscuchando(false); }} style={btnGhost}>
                   Repetir
                 </button>
                 <button onClick={confirmar} disabled={nLineas === 0} style={btnPrimary(nLineas === 0)}>
@@ -360,10 +386,19 @@ function MicIcon({ size = 20, color = '#fff' }) {
   );
 }
 
+function StopIcon({ size = 30, color = '#fff' }) {
+  // Cuadrado redondeado = "detener/enviar" (metáfora universal de grabación).
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <rect x="6" y="6" width="12" height="12" rx="2.5" />
+    </svg>
+  );
+}
+
 // ── Estilos ──────────────────────────────────────────────────────────────────
 const ring = (delay) => ({
-  position: 'absolute', width: 64, height: 64, borderRadius: '50%',
-  background: 'rgba(5,150,105,.35)', animation: `vzPulse 1.8s ease-out ${delay}s infinite`,
+  position: 'absolute', width: 84, height: 84, borderRadius: '50%',
+  background: 'rgba(220,38,38,.30)', animation: `vzPulse 1.8s ease-out ${delay}s infinite`,
 });
 const btnClose = {
   width: 30, height: 30, borderRadius: 8, border: 'none', background: '#f0f0ec',
