@@ -40,10 +40,13 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
   const [result, setResult]   = useState(null);      // { lineas, sinPrecio, sinMatch }
   const [qtys, setQtys]       = useState({});         // productId -> cantidad (editable en revisión)
   const [errMsg, setErrMsg]   = useState('');
+  const [foto, setFoto]       = useState(null);       // dataURL de la foto elegida (preview)
+  const [fotoData, setFotoData] = useState(null);     // { mime, b64 } listo para subir
 
   const recRef      = useRef(null);
   const finalRef    = useRef('');     // acumulado de tramos finales
   const stoppedRef  = useRef(false);  // el usuario tocó para terminar (no reiniciar)
+  const fileRef     = useRef(null);   // input file oculto para la foto
 
   // ── Reset / limpieza al abrir-cerrar ──────────────────────────────────────
   // No auto-arrancamos el micrófono: como en WhatsApp, el usuario TOCA para
@@ -52,7 +55,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
     if (!open) return undefined;
     setFase('listening'); setInterim(''); setTexto(''); setResult(null);
     setQtys({}); setErrMsg(''); finalRef.current = ''; stoppedRef.current = false;
-    setEscuchando(false);
+    setEscuchando(false); setFoto(null); setFotoData(null);
     setManual(!SpeechRec);   // sin API de voz → directo a escribir
     return () => stopRec();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -121,36 +124,77 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escuchando, texto, interim, startListening, stopRec]);
 
-  // ── Enviar el texto al intérprete ─────────────────────────────────────────
-  const procesar = useCallback(async (txt) => {
-    const clean = (txt || '').trim();
-    if (!clean) { setErrMsg('No entendí nada. Probá de nuevo o escribí el pedido.'); return; }
+  // ── Núcleo compartido: toma la respuesta {lineas,sinPrecio,sinMatch} y pasa a
+  //    revisión (o a error con un mensaje según el modo: texto/voz, foto o repetir).
+  const aplicarResultado = useCallback((d, ctx) => {
+    const lineas = Array.isArray(d?.lineas) ? d.lineas : [];
+    if (lineas.length === 0 && (d?.sinMatch || []).length === 0 && (d?.sinPrecio || []).length === 0) {
+      setErrMsg(
+        ctx === 'ultimo' ? 'Todavía no tenés un pedido anterior para repetir.'
+        : ctx === 'foto' ? 'No pude leer productos de tu lista en la foto. Probá con más luz o escribilos.'
+        : 'No reconocí productos de tu catálogo. Probá nombrándolos como aparecen en la lista.'
+      );
+      setFase('error'); return;
+    }
+    const initQ = {};
+    lineas.forEach(l => { initQ[l.productId] = l.qty; });
+    setQtys(initQ);
+    setResult({ lineas, sinPrecio: d.sinPrecio || [], sinMatch: d.sinMatch || [] });
+    setFase('review');
+  }, []);
+
+  // ── Llamada genérica a un endpoint de armado (voz / foto / último pedido) ──
+  const llamar = useCallback(async (url, body, ctx) => {
     setFase('processing');
     try {
-      const r = await fetch(`${window.location.origin}/api/voz-pedido`, {
+      const r = await fetch(`${window.location.origin}${url}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ texto: clean }),
+        body: JSON.stringify(body || {}),
       });
       if (r.status === 401) { setErrMsg('Tu sesión expiró. Cerrá y volvé a entrar.'); setFase('error'); return; }
       if (r.status === 503) { setErrMsg('El asistente no está disponible en este momento.'); setFase('error'); return; }
+      if (r.status === 413) { setErrMsg('La foto es muy pesada. Sacá una un poco más chica.'); setFase('error'); return; }
       if (!r.ok) { setErrMsg('No pudimos procesar el pedido. Intentá de nuevo.'); setFase('error'); return; }
-      const d = await r.json();
-      const lineas = Array.isArray(d.lineas) ? d.lineas : [];
-      if (lineas.length === 0 && (d.sinMatch || []).length === 0 && (d.sinPrecio || []).length === 0) {
-        setErrMsg('No reconocí productos de tu catálogo. Probá nombrándolos como aparecen en la lista.');
-        setFase('error'); return;
-      }
-      const initQ = {};
-      lineas.forEach(l => { initQ[l.productId] = l.qty; });
-      setQtys(initQ);
-      setResult({ lineas, sinPrecio: d.sinPrecio || [], sinMatch: d.sinMatch || [] });
-      setFase('review');
+      aplicarResultado(await r.json(), ctx);
     } catch {
       setErrMsg('Falló la conexión. Revisá tu internet e intentá de nuevo.');
       setFase('error');
     }
-  }, [token]);
+  }, [token, aplicarResultado]);
+
+  // Texto/voz → intérprete de lenguaje natural.
+  const procesar = useCallback((txt) => {
+    const clean = (txt || '').trim();
+    if (!clean) { setErrMsg('No entendí nada. Probá de nuevo o escribí el pedido.'); return; }
+    llamar('/api/voz-pedido', { texto: clean }, 'texto');
+  }, [llamar]);
+
+  // Foto de la lista → visión.
+  const procesarFoto = useCallback((data) => {
+    if (!data?.b64) return;
+    llamar('/api/foto-pedido', { imagen: { media_type: data.mime, data: data.b64 } }, 'foto');
+  }, [llamar]);
+
+  // Repetir último pedido → lectura directa (sin IA).
+  const repetirUltimo = useCallback(() => {
+    llamar('/api/ultimo-pedido', {}, 'ultimo');
+  }, [llamar]);
+
+  // Elegir/sacar una foto: la comprimimos en el navegador antes de subir.
+  const onFile = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';                 // permite volver a elegir la misma foto
+    if (!file) return;
+    stopRec();
+    try {
+      const img = await comprimirImagen(file);
+      setFoto(img.preview);
+      setFotoData({ mime: img.mime, b64: img.b64 });
+    } catch {
+      setErrMsg('No pude leer esa imagen. Probá con otra foto.'); setFase('error');
+    }
+  }, [stopRec]);
 
   // ── Revisión: editar cantidades ───────────────────────────────────────────
   const setQ = (id, v) => setQtys(q => {
@@ -204,18 +248,35 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
             <MicIcon size={17} color={G} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#141614' }}>Pedí por voz</div>
-            <div style={{ fontSize: 12, color: GRAY }}>Deciles qué necesitás, lo armamos por vos</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#141614' }}>Armá tu pedido</div>
+            <div style={{ fontSize: 12, color: GRAY }}>Deciles, sacale una foto o escribí</div>
           </div>
           <button onClick={onClose} aria-label="Cerrar" style={btnClose}>✕</button>
         </div>
 
         <div style={{ padding: '4px 18px 18px', overflowY: 'auto' }}>
 
-          {/* ---------- ESCUCHANDO / ESCRIBIR ---------- */}
+          {/* Input de foto oculto (cámara en móvil / archivo en desktop). */}
+          <input ref={fileRef} type="file" accept="image/*" capture="environment"
+            onChange={onFile} style={{ display: 'none' }} />
+
+          {/* ---------- ESCUCHANDO / ESCRIBIR / FOTO ---------- */}
           {fase === 'listening' && (
             <>
-              {!manual ? (
+              {foto ? (
+                /* Previsualización de la foto elegida, antes de armar el pedido. */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '8px 0' }}>
+                  <img src={foto} alt="Tu lista"
+                    style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 12, border: '1px solid #e0e0d8', objectFit: 'contain' }} />
+                  <div style={{ fontSize: 12.5, color: GRAY, margin: '10px 0 4px', textAlign: 'center' }}>
+                    Revisá que se lea bien la lista y armamos tu pedido.
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8, width: '100%' }}>
+                    <button onClick={() => fileRef.current?.click()} style={btnGhost}>Otra foto</button>
+                    <button onClick={() => procesarFoto(fotoData)} style={btnPrimary(false)}>Armar pedido</button>
+                  </div>
+                </div>
+              ) : !manual ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0 6px' }}>
                   {/* Micrófono = un solo botón: tocás para empezar, tocás para
                       terminar (como mandar un audio en WhatsApp). */}
@@ -240,11 +301,10 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                     {escuchando ? 'Tocá de nuevo cuando termines' : 'Deciles qué querés pedir'}
                   </div>
 
-                  {/* Atajo "lo de siempre": arma el pedido habitual del cliente
-                      (sus productos frecuentes con la cantidad de costumbre). */}
+                  {/* Atajo: repetir exactamente el último pedido del cliente. */}
                   {!escuchando && !texto && (
-                    <button type="button" onClick={() => procesar('lo de siempre')} style={chipSiempre}>
-                      ↻ Pedí lo de siempre
+                    <button type="button" onClick={repetirUltimo} style={chipSiempre}>
+                      ↻ Repetir último pedido
                     </button>
                   )}
 
@@ -258,17 +318,26 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                     </div>
                   )}
 
+                  {!escuchando && (
+                    <button onClick={() => fileRef.current?.click()}
+                      style={{ ...btnGhost, width: '100%', marginTop: 14 }}>
+                      <CameraIcon size={16} color={G} /> Foto de tu lista
+                    </button>
+                  )}
                   <button onClick={() => { stopRec(); setManual(true); }}
-                    style={{ ...btnGhost, width: '100%', marginTop: 14 }}>
+                    style={{ ...btnGhost, width: '100%', marginTop: 10 }}>
                     Prefiero escribirlo
                   </button>
                 </div>
               ) : (
                 <div style={{ padding: '8px 0' }}>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#141614' }}>Escribí tu pedido</label>
-                  <div style={{ marginTop: 8 }}>
-                    <button type="button" onClick={() => procesar('lo de siempre')} style={chipSiempre}>
-                      ↻ Pedí lo de siempre
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={repetirUltimo} style={chipSiempre}>
+                      ↻ Repetir último pedido
+                    </button>
+                    <button type="button" onClick={() => fileRef.current?.click()} style={chipSiempre}>
+                      <CameraIcon size={14} color={G_DK} /> Foto de tu lista
                     </button>
                   </div>
                   <textarea
@@ -353,7 +422,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
               )}
 
               <div style={{ display: 'flex', gap: 10, marginTop: 16, alignItems: 'center' }}>
-                <button onClick={() => { setResult(null); setFase('listening'); setManual(!SpeechRec); finalRef.current=''; setTexto(''); setInterim(''); setEscuchando(false); }} style={btnGhost}>
+                <button onClick={() => { setResult(null); setFase('listening'); setManual(!SpeechRec); finalRef.current=''; setTexto(''); setInterim(''); setEscuchando(false); setFoto(null); setFotoData(null); }} style={btnGhost}>
                   Repetir
                 </button>
                 <button onClick={confirmar} disabled={nLineas === 0} style={btnPrimary(nLineas === 0)}>
@@ -370,7 +439,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
               <div style={{ fontSize: 14, color: '#141614', marginBottom: 16 }}>{errMsg}</div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={onClose} style={btnGhost}>Cerrar</button>
-                <button onClick={() => { setFase('listening'); setManual(true); }} style={btnPrimary(false)}>Escribir pedido</button>
+                <button onClick={() => { setFase('listening'); setManual(true); setFoto(null); setFotoData(null); }} style={btnPrimary(false)}>Escribir pedido</button>
               </div>
             </div>
           )}
@@ -406,6 +475,35 @@ function StopIcon({ size = 30, color = '#fff' }) {
       <rect x="6" y="6" width="12" height="12" rx="2.5" />
     </svg>
   );
+}
+
+function CameraIcon({ size = 16, color = '#059669' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+// Comprime la foto en el navegador antes de subir: la achica a máx 1600px y la
+// pasa a JPEG. Así una foto de 4-8MB del celular queda en cientos de KB, entra
+// en el límite del endpoint y viaja rápido aun con datos móviles.
+async function comprimirImagen(file) {
+  const dataUrl = await new Promise((res, rej) => {
+    const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(file);
+  });
+  const img = await new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl;
+  });
+  const maxDim = 1600;
+  let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  if (Math.max(w, h) > maxDim) { const s = maxDim / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  const preview = canvas.toDataURL('image/jpeg', 0.82);   // "data:image/jpeg;base64,XXXX"
+  return { preview, mime: 'image/jpeg', b64: preview.split(',')[1] || '' };
 }
 
 // ── Estilos ──────────────────────────────────────────────────────────────────

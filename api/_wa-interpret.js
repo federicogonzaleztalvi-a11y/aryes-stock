@@ -31,8 +31,15 @@
 //     error?,                     // detalle si ok=false
 //   }>
 //
+// Pedido por FOTO:
+//   Si en vez de `texto` (o además) pasamos `imagen` ({ media_type, data:base64 }),
+//   Claude LEE la foto de la lista de compra (escrita a mano o impresa) y aplica
+//   exactamente las mismas reglas de matcheo. El resto del pipeline (resolución
+//   ref→producto, precio del catálogo, sinMatch, "lo de siempre") es idéntico.
+//
 //   catalogo:   [{ id, nombre, unidad, precio, categoria?, marca? }]  (de api/catalogo.js)
 //   habituales: [{ productId, qtyTipica }]                            (de api/_habituales.js)
+//   imagen:     { media_type:'image/jpeg'|'image/png'|'image/webp', data:'<base64>' }
 // ============================================================================
 
 import { log } from './_log.js';
@@ -46,7 +53,7 @@ const SYSTEM_PROMPT = `Sos un asistente que interpreta pedidos mayoristas escrit
 Te doy un CATÁLOGO numerado. Cada línea es:
   <ref>. <nombre> — <unidad> — $<precio>
 
-El cliente escribe un pedido libre (puede tener typos, abreviaturas, cantidades en palabras, varios productos por renglón, marcas, etc). Tenés que:
+El pedido puede llegar como TEXTO o como una FOTO de una lista de compra escrita a mano o impresa. Si te doy una imagen, leé cada renglón de la lista (aunque la letra sea difícil) y tratá cada ítem igual que si lo hubiera escrito. Tenés que:
 1. Identificar cada producto que pide y mapearlo a la "ref" del catálogo que mejor coincida.
 2. Extraer la cantidad pedida de cada uno (número; puede ser decimal como 2.5).
 3. Lo que no puedas mapear con razonable confianza a una ref del catálogo, ponelo como texto en "sinMatch" (NO inventes una ref).
@@ -56,7 +63,7 @@ Reglas:
 - NO inventes refs que no estén en el catálogo. NO inventes precios.
 - Si el cliente repite un producto, sumá las cantidades en una sola línea.
 - Ignorá saludos, "gracias", "por favor", y texto que no sea un ítem de pedido.
-- "Lo de siempre": si el cliente pide su pedido habitual con frases como "lo de siempre", "lo mismo de siempre", "lo habitual", "lo mismo que la última vez", "lo de costumbre", poné "loDeSiempre":true. Esto NO reemplaza a los ítems explícitos: si dice "2 de tomate y lo de siempre", devolvé el tomate en "items" Y "loDeSiempre":true. Si no lo menciona, "loDeSiempre":false.
+- Repetir el último pedido: si el cliente pide repetir lo anterior con frases como "lo de siempre", "lo mismo de siempre", "lo habitual", "lo mismo que la última vez", "repetime el último pedido", "mandame lo de la otra vez", poné "loDeSiempre":true. Esto NO reemplaza a los ítems explícitos: si dice "2 de tomate y lo de siempre", devolvé el tomate en "items" Y "loDeSiempre":true. Si no lo menciona, "loDeSiempre":false.
 
 Respondé ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exacta:
 {"items":[{"ref":<entero>,"qty":<número>}],"sinMatch":[<string>],"loDeSiempre":<booleano>}`;
@@ -65,7 +72,7 @@ Respondé ÚNICAMENTE con JSON válido, sin texto adicional, con esta forma exac
  * Interpreta un pedido en texto libre contra el catálogo del cliente.
  * Función pura respecto del estado de la app: no escribe en DB, no envía nada.
  */
-export async function interpretarPedido({ texto, catalogo = [], habituales = [], model } = {}) {
+export async function interpretarPedido({ texto, catalogo = [], habituales = [], imagen = null, model } = {}) {
   const out = { ok: false, lineas: [], sinPrecio: [], sinMatch: [], error: null };
 
   if (!ANTHROPIC_KEY) {
@@ -74,7 +81,8 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
     return out;
   }
   const texInput = String(texto || '').trim();
-  if (!texInput) { out.ok = true; return out; }            // sin texto → pedido vacío
+  const tieneImg = !!(imagen && imagen.data);
+  if (!texInput && !tieneImg) { out.ok = true; return out; }   // sin texto ni foto → pedido vacío
   if (!Array.isArray(catalogo) || catalogo.length === 0) {
     out.error = 'empty_catalog';
     return out;
@@ -84,6 +92,15 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
   const listado = catalogo
     .map((p, i) => `${i + 1}. ${p.nombre} — ${p.unidad || 'un'} — $${Number(p.precio) || 0}`)
     .join('\n');
+
+  // Contenido del mensaje: texto solo, o imagen (+ texto opcional). Cuando hay
+  // foto, mandamos el bloque de imagen y una instrucción para que lea la lista.
+  const userContent = tieneImg
+    ? [
+        { type: 'image', source: { type: 'base64', media_type: imagen.media_type || 'image/jpeg', data: imagen.data } },
+        { type: 'text', text: texInput || 'Esta es la foto de mi lista de pedido. Leela y armá el pedido con el catálogo.' },
+      ]
+    : texInput;
 
   let data;
   try {
@@ -98,7 +115,7 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
         model: model || DEFAULT_MODEL,
         max_tokens: 1500,
         system: SYSTEM_PROMPT + '\n\nCATÁLOGO:\n' + listado,
-        messages: [{ role: 'user', content: texInput }],
+        messages: [{ role: 'user', content: userContent }],
       }),
     });
     if (!r.ok) {

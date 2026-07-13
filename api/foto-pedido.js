@@ -1,35 +1,37 @@
-// api/voz-pedido.js — "Pedido por voz/texto" del portal B2B (estilo Zapia).
+// api/foto-pedido.js — "Pedido por foto" del portal B2B (estilo Zapia).
 // ============================================================================
-// El cliente dicta (o escribe) su pedido en lenguaje natural — "mandame 2 cajas
-// de tomate, 5 de cebolla y lo de siempre" — y este endpoint lo convierte en
-// líneas de carrito usando el MISMO motor que el bot de WhatsApp
-// (interpretarPedido) contra el catálogo con los precios de ESE cliente.
+// El cliente le saca una foto a su lista de compra (escrita a mano o impresa) y
+// este endpoint la convierte en líneas de carrito. Claude (visión) LEE la lista
+// y la matchea contra el catálogo con los precios de ESE cliente, usando el MISMO
+// motor que el pedido por voz y el bot de WhatsApp (interpretarPedido).
 //
-// Vive dentro del portal que controlamos (no depende de WhatsApp), así que no lo
-// alcanza la restricción de Meta a asistentes de IA de terceros.
+// Vive dentro del portal que controlamos (no depende de WhatsApp).
 //
 // Seguridad: requiere sesión de portal válida. org_id y cliente_id se DERIVAN de
 // la sesión, nunca del body/query (defensa IDOR / cross-tenant), igual que
-// api/catalogo.js.
+// api/voz-pedido.js.
 //
-// POST /api/voz-pedido   body: { texto }   headers: Authorization: Bearer <token>
-//   → 200 { ok, lineas:[{productId,nombre,unidad,qty,precio,subtotal}],
-//           sinPrecio:[{productId,nombre,qty}], sinMatch:[string] }
+// POST /api/foto-pedido   body: { imagen: { media_type, data } }   Authorization: Bearer <token>
+//   → 200 { ok, lineas:[...], sinPrecio:[...], sinMatch:[...] }
 // ============================================================================
 
 import { setCorsHeaders } from './_cors.js';
 import { getBearerToken, validatePortalSession } from './_session.js';
 import { getCatalogoCliente } from './_catalog.js';
 import { interpretarPedido } from './_wa-interpret.js';
-import { getUltimoPedido } from './_ultimo-pedido.js';
 
-// Rate limit: máx 20 pedidos por voz por IP por minuto (cada uno gasta 1 llamada
-// a Claude). Suficiente para uso real, freno para abuso.
+const MIMES_OK = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// Vercel limita el body a ~4.5MB. El cliente comprime la foto antes de subir
+// (~1600px, jpeg) → suele quedar en cientos de KB. Cortamos en ~3MB de base64
+// (≈2.2MB reales) para entrar holgado y frenar payloads abusivos.
+const MAX_B64 = 3_000_000;
+
+// Rate limit: máx 15 fotos por IP por minuto (cada una gasta 1 llamada a Claude).
 const _rl = new Map();
 function _checkRate(ip) {
   const now = Date.now();
   const recent = (_rl.get(ip) || []).filter(t => now - t < 60000);
-  if (recent.length >= 20) return false;
+  if (recent.length >= 15) return false;
   recent.push(now);
   _rl.set(ip, recent);
   return true;
@@ -51,20 +53,22 @@ export default async function handler(req, res) {
   const clienteId = String(session.cliente_id || '');
   if (!org || !clienteId) return res.status(401).json({ error: 'Sesión inválida' });
 
-  // ── Body ──
+  // ── Body: la imagen en base64 ──
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-  const texto = String(body?.texto || '').trim();
-  if (!texto) return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
-  if (texto.length > 2000) return res.status(400).json({ error: 'Texto demasiado largo' });
+  const media_type = String(body?.imagen?.media_type || 'image/jpeg');
+  const data       = String(body?.imagen?.data || '');
+  if (!data)                       return res.status(400).json({ error: 'Falta la imagen' });
+  if (!MIMES_OK.includes(media_type)) return res.status(400).json({ error: 'Formato de imagen no soportado' });
+  if (data.length > MAX_B64)       return res.status(413).json({ error: 'La imagen es demasiado grande' });
 
   try {
-    // Catálogo con la lista del cliente (misma fuente de verdad que portal y bot).
+    // Catálogo con la lista del cliente (misma fuente de verdad que portal y voz).
     let catalogo;
     try {
       catalogo = await getCatalogoCliente({ org, clienteId });
     } catch (e) {
-      console.error('[voz-pedido] catálogo falló:', e.message);
+      console.error('[foto-pedido] catálogo falló:', e.message);
       return res.status(502).json({ error: 'Database error' });
     }
     const { items = [], portalCfg = {} } = catalogo;
@@ -74,19 +78,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
     }
 
-    // "Repetir último pedido": líneas del último pedido del cliente, para que el
-    // intérprete pueda expandir "mandame lo de siempre" / "repetime el último".
-    // Nunca rompe el pedido: si falla, sigue como pedido normal sin expansión.
-    let habituales = [];
-    try {
-      habituales = await getUltimoPedido({ org, clienteId });
-    } catch (e) {
-      console.error('[voz-pedido] último pedido falló (sigue sin él):', e.message);
-    }
-
-    const r = await interpretarPedido({ texto, catalogo: items, habituales });
+    const r = await interpretarPedido({ imagen: { media_type, data }, catalogo: items });
     if (!r.ok) {
-      // anthropic_not_configured / empty_catalog / parse_error / etc.
       const code = r.error || 'interpret_error';
       const status = code === 'anthropic_not_configured' ? 503 : 502;
       return res.status(status).json({ error: code });
@@ -99,7 +92,7 @@ export default async function handler(req, res) {
       sinMatch:  r.sinMatch,
     });
   } catch (err) {
-    console.error('[voz-pedido] Error:', err);
+    console.error('[foto-pedido] Error:', err);
     return res.status(500).json({ error: 'Internal error' });
   }
 }
