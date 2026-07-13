@@ -6,6 +6,7 @@ import useSwipeBack from '../hooks/useSwipeBack.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
 import IvaLine from '../components/IvaLine.jsx';
+import VozPedido from '../components/VozPedido.jsx';
 import { demoHoreca } from '../demo/demo-horeca.js';
 import { demoBebidas } from '../demo/demo-bebidas.js';
 import { demoLimpieza } from '../demo/demo-limpieza.js';
@@ -2020,6 +2021,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [busq,     setBusq]     = useState('');
   const [carrito,  setCarrito]  = useState(() => loadCart((vendorSession || loadSession())?.clienteId));
   const [showCart, setShowCart] = useState(false);
+  const [vozOpen,  setVozOpen]  = useState(false); // modal "Pedí por voz"
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
   const [udOpen,   setUdOpen]   = useState(false);
@@ -2362,6 +2364,27 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     return n;
   });
 
+  // ── Pedí por voz: suma las líneas dictadas al carrito ─────────────────────
+  // Recibe [{ productId, qty }] ya resuelto por /api/voz-pedido contra la lista
+  // del cliente. Suma a lo que ya tenga cargado (respeta el mínimo por producto)
+  // y abre el carrito para que revise. Productos sin variante → clave = id.
+  const confirmVoz = (lineas) => {
+    setCarrito(c => {
+      const n = { ...c };
+      (lineas || []).forEach(l => {
+        const it = items.find(p => p.id === l.productId);
+        if (!it) return;
+        const min = it.min_order_qty || 1;
+        const add = Math.max(min, Math.floor(l.qty) || min);
+        n[l.productId] = (n[l.productId] || 0) + add;
+      });
+      return n;
+    });
+    track('voz_pedido_confirmado', { lineas: (lineas || []).length });
+    setVozOpen(false);
+    setShowCart(true);
+  };
+
   const logout = () => {
     if (isPortalDemo) { setPortalDemo(null); setItems([]); setCarrito({}); window.location.href = '/pedidos'; return; }
     // Modo vendedor: no hay sesión propia en localStorage que limpiar; volvemos a
@@ -2464,12 +2487,26 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: GRAY }}>{Icon.search}</div>
                 <input value={busq} onChange={e => { setBusq(e.target.value); if (detalle) setDetalle(null); }}
                   placeholder="Buscar producto o marca..." aria-label="Buscar producto o marca"
-                  style={{ width: '100%', padding: '9px 16px 9px 36px',
+                  style={{ width: '100%', padding: `9px ${brandCfg?.portalVoz === false ? 16 : 46}px 9px 36px`,
                     border: '1.5px solid #e0e0d8', borderRadius: 28, fontSize: 16,
                     fontFamily: SANS, boxSizing: 'border-box', outline: 'none',
                     background: '#f7f7f4', color: '#1a1a18' }}
                   onFocus={e => e.target.style.borderColor = G}
                   onBlur={e => e.target.style.borderColor = '#e0e0d8'} />
+                {brandCfg?.portalVoz !== false && (
+                  <button type="button" onClick={() => setVozOpen(true)}
+                    aria-label="Pedir por voz" title="Pedí por voz"
+                    style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                      width: 34, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                      background: G, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(5,150,105,.35)' }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           ) : <div style={{ flex: 1 }} />}
@@ -2825,6 +2862,15 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           </button>
         </div>
       )}
+
+      {/* Pedí por voz (estilo Zapia) */}
+      <VozPedido
+        open={vozOpen}
+        token={session?.token}
+        isMobile={isMobile}
+        onClose={() => setVozOpen(false)}
+        onConfirm={confirmVoz}
+      />
 
       {/* Estado de cuenta modal */}
       {showEstadoCuenta && (
