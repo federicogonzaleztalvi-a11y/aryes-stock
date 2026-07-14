@@ -1147,11 +1147,15 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
     // descPct es solo el descuento por unidad SUELTA (Siempre/cantidad). Cuando hay
     // caja cerrada, las unidades de caja pagan menos, así que el ahorro real de la
     // línea es mayor. descEfectivoPct = ahorro real vs el precio de lista mostrado.
-    const refUnit = Number(item.precio) || 0;
+    // Referencia para el % de ahorro y el precio tachado. En v2 el precio de lista
+    // REAL es precioBase (sin descontar); item.precio ya trae el dto "siempre"
+    // adentro, así que usarlo escondía ese ahorro (mostraba 0%). En el camino viejo
+    // no hay base separada confiable, así que se mantiene item.precio como referencia.
+    const refUnit = item.reglasV2 ? (Number(item.precioBase) || 0) : (Number(item.precio) || 0);
     const descEfectivoPct = refUnit > 0 ? Math.max(0, Math.round(100 * (1 - c.netoLinea / (refUnit * qty)))) : 0;
     // Unidades que efectivamente pagan precio distribuidor (completan cajas).
     const unidEnCaja = c.cajaUnid > 0 ? Math.floor(qty / c.cajaUnid) * c.cajaUnid : 0;
-    return { key, item, qty, variantId, variantSku, ...c, descEfectivoPct, unidEnCaja };
+    return { key, item, qty, variantId, variantSku, ...c, descEfectivoPct, unidEnCaja, precioRef: refUnit };
   });
   const { subtotalNeto, ivaTotal, total } = calcTotales(lineasConCalc);
 
@@ -1527,13 +1531,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
           <div style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 10 }}>
             DETALLE DEL PEDIDO
           </div>
-          {lineasConCalc.map(({ key, item, qty, descEfectivoPct, precioConDto, netoLinea, ivaRate }) => (
+          {lineasConCalc.map(({ key, item, qty, descEfectivoPct, precioConDto, precioRef, netoLinea, ivaRate }) => (
             <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
               padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                 <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
-                  {qty} × {fmt.currency(item.precio)}
+                  {qty} × {fmt.currency(precioConDto)}
+                  {descEfectivoPct > 0 && <span style={{ color: '#b0b0a8', marginLeft: 4, textDecoration: 'line-through' }}>{fmt.currency(precioRef)}</span>}
                   {descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
                   <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                 </div>
@@ -1708,7 +1713,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
             </div>
           )}
-          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, netoLinea, tramos }) => (
+          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, precioRef, netoLinea, tramos }) => (
             <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
@@ -1740,7 +1745,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                 <div style={{ textAlign: 'right' }}>
                   {descEfectivoPct > 0 && (
                     <div style={{ fontSize: 11, color: '#b0b0a8', textDecoration: 'line-through' }}>
-                      {fmt.currency(item.precio * qty)}
+                      {fmt.currency(precioRef * qty)}
                     </div>
                   )}
                   <div style={{ fontSize: 13, fontWeight: 700, color: G }}>

@@ -249,7 +249,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#141614' }}>Armá tu pedido</div>
-            <div style={{ fontSize: 12, color: GRAY }}>Dictá, sacale una foto o escribí</div>
+            <div style={{ fontSize: 12, color: GRAY }}>Contame, sacale una foto o escribí</div>
           </div>
           <button onClick={onClose} aria-label="Cerrar" style={btnClose}>✕</button>
         </div>
@@ -298,7 +298,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                     {escuchando ? 'Escuchando…' : 'Tocá para hablar'}
                   </div>
                   <div style={{ fontSize: 12.5, color: GRAY, marginBottom: 14, textAlign: 'center' }}>
-                    {escuchando ? 'Tocá de nuevo cuando termines' : 'Dictá qué querés pedir'}
+                    {escuchando ? 'Tocá de nuevo cuando termines' : 'Contame qué necesitás'}
                   </div>
 
                   {/* Atajo: repetir exactamente el último pedido del cliente. */}
