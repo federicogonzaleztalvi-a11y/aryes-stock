@@ -2656,7 +2656,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
 
         <nav aria-label="Categorías" style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
           display: 'flex', alignItems: 'center',
-          height: 44, position: 'relative', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
+          height: 44, position: 'relative', overflowX: 'visible' }} onClick={e => e.stopPropagation()}>
           {/* "Todas las categorías": menú completo estilo Amazon, SIEMPRE a la
               izquierda del nav. Contiene el árbol entero (drilldown nivel 1 →
               nivel 2), así que reemplaza cualquier overflow "Mas": las categorías
@@ -2684,7 +2684,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                     {/* "Todos los productos" limpia el filtro. Vive acá adentro
                         (no como chip suelto) para no duplicar con el botón del
                         menú "Todas las categorías", que estaba al lado. */}
-                    <button type="button" onClick={() => { setVista('catalogo'); setCatFil('Todos'); setSubFil(''); setDdOpen(false); setDetalle(null); }} style={{
+                    <button type="button" onClick={() => { setVista('catalogo'); setCatFil('Todos'); setSubFil(''); setDdOpen(false); setDetalle(null); }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f7f7f4'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = (vista === 'catalogo' && catFil === 'Todos') ? '#f0fdf4' : 'transparent'; }}
+                      style={{
                       display: 'block', width: '100%', padding: '9px 16px', border: 'none',
                       borderBottom: '1px solid #f0f0ee',
                       background: (vista === 'catalogo' && catFil === 'Todos') ? '#f0fdf4' : 'transparent',
@@ -2700,7 +2703,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                         <button key={cat} type="button" onClick={() => {
                           if (subs.length) { setMenuCat(cat); }
                           else { setVista('catalogo'); setCatFil(cat); setSubFil(''); setDdOpen(false); setDetalle(null); }
-                        }} style={{
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f7f7f4'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = activa && !subs.length ? '#f0fdf4' : 'transparent'; }}
+                        style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                           width: '100%', padding: '9px 16px', border: 'none',
                           background: activa && !subs.length ? '#f0fdf4' : 'transparent',
@@ -2718,7 +2724,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                     </>
                   ) : (
                     <>
-                      <button type="button" onClick={() => setMenuCat(null)} style={{
+                      <button type="button" onClick={() => setMenuCat(null)}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f7f7f4'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        style={{
                         display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 16px',
                         border: 'none', borderBottom: '1px solid #f0f0ee', background: 'transparent',
                         fontSize: 12.5, fontWeight: 600, color: '#6a6a68', cursor: 'pointer', fontFamily: SANS }}>
@@ -2727,7 +2736,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                         </svg>
                         Todas las categorías
                       </button>
-                      <button type="button" onClick={() => { setVista('catalogo'); setCatFil(menuCat); setSubFil(''); setDdOpen(false); setMenuCat(null); setDetalle(null); }} style={{
+                      <button type="button" onClick={() => { setVista('catalogo'); setCatFil(menuCat); setSubFil(''); setDdOpen(false); setMenuCat(null); setDetalle(null); }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f7f7f4'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                        style={{
                         display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent',
                         fontSize: 13, fontWeight: 600, color: G, textAlign: 'left', cursor: 'pointer', fontFamily: SANS }}>
                         Ver todo {menuCat}
@@ -2735,7 +2747,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                       {subsDe(menuCat).map(sub => {
                         const activa = vista === 'catalogo' && catFil === menuCat && subFil === sub;
                         return (
-                          <button key={sub} type="button" onClick={() => { setVista('catalogo'); setCatFil(menuCat); setSubFil(sub); setDdOpen(false); setMenuCat(null); setDetalle(null); }} style={{
+                          <button key={sub} type="button" onClick={() => { setVista('catalogo'); setCatFil(menuCat); setSubFil(sub); setDdOpen(false); setMenuCat(null); setDetalle(null); }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f7f7f4'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = activa ? '#f0fdf4' : 'transparent'; }}
+                            style={{
                             display: 'block', width: '100%', padding: '8px 16px 8px 28px', border: 'none',
                             background: activa ? '#f0fdf4' : 'transparent',
                             fontSize: 13, color: activa ? G : '#3a3a32', fontWeight: activa ? 500 : 400,
@@ -2750,18 +2765,19 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               )}
             </div>
           )}
-          {/* Categorías destacadas inline. En desktop viven en un contenedor
+          {/* Categorías destacadas inline. Sólo en desktop: viven en un contenedor
               flexible (flex:1, minWidth:0) que se queda con el espacio libre; se
               miden y sólo se muestran las que entran enteras (navVisibles), el
-              resto queda invisible y disponible en "Todas". En mobile el nav
-              scrollea horizontal, así que el contenedor no recorta. */}
-          {(vista === 'catalogo' || vista === 'habituales') && (
-            <div ref={navRowRef} style={isMobile ? { display: 'flex' } : { display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-              {(isMobile ? catsMenu : catsMenu.slice(0, NAV_MAX)).map((cat, i) => (
+              resto queda invisible y disponible en "Todas". En mobile NO se
+              muestran (quedaba un despliegue enorme de categorías apretadas): ahí
+              se navega sólo por el menú "Todas las categorías". */}
+          {!isMobile && (vista === 'catalogo' || vista === 'habituales') && (
+            <div ref={navRowRef} style={{ display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              {catsMenu.slice(0, NAV_MAX).map((cat, i) => (
                 <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
                   padding: '0 16px', height: 44, border: 'none', background: 'transparent',
                   fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS, flexShrink: 0,
-                  visibility: (!isMobile && i >= navVisibles) ? 'hidden' : 'visible',
+                  visibility: (i >= navVisibles) ? 'hidden' : 'visible',
                   fontWeight: (vista === 'catalogo' && catFil === cat) ? 500 : 400,
                   color: (vista === 'catalogo' && catFil === cat) ? G : '#5a5a52',
                   borderBottom: (vista === 'catalogo' && catFil === cat) ? `2px solid ${G}` : '2px solid transparent',
@@ -2775,6 +2791,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           {buyAgain.length > 0 && (vista === 'catalogo' || vista === 'habituales') && (
             <button onClick={() => { setVista('habituales'); setDetalle(null); setDdOpen(false); }} style={{
               padding: '0 14px', height: 44, border: 'none', background: 'transparent',
+              marginLeft: 'auto',
               fontSize: 14, fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 6,
               fontWeight: vista === 'habituales' ? 500 : 400,
               color: vista === 'habituales' ? G : '#5a5a52',
