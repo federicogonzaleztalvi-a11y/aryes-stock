@@ -55,6 +55,30 @@ describe('buildLineas', () => {
     expect(l.precioBase).toBe(80);
     expect(l.codigo).toBe('');
   });
+
+  it('desglosa en filas por tramo cuando hay caja cerrada (>1 tramo)', () => {
+    const items = [{
+      id: 'uuid-1', nombre: 'Choco', unidad: 'kg', cantidad: 15, precioUnit: 82, subtotal: 1230,
+      tramos: [
+        { unidades: 10, precioUnit: 70, distribuidor: true },  // caja cerrada
+        { unidades: 5,  precioUnit: 100, distribuidor: false }, // sueltas
+      ],
+    }];
+    const lineas = buildLineas(items, BASE);
+    expect(lineas).toHaveLength(2);
+    expect(lineas[0]).toEqual({ codigo: 'COD-1', nombre: 'Choco (caja cerrada)', unidad: 'kg', qty: 10, precioBase: 100, precioUnit: 70, subtotal: 700 });
+    expect(lineas[1]).toEqual({ codigo: 'COD-1', nombre: 'Choco', unidad: 'kg', qty: 5, precioBase: 100, precioUnit: 100, subtotal: 500 });
+    // El desglose no cambia el subtotal total ni el descuento respecto del blended.
+    expect(sumLineas(lineas)).toEqual({ subtotal: 1200, descuentoTotal: 300 });
+  });
+
+  it('un solo tramo → una fila (no desglosa)', () => {
+    const items = [{ id: 'uuid-1', nombre: 'Choco', cantidad: 3, precioUnit: 90, subtotal: 270,
+      tramos: [{ unidades: 3, precioUnit: 90, distribuidor: false }] }];
+    const lineas = buildLineas(items, BASE);
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0].nombre).toBe('Choco');
+  });
 });
 
 describe('sumLineas', () => {

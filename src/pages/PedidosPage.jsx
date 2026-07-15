@@ -1243,6 +1243,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
           items: lineasConCalc.map(l => ({
             productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
             cantidad: l.qty, precioUnit: l.precioConDto, subtotal: l.netoLinea,
+            // Desglose por tramo (caja cerrada): el PDF/mail lo muestra en filas
+            // separadas en vez de un % promedio. Solo cuando hay más de un tramo;
+            // no afecta el stock (una sola línea por producto para la reserva).
+            ...(l.tramos && l.tramos.length > 1 ? { tramos: l.tramos.map(t => ({
+              unidades: t.unidades, precioUnit: t.precioUnit, distribuidor: !!t.distribuidor,
+            })) } : {}),
             ...(l.variantId ? { variantId: l.variantId, variantSku: l.variantSku || '' } : {}),
           })),
           total, notas,
@@ -1278,6 +1284,9 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
           items: lineasConCalc.map(l => ({
             productId: l.item.id, nombre: l.item.nombre, unidad: l.item.unidad,
             cantidad: l.qty, precioUnit: l.precioConDto, subtotal: l.netoLinea,
+            ...(l.tramos && l.tramos.length > 1 ? { tramos: l.tramos.map(t => ({
+              unidades: t.unidades, precioUnit: t.precioUnit, distribuidor: !!t.distribuidor,
+            })) } : {}),
           })),
           notas, total,
         }),
