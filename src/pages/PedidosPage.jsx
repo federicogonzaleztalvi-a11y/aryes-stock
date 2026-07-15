@@ -651,24 +651,15 @@ function VariantCta({ item, options, carrito, label, isMobile, onPick }) {
   const lbl = String(label || 'variante').toLowerCase();
   // En cards angostas (2 col mobile) "Elegí sabores" no entra: usamos "Elegí" a secas.
   const cta = isMobile ? 'Elegí' : `Elegí ${lbl}`;
-  const swatches = options.filter(o => o.color_hex).slice(0, 4);
   return (
-    /* Verde lleno como "+ Agregar" (mismo footprint) para que no desentone en la
-       grilla. El badge del conteo se invierte a blanco para verse sobre el verde. */
+    /* Botón sobrio estilo Apple/Amazon: mismo footprint y verde que "+ Agregar",
+       sin muestras de color apretadas adentro (quedaban recargadas). Los colores
+       se ven grandes y ordenados DENTRO del selector, que es donde importan. */
     <button onClick={onPick} style={{
       marginTop: 4, padding: '11px 12px', background: G,
       color: '#fff', border: 'none', borderRadius: 8,
       cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: SANS,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-      {swatches.length > 0 && (
-        <span style={{ display: 'flex', flexShrink: 0 }}>
-          {swatches.map((o, i) => (
-            <span key={o.id} style={{ width: 13, height: 13, borderRadius: '50%',
-              background: o.color_hex, border: '1.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.12)',
-              marginLeft: i ? -4 : 0 }} />
-          ))}
-        </span>
-      )}
       <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {totalSel > 0 ? `${totalSel} en carrito` : cta}
       </span>
