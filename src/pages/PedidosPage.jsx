@@ -1,5 +1,5 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { fmt, getOrgId } from '../lib/constants.js';
 import { calcLinea, calcTotales } from '../lib/pricing.js';
 import useSwipeBack from '../hooks/useSwipeBack.js';
@@ -2058,7 +2058,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // Si no hay que resolver (host conocido o ?org=), arranca listo de una.
   const [orgReady, setOrgReady] = useState(!ORG_NEEDS_RESOLUTION);
   const [reorderMsg, setReorderMsg] = useState(''); // toast al reordenar (items no disponibles)
-  const NAV_MAX = 10;
+  const NAV_MAX = 10; // tope de candidatas destacadas; cuántas se muestran es adaptativo (ver navVisibles)
 
   // ── Swipe-back (gesto "volver" tipo app nativa) ───────────────────────────
   // Deslizar desde el borde izquierdo hacia la derecha vuelve a la pantalla
@@ -2193,6 +2193,35 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, []);
+
+  // Categorías destacadas inline: mostramos sólo las que entran ENTERAS según el
+  // ancho real del nav (nunca cortadas a la mitad, estilo Amazon). El resto vive
+  // en "Todas las categorías". Renderizamos las NAV_MAX candidatas y medimos:
+  // las que se pasan del borde quedan con visibility:hidden (siguen ocupando su
+  // ancho, así la medición es estable y no entra en bucle).
+  const navRowRef = useRef(null);
+  const [navVisibles, setNavVisibles] = useState(NAV_MAX);
+  useLayoutEffect(() => {
+    if (isMobile) { setNavVisibles(NAV_MAX); return; }
+    const row = navRowRef.current;
+    if (!row) return;
+    const measure = () => {
+      // Comparamos bordes derechos en coordenadas de viewport (getBoundingClientRect):
+      // robusto sin importar el offsetParent posicionado del nav. Una categoría se
+      // muestra sólo si su borde derecho no pasa el del contenedor (+0.5 subpíxel).
+      const rowRight = row.getBoundingClientRect().right + 0.5;
+      let n = 0;
+      for (const k of row.children) {
+        if (k.getBoundingClientRect().right <= rowRight) n++;
+        else break;
+      }
+      setNavVisibles(n);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [cats, isMobile]);
 
   // Detect demo mode from URL
   useEffect(() => {
@@ -2696,16 +2725,18 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               )}
             </div>
           )}
-          {/* Categorías destacadas inline. Envueltas en un contenedor flexible que
-              se queda con el espacio libre (flex:1, minWidth:0) y recorta lo que no
-              entra (overflow hidden), así nunca desbordan la pantalla ni empujan
-              "Volver a comprar" fuera de vista — el resto siempre está en "Todas". */}
+          {/* Categorías destacadas inline. En desktop viven en un contenedor
+              flexible (flex:1, minWidth:0) que se queda con el espacio libre; se
+              miden y sólo se muestran las que entran enteras (navVisibles), el
+              resto queda invisible y disponible en "Todas". En mobile el nav
+              scrollea horizontal, así que el contenedor no recorta. */}
           {(vista === 'catalogo' || vista === 'habituales') && (
-            <div style={{ display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-              {(isMobile ? cats : cats.slice(0, NAV_MAX)).map(cat => (
+            <div ref={navRowRef} style={isMobile ? { display: 'flex' } : { display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              {(isMobile ? cats : cats.slice(0, NAV_MAX)).map((cat, i) => (
                 <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
                   padding: '0 16px', height: 44, border: 'none', background: 'transparent',
                   fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS, flexShrink: 0,
+                  visibility: (!isMobile && i >= navVisibles) ? 'hidden' : 'visible',
                   fontWeight: (vista === 'catalogo' && catFil === cat) ? 500 : 400,
                   color: (vista === 'catalogo' && catFil === cat) ? G : '#5a5a52',
                   borderBottom: (vista === 'catalogo' && catFil === cat) ? `2px solid ${G}` : '2px solid transparent',
