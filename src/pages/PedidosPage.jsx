@@ -653,9 +653,11 @@ function VariantCta({ item, options, carrito, label, isMobile, onPick }) {
   const cta = isMobile ? 'Elegí' : `Elegí ${lbl}`;
   const swatches = options.filter(o => o.color_hex).slice(0, 4);
   return (
+    /* Verde lleno como "+ Agregar" (mismo footprint) para que no desentone en la
+       grilla. El badge del conteo se invierte a blanco para verse sobre el verde. */
     <button onClick={onPick} style={{
-      marginTop: 4, padding: '10px 12px', background: totalSel > 0 ? G + '10' : '#fff',
-      color: G, border: `1.5px solid ${totalSel > 0 ? G : G + '99'}`, borderRadius: 8,
+      marginTop: 4, padding: '11px 12px', background: G,
+      color: '#fff', border: 'none', borderRadius: 8,
       cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: SANS,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
       {swatches.length > 0 && (
@@ -671,7 +673,7 @@ function VariantCta({ item, options, carrito, label, isMobile, onPick }) {
         {totalSel > 0 ? `${totalSel} en carrito` : cta}
       </span>
       <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, lineHeight: 1,
-        background: G, color: '#fff', borderRadius: 20, padding: '2px 6px' }}>{options.length}</span>
+        background: '#fff', color: G, borderRadius: 20, padding: '2px 6px' }}>{options.length}</span>
     </button>
   );
 }
@@ -726,7 +728,7 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
     <div style={{ marginTop: 6 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, letterSpacing: .3, marginBottom: 5,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>ELEGÍ {String(label || 'VARIANTE').toUpperCase()}</span>
+        <span>ELEGÍ {String(label || 'VARIANTE').toUpperCase()} · {options.length}</span>
         {totalSel > 0 && <span style={{ color: G }}>{totalSel} en carrito</span>}
       </div>
       <div style={{ display: 'grid', gap: 4, maxHeight: maxH === 'none' ? undefined : maxH, overflowY: maxH === 'none' ? 'visible' : 'auto', paddingRight: 2 }}>
@@ -900,7 +902,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
 
           {variantOpts ? (
             <div style={{ maxWidth: 420 }}>
-              <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} />
+              <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH="none" />
             </div>
           ) : item.precio > 0 ? (
             qty > 0 ? (
