@@ -690,10 +690,10 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay,
         display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} className="pz-fade" style={{ background: '#fff',
-        width: '100%', maxWidth: 460, maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        width: '100%', maxWidth: 460, height: isMobile ? '85vh' : 'auto', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
         borderRadius: isMobile ? '16px 16px 0 0' : 16, boxShadow: '0 -4px 30px rgba(0,0,0,.18)', overflow: 'hidden' }}>
         {/* Encabezado: producto + precio + cerrar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0ec' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0ec' }}>
           {item.imagen_url && <img src={item.imagen_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.25 }}>{item.nombre}</div>
@@ -702,12 +702,14 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
           <button onClick={onClose} aria-label="Cerrar" style={{ flexShrink: 0, width: 32, height: 32, border: 'none',
             background: '#f0f0ec', borderRadius: '50%', cursor: 'pointer', fontSize: 17, color: '#6a6a68', lineHeight: 1 }}>×</button>
         </div>
-        {/* Lista de variantes (scroll dentro de la hoja) */}
-        <div style={{ padding: '4px 16px 8px', overflowY: 'auto' }}>
+        {/* Lista de variantes (scroll dentro de la hoja). flex:1 + minHeight:0 =
+            solo esta zona scrollea; encabezado y pie quedan fijos y la hoja se
+            ajusta a la pantalla en vez de desbordar. */}
+        <div style={{ flex: 1, minHeight: 0, padding: '4px 16px 8px', overflowY: 'auto' }}>
           <VariantPicker item={item} options={options} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants?.label} maxH="none" />
         </div>
         {/* Pie: total + Listo */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, fontSize: 13, color: '#6a6a68' }}>
             {totalSel > 0 ? <><strong style={{ color: '#1a1a18' }}>{totalSel}</strong> en el carrito</> : 'Elegí cantidades'}
           </div>
@@ -740,7 +742,8 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
         {totalSel > 0 && <span style={{ color: G }}>{totalSel} en carrito</span>}
       </div>
       {showSearch && (
-        <div style={{ position: 'relative', marginBottom: 6 }}>
+        <div style={{ position: 'sticky', top: 0, zIndex: 1, background: '#fff', paddingBottom: 6, marginBottom: 2 }}>
+          <div style={{ position: 'relative' }}>
           <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: GRAY, pointerEvents: 'none' }}>🔍</span>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder={`Buscar ${lbl}…`}
             aria-label={`Buscar ${lbl}`}
@@ -748,6 +751,7 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
               borderRadius: 8, fontSize: 12, fontFamily: SANS, color: '#1a1a18', outline: 'none', background: '#fff' }} />
           {q && <button onClick={() => setQ('')} aria-label="Limpiar búsqueda" style={{ position: 'absolute', right: 8, top: '50%',
             transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: GRAY }}>✕</button>}
+          </div>
         </div>
       )}
       <div style={{ display: 'grid', gap: 4, maxHeight: maxH === 'none' ? undefined : maxH, overflowY: maxH === 'none' ? 'visible' : 'auto', paddingRight: 2 }}>
