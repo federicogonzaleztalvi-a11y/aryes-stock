@@ -534,7 +534,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
   const totalSpent = supOrders.filter(o=>o.status==="delivered").reduce((s,o)=>s+(+o.totalCost||0),0);
 
   return (
-    <Modal title={supplier.name} sub={supplier.company||"Proveedor"} onClose={onClose} wide>
+    <Modal title={supplier.company||supplier.name} sub="Proveedor" onClose={onClose} wide>
       <div style={{display:"grid",gap:20}}>
 
         {/* Stats row */}
@@ -739,7 +739,7 @@ const SupplierDetail = ({ supplier, products, orders, onEdit, onClose }) => {
         )}
 
         <div style={{display:"flex",gap:10,paddingTop:4}}>
-          <Btn onClick={onEdit} full variant="ghost">→ Editar proveedor</Btn>
+          <Btn onClick={onEdit} full variant="ghost">→ Editar proveedor</Btn>
           <Btn onClick={onClose} variant="ghost">Cerrar</Btn>
         </div>
       </div>

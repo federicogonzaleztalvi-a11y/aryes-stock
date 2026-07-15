@@ -92,7 +92,6 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
                       <td style={{padding:"11px 13px"}}><div style={{display:"flex",alignItems:"center",gap:8}}>{p.imagen_url?<img src={p.imagen_url} alt="" style={{width:32,height:32,borderRadius:6,objectFit:"cover",flexShrink:0,border:"1px solid #e2e2de"}}/>:<div style={{width:32,height:32,borderRadius:6,background:"#f0f0ee",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:14,color:"#c0c0bc"}}>📦</div>}<div><div style={{fontFamily:T.sans,fontSize:13,fontWeight:500,color:T.text,lineHeight:1.3}}>{p.name}</div><div style={{fontFamily:"monospace",fontSize:10,color:T.textXs,marginTop:2}}>{p.barcode||"—"}</div></div></div></td>
                       <td style={{padding:"11px 13px"}}>
                         <span style={{display:"inline-flex",alignItems:"center",gap:4,background:T.muted,border:`1px solid ${T.border}`,borderRadius:4,padding:"2px 7px",fontFamily:T.sans,fontSize:11,color:T.textSm}}>
-                          {p.sup?.flag&&<span style={{fontSize:12}}>{p.sup.flag==='AR'?'🇦🇷':p.sup.flag==='EC'?'🇪🇨':p.sup.flag==='EU'?'🇪🇺':p.sup.flag}</span>}
                           {p.sup?.company||p.sup?.name||'—'}
                         </span>
                       </td>

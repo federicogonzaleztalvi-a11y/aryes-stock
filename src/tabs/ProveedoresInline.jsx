@@ -37,10 +37,8 @@ function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_produ
                     <div style={{padding:"16px 18px",borderBottom:`1px solid ${T.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                       <div>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
-                          <span style={{background:sup.color+"22",color:sup.color,fontFamily:T.sans,fontSize:11,fontWeight:700,padding:"2px 7px",borderRadius:3}}>{sup.flag}</span>
                           <span style={{fontFamily:T.serif,fontSize:20,fontWeight:500,color:T.text}}>{sup.company||sup.name}</span>
                         </div>
-                        {sup.company&&sup.name&&<p style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>{sup.name}</p>}
                         {sup.contact&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:1}}>👤 {sup.contact}</p>}
                       </div>
                       <div style={{textAlign:"right"}}>
@@ -121,8 +119,7 @@ function ProveedoresInline({suppliers,setSuppliers:_setSuppliers,products:_produ
                         onClick={()=>setViewSup(sup)}>
                         <td style={{padding:"10px 12px"}}>
                           <div style={{display:"flex",alignItems:"center",gap:7}}>
-                            <span style={{background:sup.color+"22",color:sup.color,fontSize:10,fontWeight:700,padding:"1px 5px",borderRadius:2}}>{sup.flag}</span>
-                            <span style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{sup.name}</span>
+                            <span style={{fontFamily:T.sans,fontSize:13,fontWeight:600}}>{sup.company||sup.name}</span>
                           </div>
                         </td>
                         {["preparation","customs","freight","warehouse"].map(k=>(
