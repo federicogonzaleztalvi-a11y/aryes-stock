@@ -649,8 +649,10 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
 function VariantCta({ item, options, carrito, label, isMobile, onPick }) {
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
   const lbl = String(label || 'variante').toLowerCase();
-  // En cards angostas (2 col mobile) "Elegí sabores" no entra: usamos "Elegí" a secas.
-  const cta = isMobile ? 'Elegí' : `Elegí ${lbl}`;
+  // En cards angostas (2 col mobile) "Elegí sabores" no entra. En vez de "Elegí"
+  // a secas (poco claro), mostramos la etiqueta capitalizada ("Sabores"/"Color"):
+  // entra igual y se entiende. En desktop hay lugar para "Elegí sabores".
+  const cta = isMobile ? (lbl.charAt(0).toUpperCase() + lbl.slice(1)) : `Elegí ${lbl}`;
   return (
     /* Botón sobrio estilo Apple/Amazon: mismo footprint y verde que "+ Agregar",
        sin muestras de color apretadas adentro (quedaban recargadas). Los colores
@@ -681,7 +683,7 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay,
         display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} className="pz-fade" style={{ background: '#fff',
-        width: '100%', maxWidth: 460, height: isMobile ? '85vh' : 'auto', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        width: '100%', maxWidth: 460, height: isMobile ? '85dvh' : 'auto', maxHeight: '85dvh', display: 'flex', flexDirection: 'column',
         borderRadius: isMobile ? '16px 16px 0 0' : 16, boxShadow: '0 -4px 30px rgba(0,0,0,.18)', overflow: 'hidden' }}>
         {/* Encabezado: producto + precio + cerrar */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0ec' }}>
@@ -699,8 +701,9 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
         <div style={{ flex: 1, minHeight: 0, padding: '4px 16px 8px', overflowY: 'auto' }}>
           <VariantPicker item={item} options={options} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants?.label} maxH="none" />
         </div>
-        {/* Pie: total + Listo */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Pie: total + Listo. safe-area-inset-bottom evita que "Listo" quede
+            pegado al borde / bajo el home indicator en iOS. */}
+        <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, fontSize: 13, color: '#6a6a68' }}>
             {totalSel > 0 ? <><strong style={{ color: '#1a1a18' }}>{totalSel}</strong> en el carrito</> : 'Elegí cantidades'}
           </div>
