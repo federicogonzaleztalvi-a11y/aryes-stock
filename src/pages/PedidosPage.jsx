@@ -2641,9 +2641,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 </svg>
               </button>
               {ddOpen && (
-                <div style={{ position: 'absolute', top: 44, left: 0, background: '#fff',
+                <div style={{ position: 'absolute', top: 44, right: 0, background: '#fff',
                   border: '0.5px solid #e0e0d8', borderRadius: 10, padding: '6px 0',
-                  minWidth: 200, boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: Z.dropdown }}>
+                  minWidth: 220, maxHeight: '70vh', overflowY: 'auto',
+                  boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: Z.dropdown }}>
                   {cats.slice(NAV_MAX).map(cat => (
                     <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
                       display: 'block', width: '100%', padding: '8px 16px', border: 'none',
