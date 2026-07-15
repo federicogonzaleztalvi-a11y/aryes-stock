@@ -2617,25 +2617,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         <nav aria-label="Categorías" style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
           display: 'flex', alignItems: 'center',
           height: 44, position: 'relative', overflowX: isMobile ? 'auto' : 'visible', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} onClick={e => e.stopPropagation()}>
-          {buyAgain.length > 0 && (vista === 'catalogo' || vista === 'habituales') && (
-            <button onClick={() => { setVista('habituales'); setDetalle(null); setDdOpen(false); }} style={{
-              padding: '0 14px', height: 44, border: 'none', background: 'transparent',
-              fontSize: 14, fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 6,
-              fontWeight: vista === 'habituales' ? 500 : 400,
-              color: vista === 'habituales' ? G : '#5a5a52',
-              borderBottom: vista === 'habituales' ? `2px solid ${G}` : '2px solid transparent',
-              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-            }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-              </svg>
-              Volver a comprar
-            </button>
-          )}
-          {/* "Todas las categorías": menú completo estilo Amazon. Categorías destacadas
-              quedan inline a la derecha; acá vive el árbol entero con drilldown a
-              subcategorías en el mismo bloque (nivel 1 → nivel 2, con "‹ Volver"). */}
+          {/* "Todas las categorías": menú completo estilo Amazon, SIEMPRE a la
+              izquierda del nav. Contiene el árbol entero (drilldown nivel 1 →
+              nivel 2), así que reemplaza cualquier overflow "Mas": las categorías
+              inline son solo destacadas y lo que no entra vive acá adentro. */}
           {(vista === 'catalogo' || vista === 'habituales') && catsMenu.length > 0 && (
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <button type="button" aria-haspopup="menu" aria-expanded={ddOpen}
@@ -2711,19 +2696,42 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               )}
             </div>
           )}
-          {(vista === 'catalogo' || vista === 'habituales') && (isMobile ? cats : cats.slice(0, NAV_MAX)).map(cat => (
-            <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
-              padding: '0 16px', height: 44, border: 'none', background: 'transparent',
-              fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS,
-              fontWeight: (vista === 'catalogo' && catFil === cat) ? 500 : 400,
-              color: (vista === 'catalogo' && catFil === cat) ? G : '#5a5a52',
-              borderBottom: (vista === 'catalogo' && catFil === cat) ? `2px solid ${G}` : '2px solid transparent',
-              cursor: 'pointer', whiteSpace: 'nowrap',
+          {/* Categorías destacadas inline. Envueltas en un contenedor flexible que
+              se queda con el espacio libre (flex:1, minWidth:0) y recorta lo que no
+              entra (overflow hidden), así nunca desbordan la pantalla ni empujan
+              "Volver a comprar" fuera de vista — el resto siempre está en "Todas". */}
+          {(vista === 'catalogo' || vista === 'habituales') && (
+            <div style={{ display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+              {(isMobile ? cats : cats.slice(0, NAV_MAX)).map(cat => (
+                <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
+                  padding: '0 16px', height: 44, border: 'none', background: 'transparent',
+                  fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS, flexShrink: 0,
+                  fontWeight: (vista === 'catalogo' && catFil === cat) ? 500 : 400,
+                  color: (vista === 'catalogo' && catFil === cat) ? G : '#5a5a52',
+                  borderBottom: (vista === 'catalogo' && catFil === cat) ? `2px solid ${G}` : '2px solid transparent',
+                  cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+          {buyAgain.length > 0 && (vista === 'catalogo' || vista === 'habituales') && (
+            <button onClick={() => { setVista('habituales'); setDetalle(null); setDdOpen(false); }} style={{
+              padding: '0 14px', height: 44, border: 'none', background: 'transparent',
+              fontSize: 14, fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 6,
+              fontWeight: vista === 'habituales' ? 500 : 400,
+              color: vista === 'habituales' ? G : '#5a5a52',
+              borderBottom: vista === 'habituales' ? `2px solid ${G}` : '2px solid transparent',
+              cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
             }}>
-              {cat}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+              </svg>
+              Volver a comprar
             </button>
-          ))}
-
+          )}
         </nav>
       </header>
 
