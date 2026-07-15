@@ -648,11 +648,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
 // y el número de opciones va en un badge. Mismo footprint que "+ Agregar".
 function VariantCta({ item, options, carrito, label, isMobile, onPick }) {
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
-  const lbl = String(label || 'variante').toLowerCase();
-  // En cards angostas (2 col mobile) "Elegí sabores" no entra. En vez de "Elegí"
-  // a secas (poco claro), mostramos la etiqueta capitalizada ("Sabores"/"Color"):
-  // entra igual y se entiende. En desktop hay lugar para "Elegí sabores".
-  const cta = isMobile ? (lbl.charAt(0).toUpperCase() + lbl.slice(1)) : `Elegí ${lbl}`;
+  // Etiqueta genérica estilo Shopify ("Choose options"): sirve para cualquier
+  // tipo de variante (color/sabor/tamaño) y, junto al badge con el número, deja
+  // claro que hay VARIAS opciones para elegir. "Color"/"Sabores" a secas no daba
+  // esa pauta. En mobile se acorta a "Opciones" para que entre en la card angosta.
+  const cta = isMobile ? 'Opciones' : 'Elegir opciones';
   return (
     /* Botón sobrio estilo Apple/Amazon: mismo footprint y verde que "+ Agregar",
        sin muestras de color apretadas adentro (quedaban recargadas). Los colores
@@ -680,7 +680,7 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
   return (
     <div onClick={onClose} role="dialog" aria-modal="true" aria-label={`Elegí ${item.variants?.label || 'variante'} de ${item.nombre}`}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay,
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', background: 'rgba(0,0,0,.4)', zIndex: Z.overlay,
         display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
       <div onClick={e => e.stopPropagation()} className="pz-fade" style={{ background: '#fff',
         width: '100%', maxWidth: 460, height: isMobile ? '85dvh' : 'auto', maxHeight: '85dvh', display: 'flex', flexDirection: 'column',
