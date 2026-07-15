@@ -530,7 +530,7 @@ function primerTier(item) {
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) {
+function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants }) {
   const [imgErr, setImgErr] = useState(false);
   const [hov, setHov] = useState(false);
   const [pressed, setPressed] = useState(false); // feedback táctil (equiv. a hover en touch)
@@ -610,7 +610,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
              rompía la grilla cuando eran muchas). Estilo Amazon: un botón
              compacto que muestra cuántas opciones hay (y cuántas van en el
              carrito) y abre la ficha, donde vive el selector completo. */
-          <VariantCta item={item} options={variantOpts} carrito={carrito || {}} label={item.variants.label} onOpen={open} />
+          <VariantCta item={item} options={variantOpts} carrito={carrito || {}} label={item.variants.label} isMobile={isMobile} onPick={() => (onPickVariants ? onPickVariants(item) : open?.())} />
         ) : qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
@@ -642,19 +642,22 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
 }
 
 // Botón compacto para la card cuando el producto tiene variantes. No lista las
-// opciones (eso agrandaba la card y rompía la grilla si eran muchas): muestra
-// cuántas hay + cuántas van en el carrito y abre la ficha (PDP), donde vive el
-// VariantPicker completo. Mismo footprint que el botón "+ Agregar" → cards parejas.
-function VariantCta({ item, options, carrito, label, onOpen }) {
+// opciones (eso agrandaba la card y rompía la grilla si eran muchas): abre un
+// "quick-add" (hoja/sheet estilo Shopify) por encima del catálogo, sin cambiar
+// de página. La etiqueta se mantiene corta (sin "· N opciones", que se cortaba)
+// y el número de opciones va en un badge. Mismo footprint que "+ Agregar".
+function VariantCta({ item, options, carrito, label, isMobile, onPick }) {
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
   const lbl = String(label || 'variante').toLowerCase();
-  const swatches = options.filter(o => o.color_hex).slice(0, 5);
+  // En cards angostas (2 col mobile) "Elegí sabores" no entra: usamos "Elegí" a secas.
+  const cta = isMobile ? 'Elegí' : `Elegí ${lbl}`;
+  const swatches = options.filter(o => o.color_hex).slice(0, 4);
   return (
-    <button onClick={onOpen} style={{
+    <button onClick={onPick} style={{
       marginTop: 4, padding: '10px 12px', background: totalSel > 0 ? G + '10' : '#fff',
       color: G, border: `1.5px solid ${totalSel > 0 ? G : G + '99'}`, borderRadius: 8,
       cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: SANS,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
       {swatches.length > 0 && (
         <span style={{ display: 'flex', flexShrink: 0 }}>
           {swatches.map((o, i) => (
@@ -665,19 +668,59 @@ function VariantCta({ item, options, carrito, label, onOpen }) {
         </span>
       )}
       <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {totalSel > 0 ? `${totalSel} en carrito` : `Elegí ${lbl}`} · {options.length} opciones
+        {totalSel > 0 ? `${totalSel} en carrito` : cta}
       </span>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
-        <polyline points="9 18 15 12 9 6"/>
-      </svg>
+      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, lineHeight: 1,
+        background: G, color: '#fff', borderRadius: 20, padding: '2px 6px' }}>{options.length}</span>
     </button>
+  );
+}
+
+// Hoja "quick-add" (estilo Shopify/Amazon): se abre por ENCIMA del catálogo al
+// tocar el botón de variantes de una card. El cliente elige cantidades por
+// opción sin cambiar de página y vuelve a la grilla. Reusa VariantPicker.
+function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
+  if (!item) return null;
+  const options = item.variants?.options || [];
+  const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
+  return (
+    <div onClick={onClose} role="dialog" aria-modal="true" aria-label={`Elegí ${item.variants?.label || 'variante'} de ${item.nombre}`}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: Z.overlay,
+        display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} className="pz-fade" style={{ background: '#fff',
+        width: '100%', maxWidth: 460, maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        borderRadius: isMobile ? '16px 16px 0 0' : 16, boxShadow: '0 -4px 30px rgba(0,0,0,.18)', overflow: 'hidden' }}>
+        {/* Encabezado: producto + precio + cerrar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0ec' }}>
+          {item.imagen_url && <img src={item.imagen_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.25 }}>{item.nombre}</div>
+            {item.precio > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: G, marginTop: 2 }}>{fmt.currency(item.precio)}</div>}
+          </div>
+          <button onClick={onClose} aria-label="Cerrar" style={{ flexShrink: 0, width: 32, height: 32, border: 'none',
+            background: '#f0f0ec', borderRadius: '50%', cursor: 'pointer', fontSize: 17, color: '#6a6a68', lineHeight: 1 }}>×</button>
+        </div>
+        {/* Lista de variantes (scroll dentro de la hoja) */}
+        <div style={{ padding: '4px 16px 8px', overflowY: 'auto' }}>
+          <VariantPicker item={item} options={options} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants?.label} maxH="none" />
+        </div>
+        {/* Pie: total + Listo */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, fontSize: 13, color: '#6a6a68' }}>
+            {totalSel > 0 ? <><strong style={{ color: '#1a1a18' }}>{totalSel}</strong> en el carrito</> : 'Elegí cantidades'}
+          </div>
+          <button onClick={onClose} style={{ padding: '11px 22px', background: G, color: '#fff', border: 'none',
+            borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Listo</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // Grid de variantes: una fila por opción (swatch + nombre + stepper). El cliente
 // arma un pedido mixto (ej: 3 rojos + 2 azules). Lee cantidades del carrito por
 // clave "id::variantId" y delega add/remove al padre.
-function VariantPicker({ item, options, carrito, onAdd, onRemove, label }) {
+function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 168 }) {
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
   return (
     <div style={{ marginTop: 6 }}>
@@ -686,7 +729,7 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label }) {
         <span>ELEGÍ {String(label || 'VARIANTE').toUpperCase()}</span>
         {totalSel > 0 && <span style={{ color: G }}>{totalSel} en carrito</span>}
       </div>
-      <div style={{ display: 'grid', gap: 4, maxHeight: 168, overflowY: 'auto', paddingRight: 2 }}>
+      <div style={{ display: 'grid', gap: 4, maxHeight: maxH === 'none' ? undefined : maxH, overflowY: maxH === 'none' ? 'visible' : 'auto', paddingRight: 2 }}>
         {options.map(o => {
           const q = carrito[`${item.id}::${o.id}`] || 0;
           return (
@@ -2067,6 +2110,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [session,  setSession]  = useState(() => vendorSession || loadSession());
   const [vista,    setVista]    = useState('catalogo');
   const [detalle,  setDetalle]  = useState(null); // producto abierto en la PDP (null = grilla)
+  const [pickSheet, setPickSheet] = useState(null); // producto con variantes abierto en el quick-add sheet
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
   // Resumen de cuenta corriente (deuda) para el banner del portal. null = sin datos
   // o sin deuda; { saldo, vencido, nVencidas } cuando el cliente debe plata.
@@ -2106,6 +2150,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // del catálogo del cliente ("a mis clientes"). Si no hay nada atrás, no hace
   // nada (deja el back nativo del navegador). Hook compartido con los 3 portales.
   useSwipeBack(() => {
+    if (pickSheet) { setPickSheet(null); return true; }
     if (showCart) { setShowCart(false); return true; }
     if (ddOpen || udOpen) { setDdOpen(false); setUdOpen(false); return true; }
     if (showEstadoCuenta) { setShowEstadoCuenta(false); return true; }
@@ -2948,7 +2993,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
                 {filtered.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
-                    qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} onOpen={setDetalle} />
+                    qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} onOpen={setDetalle}
+                    onPickVariants={setPickSheet} />
                 ))}
               </div>
             </>
@@ -2985,6 +3031,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 {habituales.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
                     qty={carrito[item.id] || 0} onAdd={(it, v) => addItem(it, v, 'volver_a_pedir')} onRemove={removeItem}
+                    onPickVariants={setPickSheet}
                     onOpen={(it) => { setVista('catalogo'); setDetalle(it); }} />
                 ))}
               </div>
@@ -3027,6 +3074,11 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
             setTimeout(() => setShowCart(true), 200);
           }} />
         </main>
+      )}
+
+      {pickSheet && (
+        <VariantSheet item={pickSheet} carrito={carrito} onAdd={addItem} onRemove={removeItem}
+          onClose={() => setPickSheet(null)} isMobile={isMobile} />
       )}
 
       <PoweredByPazque />

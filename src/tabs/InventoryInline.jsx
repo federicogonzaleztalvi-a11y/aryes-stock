@@ -21,6 +21,7 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
         (p.name||'').toLowerCase().includes(term) ||
         (p.barcode||'').toLowerCase().includes(term) ||
         (p.codigo||'').toLowerCase().includes(term) ||
+        (p.sup?.company||'').toLowerCase().includes(term) ||
         (p.sup?.name||'').toLowerCase().includes(term))
     : enriched;
   return (
@@ -36,7 +37,7 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
                 <Btn variant="ghost" onClick={()=>{
           const rows=(enriched||[]).map(p=>({
             Producto: p.name,
-            Proveedor: p.sup?.name||'',
+            Proveedor: p.sup?.company||p.sup?.name||'',
             Stock: p.stock,
             Unidad: p.unit||'',
             'Costo USD': p.unitCost||0,
@@ -92,7 +93,7 @@ export default function InventoryInline({setModal, setEditProd, setEtiquetaProd}
                       <td style={{padding:"11px 13px"}}>
                         <span style={{display:"inline-flex",alignItems:"center",gap:4,background:T.muted,border:`1px solid ${T.border}`,borderRadius:4,padding:"2px 7px",fontFamily:T.sans,fontSize:11,color:T.textSm}}>
                           {p.sup?.flag&&<span style={{fontSize:12}}>{p.sup.flag==='AR'?'🇦🇷':p.sup.flag==='EC'?'🇪🇨':p.sup.flag==='EU'?'🇪🇺':p.sup.flag}</span>}
-                          {p.sup?.name||'—'}
+                          {p.sup?.company||p.sup?.name||'—'}
                         </span>
                       </td>
                       <td style={{padding:"11px 13px"}}>

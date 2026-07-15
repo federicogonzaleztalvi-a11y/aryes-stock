@@ -416,7 +416,7 @@ export default function PreciosListasTab() {
     try { await sb(`price_lists?id=eq.${l.id}`, { method: 'DELETE' }); setListas(ls => ls.filter(x => x.id !== l.id)); } catch (e) { flash('❌ ' + e.message); }
   };
   const asignarCliente = async (cid, lid) => {
-    try { await sb(`clients?id=eq.${cid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: lid || null }) }); setClientes(cs => cs.map(c => c.id === cid ? { ...c, lista_id: lid || null } : c)); await loadAll(); } catch (e) { flash('❌ ' + e.message); }
+    try { await sb(`clients?id=eq.${cid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ lista_id: lid || null }) }); setClientes(cs => cs.map(c => c.id === cid ? { ...c, listaId: lid || null, lista_id: lid || null } : c)); await loadAll(); } catch (e) { flash('❌ ' + e.message); }
   };
   const countOverrides = its => (its || []).filter(it => it.precio > 0 || (it.descuento || 0) > 0 || (Array.isArray(it.reglas) && it.reglas.length > 0)).length;
   if (vistaEditar) return <EditorPrecios lista={vistaEditar} listas={listas} onBack={() => { setVistaEditar(null); loadAll(); }} />;
@@ -478,18 +478,24 @@ export default function PreciosListasTab() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr style={{ background: '#f9fafb' }}><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Cliente</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Teléfono</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Lista asignada</th></tr></thead>
             <tbody>
-              {(clientes || []).slice(0, 150).map((c, i) => (
+              {(clientes || []).slice().sort((a, b) => (a.name || a.nombre || '').localeCompare(b.name || b.nombre || '', 'es', { sensitivity: 'base' })).slice(0, 150).map((c, i) => {
+                // El contexto mapea la columna DB lista_id a la clave camelCase
+                // listaId; leer sólo c.lista_id daba SIEMPRE "Sin lista" aunque el
+                // cliente tuviera lista. Aceptamos ambas por las dudas.
+                const lid = c.listaId ?? c.lista_id ?? '';
+                return (
                 <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                   <td style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{c.name || c.nombre}</td>
                   <td style={{ padding: '9px 16px', fontSize: 12, color: '#6b7280' }}>{c.phone || c.telefono || '—'}</td>
                   <td style={{ padding: '9px 16px' }}>
-                    <select value={c.lista_id || ''} onChange={e => asignarCliente(c.id, e.target.value || null)} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, cursor: 'pointer', background: c.lista_id ? '#f0fdf4' : '#fff', color: c.lista_id ? G : '#6b7280', fontWeight: c.lista_id ? 700 : 400 }}>
+                    <select value={lid} onChange={e => asignarCliente(c.id, e.target.value || null)} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, cursor: 'pointer', background: lid ? '#f0fdf4' : '#fff', color: lid ? G : '#6b7280', fontWeight: lid ? 700 : 400 }}>
                       <option value="">Sin lista (precio base)</option>
                       {listas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
                     </select>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
