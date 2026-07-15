@@ -2052,6 +2052,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [vozOpen,  setVozOpen]  = useState(false); // modal "Pedí por voz"
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
+  const ddRef = useRef(null); // wrapper del menú "Todas las categorías" para cerrar al clickear afuera
   const [menuCat,  setMenuCat]  = useState(null); // categoría madre "abierta" dentro del panel (nivel 2 del drilldown)
   const [udOpen,   setUdOpen]   = useState(false);
   // Resolución del org para dominios custom (pedidos.aryes.com.uy → org de Eric).
@@ -2222,6 +2223,16 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     ro.observe(row);
     return () => ro.disconnect();
   }, [cats, isMobile]);
+
+  // Cerrar el menú "Todas las categorías" al clickear fuera de él (estilo Amazon).
+  useEffect(() => {
+    if (!ddOpen) return undefined;
+    const onDoc = (e) => {
+      if (ddRef.current && !ddRef.current.contains(e.target)) { setDdOpen(false); setMenuCat(null); }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [ddOpen]);
 
   // Detect demo mode from URL
   useEffect(() => {
@@ -2651,7 +2662,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               nivel 2), así que reemplaza cualquier overflow "Mas": las categorías
               inline son solo destacadas y lo que no entra vive acá adentro. */}
           {(vista === 'catalogo' || vista === 'habituales') && catsMenu.length > 0 && (
-            <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div ref={ddRef} style={{ position: 'relative', flexShrink: 0 }}>
               <button type="button" aria-haspopup="menu" aria-expanded={ddOpen}
                 onClick={e => { e.stopPropagation(); setMenuCat(null); setDdOpen(o => !o); }} style={{
                 display: 'flex', alignItems: 'center', gap: 7, height: 44, padding: '0 14px',
@@ -2669,7 +2680,20 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                   minWidth: 260, maxWidth: '92vw', maxHeight: '70vh', overflowY: 'auto',
                   boxShadow: '0 6px 24px rgba(0,0,0,.10)', zIndex: Z.dropdown }}>
                   {menuCat == null ? (
-                    catsMenu.map(cat => {
+                    <>
+                    {/* "Todos los productos" limpia el filtro. Vive acá adentro
+                        (no como chip suelto) para no duplicar con el botón del
+                        menú "Todas las categorías", que estaba al lado. */}
+                    <button type="button" onClick={() => { setVista('catalogo'); setCatFil('Todos'); setSubFil(''); setDdOpen(false); setDetalle(null); }} style={{
+                      display: 'block', width: '100%', padding: '9px 16px', border: 'none',
+                      borderBottom: '1px solid #f0f0ee',
+                      background: (vista === 'catalogo' && catFil === 'Todos') ? '#f0fdf4' : 'transparent',
+                      fontSize: 13, color: (vista === 'catalogo' && catFil === 'Todos') ? G : '#3a3a32',
+                      fontWeight: (vista === 'catalogo' && catFil === 'Todos') ? 600 : 500,
+                      textAlign: 'left', cursor: 'pointer', fontFamily: SANS }}>
+                      Todos los productos
+                    </button>
+                    {catsMenu.map(cat => {
                       const subs = subsDe(cat);
                       const activa = vista === 'catalogo' && catFil === cat;
                       return (
@@ -2690,7 +2714,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                           )}
                         </button>
                       );
-                    })
+                    })}
+                    </>
                   ) : (
                     <>
                       <button type="button" onClick={() => setMenuCat(null)} style={{
@@ -2732,7 +2757,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               scrollea horizontal, así que el contenedor no recorta. */}
           {(vista === 'catalogo' || vista === 'habituales') && (
             <div ref={navRowRef} style={isMobile ? { display: 'flex' } : { display: 'flex', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-              {(isMobile ? cats : cats.slice(0, NAV_MAX)).map((cat, i) => (
+              {(isMobile ? catsMenu : catsMenu.slice(0, NAV_MAX)).map((cat, i) => (
                 <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
                   padding: '0 16px', height: 44, border: 'none', background: 'transparent',
                   fontSize: 14, letterSpacing: '0.1px', fontFamily: SANS, flexShrink: 0,
