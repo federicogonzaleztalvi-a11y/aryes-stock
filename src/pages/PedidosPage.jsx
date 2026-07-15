@@ -2052,6 +2052,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [vozOpen,  setVozOpen]  = useState(false); // modal "Pedí por voz"
   const [loading,  setLoading]  = useState(false);
   const [ddOpen,   setDdOpen]   = useState(false);
+  const [menuCat,  setMenuCat]  = useState(null); // categoría madre "abierta" dentro del panel (nivel 2 del drilldown)
   const [udOpen,   setUdOpen]   = useState(false);
   // Resolución del org para dominios custom (pedidos.aryes.com.uy → org de Eric).
   // Si no hay que resolver (host conocido o ?org=), arranca listo de una.
@@ -2336,8 +2337,17 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     if (catFil === 'Todos') return [];
     return catArbol.find(m => m.nombre === catFil)?.subcategorias || [];
   }, [catArbol, catFil]);
-  // Al cambiar de categoría madre, se resetea la subcategoría seleccionada.
-  useEffect(() => { setSubFil(''); }, [catFil]);
+  // Categorías madre para el panel "Todas las categorías" (drilldown estilo Amazon).
+  // Usa el árbol del admin si existe (respeta su orden); si no, deriva de cats.
+  const catsMenu = useMemo(
+    () => (catArbol.length ? catArbol.map(m => m.nombre) : cats.filter(c => c !== 'Todos')),
+    [catArbol, cats],
+  );
+  const subsDe = (cat) => catArbol.find(m => m.nombre === cat)?.subcategorias || [];
+  // Al cambiar de categoría madre se limpia la subcategoría, SALVO que la nueva
+  // categoría contenga esa misma subcategoría (caso del menú "Todas las categorías":
+  // elige categoría + subcategoría de una, y no queremos que este reset la pise).
+  useEffect(() => { setSubFil(prev => (prev && subActuales.includes(prev) ? prev : '')); }, [catFil, subActuales]);
 
   const filtered = useMemo(() => items.filter(i => {
     const mCat = catFil === 'Todos' || i.categoria === catFil;
@@ -2485,7 +2495,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         </div>
       )}
       <header style={{ background: '#fff', borderBottom: '0.5px solid #e8e8e0',
-        position: 'sticky', top: 0, zIndex: Z.header }} onClick={() => { setDdOpen(false); setUdOpen(false); }}>
+        position: 'sticky', top: 0, zIndex: Z.header }} onClick={() => { setDdOpen(false); setMenuCat(null); setUdOpen(false); }}>
 
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
@@ -2623,6 +2633,84 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               Volver a comprar
             </button>
           )}
+          {/* "Todas las categorías": menú completo estilo Amazon. Categorías destacadas
+              quedan inline a la derecha; acá vive el árbol entero con drilldown a
+              subcategorías en el mismo bloque (nivel 1 → nivel 2, con "‹ Volver"). */}
+          {(vista === 'catalogo' || vista === 'habituales') && catsMenu.length > 0 && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <button type="button" aria-haspopup="menu" aria-expanded={ddOpen}
+                onClick={e => { e.stopPropagation(); setMenuCat(null); setDdOpen(o => !o); }} style={{
+                display: 'flex', alignItems: 'center', gap: 7, height: 44, padding: '0 14px',
+                border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: SANS,
+                fontSize: 14, fontWeight: 500, color: ddOpen ? G : '#3a3a32', whiteSpace: 'nowrap',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+                Todas las categorías
+              </button>
+              {ddOpen && (
+                <div role="menu" style={{ position: 'absolute', top: 44, left: 0, background: '#fff',
+                  border: '0.5px solid #e0e0d8', borderRadius: 10, padding: '6px 0',
+                  minWidth: 260, maxWidth: '92vw', maxHeight: '70vh', overflowY: 'auto',
+                  boxShadow: '0 6px 24px rgba(0,0,0,.10)', zIndex: Z.dropdown }}>
+                  {menuCat == null ? (
+                    catsMenu.map(cat => {
+                      const subs = subsDe(cat);
+                      const activa = vista === 'catalogo' && catFil === cat;
+                      return (
+                        <button key={cat} type="button" onClick={() => {
+                          if (subs.length) { setMenuCat(cat); }
+                          else { setVista('catalogo'); setCatFil(cat); setSubFil(''); setDdOpen(false); setDetalle(null); }
+                        }} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                          width: '100%', padding: '9px 16px', border: 'none',
+                          background: activa && !subs.length ? '#f0fdf4' : 'transparent',
+                          fontSize: 13, color: activa ? G : '#3a3a32', fontWeight: activa ? 500 : 400,
+                          textAlign: 'left', cursor: 'pointer', fontFamily: SANS }}>
+                          <span>{cat}</span>
+                          {subs.length > 0 && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9a9a92" strokeWidth="2.5">
+                              <polyline points="9 18 15 12 9 6"/>
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => setMenuCat(null)} style={{
+                        display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 16px',
+                        border: 'none', borderBottom: '1px solid #f0f0ee', background: 'transparent',
+                        fontSize: 12.5, fontWeight: 600, color: '#6a6a68', cursor: 'pointer', fontFamily: SANS }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                        Todas las categorías
+                      </button>
+                      <button type="button" onClick={() => { setVista('catalogo'); setCatFil(menuCat); setSubFil(''); setDdOpen(false); setMenuCat(null); setDetalle(null); }} style={{
+                        display: 'block', width: '100%', padding: '10px 16px', border: 'none', background: 'transparent',
+                        fontSize: 13, fontWeight: 600, color: G, textAlign: 'left', cursor: 'pointer', fontFamily: SANS }}>
+                        Ver todo {menuCat}
+                      </button>
+                      {subsDe(menuCat).map(sub => {
+                        const activa = vista === 'catalogo' && catFil === menuCat && subFil === sub;
+                        return (
+                          <button key={sub} type="button" onClick={() => { setVista('catalogo'); setCatFil(menuCat); setSubFil(sub); setDdOpen(false); setMenuCat(null); setDetalle(null); }} style={{
+                            display: 'block', width: '100%', padding: '8px 16px 8px 28px', border: 'none',
+                            background: activa ? '#f0fdf4' : 'transparent',
+                            fontSize: 13, color: activa ? G : '#3a3a32', fontWeight: activa ? 500 : 400,
+                            textAlign: 'left', cursor: 'pointer', fontFamily: SANS }}>
+                            {sub}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {(vista === 'catalogo' || vista === 'habituales') && (isMobile ? cats : cats.slice(0, NAV_MAX)).map(cat => (
             <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
               padding: '0 16px', height: 44, border: 'none', background: 'transparent',
@@ -2635,45 +2723,6 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               {cat}
             </button>
           ))}
-          {(vista === 'catalogo' || vista === 'habituales') && !isMobile && cats.length > NAV_MAX && (
-            <div style={{ position: 'relative' }}
-              onMouseEnter={() => setDdOpen(true)}
-              onMouseLeave={() => setDdOpen(false)}>
-              <button type="button" aria-haspopup="menu" aria-expanded={ddOpen}
-                onClick={e => { e.stopPropagation(); setDdOpen(o => !o); }} style={{
-                padding: '0 16px', height: 44, border: 'none', background: 'transparent',
-                fontSize: 14, letterSpacing: '0.1px', cursor: 'pointer', fontFamily: SANS,
-                display: 'flex', alignItems: 'center', gap: 4,
-                color: ddOpen ? G : '#5a5a52',
-                borderBottom: (vista === 'catalogo' && cats.slice(NAV_MAX).includes(catFil)) ? `2px solid ${G}` : '2px solid transparent',
-                fontWeight: (vista === 'catalogo' && cats.slice(NAV_MAX).includes(catFil)) ? 500 : 400,
-              }}>
-                {(vista === 'catalogo' && cats.slice(NAV_MAX).includes(catFil)) ? catFil : 'Mas'}
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  style={{ transform: ddOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-              {ddOpen && (
-                <div style={{ position: 'absolute', top: 44, right: 0, background: '#fff',
-                  border: '0.5px solid #e0e0d8', borderRadius: 10, padding: '6px 0',
-                  minWidth: 220, maxHeight: '70vh', overflowY: 'auto',
-                  boxShadow: '0 4px 16px rgba(0,0,0,.08)', zIndex: Z.dropdown }}>
-                  {cats.slice(NAV_MAX).map(cat => (
-                    <button key={cat} onClick={() => { setVista('catalogo'); setCatFil(cat); setDdOpen(false); setDetalle(null); }} style={{
-                      display: 'block', width: '100%', padding: '8px 16px', border: 'none',
-                      background: catFil === cat ? '#f0fdf4' : 'transparent',
-                      fontSize: 13, color: catFil === cat ? G : '#3a3a32',
-                      textAlign: 'left', cursor: 'pointer', fontFamily: SANS,
-                      fontWeight: catFil === cat ? 500 : 400,
-                    }}>
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
         </nav>
       </header>
