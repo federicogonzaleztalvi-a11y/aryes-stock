@@ -1389,16 +1389,30 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ececec', paddingBottom: 6 }}>
               <span>PRODUCTO</span><span>SUBTOTAL</span>
             </div>
-            {lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, faltanParaCaja, ahorroSiCompleta }) => (
+            {lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, faltanParaCaja, ahorroSiCompleta, tramos }) => (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
                 padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
-                    {qty} {item.unidad || ''} × {fmt.currency(precioConDto)}
-                    {descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
+                    {qty} {item.unidad || ''}
+                    {(!tramos || tramos.length <= 1) && <> × {fmt.currency(precioConDto)}</>}
+                    {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                   </div>
+                  {/* Desglose por tramo (caja cerrada): mismas filas que el carrito y el
+                      PDF, en vez de un único % promedio que mezcla caja y sueltas. */}
+                  {tramos && tramos.length > 1 && (
+                    <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {tramos.map((t, i) => (
+                        <div key={i} style={{ fontSize: 11, color: t.distribuidor ? G : '#6a6a68', fontWeight: t.distribuidor ? 600 : 400 }}>
+                          {t.distribuidor ? '✓ ' : '• '}{t.unidades} {item.unidad || 'u'} × {fmt.currency(t.precioUnit)}
+                          {t.dtoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{Math.round(t.dtoPct)}%</span>}
+                          {t.distribuidor && <span style={{ marginLeft: 4 }}>(precio distribuidor)</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{fmt.currency(netoLinea)}</div>
                 {faltanParaCaja > 0 && (
