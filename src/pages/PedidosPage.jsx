@@ -701,9 +701,11 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
         <div style={{ flex: 1, minHeight: 0, padding: '4px 16px 8px', overflowY: 'auto' }}>
           <VariantPicker item={item} options={options} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants?.label} maxH="none" />
         </div>
-        {/* Pie: total + Listo. safe-area-inset-bottom evita que "Listo" quede
-            pegado al borde / bajo el home indicator en iOS. */}
-        <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Pie: total + Listo. En la PWA instalada de iOS el meta viewport no usa
+            viewport-fit=cover, así que env(safe-area-inset-bottom) da 0 y "Listo"
+            quedaba bajo el home indicator. Usamos un piso fijo (34px = safe area
+            real de iOS) con max() para garantizar que siempre quede por encima. */}
+        <div style={{ flexShrink: 0, padding: '12px 16px', paddingBottom: 'max(34px, calc(12px + env(safe-area-inset-bottom, 0px)))', borderTop: '1px solid #f0f0ec', display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ flex: 1, fontSize: 13, color: '#6a6a68' }}>
             {totalSel > 0 ? <><strong style={{ color: '#1a1a18' }}>{totalSel}</strong> en el carrito</> : 'Elegí cantidades'}
           </div>
