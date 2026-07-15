@@ -723,7 +723,15 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
 // arma un pedido mixto (ej: 3 rojos + 2 azules). Lee cantidades del carrito por
 // clave "id::variantId" y delega add/remove al padre.
 function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 168 }) {
+  const [q, setQ] = useState('');
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
+  const lbl = String(label || 'variante').toLowerCase();
+  // Con muchas variantes (ej. 20+ sabores) una lista plana es un muro: agregamos
+  // buscador para saltar directo a la que se busca (patrón Amazon/Shopify). El
+  // umbral evita mostrarlo cuando son pocas.
+  const showSearch = options.length > 8;
+  const term = q.trim().toLowerCase();
+  const shown = term ? options.filter(o => String(o.label || '').toLowerCase().includes(term)) : options;
   return (
     <div style={{ marginTop: 6 }}>
       <div style={{ fontSize: 10, fontWeight: 700, color: GRAY, letterSpacing: .3, marginBottom: 5,
@@ -731,8 +739,22 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
         <span>ELEGÍ {String(label || 'VARIANTE').toUpperCase()} · {options.length}</span>
         {totalSel > 0 && <span style={{ color: G }}>{totalSel} en carrito</span>}
       </div>
+      {showSearch && (
+        <div style={{ position: 'relative', marginBottom: 6 }}>
+          <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: GRAY, pointerEvents: 'none' }}>🔍</span>
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={`Buscar ${lbl}…`}
+            aria-label={`Buscar ${lbl}`}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 28px', border: '1px solid #e0e0d8',
+              borderRadius: 8, fontSize: 12, fontFamily: SANS, color: '#1a1a18', outline: 'none', background: '#fff' }} />
+          {q && <button onClick={() => setQ('')} aria-label="Limpiar búsqueda" style={{ position: 'absolute', right: 8, top: '50%',
+            transform: 'translateY(-50%)', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: GRAY }}>✕</button>}
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 4, maxHeight: maxH === 'none' ? undefined : maxH, overflowY: maxH === 'none' ? 'visible' : 'auto', paddingRight: 2 }}>
-        {options.map(o => {
+        {shown.length === 0 && (
+          <div style={{ padding: '14px 4px', textAlign: 'center', fontSize: 11, color: GRAY }}>Sin resultados para “{q}”</div>
+        )}
+        {shown.map(o => {
           const q = carrito[`${item.id}::${o.id}`] || 0;
           return (
             <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 6,
@@ -902,7 +924,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
 
           {variantOpts ? (
             <div style={{ maxWidth: 420 }}>
-              <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH="none" />
+              <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH={300} />
             </div>
           ) : item.precio > 0 ? (
             qty > 0 ? (
