@@ -606,7 +606,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
           </div>
         )}
         {variantOpts ? (
-          <VariantPicker item={item} options={variantOpts} carrito={carrito || {}} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} />
+          /* En la card NO metemos la lista de variantes (estiraba el recuadro y
+             rompía la grilla cuando eran muchas). Estilo Amazon: un botón
+             compacto que muestra cuántas opciones hay (y cuántas van en el
+             carrito) y abre la ficha, donde vive el selector completo. */
+          <VariantCta item={item} options={variantOpts} carrito={carrito || {}} label={item.variants.label} onOpen={open} />
         ) : qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
@@ -634,6 +638,39 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen }) 
         )}
       </div>
     </div>
+  );
+}
+
+// Botón compacto para la card cuando el producto tiene variantes. No lista las
+// opciones (eso agrandaba la card y rompía la grilla si eran muchas): muestra
+// cuántas hay + cuántas van en el carrito y abre la ficha (PDP), donde vive el
+// VariantPicker completo. Mismo footprint que el botón "+ Agregar" → cards parejas.
+function VariantCta({ item, options, carrito, label, onOpen }) {
+  const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
+  const lbl = String(label || 'variante').toLowerCase();
+  const swatches = options.filter(o => o.color_hex).slice(0, 5);
+  return (
+    <button onClick={onOpen} style={{
+      marginTop: 4, padding: '10px 12px', background: totalSel > 0 ? G + '10' : '#fff',
+      color: G, border: `1.5px solid ${totalSel > 0 ? G : G + '99'}`, borderRadius: 8,
+      cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: SANS,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+      {swatches.length > 0 && (
+        <span style={{ display: 'flex', flexShrink: 0 }}>
+          {swatches.map((o, i) => (
+            <span key={o.id} style={{ width: 13, height: 13, borderRadius: '50%',
+              background: o.color_hex, border: '1.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.12)',
+              marginLeft: i ? -4 : 0 }} />
+          ))}
+        </span>
+      )}
+      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {totalSel > 0 ? `${totalSel} en carrito` : `Elegí ${lbl}`} · {options.length} opciones
+      </span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
   );
 }
 
