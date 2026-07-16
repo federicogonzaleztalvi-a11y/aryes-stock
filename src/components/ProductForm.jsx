@@ -7,7 +7,7 @@ import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subcatsByCat={}})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
   const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]}};
-  const normVariants=(v)=>{const o=v&&typeof v==="object"&&!Array.isArray(v)?v:{};return{label:o.label||"Color",options:Array.isArray(o.options)?o.options:[]};};
+  const normVariants=(v)=>{const o=v&&typeof v==="object"&&!Array.isArray(v)?v:{};return{label:o.label??"Color",options:Array.isArray(o.options)?o.options:[]};};
   const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[],variants:normVariants(product.variants)}:blank);
 
   // WA template in localStorage
