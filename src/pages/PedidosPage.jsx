@@ -1212,7 +1212,6 @@ function HistorialPedidos({ session, onReordenar }) {
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
 function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddSugerido, onRemove, onRemoveLine, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
-  const [notasOpen, setNotasOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
@@ -1480,12 +1479,45 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 6 }}>CLIENTE</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>{session?.nombre || 'Cliente'}</div>
             {session?.tel && <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>Tel: {session.tel}</div>}
-            {direccionSel && (
-              <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>
-                Entrega: {direccionSel.direccion}{direccionSel.ciudad ? ` — ${direccionSel.ciudad}` : ''}
-              </div>
-            )}
           </div>
+
+          {/* Entregar en — se elige acá, en la confirmación (patrón Amazon: la
+              dirección es un paso del checkout, no del carrito). Con espacio de
+              sobra, se ve grande y clara con pin + referencia. */}
+          {addresses.length > 0 && (
+            <div style={{ padding: '12px 24px 4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5 }}>ENTREGAR EN</span>
+              </div>
+              {addresses.length === 1 ? (
+                <div style={{ fontSize: 13, color: '#4a4a48' }}>
+                  <strong style={{ color: '#1a1a18' }}>{addresses[0].label}</strong>
+                  {' — '}{addresses[0].direccion}{addresses[0].ciudad ? `, ${addresses[0].ciudad}` : ''}
+                </div>
+              ) : (
+                <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
+                  aria-label="Sucursal de entrega"
+                  onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                  onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                    fontSize: 16, fontFamily: SANS, color: '#1a1a18', background: '#fff', outline: 'none' }}>
+                  {addresses.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.label} — {a.direccion}{a.ciudad ? `, ${a.ciudad}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {direccionSel?.referencia && (
+                <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 6, fontStyle: 'italic' }}>
+                  {direccionSel.referencia}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Detalle */}
           <div style={{ padding: '12px 24px' }}>
@@ -1559,14 +1591,19 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             </div>
           </div>
 
-          {/* Notas */}
-          {notas && (
-            <div style={{ padding: '0 24px 16px' }}>
-              <div style={{ background: '#fffbeb', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400e' }}>
-                Nota: {notas}
-              </div>
-            </div>
-          )}
+          {/* Nota del pedido — editable acá, en la confirmación (se movió del
+              carrito para no recargarlo). Siempre visible para que el cliente
+              pueda agregar indicaciones antes de confirmar. */}
+          <div style={{ padding: '0 24px 16px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 6 }}>NOTA DEL PEDIDO</div>
+            <textarea value={notas} onChange={e => setNotas(e.target.value)}
+              placeholder="Ej: entregar antes del mediodía, coordinar por WhatsApp…" aria-label="Nota del pedido"
+              onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+              onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+              rows={2} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
+                borderRadius: 8, fontSize: 16, fontFamily: SANS, resize: 'none',
+                boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
+          </div>
 
           {err && (
             <div style={{ padding: '0 24px 12px' }}>
@@ -1905,65 +1942,10 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
           ))}
         </div>
         <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
-          {/* Sucursal / dirección de entrega — decisión de checkout (patrón Amazon
-              "Enviar a…"): va en el footer SIEMPRE visible, no enterrada tras los
-              productos en el scroll, donde muchos clientes no la descubrían. */}
-          {addresses.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-              </svg>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', flexShrink: 0 }}>Entregar en</span>
-              {addresses.length === 1 ? (
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {addresses[0].label}
-                </span>
-              ) : (
-                <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
-                  aria-label="Sucursal de entrega"
-                  style={{ flex: 1, minWidth: 0, padding: '6px 8px', border: '1px solid #e0e0d8', borderRadius: 7,
-                    fontSize: 13, fontWeight: 600, fontFamily: SANS, color: '#1a1a18', background: '#fff', outline: 'none' }}>
-                  {addresses.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.label} — {a.direccion}{a.ciudad ? `, ${a.ciudad}` : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-          {/* Nota del pedido — acceso siempre visible en el footer. Antes vivía dentro
-              del scroll y con muchos productos quedaba al fondo, sin descubrirse. */}
-          {(notasOpen || notas) ? (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68' }}>Nota del pedido</span>
-                {!notas && (
-                  <button onClick={() => setNotasOpen(false)} aria-label="Cerrar nota" style={{
-                    background: 'none', border: 'none', color: '#9a9a98', fontSize: 12,
-                    cursor: 'pointer', fontFamily: SANS, padding: 0 }}>Cerrar</button>
-                )}
-              </div>
-              <textarea value={notas} onChange={e => setNotas(e.target.value)} autoFocus
-                placeholder="Ej: entregar antes del mediodia..." aria-label="Notas del pedido"
-                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
-                onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
-                rows={2} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
-                  borderRadius: 8, fontSize: 16, fontFamily: SANS, resize: 'none',
-                  boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
-            </div>
-          ) : (
-            <button onClick={() => setNotasOpen(true)} aria-label="Agregar nota al pedido" style={{
-              width: '100%', padding: '9px 0', marginBottom: 12, background: '#fafaf7',
-              color: '#6a6a68', border: '1px dashed #d8d8d0', borderRadius: 8, fontSize: 12,
-              fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex',
-              alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-              Agregar nota al pedido
-            </button>
-          )}
+          {/* Checkout en 2 pasos (patrón Amazon/Shopify): el carrito solo revisa
+              productos + total y lleva a la pantalla de confirmación. La sucursal
+              y la nota se eligen ALLÍ, no acá — así el footer no queda recargado
+              mezclando "revisar carrito" con "confirmar pedido". */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
@@ -1996,25 +1978,20 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               Pedido mínimo de {fmt.currency(minOrderAmount)}. Te faltan {fmt.currency(faltaParaMinimo)} para confirmar.
             </div>
           )}
+          {/* CTA único: lleva a la pantalla de confirmación (donde se elige sucursal
+              y nota). Antes había "Previsualizar" + "Confirmar" juntos, lo que
+              recargaba el footer y permitía confirmar sin pasar por la sucursal. */}
           <button onClick={() => { setErr(''); setShowPreview(true); }}
             disabled={lineas.length === 0 || !cumpleMinimo} style={{
-            width: '100%', padding: '11px 0', marginBottom: 8, background: '#fff',
-            color: lineas.length === 0 || !cumpleMinimo ? '#b0b0a8' : '#1a1a18',
-            border: '1px solid #e0e0d8', borderRadius: 10, fontSize: 13, fontWeight: 600,
+            width: '100%', padding: '13px 0',
+            background: lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
+            color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600,
             cursor: (lineas.length === 0 || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            Previsualizar orden
-          </button>
-          <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
-            width: '100%', padding: '13px 0',
-            background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
-            color: '#fff', border: 'none', borderRadius: 10, fontSize: 14,
-            fontWeight: 600, cursor: (loading || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS,
-          }}>
-            {loading ? 'Enviando...' : (!cumpleMinimo ? `Mínimo ${fmt.currency(minOrderAmount)}` : 'Confirmar pedido')}
+            {!cumpleMinimo ? `Mínimo ${fmt.currency(minOrderAmount)}` : (<>Continuar
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6"/>
+              </svg></>)}
           </button>
         </div>
       </div>
