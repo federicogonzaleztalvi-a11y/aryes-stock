@@ -1903,30 +1903,45 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
             </div>
           ))}
+        </div>
+        <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
+          {/* Sucursal / dirección de entrega — decisión de checkout (patrón Amazon
+              "Enviar a…"): va en el footer SIEMPRE visible, no enterrada tras los
+              productos en el scroll, donde muchos clientes no la descubrían. */}
           {addresses.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 6 }}>Dirección de entrega</div>
-              <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
-                aria-label="Dirección de entrega"
-                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
-                onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
-                style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
-                  fontSize: 16, fontFamily: SANS, background: '#fafaf7', outline: 'none' }}>
-                {addresses.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.label}: {a.direccion}{a.ciudad ? ` — ${a.ciudad}` : ''}
-                  </option>
-                ))}
-              </select>
+            <div style={{ marginBottom: 14, border: '1px solid #e6e3dc', borderRadius: 10, padding: '10px 12px', background: '#fafaf7' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>Entregar en</span>
+              </div>
+              {addresses.length === 1 ? (
+                <div style={{ fontSize: 13, color: '#4a4a48' }}>
+                  <strong style={{ color: '#1a1a18' }}>{addresses[0].label}</strong>
+                  {' — '}{addresses[0].direccion}{addresses[0].ciudad ? `, ${addresses[0].ciudad}` : ''}
+                </div>
+              ) : (
+                <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
+                  aria-label="Sucursal de entrega"
+                  onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                  onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                    fontSize: 16, fontFamily: SANS, background: '#fff', outline: 'none' }}>
+                  {addresses.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.label}: {a.direccion}{a.ciudad ? ` — ${a.ciudad}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
               {addresses.find(a => a.id === selectedAddress)?.referencia && (
-                <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 4, fontStyle: 'italic' }}>
+                <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 6, fontStyle: 'italic' }}>
                   {addresses.find(a => a.id === selectedAddress).referencia}
                 </div>
               )}
             </div>
           )}
-        </div>
-        <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
           {/* Nota del pedido — acceso siempre visible en el footer. Antes vivía dentro
               del scroll y con muchos productos quedaba al fondo, sin descubrirse. */}
           {(notasOpen || notas) ? (
