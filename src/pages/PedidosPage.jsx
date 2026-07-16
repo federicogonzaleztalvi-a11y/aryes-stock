@@ -1458,8 +1458,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
         onClick={() => setShowPreview(false)}>
         <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 520,
-          maxHeight: '90vh', overflowY: 'auto', fontFamily: SANS, position: 'relative' }}
+          maxHeight: '90vh', display: 'flex', flexDirection: 'column', fontFamily: SANS, position: 'relative' }}
           onClick={e => e.stopPropagation()}>
+          {/* Cuerpo scrolleable: todo el documento. El footer con "Confirmar
+              pedido" queda fijo abajo (patrón Amazon: la acción primaria siempre
+              visible, sin obligar a scrollear hasta el final para confirmar). */}
+          <div style={{ overflowY: 'auto', flexShrink: 1 }}>
           {/* Cabecera documento */}
           <div style={{ padding: '24px 24px 18px', borderBottom: `2px solid ${G}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1525,7 +1529,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ececec', paddingBottom: 6 }}>
               <span>PRODUCTO</span><span>SUBTOTAL</span>
             </div>
-            {lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, faltanParaCaja, ahorroSiCompleta, tramos }) => (
+            {lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, tramos }) => (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
                 padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
@@ -1551,17 +1555,6 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                   )}
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{fmt.currency(netoLinea)}</div>
-                {faltanParaCaja > 0 && (
-                  <div style={{ flexBasis: '100%', marginTop: 6 }}>
-                    <button type="button" onClick={() => { for (let n = 0; n < faltanParaCaja; n++) onAdd(item, variantId); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
-                        background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '7px 10px',
-                        fontSize: 11.5, color: '#166534', cursor: 'pointer', fontWeight: 500 }}>
-                      <span>📦</span>
-                      <span>Agregá {faltanParaCaja} más y completás la caja — ahorrás {fmt.currency(ahorroSiCompleta)}</span>
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -1605,18 +1598,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                 boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
           </div>
 
-          {err && (
-            <div style={{ padding: '0 24px 12px' }}>
-              <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
-                padding: '9px 12px', fontSize: 12, color: '#dc2626' }}>{err}</div>
-            </div>
-          )}
-
-          {/* Acciones */}
-          <div style={{ padding: '4px 24px 28px' }}>
-            {!isDemo && (
+          {/* PDF: acción secundaria, queda en el cuerpo scrolleable */}
+          {!isDemo && (
+            <div style={{ padding: '4px 24px 24px' }}>
               <button onClick={descargarPreviewPDF} disabled={downloading} style={{
-                width: '100%', padding: '11px 0', marginBottom: 10, background: '#fff', color: '#1a1a18',
+                width: '100%', padding: '11px 0', background: '#fff', color: '#1a1a18',
                 border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13, fontWeight: 600,
                 cursor: downloading ? 'wait' : 'pointer', fontFamily: SANS,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -1625,6 +1611,17 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                 </svg>
                 {downloading ? 'Generando…' : 'Descargar PDF'}
               </button>
+            </div>
+          )}
+          </div>{/* fin cuerpo scrolleable */}
+
+          {/* Footer fijo: "Confirmar pedido" siempre visible, sin scroll (Amazon). */}
+          <div style={{ flexShrink: 0, borderTop: '1px solid #ececec', background: '#fff',
+            borderRadius: '0 0 20px 20px',
+            padding: '12px 24px max(20px, calc(12px + env(safe-area-inset-bottom, 0px)))' }}>
+            {err && (
+              <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
+                padding: '9px 12px', marginBottom: 10, fontSize: 12, color: '#dc2626' }}>{err}</div>
             )}
             {accionMsg && (
               <div style={{ marginBottom: 10, fontSize: 12, textAlign: 'center',
@@ -1877,7 +1874,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
             </div>
           )}
-          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, precioRef, netoLinea, tramos }) => (
+          {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, precioRef, netoLinea, faltanParaCaja, ahorroSiCompleta, tramos }) => (
             <div key={key} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
@@ -1938,6 +1935,18 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                   Eliminar
                 </button>
               </div>
+              {/* Empujón para completar caja — va acá, en el carrito, donde el
+                  cliente ajusta cantidades (no en la confirmación, que es solo
+                  para confirmar). Patrón Amazon: el upsell vive al comprar. */}
+              {faltanParaCaja > 0 && (
+                <button type="button" onClick={() => { for (let n = 0; n < faltanParaCaja; n++) onAdd && onAdd(item, variantId); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
+                    marginTop: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8,
+                    padding: '7px 10px', fontSize: 11.5, color: '#166534', cursor: 'pointer', fontWeight: 500 }}>
+                  <span>📦</span>
+                  <span>Agregá {faltanParaCaja} más y completás la caja — ahorrás {fmt.currency(ahorroSiCompleta)}</span>
+                </button>
+              )}
             </div>
           ))}
         </div>
