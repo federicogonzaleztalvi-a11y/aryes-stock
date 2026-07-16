@@ -4,6 +4,64 @@ import { getTaxConfig } from '../lib/taxConfig.js';
 import React, { useState, useRef } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
 
+// Combobox estilo Shopify: elegí una opción ya creada (flecha ▾ + lista visible,
+// filtra a medida que tipeás) o creá una nueva inline ("Crear …"). Reemplaza al
+// <datalist> nativo, que no mostraba ninguna pista de que había opciones para elegir.
+const Combobox=({value,onChange,options=[],placeholder,disabled,createLabel="Crear"})=>{
+  const [open,setOpen]=useState(false);
+  const [focusIdx,setFocusIdx]=useState(-1);
+  const wrapRef=useRef(null);
+  const val=value||"";
+  const q=val.trim().toLowerCase();
+  const filtered=options.filter(o=>o.toLowerCase().includes(q));
+  const exact=options.some(o=>o.toLowerCase()===q);
+  const showCreate=val.trim()!==""&&!exact;
+  React.useEffect(()=>{
+    if(!open)return;
+    const onDoc=(e)=>{if(wrapRef.current&&!wrapRef.current.contains(e.target))setOpen(false);};
+    document.addEventListener("mousedown",onDoc);
+    return()=>document.removeEventListener("mousedown",onDoc);
+  },[open]);
+  const pick=(v)=>{onChange(v);setOpen(false);setFocusIdx(-1);};
+  return(
+    <div ref={wrapRef} style={{position:"relative"}}>
+      <div style={{display:"flex",alignItems:"center",boxSizing:"border-box",background:disabled?"#f5f5f0":T.card,border:`1px solid ${open?T.green:T.border}`,borderRadius:4,transition:"border-color .12s"}}>
+        <input value={val} disabled={disabled}
+          onChange={e=>{onChange(e.target.value);if(!open)setOpen(true);setFocusIdx(-1);}}
+          onFocus={()=>{if(!disabled)setOpen(true);}}
+          onKeyDown={e=>{
+            if(e.key==="Escape"){setOpen(false);}
+            else if(e.key==="ArrowDown"){e.preventDefault();setOpen(true);setFocusIdx(i=>Math.min(i+1,filtered.length-1));}
+            else if(e.key==="ArrowUp"){e.preventDefault();setFocusIdx(i=>Math.max(i-1,0));}
+            else if(e.key==="Enter"&&open&&focusIdx>=0&&focusIdx<filtered.length){e.preventDefault();pick(filtered[focusIdx]);}
+          }}
+          placeholder={placeholder}
+          style={{flex:1,minWidth:0,border:"none",outline:"none",background:"transparent",fontFamily:T.sans,fontSize:13,color:T.text,padding:"9px 11px"}}/>
+        <button type="button" tabIndex={-1} disabled={disabled} aria-label="Mostrar opciones"
+          onMouseDown={e=>e.preventDefault()} onClick={()=>{if(!disabled)setOpen(o=>!o);}}
+          style={{border:"none",background:"transparent",cursor:disabled?"default":"pointer",padding:"0 9px",color:T.textSm,fontSize:11,transform:open?"rotate(180deg)":"none",transition:"transform .15s"}}>▾</button>
+      </div>
+      {open&&!disabled&&(filtered.length>0||showCreate)&&(
+        <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:50,marginTop:4,background:"#fff",border:`1px solid ${T.border}`,borderRadius:6,boxShadow:"0 6px 24px rgba(0,0,0,.12)",maxHeight:220,overflowY:"auto"}}>
+          {filtered.map((o,i)=>(
+            <div key={o} onMouseDown={e=>{e.preventDefault();pick(o);}} onMouseEnter={()=>setFocusIdx(i)}
+              style={{padding:"8px 11px",fontFamily:T.sans,fontSize:13,color:T.text,cursor:"pointer",background:i===focusIdx?T.hover:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span>{o}</span>
+              {q===o.toLowerCase()&&<span style={{color:T.green,fontWeight:700}}>✓</span>}
+            </div>
+          ))}
+          {showCreate&&(
+            <div onMouseDown={e=>{e.preventDefault();pick(val.trim());}}
+              style={{padding:"8px 11px",fontFamily:T.sans,fontSize:13,cursor:"pointer",borderTop:filtered.length?`1px solid ${T.border}`:"none",color:T.green,fontWeight:600}}>
+              {createLabel} “{val.trim()}”
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subcatsByCat={}})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
   const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]}};
@@ -84,15 +142,12 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
           {!suppliers.length && <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:4}}>Aún no cargaste proveedores. Creá uno desde la sección Proveedores.</p>}
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
-        <Field label="Categoría" hint="Agrupa el producto en el portal. Escribí una nueva o elegí una existente. Vacío = sin categoría.">
-          <input list="pf-cat-list" value={f.category||""} onChange={e=>set("category",e.target.value)} placeholder="Ej: Lácteos"
-            style={{width:"100%",boxSizing:"border-box",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4}}/>
-          <datalist id="pf-cat-list">{categories.map(c=><option key={c} value={c}/>)}</datalist>
+        <Field label="Categoría" hint="Agrupa el producto en el portal. Elegí una existente o escribí una nueva. Vacío = sin categoría.">
+          <Combobox value={f.category||""} onChange={v=>set("category",v)} options={categories} placeholder="Elegí o escribí una categoría"/>
         </Field>
         <Field label="Subcategoría" hint="Opcional. Sub-nivel dentro de la categoría (ej: dentro de Bebidas → Gaseosas). Gestioná las opciones desde el botón Categorías.">
-          <input list="pf-subcat-list" value={f.subcategoria||""} onChange={e=>set("subcategoria",e.target.value)} placeholder={f.category?`Ej: subcategoría de ${f.category}`:"Elegí primero una categoría"} disabled={!f.category}
-            style={{width:"100%",boxSizing:"border-box",fontFamily:T.sans,fontSize:13,color:T.text,background:f.category?T.card:"#f5f5f0",border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4}}/>
-          <datalist id="pf-subcat-list">{[...(subcatsByCat[f.category]||[])].map(s=><option key={s} value={s}/>)}</datalist>
+          <Combobox value={f.subcategoria||""} onChange={v=>set("subcategoria",v)} options={[...(subcatsByCat[f.category]||[])]}
+            placeholder={f.category?"Elegí o escribí una subcategoría":"Elegí primero una categoría"} disabled={!f.category}/>
         </Field>
         <Field label={"Costo unitario (" + taxCfg.currency + ")"}>
           <Inp type="number" step="0.01" min="0" placeholder="0.00" value={f.unitCost||""} onChange={e=>set("unitCost",e.target.value===""?0:+e.target.value)}/>

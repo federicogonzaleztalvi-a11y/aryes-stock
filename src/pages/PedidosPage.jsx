@@ -724,10 +724,11 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
   const [q, setQ] = useState('');
   const totalSel = options.reduce((s, o) => s + (carrito[`${item.id}::${o.id}`] || 0), 0);
   const lbl = String(label || 'variante').toLowerCase();
-  // Con muchas variantes (ej. 20+ sabores) una lista plana es un muro: agregamos
-  // buscador para saltar directo a la que se busca (patrón Amazon/Shopify). El
-  // umbral evita mostrarlo cuando son pocas.
-  const showSearch = options.length > 8;
+  // Cuando hay una lista real de variantes (colores, sabores, tamaños) el buscador
+  // deja saltar directo a la que se busca (patrón Amazon/Shopify) y hace que TODAS
+  // las listas se vean igual. Solo se saltea con 2-5 opciones, donde es un toggle
+  // y un buscador sobre tan pocas se vería tonto.
+  const showSearch = options.length > 5;
   const term = q.trim().toLowerCase();
   const shown = term ? options.filter(o => String(o.label || '').toLowerCase().includes(term)) : options;
   return (
