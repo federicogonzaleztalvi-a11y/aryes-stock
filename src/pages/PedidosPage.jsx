@@ -2175,20 +2175,49 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [reorderMsg, setReorderMsg] = useState(''); // toast al reordenar (items no disponibles)
   const NAV_MAX = 10; // tope de candidatas destacadas; cuántas se muestran es adaptativo (ver navVisibles)
 
+  // ── Historial de navegación interna (para el botón "atrás" del navegador) ──
+  // Moverse entre catálogo, categorías, subcategorías y ficha de producto es
+  // estado de React: NO cambia la URL, así que el back del navegador no tenía
+  // nada que deshacer y se salía del sitio. Guardamos cada paso en una pila y el
+  // "atrás" (botón físico, popstate o swipe) la va desandando paso a paso —como
+  // una app nativa o Amazon/Shopify—, y recién sale del sitio cuando no queda
+  // nada atrás. `skipRecord` evita que restaurar un paso cuente como uno nuevo.
+  const navStack = useRef([]);
+  const skipRecord = useRef(false);
+  const navSig = `${vista}|${detalle?.id ?? '∅'}|${catFil}|${subFil}`;
+  const prevNav = useRef({ sig: navSig, snap: { vista, detalle, catFil, subFil } });
+  useEffect(() => {
+    if (navSig === prevNav.current.sig) return;
+    if (skipRecord.current) {
+      skipRecord.current = false;                    // vino de un "atrás": no registrar
+    } else {
+      navStack.current.push(prevNav.current.snap);   // guardamos de dónde venimos
+      if (navStack.current.length > 50) navStack.current.shift();
+    }
+    prevNav.current = { sig: navSig, snap: { vista, detalle, catFil, subFil } };
+  }, [navSig]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Swipe-back (gesto "volver" tipo app nativa) ───────────────────────────
-  // Deslizar desde el borde izquierdo hacia la derecha vuelve a la pantalla
-  // anterior, respetando el MISMO orden que los botones "Volver": primero cierra
-  // lo más "encima" (drawer/menús), después sale de la ficha de producto (PDP →
-  // grilla), después de una vista secundaria al catálogo, y en modo vendedor sale
-  // del catálogo del cliente ("a mis clientes"). Si no hay nada atrás, no hace
-  // nada (deja el back nativo del navegador). Hook compartido con los 3 portales.
+  // Deslizar desde el borde izquierdo hacia la derecha (y el botón atrás del
+  // navegador vía popstate) vuelve a la pantalla anterior, respetando el MISMO
+  // orden: primero cierra lo más "encima" (drawer/menús/buscador), después
+  // desanda el historial interno (categoría/PDP → paso anterior), y en modo
+  // vendedor sale del catálogo del cliente. Si no hay nada atrás, deja salir el
+  // back nativo. Hook compartido con los 3 portales.
   useSwipeBack(() => {
     if (pickSheet) { setPickSheet(null); return true; }
+    if (vozOpen) { setVozOpen(false); return true; }
     if (showCart) { setShowCart(false); return true; }
     if (ddOpen || udOpen) { setDdOpen(false); setUdOpen(false); return true; }
     if (showEstadoCuenta) { setShowEstadoCuenta(false); return true; }
-    if (detalle) { setDetalle(null); return true; }
-    if (vista !== 'catalogo') { setVista('catalogo'); setDetalle(null); return true; }
+    if (busq) { setBusq(''); return true; }
+    if (navStack.current.length > 0) {
+      const prev = navStack.current.pop();
+      skipRecord.current = true;
+      setVista(prev.vista); setDetalle(prev.detalle);
+      setCatFil(prev.catFil); setSubFil(prev.subFil);
+      return true;
+    }
     if (vendorMode && onVendorExitRef.current) { onVendorExitRef.current(); return true; }
     return false;
   });
