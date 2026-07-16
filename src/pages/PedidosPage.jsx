@@ -1220,6 +1220,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
   // (descargar PDF / enviar por mail). lastOrderId es el id real devuelto por el
   // endpoint, necesario para pedir el comprobante; en demo queda null.
   const [showPreview, setShowPreview] = useState(false);
+  // Detalle de productos en la confirmación: colapsable (patrón Shopify/Amazon).
+  // Con listas largas el detalle empuja el total y la nota fuera de la vista; se
+  // colapsa por defecto y se abre para verificar. null = todavía no decidido por
+  // el usuario, así respeta el default según la cantidad de líneas.
+  const [detalleAbierto, setDetalleAbierto] = useState(null);
   const [lastOrderId, setLastOrderId] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [emailOpen,   setEmailOpen]   = useState(false);
@@ -1454,6 +1459,9 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
   // cantidad/precio/descuento, totales y notas. Desde acá se confirma o se vuelve.
   if (showPreview && !done) {
     const direccionSel = addresses.find(a => a.id === selectedAddress);
+    // Con pocas líneas se muestra el detalle abierto; con muchas arranca colapsado
+    // para que total + nota + confirmar queden a la vista sin scroll (Shopify).
+    const detalleVisible = detalleAbierto === null ? lineasConCalc.length <= 4 : detalleAbierto;
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: Z.overlay,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
@@ -1524,13 +1532,22 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             </div>
           )}
 
-          {/* Detalle */}
+          {/* Detalle — colapsable (Shopify): el header es un botón que abre/cierra
+              la lista. Total + nota + confirmar quedan siempre cerca, sin scroll. */}
           <div style={{ padding: '12px 24px' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 8,
-              display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ececec', paddingBottom: 6 }}>
-              <span>PRODUCTO</span><span>SUBTOTAL</span>
-            </div>
-            {lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, tramos }) => (
+            <button type="button" onClick={() => setDetalleAbierto(v => !(v === null ? lineasConCalc.length <= 4 : v))}
+              aria-expanded={detalleVisible}
+              style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                fontSize: 11, fontWeight: 600, color: '#6a6a68', letterSpacing: .5, marginBottom: 8,
+                borderBottom: '1px solid #ececec', paddingBottom: 6, fontFamily: SANS }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>PRODUCTO{lineasConCalc.length > 1 ? `S · ${lineasConCalc.length}` : ''}</span>
+                <span style={{ fontSize: 10, transform: detalleVisible ? 'rotate(180deg)' : 'none', transition: 'transform .15s', color: G }}>▾</span>
+              </span>
+              <span>{detalleVisible ? 'SUBTOTAL' : 'Ver detalle'}</span>
+            </button>
+            {detalleVisible && lineasConCalc.map(({ key, item, qty, variantId, descEfectivoPct, precioConDto, netoLinea, ivaRate, tramos }) => (
               <div key={key} style={{ display: 'flex', justifyContent: 'space-between',
                 padding: '8px 0', borderBottom: '1px solid #f5f5f0', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
