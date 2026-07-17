@@ -582,8 +582,17 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
   // Variantes: el cliente elige cantidad por opción (color/sabor/...). El precio,
   // IVA y descuentos son del producto padre. La clave de carrito es "id::variantId".
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
-  const dtoInfo = dtoSiempre(item);   // precio original tachado − % → precio final
-  const tier = primerTier(item);      // primera escala por cantidad (si hay)
+  // Precio CONSCIENTE de la cantidad ya en el carrito: si la cantidad alcanza un
+  // tramo por volumen, el precio grande pasa a ser el unitario CON el descuento
+  // aplicado (y tacha el precio base), en vez de seguir mostrando el precio de
+  // lista con el % al costado — que daba a entender que el dto no estaba aplicado.
+  const calc = qty > 0 ? calcLinea(item, qty) : null;
+  const precioEff = calc ? calc.precioConDto : item.precio;   // unitario efectivo según cantidad
+  const refBase = precioRefBase(item);                         // v2: precioBase; viejo: item.precio
+  const pctEff = refBase > 0 && refBase > precioEff ? Math.round(100 * (1 - precioEff / refBase)) : 0;
+  const mostrarDto = item.precio > 0 && pctEff > 0;            // hay precio base que tachar
+  const tier = primerTier(item);                               // primera escala por cantidad (si hay)
+  const tierAlcanzado = !!(tier && qty >= tier.min);           // la cantidad ya la desbloqueó
 
   return (
     <div style={{ background: '#fff', borderRadius: 14,
@@ -629,9 +638,9 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         {/* La descripción vive en la ficha de detalle (PDP). En la card sólo
             nombre + precio + acción — truncarla acá quedaba cortada a media palabra. */}
         <div onClick={open} style={{ flex: 1, cursor: open ? 'pointer' : 'default' }} />
-        {item.precio > 0 && dtoInfo && <div style={{ marginTop: 4 }}><PrecioAntes base={dtoInfo.base} pct={dtoInfo.pct} /></div>}
-        <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: dtoInfo ? 0 : 4 }}>
-          {item.precio > 0 ? fmt.currency(item.precio) : (
+        {mostrarDto && <div style={{ marginTop: 4 }}><PrecioAntes base={refBase} pct={pctEff} /></div>}
+        <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: mostrarDto ? 0 : 4 }}>
+          {item.precio > 0 ? fmt.currency(precioEff) : (
             <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
               padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
           )}
@@ -644,8 +653,10 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
         {/* Tramo por cantidad: se muestra el PRECIO concreto de ese tramo (no un %
             suelto). Al lado de un precio que ya trae el dto "siempre", un "−X%" a
-            secas parecía un descuento apilado; el precio unitario despeja la duda. */}
-        {item.precio > 0 && tier && (
+            secas parecía un descuento apilado; el precio unitario despeja la duda.
+            Se oculta cuando la cantidad YA alcanzó el tramo: en ese caso el precio
+            grande ya refleja el descuento y repetirlo confundía (parecía otro dto). */}
+        {item.precio > 0 && tier && !tierAlcanzado && (
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
@@ -864,9 +875,16 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
-  const dtoDetalle = dtoSiempre(item);                               // precio original tachado − % → final
-  const tierDetalle = (item.volume_tiers || []).length > 0 ? true : null; // hay escala por cantidad
   const qty = carrito[item.id] || 0;
+  // Precio grande CONSCIENTE de la cantidad ya en el carrito (igual que la card):
+  // si la cantidad alcanza un tramo, el precio pasa a ser el unitario CON descuento
+  // y se tacha el base. Sin cantidad, refleja el precio de lista (con dto "siempre").
+  const calcD = qty > 0 ? calcLinea(item, qty) : null;
+  const precioEffD = calcD ? calcD.precioConDto : item.precio;
+  const refBaseD = precioRefBase(item);
+  const pctEffD = refBaseD > 0 && refBaseD > precioEffD ? Math.round(100 * (1 - precioEffD / refBaseD)) : 0;
+  const dtoDetalle = item.precio > 0 && pctEffD > 0 ? { base: refBaseD, pct: pctEffD } : null;
+  const tierDetalle = (item.volume_tiers || []).length > 0 ? true : null; // hay escala por cantidad
   // Input de cantidad editable: mientras el cliente escribe usamos texto local,
   // y sólo al perder foco normalizamos contra el mínimo de pedido.
   const [editingQty, setEditingQty] = useState(false);
@@ -972,7 +990,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
           {item.precio > 0 && dtoDetalle && <div style={{ marginBottom: 2 }}><PrecioAntes base={dtoDetalle.base} pct={dtoDetalle.pct} size={14} /></div>}
           {item.precio > 0 && (
             <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
-              {fmt.currency(item.precio)}
+              {fmt.currency(precioEffD)}
               {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
             </div>
           )}
@@ -1067,7 +1085,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               <div style={{ flexShrink: 0, lineHeight: 1.1 }}>
                 {dtoDetalle && <div style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(dtoDetalle.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{dtoDetalle.pct}%</span></div>}
                 <div style={{ fontSize: 18, fontWeight: 700, color: G }}>
-                  {fmt.currency(item.precio)}
+                  {fmt.currency(precioEffD)}
                   {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
                 </div>
               </div>
