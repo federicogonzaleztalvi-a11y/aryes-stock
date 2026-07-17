@@ -30,20 +30,50 @@ export default function useSwipeBack(onBack) {
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     // Armamos una entrada "trampa" en el historial para tener algo que "pop".
-    window.history.pushState(null, '');
+    const arm = () => { try { window.history.pushState({ __pzqTrap: 1 }, ''); } catch { /* noop */ } };
+    arm();
+
+    // iOS Safari a veces dispara un `popstate` "fantasma" apenas carga la página
+    // (sin que el usuario haya tocado atrás). Si lo tratáramos como un "volver"
+    // real, ese pop se comería la trampa y, más tarde, el back del navegador se
+    // saldría del sitio (ej: al volver desde la ficha de un producto). Por eso
+    // consideramos la trampa "activa" recién después de la PRIMERA interacción
+    // del usuario (o de 1s): antes de eso, cualquier popstate se neutraliza
+    // re-armando la trampa en lugar de disparar el volver.
+    let ready = false;
+    const markReady = () => { ready = true; };
+    window.addEventListener('pointerdown', markReady, { once: true, passive: true });
+    window.addEventListener('touchstart', markReady, { once: true, passive: true });
+    window.addEventListener('keydown', markReady, { once: true });
+    const readyTimer = setTimeout(markReady, 1000);
+
     const onPop = () => {
+      if (!ready) { arm(); return; } // popstate fantasma pre-interacción: re-armamos y salimos
       let handled = false;
       try { handled = !!(onBackRef.current && onBackRef.current()); } catch { /* noop */ }
       if (handled) {
         // Cerramos algo interno: re-armamos la trampa para la próxima vez.
-        window.history.pushState(null, '');
+        arm();
       } else {
         // No había nada atrás: dejamos salir de verdad (cerrar/atrás del navegador).
         window.history.back();
       }
     };
     window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+
+    // Al volver desde el back-forward cache (bfcache) de iOS Safari la trampa
+    // puede quedar "abajo" en el historial; la re-armamos para no quedar sin red.
+    const onShow = (e) => { if (e && e.persisted) arm(); };
+    window.addEventListener('pageshow', onShow);
+
+    return () => {
+      clearTimeout(readyTimer);
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('pageshow', onShow);
+      window.removeEventListener('pointerdown', markReady);
+      window.removeEventListener('touchstart', markReady);
+      window.removeEventListener('keydown', markReady);
+    };
   }, []);
 
   useEffect(() => {
