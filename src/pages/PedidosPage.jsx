@@ -2184,8 +2184,11 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // nada atrás. `skipRecord` evita que restaurar un paso cuente como uno nuevo.
   const navStack = useRef([]);
   const skipRecord = useRef(false);
-  const navSig = `${vista}|${detalle?.id ?? '∅'}|${catFil}|${subFil}`;
-  const prevNav = useRef({ sig: navSig, snap: { vista, detalle, catFil, subFil } });
+  // La ficha de producto (detalle) NO va en esta pila: tiene su propia entrada
+  // REAL en el historial del navegador (URL ?p=<id>, ver efecto más abajo). Acá
+  // sólo registramos las "páginas": catálogo / categoría / subcategoría.
+  const navSig = `${vista}|${catFil}|${subFil}`;
+  const prevNav = useRef({ sig: navSig, snap: { vista, catFil, subFil } });
   useEffect(() => {
     if (navSig === prevNav.current.sig) return;
     if (skipRecord.current) {
@@ -2194,8 +2197,37 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       navStack.current.push(prevNav.current.snap);   // guardamos de dónde venimos
       if (navStack.current.length > 50) navStack.current.shift();
     }
-    prevNav.current = { sig: navSig, snap: { vista, detalle, catFil, subFil } };
+    prevNav.current = { sig: navSig, snap: { vista, catFil, subFil } };
   }, [navSig]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── URL propia para la ficha de producto (estilo Amazon/Shopify) ───────────
+  // Abrir un producto empuja una entrada REAL al historial con la URL ?p=<id>.
+  // Así el botón "atrás" del navegador (Safari/Chrome, iOS incluido) tiene una
+  // entrada del MISMO sitio a la que volver y regresa al catálogo en lugar de
+  // salirse del portal —que era el bug: al no cambiar nunca la URL, el atrás no
+  // tenía nada real que deshacer—. Al cerrar la ficha desde la UI, limpiamos la
+  // URL de vuelta al catálogo.
+  const pdpUrlRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (detalle && !pdpUrlRef.current) {
+      pdpUrlRef.current = true;
+      try {
+        const u = new URL(window.location.href);
+        u.searchParams.set('p', String(detalle.id));
+        window.history.pushState({ __pzqTrap: 1 }, '', u.toString());
+      } catch { /* noop */ }
+    } else if (!detalle && pdpUrlRef.current) {
+      pdpUrlRef.current = false;
+      try {
+        const u = new URL(window.location.href);
+        if (u.searchParams.has('p')) {
+          u.searchParams.delete('p');
+          window.history.replaceState({ __pzqTrap: 1 }, '', u.toString());
+        }
+      } catch { /* noop */ }
+    }
+  }, [detalle]);
 
   // ── Swipe-back (gesto "volver" tipo app nativa) ───────────────────────────
   // Deslizar desde el borde izquierdo hacia la derecha (y el botón atrás del
@@ -2211,10 +2243,11 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     if (ddOpen || udOpen) { setDdOpen(false); setUdOpen(false); return true; }
     if (showEstadoCuenta) { setShowEstadoCuenta(false); return true; }
     if (busq) { setBusq(''); return true; }
+    if (detalle) { setDetalle(null); return true; }   // cerrar la ficha de producto
     if (navStack.current.length > 0) {
       const prev = navStack.current.pop();
       skipRecord.current = true;
-      setVista(prev.vista); setDetalle(prev.detalle);
+      setVista(prev.vista); setDetalle(null);
       setCatFil(prev.catFil); setSubFil(prev.subFil);
       return true;
     }
