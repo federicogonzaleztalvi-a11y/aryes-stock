@@ -428,9 +428,32 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </RootErrorBoundary>
 );
 
-// ── PWA Service Worker registration ──────────────────────────
+// ── PWA Service Worker registration + auto-update ────────────
+// El SW cachea la app. Sin esto, al publicar una versión nueva el cliente seguía
+// viendo la vieja hasta cerrar y reabrir la app a mano (problema recurrente en el
+// PWA instalado). Ahora, cuando el SW nuevo toma control (skipWaiting+claim),
+// recargamos automáticamente para servir el código fresco. El carrito y la sesión
+// viven en localStorage, así que la recarga no pierde nada.
 if ('serviceWorker' in navigator) {
+  // Si ya había un SW controlando la página, un cambio de controller = versión
+  // nueva activada → recargamos una sola vez. En la PRIMERA visita no hay
+  // controller previo, así que no recarga (la página ya trae el código fresco).
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      // Chequear updates al volver a la app (foco) — el navegador no siempre
+      // revalida el sw.js solo en PWAs standalone.
+      const checkUpdate = () => { reg.update().catch(() => {}); };
+      window.addEventListener('focus', checkUpdate);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkUpdate();
+      });
+    }).catch(() => {});
   });
 }
