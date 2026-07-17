@@ -579,6 +579,28 @@ function PrecioAntes({ base, pct, size = 12 }) {
   );
 }
 
+// Desglose de una línea MIXTA (caja cerrada + sueltas, o varios tramos): muestra
+// cada tramo con su precio unitario REAL configurado (nunca un promedio) y el total
+// de la línea. Mismo criterio y estilo que el carrito, para que la card/ficha no
+// muestren un % promediado ni oculten el descuento que sí aplica a parte de la
+// cantidad. tramos viene de calcLinea: [{unidades, precioUnit, dtoPct, distribuidor}].
+function TramosDesglose({ tramos, unidad, total, qty, size = 11 }) {
+  const u = unidad || 'u';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2 }}>
+      {tramos.map((t, i) => (
+        <div key={i} style={{ fontSize: size, color: t.distribuidor ? G : GRAY, fontWeight: t.distribuidor ? 600 : 400 }}>
+          {t.distribuidor ? '\u2713 ' : '\u2022 '}{t.unidades} {u} {'\u00d7'} {fmt.currency(t.precioUnit)}
+          {t.dtoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>{'\u2212'}{Math.round(t.dtoPct)}%</span>}
+        </div>
+      ))}
+      <div style={{ fontSize: size + 1, fontWeight: 700, color: '#1a1a18', marginTop: 1 }}>
+        Total {qty} {u}: <span style={{ color: G }}>{fmt.currency(total)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants }) {
   const [imgErr, setImgErr] = useState(false);
@@ -666,18 +688,26 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           {item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim()) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
+        {/* Línea MIXTA (parte a precio de caja, parte suelta): en vez de etiquetas de
+            oferta mostramos el desglose REAL aplicado + total, así el cliente ve que
+            el descuento ya rige sobre las unidades que completan cajas (nunca un %
+            promedio). */}
+        {item.precio > 0 && mixed && calc && (
+          <TramosDesglose tramos={calc.tramos} unidad={item.unidad} total={calc.netoLinea} qty={qty} />
+        )}
         {/* Etiquetas de reglas disponibles (caja / por cantidad): cada una muestra el
             PRECIO concreto de esa regla, no un % suelto. Se muestran sólo cuando su
             descuento SUPERA al que ya está aplicado al precio grande (pctEff): así
-            no repetimos un beneficio ya reflejado ni ofrecemos uno igual o peor. */}
-        {item.precio > 0 && box && box.pct > pctEff && (
+            no repetimos un beneficio ya reflejado ni ofrecemos uno igual o peor.
+            No se muestran cuando la línea es mixta (ya se ve el desglose real). */}
+        {item.precio > 0 && !mixed && box && box.pct > pctEff && (
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
             Caja de {box.uxc}: {fmt.currency(precioTier(item, { dto: box.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{box.pct}%)</span>
           </div>
         )}
-        {item.precio > 0 && tier && tier.dto > pctEff && (
+        {item.precio > 0 && !mixed && tier && tier.dto > pctEff && (
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
@@ -1024,12 +1054,21 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
             </div>
           )}
-          {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+          {item.precio > 0 && <div style={{ marginBottom: (mixedD || boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+          {/* Línea MIXTA (parte a precio de caja, parte suelta): desglose REAL aplicado
+              + total, en vez de etiquetas de oferta, para que el cliente vea el
+              descuento ya aplicado sobre las cajas completas (nunca un % promedio). */}
+          {item.precio > 0 && mixedD && calcD && (
+            <div style={{ marginBottom: 16 }}>
+              <TramosDesglose tramos={calcD.tramos} unidad={item.unidad} total={calcD.netoLinea} qty={qty} size={12} />
+            </div>
+          )}
           {/* Reglas disponibles (caja / por cantidad): cada una muestra el PRECIO
               concreto de esa regla (no un % suelto), y sólo si SUPERA el dto ya
               aplicado al precio grande — así no parece apilarse sobre el dto "siempre"
-              ni se repite un beneficio ya reflejado. */}
-          {item.precio > 0 && (boxD && boxD.pct > pctEffD || tiersD.length > 0) && (
+              ni se repite un beneficio ya reflejado. Ocultas cuando la línea es mixta
+              (ya se muestra el desglose real). */}
+          {item.precio > 0 && !mixedD && (boxD && boxD.pct > pctEffD || tiersD.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
               {boxD && boxD.pct > pctEffD && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#f0fdf4',
