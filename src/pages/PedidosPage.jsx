@@ -529,6 +529,47 @@ function primerTier(item) {
   return tiers.length ? tiers[0] : null;
 }
 
+// Precio de referencia SIN descontar (para el "precio tachado"). En v2 el server
+// manda precioBase sin descuento; en el modelo viejo no hay base separada, así que
+// se usa item.precio (no hay descuento que mostrar).
+function precioRefBase(item) {
+  return item?.reglasV2 ? (Number(item.precioBase) || 0) : (Number(item?.precio) || 0);
+}
+
+// Descuento "siempre" a mostrar como precio original tachado − % → precio final.
+// Sólo en v2 y sólo si el precio final quedó por debajo del original. Devuelve
+// null cuando no hay descuento (el precio se muestra tal cual, sin tachado).
+function dtoSiempre(item) {
+  const precio = Number(item?.precio) || 0;
+  if (!item?.reglasV2) return null;
+  const base = Number(item.precioBase) || 0;
+  const pct = Math.round(Number(item.descGlobal) || 0);
+  return pct > 0 && base > precio ? { base, pct, precio } : null;
+}
+
+// Precio unitario resultante en un tramo por cantidad, calculado sobre el precio
+// base REAL (el mismo que usa calcLinea). Así el tramo se muestra como un precio
+// concreto ("desde N un.: $X c/u") en vez de un % suelto que, al lado de un precio
+// que ya trae el dto "siempre", parecía un descuento apilado.
+function precioTier(item, tier) {
+  const base = precioRefBase(item);
+  const pct = Number(tier?.dto) || 0;
+  return pct > 0 ? Math.round(base * (1 - pct / 100) * 100) / 100 : base;
+}
+
+// Muestra el precio original tachado + un chip con el % de descuento, arriba del
+// precio final. El cliente ve SIEMPRE el descuento explícito (precio original −
+// dto = final) en vez de un precio ya rebajado sin contexto, que confundía.
+function PrecioAntes({ base, pct, size = 12 }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: size, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(base)}</span>
+      <span style={{ fontSize: size - 1, fontWeight: 700, color: '#dc2626', background: '#fef2f2',
+        border: '1px solid #fecaca', borderRadius: 5, padding: '1px 5px', lineHeight: 1.5 }}>−{pct}%</span>
+    </div>
+  );
+}
+
 // ── Product Card ──────────────────────────────────────────────────────────────
 function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants }) {
   const [imgErr, setImgErr] = useState(false);
@@ -541,6 +582,8 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
   // Variantes: el cliente elige cantidad por opción (color/sabor/...). El precio,
   // IVA y descuentos son del producto padre. La clave de carrito es "id::variantId".
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
+  const dtoInfo = dtoSiempre(item);   // precio original tachado − % → precio final
+  const tier = primerTier(item);      // primera escala por cantidad (si hay)
 
   return (
     <div style={{ background: '#fff', borderRadius: 14,
@@ -586,7 +629,8 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         {/* La descripción vive en la ficha de detalle (PDP). En la card sólo
             nombre + precio + acción — truncarla acá quedaba cortada a media palabra. */}
         <div onClick={open} style={{ flex: 1, cursor: open ? 'pointer' : 'default' }} />
-        <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: 4 }}>
+        {item.precio > 0 && dtoInfo && <div style={{ marginTop: 4 }}><PrecioAntes base={dtoInfo.base} pct={dtoInfo.pct} /></div>}
+        <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: dtoInfo ? 0 : 4 }}>
           {item.precio > 0 ? fmt.currency(item.precio) : (
             <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
               padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
@@ -598,11 +642,14 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           {item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim()) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
-        {item.precio > 0 && primerTier(item) && (
+        {/* Tramo por cantidad: se muestra el PRECIO concreto de ese tramo (no un %
+            suelto). Al lado de un precio que ya trae el dto "siempre", un "−X%" a
+            secas parecía un descuento apilado; el precio unitario despeja la duda. */}
+        {item.precio > 0 && tier && (
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
-            {primerTier(item).min}+ unidades: −{primerTier(item).dto}%
+            Desde {tier.min} un.: {fmt.currency(precioTier(item, tier))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{tier.dto}%)</span>
           </div>
         )}
         {variantOpts ? (
@@ -690,7 +737,12 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
           {item.imagen_url && <img src={item.imagen_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.25 }}>{item.nombre}</div>
-            {item.precio > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: G, marginTop: 2 }}>{fmt.currency(item.precio)}</div>}
+            {item.precio > 0 && (
+              <div style={{ marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: G }}>{fmt.currency(item.precio)}</span>
+                {(() => { const d = dtoSiempre(item); return d ? (<span style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(d.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{d.pct}%</span></span>) : null; })()}
+              </div>
+            )}
           </div>
           <button onClick={onClose} aria-label="Cerrar" style={{ flexShrink: 0, width: 32, height: 32, border: 'none',
             background: '#f0f0ec', borderRadius: '50%', cursor: 'pointer', fontSize: 17, color: '#6a6a68', lineHeight: 1 }}>×</button>
@@ -812,6 +864,8 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   const [imgErr, setImgErr] = useState(false);
   const hasImg = item.imagen_url && !imgErr;
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
+  const dtoDetalle = dtoSiempre(item);                               // precio original tachado − % → final
+  const tierDetalle = (item.volume_tiers || []).length > 0 ? true : null; // hay escala por cantidad
   const qty = carrito[item.id] || 0;
   // Input de cantidad editable: mientras el cliente escribe usamos texto local,
   // y sólo al perder foco normalizamos contra el mínimo de pedido.
@@ -915,13 +969,26 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               la barra fija (mobile) sepa cuándo salió de pantalla (criterio Amazon).
               Tiene que tener área real: un div de altura 0 no dispara IntersectionObserver. */}
           <div ref={compraRef}>
+          {item.precio > 0 && dtoDetalle && <div style={{ marginBottom: 2 }}><PrecioAntes base={dtoDetalle.base} pct={dtoDetalle.pct} size={14} /></div>}
           {item.precio > 0 && (
             <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
               {fmt.currency(item.precio)}
               {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
             </div>
           )}
-          {item.precio > 0 && <div style={{ marginBottom: 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+          {item.precio > 0 && <div style={{ marginBottom: tierDetalle ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+          {/* Escala por cantidad: precio unitario concreto de cada tramo (no un %
+              suelto), para que no parezca apilarse sobre el dto "siempre". */}
+          {item.precio > 0 && tierDetalle && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+              {(item.volume_tiers || []).map((t, i) => (
+                <div key={i} style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#f0fdf4',
+                  border: '1px solid #bbf7d0', borderRadius: 8, padding: '4px 10px' }}>
+                  Desde {t.min} un.: {fmt.currency(precioTier(item, t))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{t.dto}%)</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {variantOpts ? (
             <div style={{ maxWidth: 420 }}>
@@ -997,9 +1064,12 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
           animation: 'pzFade .18s ease both' }}>
           {item.precio > 0 ? (
             <>
-              <div style={{ flexShrink: 0, fontSize: 18, fontWeight: 700, color: G, lineHeight: 1.1 }}>
-                {fmt.currency(item.precio)}
-                {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+              <div style={{ flexShrink: 0, lineHeight: 1.1 }}>
+                {dtoDetalle && <div style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(dtoDetalle.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{dtoDetalle.pct}%</span></div>}
+                <div style={{ fontSize: 18, fontWeight: 700, color: G }}>
+                  {fmt.currency(item.precio)}
+                  {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+                </div>
               </div>
               {qty > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
@@ -1897,8 +1967,13 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, paddingRight: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
-                  <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span>{fmt.currency(item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
+                  <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                    {/* Unitario EFECTIVO (precioConDto), no item.precio: item.precio es el
+                        precio "de siempre" (dto chico adentro); si además aplica un tramo
+                        mayor, el unitario real es más bajo. Mostrar item.precio + "-X%"
+                        del tramo parecía un descuento apilado. Referencia tachada al lado. */}
+                    {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#b0b0a8', textDecoration: 'line-through' }}>{fmt.currency(precioRef)}</span>}
+                    <span>{fmt.currency((!tramos || tramos.length <= 1) ? precioConDto : item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
                     {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#dc2626' }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
                   </div>
