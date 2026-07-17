@@ -557,6 +557,15 @@ function precioTier(item, tier) {
   return pct > 0 ? Math.round(base * (1 - pct / 100) * 100) / 100 : base;
 }
 
+// Regla de caja cerrada como etiqueta informativa: precio distribuidor por unidad
+// cuando se completan cajas. Devuelve { uxc, pct } o null. El precio por unidad se
+// calcula con precioTier({ dto: pct }) sobre el precio base — igual que un tramo.
+function boxRule(item) {
+  const uxc = Number(item?.unidades_por_caja) || 0;
+  const pct = Math.round(Number(item?.descuento_caja) || 0);
+  return uxc > 0 && pct > 0 ? { uxc, pct } : null;
+}
+
 // Muestra el precio original tachado + un chip con el % de descuento, arriba del
 // precio final. El cliente ve SIEMPRE el descuento explícito (precio original −
 // dto = final) en vez de un precio ya rebajado sin contexto, que confundía.
@@ -586,13 +595,19 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
   // tramo por volumen, el precio grande pasa a ser el unitario CON el descuento
   // aplicado (y tacha el precio base), en vez de seguir mostrando el precio de
   // lista con el % al costado — que daba a entender que el dto no estaba aplicado.
+  // CLAVE: sólo colapsamos a un precio/% único cuando la línea es UNIFORME (una
+  // sola tarifa = una regla configurada). Si hay tramos mezclados (caja cerrada +
+  // sueltas a precio pleno), el promedio NO es una regla configurada: mostrar ese
+  // % (ej. -27%) confundía. En ese caso se muestra el precio de lista y el ahorro
+  // real (caja) se ve como etiqueta y en el desglose del carrito.
   const calc = qty > 0 ? calcLinea(item, qty) : null;
-  const precioEff = calc ? calc.precioConDto : item.precio;   // unitario efectivo según cantidad
+  const mixed = !!(calc && calc.tramos && calc.tramos.length > 1);
+  const precioEff = (calc && !mixed) ? calc.precioConDto : item.precio; // unitario efectivo (sólo si uniforme)
   const refBase = precioRefBase(item);                         // v2: precioBase; viejo: item.precio
   const pctEff = refBase > 0 && refBase > precioEff ? Math.round(100 * (1 - precioEff / refBase)) : 0;
   const mostrarDto = item.precio > 0 && pctEff > 0;            // hay precio base que tachar
   const tier = primerTier(item);                               // primera escala por cantidad (si hay)
-  const tierAlcanzado = !!(tier && qty >= tier.min);           // la cantidad ya la desbloqueó
+  const box = boxRule(item);                                   // regla de caja cerrada (si hay)
 
   return (
     <div style={{ background: '#fff', borderRadius: 14,
@@ -651,12 +666,18 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           {item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim()) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
         </div>
         {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
-        {/* Tramo por cantidad: se muestra el PRECIO concreto de ese tramo (no un %
-            suelto). Al lado de un precio que ya trae el dto "siempre", un "−X%" a
-            secas parecía un descuento apilado; el precio unitario despeja la duda.
-            Se oculta cuando la cantidad YA alcanzó el tramo: en ese caso el precio
-            grande ya refleja el descuento y repetirlo confundía (parecía otro dto). */}
-        {item.precio > 0 && tier && !tierAlcanzado && (
+        {/* Etiquetas de reglas disponibles (caja / por cantidad): cada una muestra el
+            PRECIO concreto de esa regla, no un % suelto. Se muestran sólo cuando su
+            descuento SUPERA al que ya está aplicado al precio grande (pctEff): así
+            no repetimos un beneficio ya reflejado ni ofrecemos uno igual o peor. */}
+        {item.precio > 0 && box && box.pct > pctEff && (
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
+            border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
+            marginTop: 2 }}>
+            Caja de {box.uxc}: {fmt.currency(precioTier(item, { dto: box.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{box.pct}%)</span>
+          </div>
+        )}
+        {item.precio > 0 && tier && tier.dto > pctEff && (
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
@@ -879,12 +900,21 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   // Precio grande CONSCIENTE de la cantidad ya en el carrito (igual que la card):
   // si la cantidad alcanza un tramo, el precio pasa a ser el unitario CON descuento
   // y se tacha el base. Sin cantidad, refleja el precio de lista (con dto "siempre").
+  // CLAVE (igual que la card): sólo colapsamos a un precio/% único cuando la línea es
+  // UNIFORME (una sola tarifa = una regla). Si hay tramos mezclados (caja cerrada +
+  // sueltas a precio pleno), el promedio NO es una regla configurada y mostrar ese %
+  // (ej. -27%) confunde: en ese caso mostramos el precio de lista y las reglas reales
+  // (caja / tramo) como etiquetas informativas.
   const calcD = qty > 0 ? calcLinea(item, qty) : null;
-  const precioEffD = calcD ? calcD.precioConDto : item.precio;
+  const mixedD = !!(calcD && calcD.tramos && calcD.tramos.length > 1);
+  const precioEffD = (calcD && !mixedD) ? calcD.precioConDto : item.precio;
   const refBaseD = precioRefBase(item);
   const pctEffD = refBaseD > 0 && refBaseD > precioEffD ? Math.round(100 * (1 - precioEffD / refBaseD)) : 0;
   const dtoDetalle = item.precio > 0 && pctEffD > 0 ? { base: refBaseD, pct: pctEffD } : null;
-  const tierDetalle = (item.volume_tiers || []).length > 0 ? true : null; // hay escala por cantidad
+  const boxD = boxRule(item);                                  // regla de caja cerrada (si hay)
+  // Tramos por cantidad a mostrar: sólo los que SUPERAN el dto ya aplicado (pctEffD),
+  // para no repetir un beneficio ya reflejado en el precio grande.
+  const tiersD = (item.volume_tiers || []).filter(t => (Number(t.dto) || 0) > pctEffD);
   // Input de cantidad editable: mientras el cliente escribe usamos texto local,
   // y sólo al perder foco normalizamos contra el mínimo de pedido.
   const [editingQty, setEditingQty] = useState(false);
@@ -994,12 +1024,20 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
             </div>
           )}
-          {item.precio > 0 && <div style={{ marginBottom: tierDetalle ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
-          {/* Escala por cantidad: precio unitario concreto de cada tramo (no un %
-              suelto), para que no parezca apilarse sobre el dto "siempre". */}
-          {item.precio > 0 && tierDetalle && (
+          {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+          {/* Reglas disponibles (caja / por cantidad): cada una muestra el PRECIO
+              concreto de esa regla (no un % suelto), y sólo si SUPERA el dto ya
+              aplicado al precio grande — así no parece apilarse sobre el dto "siempre"
+              ni se repite un beneficio ya reflejado. */}
+          {item.precio > 0 && (boxD && boxD.pct > pctEffD || tiersD.length > 0) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {(item.volume_tiers || []).map((t, i) => (
+              {boxD && boxD.pct > pctEffD && (
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#f0fdf4',
+                  border: '1px solid #bbf7d0', borderRadius: 8, padding: '4px 10px' }}>
+                  Caja de {boxD.uxc}: {fmt.currency(precioTier(item, { dto: boxD.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{boxD.pct}%)</span>
+                </div>
+              )}
+              {tiersD.map((t, i) => (
                 <div key={i} style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#f0fdf4',
                   border: '1px solid #bbf7d0', borderRadius: 8, padding: '4px 10px' }}>
                   Desde {t.min} un.: {fmt.currency(precioTier(item, t))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{t.dto}%)</span>
