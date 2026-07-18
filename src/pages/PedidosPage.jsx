@@ -579,25 +579,43 @@ function PrecioAntes({ base, pct, size = 12 }) {
   );
 }
 
-// Desglose de una línea MIXTA (caja cerrada + sueltas, o varios tramos): muestra
-// cada tramo con su precio unitario REAL configurado (nunca un promedio) y el total
-// de la línea. Mismo criterio y estilo que el carrito, para que la card/ficha no
-// muestren un % promediado ni oculten el descuento que sí aplica a parte de la
-// cantidad. tramos viene de calcLinea: [{unidades, precioUnit, dtoPct, distribuidor}].
-function TramosDesglose({ tramos, unidad, total, qty, size = 11 }) {
-  const u = unidad || 'u';
+// ¿La "unidad" del producto es una unidad de venta real (un/caja) y no un sufijo
+// de peso/volumen (kg/lt/...)? Los precios ya vienen normalizados al bulto, así que
+// mostrar "/kg" confundiría. Sólo mostramos el sufijo cuando es unidad de venta.
+function esUnidadVenta(unidad) {
+  return !!unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(unidad).trim());
+}
+
+// Bloque de precio para una línea MIXTA (parte a precio de caja cerrada, parte
+// suelta a precio de lista). En vez de un único precio/% —que sería un promedio que
+// no es ninguna regla configurada— mostramos:
+//   $<precio caja> −<%>                  ← hero: el precio que paga la MAYORÍA (comparable
+//   ✓ N u a precio caja                    entre cards y es una regla real, no un promedio)
+//   M u sueltas a $<precio lista>
+//   Total · $<neto de la línea>
+// Se usa igual en la card (variant='card') y en la ficha (variant='pdp').
+function PrecioMixto({ calc, item, variant = 'card' }) {
+  const trDist = calc.tramos.find(t => t.distribuidor);
+  const trSuelto = calc.tramos.find(t => !t.distribuidor);
+  if (!trDist || !trSuelto) return null;
+  const uLbl = item.unidad || 'u';
+  const showUnid = esUnidadVenta(item.unidad);
+  const heroSize = variant === 'pdp' ? 24 : 16;
+  const lblSize = variant === 'pdp' ? 13 : 11;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2 }}>
-      {tramos.map((t, i) => (
-        <div key={i} style={{ fontSize: size, color: t.distribuidor ? G : GRAY, fontWeight: t.distribuidor ? 600 : 400 }}>
-          {t.distribuidor ? '\u2713 ' : '\u2022 '}{t.unidades} {u} {'\u00d7'} {fmt.currency(t.precioUnit)}
-          {t.dtoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>{'\u2212'}{Math.round(t.dtoPct)}%</span>}
-        </div>
-      ))}
-      <div style={{ fontSize: size + 1, fontWeight: 700, color: '#1a1a18', marginTop: 1 }}>
-        Total {qty} {u}: <span style={{ color: G }}>{fmt.currency(total)}</span>
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+        <span style={{ fontSize: heroSize, fontWeight: 700, color: G }}>{fmt.currency(trDist.precioUnit)}</span>
+        {showUnid && <span style={{ fontSize: lblSize - 1, color: GRAY, fontWeight: 400 }}>/ {item.unidad}</span>}
+        {trDist.dtoPct > 0 && <span style={{ fontSize: lblSize - 1, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 5, padding: '1px 5px' }}>{'\u2212'}{Math.round(trDist.dtoPct)}%</span>}
       </div>
-    </div>
+      <div style={{ marginTop: variant === 'pdp' ? 6 : 0 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 3 }}>
+        <div style={{ fontSize: lblSize, color: G, fontWeight: 600 }}>{'\u2713'} {trDist.unidades} {uLbl} a precio caja</div>
+        <div style={{ fontSize: lblSize, color: GRAY }}>{trSuelto.unidades} {uLbl} sueltas a {fmt.currency(trSuelto.precioUnit)}</div>
+        <div style={{ fontSize: lblSize, color: GRAY }}>Total {'\u00b7'} <span style={{ fontWeight: 700, color: '#1a1a18' }}>{fmt.currency(calc.netoLinea)}</span></div>
+      </div>
+    </>
   );
 }
 
@@ -675,25 +693,26 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         {/* La descripción vive en la ficha de detalle (PDP). En la card sólo
             nombre + precio + acción — truncarla acá quedaba cortada a media palabra. */}
         <div onClick={open} style={{ flex: 1, cursor: open ? 'pointer' : 'default' }} />
-        {mostrarDto && <div style={{ marginTop: 4 }}><PrecioAntes base={refBase} pct={pctEff} /></div>}
-        <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: mostrarDto ? 0 : 4 }}>
-          {item.precio > 0 ? fmt.currency(precioEff) : (
-            <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
-              padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
-          )}
-          {/* El precio mostrado es el del bulto entero (el importador normaliza
-              precios por kilo/litro al tamaño del bulto). Por eso NO mostramos
-              sufijos "/kg" o "/lt" — confundirían al cliente haciéndole creer
-              que es precio por kilo. Sí mostramos unidades de venta reales (un, caja). */}
-          {item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim()) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
-        </div>
-        {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
-        {/* Línea MIXTA (parte a precio de caja, parte suelta): en vez de etiquetas de
-            oferta mostramos el desglose REAL aplicado + total, así el cliente ve que
-            el descuento ya rige sobre las unidades que completan cajas (nunca un %
-            promedio). */}
-        {item.precio > 0 && mixed && calc && (
-          <TramosDesglose tramos={calc.tramos} unidad={item.unidad} total={calc.netoLinea} qty={qty} />
+        {/* Línea MIXTA (caja cerrada + sueltas): bloque "desde $X −Y% + desglose + total"
+            (ver PrecioMixto). El hero es el precio de caja (lo que paga la mayoría), que
+            es una regla real y comparable con las demás cards — nunca un promedio. */}
+        {item.precio > 0 && mixed && calc ? (
+          <PrecioMixto calc={calc} item={item} variant="card" />
+        ) : (
+          <>
+            {mostrarDto && <div style={{ marginTop: 4 }}><PrecioAntes base={refBase} pct={pctEff} /></div>}
+            <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: mostrarDto ? 0 : 4 }}>
+              {item.precio > 0 ? fmt.currency(precioEff) : (
+                <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
+                  padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
+              )}
+              {/* El precio mostrado es el del bulto entero (el importador normaliza
+                  precios por kilo/litro al tamaño del bulto). Por eso NO mostramos
+                  sufijos "/kg" o "/lt" — confundirían al cliente. Sí unidades de venta. */}
+              {item.precio > 0 && esUnidadVenta(item.unidad) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+            </div>
+            {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
+          </>
         )}
         {/* Etiquetas de reglas disponibles (caja / por cantidad): cada una muestra el
             PRECIO concreto de esa regla, no un % suelto. Se muestran sólo cuando su
@@ -1047,21 +1066,24 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               la barra fija (mobile) sepa cuándo salió de pantalla (criterio Amazon).
               Tiene que tener área real: un div de altura 0 no dispara IntersectionObserver. */}
           <div ref={compraRef}>
-          {item.precio > 0 && dtoDetalle && <div style={{ marginBottom: 2 }}><PrecioAntes base={dtoDetalle.base} pct={dtoDetalle.pct} size={14} /></div>}
-          {item.precio > 0 && (
-            <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
-              {fmt.currency(precioEffD)}
-              {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
-            </div>
-          )}
-          {item.precio > 0 && <div style={{ marginBottom: (mixedD || boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
-          {/* Línea MIXTA (parte a precio de caja, parte suelta): desglose REAL aplicado
-              + total, en vez de etiquetas de oferta, para que el cliente vea el
-              descuento ya aplicado sobre las cajas completas (nunca un % promedio). */}
-          {item.precio > 0 && mixedD && calcD && (
+          {/* Línea MIXTA (parte a precio de caja, parte suelta): hero = precio de caja
+              (lo que paga la mayoría de las unidades, regla configurada real y comparable
+              entre productos — nunca un % promedio) + desglose REAL aplicado + total. */}
+          {item.precio > 0 && mixedD && calcD ? (
             <div style={{ marginBottom: 16 }}>
-              <TramosDesglose tramos={calcD.tramos} unidad={item.unidad} total={calcD.netoLinea} qty={qty} size={12} />
+              <PrecioMixto calc={calcD} item={item} variant="pdp" />
             </div>
+          ) : (
+            <>
+              {item.precio > 0 && dtoDetalle && <div style={{ marginBottom: 2 }}><PrecioAntes base={dtoDetalle.base} pct={dtoDetalle.pct} size={14} /></div>}
+              {item.precio > 0 && (
+                <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
+                  {fmt.currency(precioEffD)}
+                  {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
+                </div>
+              )}
+              {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+            </>
           )}
           {/* Reglas disponibles (caja / por cantidad): cada una muestra el PRECIO
               concreto de esa regla (no un % suelto), y sólo si SUPERA el dto ya
@@ -1160,11 +1182,25 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
           {item.precio > 0 ? (
             <>
               <div style={{ flexShrink: 0, lineHeight: 1.1 }}>
-                {dtoDetalle && <div style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(dtoDetalle.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{dtoDetalle.pct}%</span></div>}
-                <div style={{ fontSize: 18, fontWeight: 700, color: G }}>
-                  {fmt.currency(precioEffD)}
-                  {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
-                </div>
+                {mixedD && calcD ? (() => {
+                  // Línea mixta: en la barra fija (poco espacio) mostramos el precio de caja
+                  // — lo que paga la mayoría de las unidades — con "desde", nunca el promedio.
+                  const trDist = calcD.tramos.find(t => t.distribuidor);
+                  return trDist ? (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: G }}>{fmt.currency(trDist.precioUnit)}</span>
+                      {trDist.dtoPct > 0 && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>{'\u2212'}{Math.round(trDist.dtoPct)}%</span>}
+                    </div>
+                  ) : null;
+                })() : (
+                  <>
+                    {dtoDetalle && <div style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(dtoDetalle.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{dtoDetalle.pct}%</span></div>}
+                    <div style={{ fontSize: 18, fontWeight: 700, color: G }}>
+                      {fmt.currency(precioEffD)}
+                      {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
+                    </div>
+                  </>
+                )}
               </div>
               {qty > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
@@ -2618,7 +2654,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     if (!isPortalDemo) return;
     const ds = DEMO_DATASETS[portalDemo];
     if (!ds) return;
-    const prods = ds.data.products.map(p => ({
+    const prods = ds.data.products.map((p, __i) => ({
       id: p.id, nombre: p.name, precio: p.price, categoria: p.category,
       unidad: p.unit || 'un', marca: p.brand || p.category,
       imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22,
