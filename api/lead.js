@@ -23,6 +23,11 @@ const SB_URL  = process.env.SUPABASE_URL;
 const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 
+// Número Pazque (fallback) para la notificación de prospecto por WhatsApp.
+const WA_TOKEN    = process.env.WA_ACCESS_TOKEN;
+const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;
+const WA_LANG     = process.env.WA_BROADCAST_LANG || 'es_AR';
+
 function svcHeaders() {
   const k = SB_SVC || SB_ANON;
   return { apikey: k, Authorization: 'Bearer ' + k, Accept: 'application/json', 'Content-Type': 'application/json' };
@@ -61,25 +66,95 @@ async function resolveAdmin(req) {
   return { org: u.org_id };
 }
 
-// Lee el flag de captación de una org. { activa: bool }.
+// Lee la config de captación de una org. { activa: bool, notify_phone: string|null }.
 async function getCaptacion(org) {
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=captacion&limit=1`,
       { headers: svcHeaders() }
     );
-    if (!r.ok) return { activa: false };
-    const row = (await r.json())?.[0];
-    return { activa: !!(row?.captacion?.activa) };
-  } catch { return { activa: false }; }
+    if (!r.ok) return { activa: false, notify_phone: null };
+    const c = (await r.json())?.[0]?.captacion || {};
+    return { activa: !!c.activa, notify_phone: c.notify_phone || null };
+  } catch { return { activa: false, notify_phone: null }; }
 }
 
-async function setCaptacion(org, activa) {
+// Merge parcial: lee la config actual y sobreescribe solo los campos del patch.
+// Así togglear el flag no borra el teléfono, ni viceversa.
+async function setCaptacion(org, patch) {
+  const cur = await getCaptacion(org);
+  const next = {
+    activa:       'activa'       in patch ? !!patch.activa       : cur.activa,
+    notify_phone: 'notify_phone' in patch ? (patch.notify_phone || null) : cur.notify_phone,
+  };
   await fetch(`${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}`, {
     method: 'PATCH',
     headers: { ...svcHeaders(), Prefer: 'return=minimal' },
-    body: JSON.stringify({ captacion: { activa: !!activa } }),
+    body: JSON.stringify({ captacion: next }),
   });
+  return next;
+}
+
+// Fuente de campaña del prospecto, en texto corto (para el WhatsApp/email).
+function fuenteOf(lead) {
+  if (lead.utm_source || lead.utm_campaign)
+    return [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' · ');
+  if (lead.fbclid) return 'Meta Ads';
+  if (lead.gclid)  return 'Google Ads';
+  if (lead.referrer) { try { return new URL(lead.referrer).hostname.replace(/^www\./, ''); } catch { return lead.referrer; } }
+  return 'Directo';
+}
+
+// Saneado para parámetros de plantilla de WhatsApp: Meta rechaza saltos de línea,
+// tabs y más de 4 espacios seguidos dentro de un parámetro. Nunca vacío.
+function waParam(v, fallback = '-') {
+  const s = String(v == null ? '' : v).replace(/[\r\n\t]+/g, ' ').replace(/ {4,}/g, '   ').trim();
+  return s || fallback;
+}
+
+// Notifica al distribuidor por WhatsApp que entró un prospecto (best-effort).
+// Sender: su propia WABA si conectó WhatsApp y la plantilla pazque_prospecto está
+// APROBADA en su cuenta; si no, el número de Pazque (fallback, nunca rompe).
+async function notifyWhatsApp(org, lead, notifyPhone) {
+  const to = String(notifyPhone || '').replace(/\D/g, '');
+  if (!to) return;   // sin teléfono configurado → no hay a quién avisar
+
+  let sender = null;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=whatsapp_sender&limit=1`,
+      { headers: svcHeaders() }
+    );
+    if (r.ok) sender = (await r.json())?.[0]?.whatsapp_sender || null;
+  } catch { /* usa fallback Pazque */ }
+
+  const useOrg = !!(sender?.phone_id && sender?.token && sender?.prospecto_status === 'APPROVED');
+  const phoneId = useOrg ? sender.phone_id : WA_PHONE_ID;
+  const token   = useOrg ? sender.token   : WA_TOKEN;
+  if (!phoneId || !token) return;   // mensajería no configurada
+
+  const detalle = [lead.comercio, lead.ciudad, fuenteOf(lead)].filter(Boolean).join(' · ');
+  const params = [waParam(lead.nombre), waParam(lead.tel), waParam(detalle)];
+
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to,
+        type: 'template',
+        template: {
+          name: 'pazque_prospecto',
+          language: { code: WA_LANG },
+          components: [{ type: 'body', parameters: params.map(text => ({ type: 'text', text })) }],
+        },
+      }),
+    });
+    if (!r.ok) console.warn('[lead] WhatsApp notify failed (non-fatal):', (await r.text()).slice(0, 200));
+  } catch (e) {
+    console.warn('[lead] WhatsApp notify threw (non-fatal):', e.message);
+  }
 }
 
 export default async function handler(req, res) {
@@ -111,8 +186,11 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST' && action === 'config') {
-      await setCaptacion(org, !!req.body?.activa);
-      return res.status(200).json({ ok: true, activa: !!req.body?.activa });
+      const patch = {};
+      if ('activa' in (req.body || {}))       patch.activa = !!req.body.activa;
+      if ('notify_phone' in (req.body || {})) patch.notify_phone = clean(req.body.notify_phone, 40).replace(/\D/g, '') || null;
+      const next = await setCaptacion(org, patch);
+      return res.status(200).json({ ok: true, ...next });
     }
 
     if (req.method === 'POST' && action === 'dismiss') {
@@ -250,6 +328,9 @@ export default async function handler(req, res) {
   } catch (e) {
     console.warn('[lead] notify email failed (non-fatal):', e.message);
   }
+
+  // Notificar por WhatsApp al teléfono configurado (best-effort, no bloquea).
+  await notifyWhatsApp(org, lead, cap.notify_phone);
 
   return res.status(200).json({ ok: true });
 }

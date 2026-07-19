@@ -101,6 +101,8 @@ async function exchangeCode(code) {
 // pazque_broadcast (MARKETING, 1 parámetro de cuerpo) → la usa api/broadcast.js.
 // pazque_otp (AUTHENTICATION, botón COPY_CODE) → la usa api/otp-send.js. El payload
 // de envío del OTP (body param + button index 0) es compatible con COPY_CODE.
+// pazque_prospecto (UTILITY, 3 parámetros) → la usa api/lead.js para avisarle al
+// distribuidor por WhatsApp que un interesado dejó sus datos en su portal.
 function templateDefs() {
   return [
     {
@@ -121,6 +123,18 @@ function templateDefs() {
         { type: 'BUTTONS', buttons: [{ type: 'OTP', otp_type: 'COPY_CODE' }] },
       ],
     },
+    {
+      name: 'pazque_prospecto',
+      category: 'UTILITY',
+      language: WA_LANG,
+      components: [
+        {
+          type: 'BODY',
+          text: '🎯 Nuevo prospecto en tu portal\n\n👤 {{1}}\n📱 {{2}}\n📋 {{3}}\n\nEntrá a Prospectos para aprobarlo o descartarlo.',
+          example: { body_text: [['María González', '598 91 234 567', 'Almacén Central · Montevideo · Meta Ads']] },
+        },
+      ],
+    },
   ];
 }
 
@@ -128,14 +142,19 @@ function templateDefs() {
 // cada una. Lo usan tanto `connect` (auto, para que el distribuidor no tenga que
 // saber que existe este paso) como `create-template` (reintento manual).
 async function ensureTemplates(cfg) {
-  const [bcast, otp] = await Promise.all(
-    templateDefs().map(def => createTemplate(cfg.waba_id, cfg.token, def))
-  );
+  const defs = templateDefs();
+  const results = await Promise.all(defs.map(def => createTemplate(cfg.waba_id, cfg.token, def)));
+  const byName = {};
+  defs.forEach((d, i) => { byName[d.name] = results[i]; });
+  const bcast = byName['pazque_broadcast'] || {};
+  const otp   = byName['pazque_otp'] || {};
+  const prosp = byName['pazque_prospecto'] || {};
   return {
-    template_status: bcast.ok ? 'PENDING' : null,
-    otp_status:      otp.ok   ? 'PENDING' : null,
-    allOk: bcast.ok && otp.ok,
-    error: bcast.error || otp.error || null,
+    template_status:  bcast.ok ? 'PENDING' : null,
+    otp_status:       otp.ok   ? 'PENDING' : null,
+    prospecto_status: prosp.ok ? 'PENDING' : null,
+    allOk: bcast.ok && otp.ok && prosp.ok,
+    error: bcast.error || otp.error || prosp.error || null,
   };
 }
 
@@ -177,6 +196,7 @@ export default async function handler(req, res) {
       name: cfg?.verified_name || null,
       template_status: cfg?.template_status || null,   // estado de pazque_broadcast
       otp_status: cfg?.otp_status || null,             // estado de pazque_otp
+      prospecto_status: cfg?.prospecto_status || null, // estado de pazque_prospecto
     });
   }
 
@@ -229,7 +249,7 @@ export default async function handler(req, res) {
     const cfg = {
       phone_id: phoneId, token, waba_id: wabaId,
       display_phone, verified_name,
-      template_status: null, otp_status: null,
+      template_status: null, otp_status: null, prospecto_status: null,
       connected_at: new Date().toISOString(),
     };
     await saveConfig(org, cfg);
@@ -239,14 +259,16 @@ export default async function handler(req, res) {
     //    del panel queda como reintento. El webhook actualiza a APPROVED/REJECTED.
     try {
       const tpl = await ensureTemplates(cfg);
-      cfg.template_status = tpl.template_status;
-      cfg.otp_status      = tpl.otp_status;
+      cfg.template_status  = tpl.template_status;
+      cfg.otp_status       = tpl.otp_status;
+      cfg.prospecto_status = tpl.prospecto_status;
       await saveConfig(org, cfg);
     } catch { /* reintenta desde el botón del panel */ }
 
     return res.status(200).json({
       ok: true, connected: true, number: display_phone, name: verified_name,
       template_status: cfg.template_status, otp_status: cfg.otp_status,
+      prospecto_status: cfg.prospecto_status,
     });
   }
 
@@ -265,17 +287,19 @@ export default async function handler(req, res) {
     const tpl = await ensureTemplates(cfg);
 
     // Guardamos el estado provisional; el webhook lo actualiza a APPROVED/REJECTED.
-    cfg.template_status = tpl.template_status;
-    cfg.otp_status      = tpl.otp_status;
+    cfg.template_status  = tpl.template_status;
+    cfg.otp_status       = tpl.otp_status;
+    cfg.prospecto_status = tpl.prospecto_status;
     await saveConfig(org, cfg);
 
-    if (!cfg.template_status && !cfg.otp_status)
+    if (!cfg.template_status && !cfg.otp_status && !cfg.prospecto_status)
       return res.status(400).json({ error: tpl.error || 'No se pudieron crear las plantillas.' });
 
     return res.status(200).json({
       ok: true,
       template_status: cfg.template_status,
       otp_status: cfg.otp_status,
+      prospecto_status: cfg.prospecto_status,
       warning: !tpl.allOk ? 'Una de las plantillas no se pudo crear; reintentá más tarde.' : null,
     });
   }

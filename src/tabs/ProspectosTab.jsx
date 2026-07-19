@@ -47,6 +47,8 @@ export default function ProspectosTab() {
   const [loading, setLoading] = React.useState(true);
   const [error,   setError]   = React.useState('');
   const [activa,  setActiva]  = React.useState(false);
+  const [phone,   setPhone]   = React.useState('');   // teléfono de notificación WhatsApp
+  const [savedPh, setSavedPh] = React.useState('');   // último valor guardado (para detectar cambios)
   const [busy,    setBusy]    = React.useState('');   // id en proceso
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
 
@@ -60,7 +62,12 @@ export default function ProspectosTab() {
       if (!lr.ok) throw new Error('No se pudieron cargar los prospectos');
       const ld = await lr.json();
       setLeads(Array.isArray(ld?.leads) ? ld.leads : []);
-      if (cr.ok) setActiva(!!(await cr.json())?.activa);
+      if (cr.ok) {
+        const cfg = await cr.json();
+        setActiva(!!cfg?.activa);
+        setPhone(cfg?.notify_phone || '');
+        setSavedPh(cfg?.notify_phone || '');
+      }
     } catch (e) {
       setError(e.message || 'Error al cargar');
     } finally { setLoading(false); }
@@ -78,6 +85,18 @@ export default function ProspectosTab() {
       });
       if (!r.ok) setActiva(!next); // revertir si falló
     } catch { setActiva(!next); }
+  };
+
+  const savePhone = async () => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits === savedPh) return; // sin cambios
+    setSavedPh(digits); setPhone(digits);
+    try {
+      await fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'config', notify_phone: digits }),
+      });
+    } catch { /* noop */ }
   };
 
   const approve = async (l) => {
@@ -122,18 +141,34 @@ export default function ProspectosTab() {
             Interesados que dejaron sus datos en tu portal. Aprobalos para convertirlos en clientes.
           </p>
         </div>
-        {/* Switch de captación */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 14px' }}>
-          <div style={{ fontSize: 13 }}>
-            <div style={{ fontWeight: 600 }}>Captación en el portal</div>
-            <div style={{ color: C.faint, fontSize: 11.5 }}>{activa ? 'Visible: “Pedí acceso”' : 'Oculto para visitantes'}</div>
+        {/* Config de captación: switch + teléfono de aviso */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '12px 14px', minWidth: 260 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
+            <div style={{ fontSize: 13 }}>
+              <div style={{ fontWeight: 600 }}>Captación en el portal</div>
+              <div style={{ color: C.faint, fontSize: 11.5 }}>{activa ? 'Visible: “Pedí acceso”' : 'Oculto para visitantes'}</div>
+            </div>
+            <button onClick={toggleCaptacion} aria-label="Activar captación" style={{
+              width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0,
+              background: activa ? C.green : '#d1d5db', transition: 'background .15s' }}>
+              <span style={{ position: 'absolute', top: 3, left: activa ? 21 : 3, width: 20, height: 20,
+                borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
+            </button>
           </div>
-          <button onClick={toggleCaptacion} aria-label="Activar captación" style={{
-            width: 44, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer', position: 'relative',
-            background: activa ? C.green : '#d1d5db', transition: 'background .15s' }}>
-            <span style={{ position: 'absolute', top: 3, left: activa ? 21 : 3, width: 20, height: 20,
-              borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
-          </button>
+          <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>
+            <label style={{ fontSize: 11.5, color: C.faint, display: 'block', marginBottom: 4 }}>
+              Avisarme por WhatsApp al
+            </label>
+            <input
+              type="tel" inputMode="numeric" value={phone} placeholder="Ej: 598 91 806 973"
+              onChange={e => setPhone(e.target.value)} onBlur={savePhone}
+              onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+              style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, fontFamily: C.sans, color: C.ink,
+                border: `1px solid ${C.line}`, borderRadius: 8, padding: '8px 10px', outline: 'none' }} />
+            <div style={{ color: C.faint, fontSize: 10.5, marginTop: 4 }}>
+              Cada prospecto te llega también acá. Vacío = solo por email.
+            </div>
+          </div>
         </div>
       </div>
 

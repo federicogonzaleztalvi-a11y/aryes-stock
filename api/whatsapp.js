@@ -196,8 +196,9 @@ async function handleTemplateStatus(wabaId, value) {
   if (!org?.id) return;
 
   const sender = org.whatsapp_sender || {};
-  if (tplName === 'pazque_broadcast') sender.template_status = event;
-  else if (tplName === 'pazque_otp')  sender.otp_status = event;
+  if (tplName === 'pazque_broadcast')      sender.template_status = event;
+  else if (tplName === 'pazque_otp')       sender.otp_status = event;
+  else if (tplName === 'pazque_prospecto') sender.prospecto_status = event;
   else return;   // plantilla ajena a Pazque → ignorar
 
   await fetch(`${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org.id)}`, {
