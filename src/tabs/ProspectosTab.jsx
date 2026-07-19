@@ -49,6 +49,8 @@ export default function ProspectosTab() {
   const [activa,  setActiva]  = React.useState(false);
   const [phone,   setPhone]   = React.useState('');   // teléfono de notificación WhatsApp
   const [savedPh, setSavedPh] = React.useState('');   // último valor guardado (para detectar cambios)
+  const [email,   setEmail]   = React.useState('');   // mail de notificación (opcional)
+  const [savedEm, setSavedEm] = React.useState('');
   const [busy,    setBusy]    = React.useState('');   // id en proceso
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
 
@@ -67,6 +69,8 @@ export default function ProspectosTab() {
         setActiva(!!cfg?.activa);
         setPhone(cfg?.notify_phone || '');
         setSavedPh(cfg?.notify_phone || '');
+        setEmail(cfg?.notify_email || '');
+        setSavedEm(cfg?.notify_email || '');
       }
     } catch (e) {
       setError(e.message || 'Error al cargar');
@@ -95,6 +99,18 @@ export default function ProspectosTab() {
       await fetch('/api/lead', {
         method: 'POST', headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'config', notify_phone: digits }),
+      });
+    } catch { /* noop */ }
+  };
+
+  const saveEmail = async () => {
+    const val = email.trim().toLowerCase();
+    if (val === savedEm) return; // sin cambios
+    setSavedEm(val); setEmail(val);
+    try {
+      await fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'config', notify_email: val }),
       });
     } catch { /* noop */ }
   };
@@ -167,6 +183,19 @@ export default function ProspectosTab() {
                 border: `1px solid ${C.line}`, borderRadius: 8, padding: '8px 10px', outline: 'none' }} />
             <div style={{ color: C.faint, fontSize: 10.5, marginTop: 4 }}>
               Cada prospecto te llega también acá. Vacío = solo por email.
+            </div>
+
+            <label style={{ fontSize: 11.5, color: C.faint, display: 'block', margin: '10px 0 4px' }}>
+              Mail para avisos de prospectos
+            </label>
+            <input
+              type="email" inputMode="email" value={email} placeholder="Ej: ventas@tucomercio.com"
+              onChange={e => setEmail(e.target.value)} onBlur={saveEmail}
+              onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+              style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, fontFamily: C.sans, color: C.ink,
+                border: `1px solid ${C.line}`, borderRadius: 8, padding: '8px 10px', outline: 'none' }} />
+            <div style={{ color: C.faint, fontSize: 10.5, marginTop: 4 }}>
+              Vacío = usa el mail de tus pedidos.
             </div>
           </div>
         </div>

@@ -66,26 +66,27 @@ async function resolveAdmin(req) {
   return { org: u.org_id };
 }
 
-// Lee la config de captación de una org. { activa: bool, notify_phone: string|null }.
+// Lee la config de captación. { activa, notify_phone, notify_email }.
 async function getCaptacion(org) {
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=captacion&limit=1`,
       { headers: svcHeaders() }
     );
-    if (!r.ok) return { activa: false, notify_phone: null };
+    if (!r.ok) return { activa: false, notify_phone: null, notify_email: null };
     const c = (await r.json())?.[0]?.captacion || {};
-    return { activa: !!c.activa, notify_phone: c.notify_phone || null };
-  } catch { return { activa: false, notify_phone: null }; }
+    return { activa: !!c.activa, notify_phone: c.notify_phone || null, notify_email: c.notify_email || null };
+  } catch { return { activa: false, notify_phone: null, notify_email: null }; }
 }
 
 // Merge parcial: lee la config actual y sobreescribe solo los campos del patch.
-// Así togglear el flag no borra el teléfono, ni viceversa.
+// Así togglear el flag no borra el teléfono/mail, ni viceversa.
 async function setCaptacion(org, patch) {
   const cur = await getCaptacion(org);
   const next = {
-    activa:       'activa'       in patch ? !!patch.activa       : cur.activa,
-    notify_phone: 'notify_phone' in patch ? (patch.notify_phone || null) : cur.notify_phone,
+    activa:       'activa'       in patch ? !!patch.activa                 : cur.activa,
+    notify_phone: 'notify_phone' in patch ? (patch.notify_phone || null)   : cur.notify_phone,
+    notify_email: 'notify_email' in patch ? (patch.notify_email || null)   : cur.notify_email,
   };
   await fetch(`${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}`, {
     method: 'PATCH',
@@ -189,6 +190,11 @@ export default async function handler(req, res) {
       const patch = {};
       if ('activa' in (req.body || {}))       patch.activa = !!req.body.activa;
       if ('notify_phone' in (req.body || {})) patch.notify_phone = clean(req.body.notify_phone, 40).replace(/\D/g, '') || null;
+      if ('notify_email' in (req.body || {})) {
+        const em = clean(req.body.notify_email, 160).toLowerCase();
+        // Validación básica de email; vacío = usar el mail de pedidos (fallback).
+        patch.notify_email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) ? em : null;
+      }
       const next = await setCaptacion(org, patch);
       return res.status(200).json({ ok: true, ...next });
     }
@@ -314,13 +320,14 @@ export default async function handler(req, res) {
   }
 
   // Notificar al distribuidor por email (best-effort, no bloquea la respuesta).
+  // Destino: el mail propio de prospectos si se configuró, si no el de pedidos.
   try {
     const orgRes = await fetch(
       `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=order_notify_email,name&limit=1`,
       { headers: svcHeaders() }
     );
     const orow = (orgRes.ok ? await orgRes.json() : [])?.[0];
-    const dest = orow?.order_notify_email;
+    const dest = cap.notify_email || orow?.order_notify_email;
     if (dest) {
       const tpl = templates.nuevoProspecto(lead, orow?.name || 'Pazque');
       await sendEmail({ to: dest, subject: tpl.subject, html: tpl.html });
