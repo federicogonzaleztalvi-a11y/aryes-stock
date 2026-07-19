@@ -99,7 +99,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET' && action === 'list') {
       const r = await fetch(
-        `${SB_URL}/rest/v1/leads?org_id=eq.${encodeURIComponent(org)}&order=created_at.desc&limit=500`,
+        `${SB_URL}/rest/v1/portal_leads?org_id=eq.${encodeURIComponent(org)}&order=created_at.desc&limit=500`,
         { headers: svcHeaders() }
       );
       if (!r.ok) return res.status(502).json({ error: 'No se pudieron leer los prospectos' });
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
     if (req.method === 'POST' && action === 'dismiss') {
       const id = clean(req.body?.id, 40);
       if (!id) return res.status(400).json({ error: 'Falta id' });
-      await fetch(`${SB_URL}/rest/v1/leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
+      await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
         method: 'PATCH',
         headers: { ...svcHeaders(), Prefer: 'return=minimal' },
         body: JSON.stringify({ estado: 'descartado', updated_at: new Date().toISOString() }),
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
 
       // Traer el lead, scoped a la org del admin (nunca de otra org).
       const lr = await fetch(
-        `${SB_URL}/rest/v1/leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}&limit=1`,
+        `${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}&limit=1`,
         { headers: svcHeaders() }
       );
       const lead = (lr.ok ? await lr.json() : [])?.[0];
@@ -169,7 +169,7 @@ export default async function handler(req, res) {
       }
       const created = (await ins.json())?.[0] || row;
 
-      await fetch(`${SB_URL}/rest/v1/leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
+      await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
         method: 'PATCH',
         headers: { ...svcHeaders(), Prefer: 'return=minimal' },
         body: JSON.stringify({ estado: 'convertido', converted_client_id: created.id, updated_at: new Date().toISOString() }),
@@ -225,7 +225,7 @@ export default async function handler(req, res) {
     estado:       'nuevo',
   };
 
-  const ins = await fetch(`${SB_URL}/rest/v1/leads`, {
+  const ins = await fetch(`${SB_URL}/rest/v1/portal_leads`, {
     method: 'POST',
     headers: { ...svcHeaders(), Prefer: 'return=minimal' },
     body: JSON.stringify(lead),

@@ -4,22 +4,23 @@
 -- alguien interesado que TODAVÍA no es cliente deje sus datos para pedir acceso.
 -- Genérico multi-tenant: se activa por-org con un flag; nunca atado a Eric.
 --
+-- Tabla `portal_leads` (nombre propio: ya existe una tabla `leads` ajena en el
+-- proyecto, no la tocamos para no pisar sus datos ni su estructura).
+--
 -- Qué agrega:
---   1. tabla `leads` — un prospecto por fila, con atribución de campaña (utm_*,
---      fbclid, referrer) para saber de qué anuncio de Meta/Google llegó. Así el
---      dashboard de Campañas puede, más adelante, atribuir leads → anuncio.
+--   1. tabla `portal_leads` — un prospecto por fila, con atribución de campaña
+--      (utm_*, fbclid, gclid, referrer) para saber de qué anuncio de Meta/Google
+--      llegó. Así el dashboard de Campañas puede atribuir leads → anuncio.
 --   2. organizations.captacion (JSONB) — { "activa": true } prende el formulario
---      "Pedí acceso" en el portal de esa org. Off (null) por defecto → el portal
---      white-label de un cliente no muestra nada hasta que él lo active.
+--      "Pedí acceso" en el portal de esa org. Off (null) por defecto.
 --
 -- Seguridad: la tabla se maneja SOLO vía service role (api/lead.js). RLS activo
--- sin políticas públicas → anon/authenticated no leen ni escriben directo. El
--- endpoint valida org, rate-limita el POST público y sanea el input.
+-- sin políticas públicas → anon/authenticated no leen ni escriben directo.
 --
 -- Seguro de re-correr. Pegar en Supabase SQL Editor y ejecutar.
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS leads (
+CREATE TABLE IF NOT EXISTS portal_leads (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id              TEXT NOT NULL,
   nombre              TEXT NOT NULL,
@@ -42,14 +43,14 @@ CREATE TABLE IF NOT EXISTS leads (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_leads_org_created ON leads (org_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_leads_org_estado  ON leads (org_id, estado);
+CREATE INDEX IF NOT EXISTS idx_portal_leads_org_created ON portal_leads (org_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_portal_leads_org_estado  ON portal_leads (org_id, estado);
 
-ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portal_leads ENABLE ROW LEVEL SECURITY;
 -- Sin políticas: RLS activo deniega todo acceso anon/authenticated directo.
 -- El único camino es api/lead.js con service role (bypass RLS).
 
-COMMENT ON TABLE leads IS
+COMMENT ON TABLE portal_leads IS
   'Prospectos del portal (captación Camino B). Manejada solo por api/lead.js con service role. utm_*/fbclid/gclid para atribución a campañas de ads.';
 
 -- Flag por-org que prende la captación en el portal.
@@ -58,3 +59,6 @@ ALTER TABLE organizations
 
 COMMENT ON COLUMN organizations.captacion IS
   'Config de captación de prospectos del portal: { "activa": bool }. null/false = formulario "Pedí acceso" oculto. Manejada por api/lead.js.';
+
+-- Activar la captación en aryes (org de demo) para probarlo.
+UPDATE organizations SET captacion = '{"activa": true}'::jsonb WHERE id = 'aryes';
