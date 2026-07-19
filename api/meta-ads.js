@@ -156,11 +156,12 @@ function extractRow(row) {
 
 const INSIGHT_FIELDS = 'spend,impressions,clicks,reach,ctr,cpc,cpm,actions,action_values,purchase_roas';
 
-async function fetchInsights(actId, token, { level = 'account', range = 'last_30d', timeIncrement, limit, extraFields } = {}) {
+async function fetchInsights(actId, token, { level = 'account', range = 'last_30d', timeIncrement, limit, extraFields, timeRange } = {}) {
   const p = new URLSearchParams();
   p.set('access_token', token);
   p.set('fields', (extraFields ? extraFields + ',' : '') + INSIGHT_FIELDS);
-  p.set('date_preset', range);
+  if (timeRange) p.set('time_range', JSON.stringify(timeRange));   // ventana explícita (para el período anterior)
+  else p.set('date_preset', range);
   p.set('level', level);
   if (timeIncrement) p.set('time_increment', String(timeIncrement));
   if (limit) p.set('limit', String(limit));
@@ -168,6 +169,24 @@ async function fetchInsights(actId, token, { level = 'account', range = 'last_30
   if (!r.ok) return { error: (await r.text()).slice(0, 400) };
   const d = await r.json();
   return { rows: d?.data || [] };
+}
+
+// Ventana del período INMEDIATAMENTE anterior, del mismo largo que el rango elegido.
+// (Meta no tiene preset "período previo", así que la calculamos con fechas explícitas.)
+const RANGE_DAYS = { last_7d: 7, last_14d: 14, last_30d: 30, last_90d: 90 };
+function ymd(d) { return d.toISOString().slice(0, 10); }
+function previousWindow(range) {
+  const days = RANGE_DAYS[range] || 30;
+  const end = new Date(); end.setUTCDate(end.getUTCDate() - 1);           // ayer (cierra el período actual)
+  const start = new Date(end); start.setUTCDate(start.getUTCDate() - (days - 1));
+  const prevEnd = new Date(start); prevEnd.setUTCDate(prevEnd.getUTCDate() - 1);
+  const prevStart = new Date(prevEnd); prevStart.setUTCDate(prevStart.getUTCDate() - (days - 1));
+  return { since: ymd(prevStart), until: ymd(prevEnd) };
+}
+// % de cambio de `cur` respecto de `prev`. null si no hay base comparable.
+function pctChange(cur, prev) {
+  if (cur == null || prev == null || prev === 0) return null;
+  return ((cur - prev) / Math.abs(prev)) * 100;
 }
 
 // Arma el paquete completo de métricas de la cuenta activa.
@@ -179,6 +198,19 @@ async function buildMetrics(cfg, range) {
   const totalRes = await fetchInsights(actId, token, { level: 'account', range });
   if (totalRes.error) return { error: totalRes.error };
   const total = totalRes.rows[0] ? extractRow(totalRes.rows[0]) : extractRow({});
+
+  // 1b) Mismo total pero del período INMEDIATAMENTE anterior → para el "vs período anterior".
+  const prevRes = await fetchInsights(actId, token, { level: 'account', timeRange: previousWindow(range) });
+  const prev = prevRes.rows?.[0] ? extractRow(prevRes.rows[0]) : null;
+  total.delta = prev ? {
+    spend:   pctChange(total.spend,   prev.spend),
+    results: pctChange(total.results, prev.results),
+    cpa:     pctChange(total.cpa,     prev.cpa),
+    roas:    pctChange(total.roas,    prev.roas),
+    ctr:     pctChange(total.ctr,     prev.ctr),
+    reach:   pctChange(total.reach,   prev.reach),
+  } : null;
+  total.prev = prev ? { spend: prev.spend, results: prev.results, cpa: prev.cpa, roas: prev.roas, ctr: prev.ctr } : null;
 
   // 2) Serie diaria para la tendencia (gasto + resultados por día).
   const trendRes = await fetchInsights(actId, token, { level: 'account', range, timeIncrement: 1 });
@@ -221,6 +253,7 @@ async function getAdvice(metrics, currency) {
   if (!ANTHROPIC_KEY) return { error: 'Análisis no disponible (falta configurar Claude).' };
   const t = metrics.total || {};
   const fmt = (n) => (n == null ? '—' : Math.round(n * 100) / 100);
+  const d = t.delta || {};
   const compact = {
     moneda: currency,
     periodo: metrics.range,
@@ -228,6 +261,11 @@ async function getAdvice(metrics, currency) {
       gasto: fmt(t.spend), resultados: fmt(t.results), tipo_resultado: t.resultLabel,
       costo_por_resultado: fmt(t.cpa), roas: fmt(t.roas), ctr_pct: fmt(t.ctr),
       cpc: fmt(t.cpc), cpm: fmt(t.cpm), alcance: fmt(t.reach), clics: fmt(t.clicks),
+    },
+    // Cambio % vs el período inmediatamente anterior del mismo largo (contexto de tendencia).
+    vs_periodo_anterior_pct: {
+      gasto: fmt(d.spend), resultados: fmt(d.results), costo_por_resultado: fmt(d.cpa),
+      roas: fmt(d.roas), ctr: fmt(d.ctr),
     },
     mejores_anuncios: (metrics.best || []).map(a => ({ nombre: a.name, gasto: fmt(a.spend), roas: fmt(a.roas), cpa: fmt(a.cpa), ctr: fmt(a.ctr) })),
     peores_anuncios: (metrics.worst || []).map(a => ({ nombre: a.name, gasto: fmt(a.spend), roas: fmt(a.roas), cpa: fmt(a.cpa), ctr: fmt(a.ctr) })),
@@ -238,9 +276,11 @@ async function getAdvice(metrics, currency) {
 
 Reglas:
 - Respondé ÚNICAMENTE con un array JSON válido, sin texto antes ni después.
-- Cada elemento: { "severidad": "alta"|"media"|"info", "titulo": "string corta", "detalle": "1-2 frases con el dato concreto y el porqué", "accion": "qué hacer, concreto" }.
-- Máximo 5 sugerencias, ordenadas por impacto. Si algo está bien, marcalo como "info".
-- Usá los números reales que te paso (no inventes). Si falta un dato (—), no lo asumas.
+- Cada elemento: { "severidad": "alta"|"media"|"info", "titulo": "string corta", "detalle": "1-2 frases con el dato concreto y, si sirve, el cambio vs el período anterior", "accion": "instrucción concreta" }.
+- La "accion" DEBE empezar con un verbo imperativo (Pausá, Subí, Bajá, Movés, Duplicá, Revisá…) e incluir un NÚMERO real de los datos (un monto, un % o el nombre del anuncio). Nada genérico tipo "optimizá tus campañas".
+- El "detalle" debe citar el número que justifica la acción. Aprovechá "vs_periodo_anterior_pct" para señalar si algo mejoró o empeoró (ej: "tu costo por resultado subió 23% vs el período anterior").
+- Máximo 5 sugerencias, ordenadas por impacto. Si algo está bien, marcalo como "info" y felicitá con el dato.
+- Usá SOLO los números reales que te paso (no inventes). Si falta un dato (—), no lo asumas.
 - No sugieras ejecutar cambios automáticos: el distribuidor decide y aprueba. Vos aconsejás.`;
 
   try {

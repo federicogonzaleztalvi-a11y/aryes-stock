@@ -40,13 +40,63 @@ function fmtNum(n, dec = 0) {
 }
 function fmtPct(n) { return n == null || isNaN(n) ? '—' : fmtNum(n, 2) + '%'; }
 
+// ── Delta vs período anterior (flechita + % con color según sea bueno/malo) ──
+function Delta({ pct, betterWhenLower, neutral }) {
+  if (pct == null || isNaN(pct)) return null;
+  const up = pct >= 0;
+  const flat = Math.abs(pct) < 0.5;
+  const good = betterWhenLower ? !up : up;
+  const color = neutral || flat ? C.faint : (good ? C.green : C.red);
+  return (
+    <span style={{ color, fontWeight: 700, fontSize: 11.5 }}>
+      {flat ? '→' : up ? '▲' : '▼'} {fmtNum(Math.abs(pct), 0)}%
+      <span style={{ color: C.faint, fontWeight: 500 }}> vs. anterior</span>
+    </span>
+  );
+}
+
+// ── Número héroe: la métrica que define la decisión, grande y arriba de todo ──
+function Hero({ total, currency }) {
+  const hasRoas = total.roas != null;
+  const label = hasRoas ? 'ROAS' : 'Costo por resultado';
+  const value = hasRoas ? fmtNum(total.roas, 2) + 'x' : fmtMoney(total.cpa, currency);
+  const sub = hasRoas
+    ? 'retorno por cada $ invertido en anuncios'
+    : `lo que te cuesta cada ${(total.resultLabel || 'resultado').toLowerCase()}`;
+  const pct = hasRoas ? total.delta?.roas : total.delta?.cpa;
+  const betterWhenLower = !hasRoas;                       // en CPA, menos es mejor
+  const goodTone = hasRoas ? total.roas >= 1 : true;
+  const accent = pct == null ? C.ink
+    : (betterWhenLower ? pct <= 0 : pct >= 0) ? C.green : C.red;
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: '20px 24px', marginBottom: 16,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 12, color: C.sub, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+        <div style={{ fontSize: 46, fontWeight: 800, color: goodTone ? C.ink : C.red, lineHeight: 1.05, marginTop: 4 }}>{value}</div>
+        <div style={{ fontSize: 13, color: C.faint, marginTop: 4 }}>{sub}</div>
+      </div>
+      {pct != null && !isNaN(pct) && (
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: accent }}>
+            {Math.abs(pct) < 0.5 ? '→' : pct >= 0 ? '▲' : '▼'} {fmtNum(Math.abs(pct), 0)}%
+          </div>
+          <div style={{ fontSize: 11.5, color: C.faint, marginTop: 2 }}>vs. período anterior</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── KPI card ────────────────────────────────────────────────────────────────
-function Kpi({ label, value, hint, accent }) {
+function Kpi({ label, value, hint, accent, delta, betterWhenLower, neutralDelta }) {
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px' }}>
       <div style={{ fontSize: 11.5, color: C.sub, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 700, color: accent || C.ink, marginTop: 6, lineHeight: 1.1 }}>{value}</div>
-      {hint && <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>{hint}</div>}
+      {delta != null && !isNaN(delta)
+        ? <div style={{ marginTop: 4 }}><Delta pct={delta} betterWhenLower={betterWhenLower} neutral={neutralDelta} /></div>
+        : hint && <div style={{ fontSize: 11.5, color: C.faint, marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
@@ -244,13 +294,15 @@ export default function CampaniasTab() {
         <div style={{ padding: 30, color: C.faint, fontSize: 13 }}>Cargando métricas…</div>
       ) : metrics ? (
         <>
+          <Hero total={t} currency={cur} />
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
-            <Kpi label="Gasto" value={fmtMoney(t.spend, cur)} />
-            <Kpi label={t.resultLabel || 'Resultados'} value={fmtNum(t.results)} accent={C.green} />
-            <Kpi label="Costo / resultado" value={fmtMoney(t.cpa, cur)} hint={t.resultLabel ? `por ${t.resultLabel.toLowerCase()}` : null} />
-            <Kpi label="ROAS" value={t.roas != null ? fmtNum(t.roas, 2) + 'x' : '—'} hint="retorno por $ gastado" accent={t.roas >= 1 ? C.green : t.roas != null ? C.red : null} />
-            <Kpi label="CTR" value={fmtPct(t.ctr)} hint="tasa de clics" />
-            <Kpi label="Alcance" value={fmtNum(t.reach)} hint={`${fmtNum(t.clicks)} clics`} />
+            <Kpi label="Gasto" value={fmtMoney(t.spend, cur)} delta={t.delta?.spend} neutralDelta hint="inversión total" />
+            <Kpi label={t.resultLabel || 'Resultados'} value={fmtNum(t.results)} accent={C.green} delta={t.delta?.results} hint="conversiones" />
+            <Kpi label="Costo / resultado" value={fmtMoney(t.cpa, cur)} delta={t.delta?.cpa} betterWhenLower hint={t.resultLabel ? `por ${t.resultLabel.toLowerCase()}` : null} />
+            <Kpi label="ROAS" value={t.roas != null ? fmtNum(t.roas, 2) + 'x' : '—'} delta={t.delta?.roas} hint="retorno por $ gastado" accent={t.roas >= 1 ? C.green : t.roas != null ? C.red : null} />
+            <Kpi label="CTR" value={fmtPct(t.ctr)} delta={t.delta?.ctr} hint="tasa de clics" />
+            <Kpi label="Alcance" value={fmtNum(t.reach)} delta={t.delta?.reach} neutralDelta hint={`${fmtNum(t.clicks)} clics`} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
