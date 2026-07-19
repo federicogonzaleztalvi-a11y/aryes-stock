@@ -572,6 +572,8 @@ function LeadForm({ brandName, onClose }) {
   const submit = async () => {
     if (!nombre.trim())              { setErr('Ingresá tu nombre'); return; }
     if (tel.replace(/\D/g,'').length < 8) { setErr('Ingresá un WhatsApp válido'); return; }
+    if (!comercio.trim())            { setErr('Ingresá el nombre de tu comercio'); return; }
+    if (!ciudad.trim())              { setErr('Ingresá tu ciudad'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(`${API}/api/lead`, {

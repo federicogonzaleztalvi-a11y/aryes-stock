@@ -286,18 +286,22 @@ export default async function handler(req, res) {
   const cap = await getCaptacion(org);
   if (!cap.activa) return res.status(403).json({ error: 'Captación no disponible' });
 
-  const nombre = clean(req.body?.nombre, 120);
-  const tel    = clean(req.body?.tel, 40);
+  const nombre   = clean(req.body?.nombre, 120);
+  const tel      = clean(req.body?.tel, 40);
+  const comercio = clean(req.body?.comercio, 160);
+  const ciudad   = clean(req.body?.ciudad, 120);
   const telDigits = tel.replace(/\D/g, '');
   if (!nombre) return res.status(400).json({ error: 'Ingresá tu nombre' });
   if (telDigits.length < 8) return res.status(400).json({ error: 'Ingresá un WhatsApp válido' });
+  if (!comercio) return res.status(400).json({ error: 'Ingresá el nombre de tu comercio' });
+  if (!ciudad) return res.status(400).json({ error: 'Ingresá tu ciudad' });
 
   const lead = {
     org_id:       org,
     nombre,
     tel:          telDigits,
-    comercio:     clean(req.body?.comercio, 160) || null,
-    ciudad:       clean(req.body?.ciudad, 120) || null,
+    comercio,
+    ciudad,
     mensaje:      clean(req.body?.mensaje, 500) || null,
     utm_source:   clean(req.body?.utm_source, 120) || null,
     utm_medium:   clean(req.body?.utm_medium, 120) || null,
