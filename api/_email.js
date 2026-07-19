@@ -73,6 +73,37 @@ export const templates = {
       </div>`,
   }),
 
+  // Mail al DISTRIBUIDOR cuando un prospecto deja sus datos en el portal
+  // (captación Camino B). Incluye la fuente de campaña (utm/fbclid) para saber
+  // de qué anuncio llegó. Lo envía api/lead.js best-effort a order_notify_email.
+  nuevoProspecto: (lead, empresa) => {
+    const fuente = [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' · ')
+      || (lead.fbclid ? 'Meta Ads' : (lead.gclid ? 'Google Ads' : (lead.referrer || 'Directo')));
+    const row = (label, val) => val
+      ? `<tr><td style="padding:6px 0;color:#6a6a68;width:120px">${esc(label)}</td><td style="padding:6px 0;color:#1a1a18;font-weight:600">${esc(val)}</td></tr>`
+      : '';
+    return {
+      subject: 'Nuevo prospecto: ' + (lead.nombre || 'sin nombre') + ' — ' + (empresa || 'Pazque'),
+      html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 4px">Nuevo prospecto interesado</h1>
+        <p style="font-size:13px;color:#6a6a68;margin:0 0 20px">Alguien pidió acceso desde tu portal.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          ${row('Nombre', lead.nombre)}
+          ${row('WhatsApp', lead.tel)}
+          ${row('Comercio', lead.comercio)}
+          ${row('Ciudad', lead.ciudad)}
+          ${row('Mensaje', lead.mensaje)}
+          ${row('Fuente', fuente)}
+        </table>
+        <a href="https://wa.me/${esc(String(lead.tel || '').replace(/\D/g,''))}" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
+          Escribirle por WhatsApp
+        </a>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px">Aprobalo desde Pazque → Prospectos para crearlo como cliente. Notificación automática de Pazque.</p>
+      </div>`,
+    };
+  },
+
   // Mail al CLIENTE con su comprobante de pedido adjunto en PDF. Distinto del
   // nuevoPedido (que va a la casilla del distribuidor): éste lo pide el cliente
   // desde el portal tras confirmar, para tener su orden en PDF en su bandeja.

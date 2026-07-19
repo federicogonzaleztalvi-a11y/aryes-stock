@@ -67,6 +67,31 @@ let ORG = getOrgFromContext();
 const ORG_NEEDS_RESOLUTION = ORG === window.location.hostname && ORG.includes('.');
 const SK   = 'aryes-pedidos-session';
 
+// Atribución de campaña: al entrar por un anuncio (?utm_source=meta&utm_campaign=..
+// o ?fbclid=..), guardamos esos parámetros para adjuntarlos si el visitante deja
+// sus datos como prospecto. Se persisten en sessionStorage porque la nav interna
+// (pushState) puede limpiar el query string antes de que llene el formulario.
+const ATTR_KEY = 'pazque-attr';
+function captureAttribution() {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const keys = ['utm_source','utm_medium','utm_campaign','fbclid','gclid'];
+    const found = {};
+    keys.forEach(k => { const v = p.get(k); if (v) found[k] = v.slice(0, 200); });
+    // Solo la primera vez que llega con atribución — no pisar con una nav posterior.
+    if (Object.keys(found).length && !sessionStorage.getItem(ATTR_KEY)) {
+      found.referrer   = (document.referrer || '').slice(0, 200);
+      found.landing_url = window.location.href.slice(0, 250);
+      sessionStorage.setItem(ATTR_KEY, JSON.stringify(found));
+    }
+  } catch { /* sessionStorage bloqueado → sin atribución, no rompe nada */ }
+}
+function getAttribution() {
+  try { return JSON.parse(sessionStorage.getItem(ATTR_KEY) || '{}'); }
+  catch { return {}; }
+}
+captureAttribution();
+
 function loadSession() {
   try {
     const s = JSON.parse(localStorage.getItem(SK) || 'null');
@@ -310,6 +335,9 @@ function LoginStep({ onLogin }) {
   // devuelve el logo. Si es el fallback de Pazque, dejamos el ícono genérico.
   const [brandLogo, setBrandLogo] = useState(null);
   const [brandName, setBrandName] = useState('');
+  // Captación de prospectos: ¿esta org tiene prendido el "Pedí acceso"? (flag por-org)
+  const [captacion, setCaptacion] = useState(false);
+  const [showLead,  setShowLead]  = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -320,6 +348,12 @@ function LoginStep({ onLogin }) {
         // Nombre de marca para el banner de instalar app (si no es el fallback Pazque).
         if (!cancelled && m?.name && m.name !== 'Pazque') setBrandName(m.name);
       } catch { /* sin red → ícono genérico */ }
+    })();
+    (async () => {
+      try {
+        const c = await fetch(`${API}/api/lead?org=${encodeURIComponent(ORG)}`).then(r => r.json());
+        if (!cancelled) setCaptacion(!!c?.activa);
+      } catch { /* sin flag → CTA oculto */ }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -333,7 +367,13 @@ function LoginStep({ onLogin }) {
         body: JSON.stringify({ tel: tel.replace(/\D/g,''), org: ORG }),
       });
       const d = await r.json();
-      if (!r.ok) { setErr(d.error || 'Error al enviar el código'); return; }
+      if (!r.ok) {
+        setErr(d.error || 'Error al enviar el código');
+        // Callejón sin salida: el número no es de un cliente y la org tiene
+        // captación activa → en vez de dejarlo afuera, le ofrecemos pedir acceso.
+        if (r.status === 404 && captacion) setShowLead(true);
+        return;
+      }
       setNombre(d.clienteNombre || '');
       if (d._devMode && d.code) setDevCode(d.code);
       setStep('code');
@@ -439,6 +479,19 @@ function LoginStep({ onLogin }) {
                   </button>
                 </>
               )}
+              {/* Captación de prospectos (flag por-org): quien todavía no es cliente
+                  puede pedir acceso dejando sus datos. Oculto si la org no lo activó. */}
+              {captacion && (
+                <div style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#6a6a68' }}>
+                  ¿Todavía no sos cliente?{' '}
+                  <button onClick={() => setShowLead(true)} style={{
+                    background: 'none', border: 'none', padding: 0, color: G, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: SANS, fontSize: 13, textDecoration: 'underline',
+                  }}>
+                    Pedí acceso
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -497,6 +550,104 @@ function LoginStep({ onLogin }) {
         </div>
         <PoweredByPazque style={{ paddingBottom: 0, marginTop: 24 }} />
       </div>
+      </div>
+      {showLead && <LeadForm brandName={brandName} onClose={() => setShowLead(false)} />}
+    </div>
+  );
+}
+
+// Formulario "Pedí acceso" — captación de prospectos (Camino B). Aparece como
+// modal desde el login cuando la org tiene la captación activa (flag por-org).
+// Adjunta la atribución de campaña (utm/fbclid) capturada al entrar por un anuncio,
+// para que el distribuidor sepa de qué campaña vino el prospecto.
+function LeadForm({ brandName, onClose }) {
+  const [nombre,   setNombre]   = useState('');
+  const [tel,      setTel]      = useState('');
+  const [comercio, setComercio] = useState('');
+  const [ciudad,   setCiudad]   = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [err,      setErr]      = useState('');
+  const [done,     setDone]     = useState(false);
+
+  const submit = async () => {
+    if (!nombre.trim())              { setErr('Ingresá tu nombre'); return; }
+    if (tel.replace(/\D/g,'').length < 8) { setErr('Ingresá un WhatsApp válido'); return; }
+    setLoading(true); setErr('');
+    try {
+      const r = await fetch(`${API}/api/lead`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          org: ORG,
+          nombre: nombre.trim(),
+          tel: tel.replace(/\D/g,''),
+          comercio: comercio.trim(),
+          ciudad: ciudad.trim(),
+          ...getAttribution(),
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) { setErr(d.error || 'No pudimos enviar tus datos'); return; }
+      setDone(true);
+    } catch { setErr('Error de conexión.'); }
+    finally { setLoading(false); }
+  };
+
+  const field = (label, value, onChange, props = {}) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 6, fontSize: 12, color: '#6a6a68' }}>{label}</div>
+      {props.phone ? (
+        <PhoneInput value={value} onChange={onChange} />
+      ) : (
+        <input value={value} onChange={e => onChange(e.target.value)} placeholder={props.placeholder || ''}
+          style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1px solid #e0e0d8',
+            fontSize: 14, fontFamily: SANS, boxSizing: 'border-box', background: '#fff' }} />
+      )}
+    </div>
+  );
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+      zIndex: Z.overlay, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: '#fff',
+        borderRadius: 16, padding: 24, fontFamily: SANS, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        {done ? (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div style={{ width: 48, height: 48, background: '#f0fdf4', borderRadius: '50%', margin: '0 auto 14px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: G }}>{Icon.check}</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>¡Recibido!</div>
+            <div style={{ fontSize: 13, color: '#6a6a68', marginBottom: 20 }}>
+              {(brandName || 'El distribuidor')} te va a contactar por WhatsApp para darte acceso.
+            </div>
+            <button onClick={onClose} style={{ width: '100%', padding: '11px 0', background: G, color: '#fff',
+              border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>
+              Listo
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 18, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>Pedí acceso</div>
+            <div style={{ fontSize: 13, color: '#6a6a68', marginBottom: 18 }}>
+              Dejanos tus datos y {(brandName || 'el distribuidor')} te contacta para habilitarte.
+            </div>
+            {err && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
+                padding: '10px 14px', marginBottom: 14, fontSize: 13, color: '#dc2626' }}>{err}</div>
+            )}
+            {field('Nombre', nombre, setNombre, { placeholder: 'Tu nombre' })}
+            {field('WhatsApp', tel, setTel, { phone: true })}
+            {field('Nombre del comercio', comercio, setComercio, { placeholder: 'Ej: Almacén Don José' })}
+            {field('Ciudad', ciudad, setCiudad, { placeholder: 'Ej: Montevideo' })}
+            <button onClick={submit} disabled={loading} style={{ width: '100%', padding: '11px 0',
+              background: loading ? '#b0b0a8' : G, color: '#fff', border: 'none', borderRadius: 50,
+              fontSize: 14, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: SANS, marginTop: 4 }}>
+              {loading ? 'Enviando...' : 'Enviar'}
+            </button>
+            <button onClick={onClose} style={{ width: '100%', padding: '9px 0', background: 'transparent',
+              border: 'none', fontSize: 13, color: '#6a6a68', cursor: 'pointer', fontFamily: SANS, marginTop: 4 }}>
+              Cancelar
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
