@@ -474,6 +474,141 @@ function WhatsAppCard() {
   );
 }
 
+// ── Meta Ads (Facebook / Instagram) ───────────────────────────────────────
+// El distribuidor conecta SU PROPIA cuenta publicitaria de Meta con un click
+// (Facebook Login for Business → code → token server-side). Una vez conectado,
+// el tab "Campañas Meta" muestra el dashboard de métricas + sugerencias de Claude.
+// Reusa el App ID de Meta de Pazque + el SDK de FB que ya carga WhatsAppCard.
+// Necesita un config_id de "Login con Facebook para empresas" para ads_read
+// (VITE_META_ADS_CONFIG_ID). Si falta, degrada con gracia (igual que WhatsApp).
+const META_ADS_CONFIG_ID = import.meta.env.VITE_META_ADS_CONFIG_ID || '';
+
+function MetaAdsCard() {
+  const [st, setSt] = React.useState(null);   // { connected, account_name, currency, accounts }
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
+
+  const cargar = React.useCallback(async () => {
+    try {
+      const r = await fetch('/api/meta-ads?action=status', { headers: getAuthHeaders() });
+      const d = r.ok ? await r.json() : { connected: false };
+      setSt(d);
+    } catch { setSt({ connected: false }); }
+    setLoading(false);
+  }, []);
+  React.useEffect(() => { cargar(); }, [cargar]);
+
+  const conectar = async () => {
+    if (busy) return;
+    setErr('');
+    if (!META_ADS_CONFIG_ID) { setErr('La conexión de Meta Ads todavía no está habilitada por Pazque.'); return; }
+    setBusy(true);
+    try {
+      const FB = await loadFbSdk();
+      const response = await new Promise((resolve) => {
+        FB.login(resolve, {
+          config_id: META_ADS_CONFIG_ID,
+          response_type: 'code',
+          override_default_response_type: true,
+        });
+      });
+      const code = response?.authResponse?.code;
+      if (!code) { setErr('Conexión cancelada. Probá de nuevo.'); setBusy(false); return; }
+
+      const r = await fetch('/api/meta-ads?action=connect', {
+        method: 'POST', headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ code }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'No se pudo conectar.');
+      setSt({ connected: true, account_name: d.account_name, account_id: d.account_id, currency: d.currency, accounts: d.accounts || [] });
+    } catch (e) { setErr(e.message || 'No se pudo conectar.'); }
+    setBusy(false);
+  };
+
+  const cambiarCuenta = async (account_id) => {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/meta-ads?action=select', {
+        method: 'POST', headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ account_id }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error || 'No se pudo cambiar la cuenta.');
+      setSt(s => ({ ...s, account_name: d.account_name, account_id: d.account_id, currency: d.currency }));
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  };
+
+  const desconectar = async () => {
+    if (!window.confirm('¿Desconectar Meta Ads? El dashboard de campañas dejará de actualizarse.')) return;
+    setBusy(true); setErr('');
+    try {
+      await fetch('/api/meta-ads?action=disconnect', { method: 'POST', headers: getAuthHeaders() });
+      setSt({ connected: false });
+    } catch (e) { setErr(e.message); }
+    setBusy(false);
+  };
+
+  const B = '#2563eb';
+  return (
+    <div style={{ border: '1px solid #e2e2de', borderRadius: 10, padding: '14px 16px', marginBottom: 14, background: '#fff' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span style={{ fontSize: 24, flexShrink: 0 }}>📊</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: 'DM Sans,Inter,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>Meta Ads (Facebook / Instagram)</div>
+          <div style={{ fontFamily: 'DM Sans,Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2 }}>
+            Conectá tu cuenta publicitaria y mirá el rendimiento de tus campañas con análisis experto, en el tab “Campañas Meta”.
+          </div>
+        </div>
+        {st?.connected && (
+          <span style={{ background: '#eff6ff', color: B, fontSize: 11, fontWeight: 700, padding: '4px 11px',
+            borderRadius: 20, whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Conectado</span>
+        )}
+      </div>
+
+      {loading ? (
+        <div style={{ fontSize: 12, color: '#9a9a98', marginTop: 12 }}>Cargando…</div>
+      ) : st?.connected ? (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0ec' }}>
+          <div style={{ fontSize: 12, color: '#6a6a68', marginBottom: 10 }}>
+            Cuenta: <b>{st.account_name || '—'}</b>{st.currency ? <> · {st.currency}</> : null}
+          </div>
+          {Array.isArray(st.accounts) && st.accounts.length > 1 && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, color: '#6a6a68', display: 'block', marginBottom: 4 }}>Cambiar cuenta publicitaria</label>
+              <select value={st.account_id || ''} disabled={busy} onChange={e => cambiarCuenta(e.target.value)}
+                style={{ padding: '7px 10px', border: '1px solid #e2e2de', borderRadius: 6, fontSize: 13, width: '100%', maxWidth: 320 }}>
+                {st.accounts.map(a => <option key={a.account_id} value={a.account_id}>{a.name} ({a.currency})</option>)}
+              </select>
+            </div>
+          )}
+          <button onClick={desconectar} disabled={busy} style={{ display: 'block', background: 'none', border: 'none',
+            color: '#dc2626', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+            Desconectar
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f0f0ec' }}>
+          {META_ADS_CONFIG_ID ? (
+            <button onClick={conectar} disabled={busy}
+              style={{ padding: '8px 18px', background: B, color: '#fff', border: 'none', borderRadius: 6,
+                fontSize: 13, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: busy ? 0.6 : 1 }}>
+              {busy ? 'Conectando…' : 'Conectar Meta Ads'}
+            </button>
+          ) : (
+            <div style={{ fontSize: 12, color: '#9a9a98', fontStyle: 'italic' }}>
+              La conexión de Meta Ads todavía no está habilitada por Pazque. Muy pronto.
+            </div>
+          )}
+        </div>
+      )}
+      {err && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 8 }}>{err}</div>}
+    </div>
+  );
+}
+
 // ── Panel de dominio CNAME ───────────────────────────────────────────────
 // ── Gestión de zonas del depósito ────────────────────────────────────────
 function ZonasDeposito({ orgId }) {
@@ -1228,6 +1363,7 @@ export default function ConfigInline({
                 Conectá la plataforma con otros sistemas. Las integraciones se activan sin código — solo configurás las credenciales.
               </p>
               <WhatsAppCard />
+              <MetaAdsCard />
               <SimpliRouteCard />
               <div style={{display:'grid',gap:10}}>
                 {[

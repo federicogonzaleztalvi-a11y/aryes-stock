@@ -33,6 +33,7 @@ const BatchPickingTab = lazyWithRetry(() => import('./tabs/BatchPickingTab.jsx')
 const PreciosListasTab = lazyWithRetry(() => import('./tabs/PreciosListasTab.jsx'));
 const DescuentosTab = lazyWithRetry(() => import('./tabs/DescuentosTab.jsx'));
 const KPIsTab = lazyWithRetry(() => import('./tabs/KPIsTab.jsx'));
+const CampaniasTab = lazyWithRetry(() => import('./tabs/CampaniasTab.jsx'));
 const DemandaTab = lazyWithRetry(() => import('./tabs/DemandaTab.jsx'));
 const AuditTab = lazyWithRetry(() => import('./tabs/AuditTab.jsx'));
 const TrackingTab = lazyWithRetry(() => import('./tabs/TrackingTab.jsx'));
@@ -1093,6 +1094,7 @@ Generado desde Pazque.`;
         {activeTab==="resultados"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><ResultadosTab /></Suspense></ErrorBoundary>}
         
         {activeTab==="kpis"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><KPIsTab /></Suspense></ErrorBoundary>}
+        {activeTab==="campanias"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><CampaniasTab /></Suspense></ErrorBoundary>}
         {activeTab==="tracking"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><TrackingTab session={session} /></Suspense></ErrorBoundary>}
         
         {activeTab==="devoluciones"&&<ErrorBoundary><Suspense fallback={<TabLoader />}><DevolucionesTab /></Suspense></ErrorBoundary>}

@@ -49,6 +49,7 @@ const Icon = ({ name, size = 15, color = 'currentColor' }) => {
     packing:       <path d="M20 7l-8-4-8 4v10l8 4 8-4V7zm-8 1.62L18.47 12 12 15.38 5.53 12 12 8.62z" fill={color}/>,
     'batch-picking':<path d="M3 3h2v2H3zm0 4h2v2H3zm0 4h2v2H3zm4-8h14v2H7zm0 4h14v2H7zm0 4h14v2H7z" fill={color}/>,
     analytics:     <path d="M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z" fill={color}/>,
+    campanias:     <path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z" fill={color}/>,
     integraciones: <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" fill={color}/>,
     'portal-vende':<path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" fill={color}/>,
   };
@@ -89,6 +90,7 @@ const NAV_ALL = [
   { id: 'batch-picking',  label: 'Batch Picking',     icon: 'batch-picking' },
   { id: 'informes',       label: 'Informes',          icon: 'informes' },
   { id: 'analytics',      label: 'Analítica web',     icon: 'analytics' },
+  { id: 'campanias',      label: 'Campañas Meta',     icon: 'campanias' },
   { id: 'mensajes',       label: 'Mensajes',          icon: 'analytics' },
   { id: 'devoluciones',   label: 'Devoluciones',      icon: 'devoluciones' },
   { id: 'precios',        label: 'Precios',           icon: 'precios' },
@@ -103,7 +105,7 @@ const NAV_ALL = [
 ];
 
 const DEFAULT_NAV_ROLES = {
-  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal-vende','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','analytics','mensajes','demanda','audit','importar','importar-clientes','scanner','integraciones','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
+  admin:    ['dashboard','inventory','orders','suppliers','clientes','ventas','portal-vende','portal','facturacion','movimientos','lotes','deposito','rutas','tracking','kpis','resultados','recepcion','compras','informes','analytics','campanias','mensajes','demanda','audit','importar','importar-clientes','scanner','integraciones','config','conteo','devoluciones','packing','precios','descuentos','transferencias','batch-picking'],
   operador: ['dashboard','inventory','movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','scanner'],
   vendedor: ['dashboard','clientes','ventas','portal-vende','facturacion','kpis','resultados','informes','descuentos'],
   contador: ['dashboard','facturacion','movimientos','resultados','portal-vende','informes','clientes','compras'],
@@ -126,7 +128,7 @@ const NAV_GROUPS = [
   { label: 'Principal',   ids: ['dashboard','inventory','orders','suppliers','precios'] },
   { label: 'Operaciones', ids: ['movimientos','lotes','deposito','transferencias','rutas','tracking','recepcion','compras','scanner'] },
   { label: 'Comercial',   ids: ['clientes','ventas','portal-vende','portal','facturacion','descuentos','mensajes'] },
-  { label: 'Análisis',    ids: ['kpis','resultados','informes','analytics','demanda','audit'] },
+  { label: 'Análisis',    ids: ['kpis','resultados','informes','analytics','campanias','demanda','audit'] },
   { label: 'Sistema',     ids: ['importar','integraciones','config'] },
 ];
 
