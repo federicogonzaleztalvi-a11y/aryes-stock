@@ -12,7 +12,7 @@
 // api/voz-pedido.js.
 //
 // POST /api/foto-pedido   body: { imagen: { media_type, data } }   Authorization: Bearer <token>
-//   → 200 { ok, lineas:[...], sinPrecio:[...], sinMatch:[...] }
+//   → 200 { ok, lineas:[...], sinPrecio:[...], ambiguos:[...], sinMatch:[...] }
 // ============================================================================
 
 import { setCorsHeaders } from './_cors.js';
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
 
     // Respeta el apagado del catálogo a nivel org.
     if (portalCfg.portalCatalogo === false) {
-      return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
+      return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], ambiguos: [], sinMatch: [] });
     }
 
     const r = await interpretarPedido({ imagen: { media_type, data }, catalogo: items });
@@ -89,6 +89,7 @@ export default async function handler(req, res) {
       ok: true,
       lineas:    r.lineas,
       sinPrecio: r.sinPrecio,
+      ambiguos:  r.ambiguos,
       sinMatch:  r.sinMatch,
     });
   } catch (err) {

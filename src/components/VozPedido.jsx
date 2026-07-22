@@ -37,11 +37,13 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
   const [texto, setTexto]     = useState('');        // texto final acumulado / editable
   const [manual, setManual]   = useState(false);     // modo escribir (sin voz)
   const [escuchando, setEscuchando] = useState(false); // micrófono activo (grabando)
-  const [result, setResult]   = useState(null);      // { lineas, sinPrecio, sinMatch }
+  const [result, setResult]   = useState(null);      // { lineas, sinPrecio, ambiguos, sinMatch }
   const [qtys, setQtys]       = useState({});         // productId -> cantidad (editable en revisión)
   const [errMsg, setErrMsg]   = useState('');
   const [foto, setFoto]       = useState(null);       // dataURL de la foto elegida (preview)
   const [fotoData, setFotoData] = useState(null);     // { mime, b64 } listo para subir
+  const [respLibre, setRespLibre] = useState({});      // idx de ambiguo -> texto que está escribiendo
+  const [resolviendoIdx, setResolviendoIdx] = useState(null); // idx de ambiguo esperando respuesta de Claude
 
   const recRef      = useRef(null);
   const finalRef    = useRef('');     // acumulado de tramos finales
@@ -56,6 +58,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
     setFase('listening'); setInterim(''); setTexto(''); setResult(null);
     setQtys({}); setErrMsg(''); finalRef.current = ''; stoppedRef.current = false;
     setEscuchando(false); setFoto(null); setFotoData(null);
+    setRespLibre({}); setResolviendoIdx(null);
     setManual(!SpeechRec);   // sin API de voz → directo a escribir
     return () => stopRec();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,7 +131,8 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
   //    revisión (o a error con un mensaje según el modo: texto/voz, foto o repetir).
   const aplicarResultado = useCallback((d, ctx) => {
     const lineas = Array.isArray(d?.lineas) ? d.lineas : [];
-    if (lineas.length === 0 && (d?.sinMatch || []).length === 0 && (d?.sinPrecio || []).length === 0) {
+    const ambiguos = Array.isArray(d?.ambiguos) ? d.ambiguos : [];
+    if (lineas.length === 0 && ambiguos.length === 0 && (d?.sinMatch || []).length === 0 && (d?.sinPrecio || []).length === 0) {
       setErrMsg(
         ctx === 'ultimo' ? 'Todavía no tenés un pedido anterior para repetir.'
         : ctx === 'foto' ? 'No pude leer productos de tu lista en la foto. Probá con más luz o escribilos.'
@@ -139,9 +143,73 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
     const initQ = {};
     lineas.forEach(l => { initQ[l.productId] = l.qty; });
     setQtys(initQ);
-    setResult({ lineas, sinPrecio: d.sinPrecio || [], sinMatch: d.sinMatch || [] });
+    setResult({ lineas, sinPrecio: d.sinPrecio || [], ambiguos, sinMatch: d.sinMatch || [] });
     setFase('review');
   }, []);
+
+  // ── Resolver un ítem ambiguo: el cliente elige cuál de las opciones quiso
+  //    decir (ej. "chocolate" → tocó "Chocolate Águila 500g"). Lo sumamos a las
+  //    líneas normales (o sumamos cantidad si ya estaba) y lo sacamos de la lista
+  //    de pendientes por resolver.
+  const resolverAmbiguo = useCallback((idx, opcion) => {
+    const amb = result?.ambiguos?.[idx];
+    if (!amb) return;
+    setResult(prev => {
+      if (!prev) return prev;
+      const yaEsta = prev.lineas.some(l => l.productId === opcion.productId);
+      const lineas = yaEsta
+        ? prev.lineas.map(l => l.productId === opcion.productId ? { ...l, qty: l.qty + amb.qty, subtotal: Math.round((l.qty + amb.qty) * l.precio * 100) / 100 } : l)
+        : [...prev.lineas, {
+            productId: opcion.productId, nombre: opcion.nombre, unidad: opcion.unidad,
+            qty: amb.qty, precio: opcion.precio, subtotal: Math.round(amb.qty * opcion.precio * 100) / 100,
+          }];
+      return { ...prev, lineas, ambiguos: prev.ambiguos.filter((_, i) => i !== idx) };
+    });
+    setQtys(q => ({ ...q, [opcion.productId]: (q[opcion.productId] || 0) + amb.qty }));
+  }, [result]);
+
+  // Descartar un ítem ambiguo sin agregarlo (el cliente no quiso ninguna opción).
+  const descartarAmbiguo = useCallback((idx) => {
+    setResult(prev => prev ? { ...prev, ambiguos: prev.ambiguos.filter((_, i) => i !== idx) } : prev);
+  }, []);
+
+  // ── Responder una ambigüedad con TEXTO LIBRE (además de tocar un botón) ──
+  // Primero probamos resolverla nosotros mismos, sin gastar una llamada a
+  // Claude, para los casos obvios: dijo "ninguno", un ordinal ("el segundo"),
+  // o directamente el nombre/marca de una sola opción. Sólo si no reconocemos
+  // nada de eso, le preguntamos a Claude — pero acotado a esas mismas 2-5
+  // opciones (nunca al catálogo entero), así no hay riesgo de que agregue un
+  // producto no relacionado.
+  const responderLibre = useCallback(async (idx) => {
+    const amb = result?.ambiguos?.[idx];
+    const texto = (respLibre[idx] || '').trim();
+    if (!amb || !texto) return;
+
+    const local = matchLocal(texto, amb.opciones);
+    if (local !== undefined) {
+      if (local) resolverAmbiguo(idx, local);
+      else descartarAmbiguo(idx);
+      setRespLibre(r => ({ ...r, [idx]: '' }));
+      return;
+    }
+
+    setResolviendoIdx(idx);
+    try {
+      const r = await fetch(`${window.location.origin}/api/resolver-ambiguo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ texto, opciones: amb.opciones }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const opcion = amb.opciones.find(o => o.productId === d?.productId);
+        if (opcion) resolverAmbiguo(idx, opcion);
+        // si no matcheó ninguna, dejamos el pendiente tal cual: puede tocar un botón o reintentar.
+      }
+    } catch { /* sin conexión: el cliente puede tocar un botón como alternativa */ }
+    setResolviendoIdx(null);
+    setRespLibre(r => ({ ...r, [idx]: '' }));
+  }, [result, respLibre, token, resolverAmbiguo, descartarAmbiguo]);
 
   // ── Llamada genérica a un endpoint de armado (voz / foto / último pedido) ──
   const llamar = useCallback(async (url, body, ctx) => {
@@ -405,6 +473,47 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                 </div>
               )}
 
+              {result.ambiguos.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '2px 0 6px' }}>
+                  {result.ambiguos.map((a, idx) => (
+                    <div key={`${a.texto}-${idx}`} style={noteBox('#eff6ff', '#bfdbfe')}>
+                      <div style={{ fontSize: 13, color: '#1e3a8a', marginBottom: 8 }}>
+                        Dijiste <b>“{a.texto}”</b> ({a.qty}) — ¿cuál de estos?
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {a.opciones.map(o => (
+                          <button key={o.productId} onClick={() => resolverAmbiguo(idx, o)}
+                            style={chipOpcion}>
+                            {o.nombre} <span style={{ opacity: .7 }}>· {money(o.precio)}/{o.unidad}</span>
+                          </button>
+                        ))}
+                        <button onClick={() => descartarAmbiguo(idx)} style={{ ...chipOpcion, color: GRAY, borderColor: '#e0e0d8', background: '#fff' }}>
+                          Ninguno
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        <input
+                          type="text"
+                          value={respLibre[idx] || ''}
+                          onChange={(e) => setRespLibre(r => ({ ...r, [idx]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); responderLibre(idx); } }}
+                          disabled={resolviendoIdx === idx}
+                          placeholder="o escribí cuál (ej: el nestlé, el más barato)"
+                          style={inputLibre}
+                        />
+                        <button
+                          onClick={() => responderLibre(idx)}
+                          disabled={resolviendoIdx === idx || !(respLibre[idx] || '').trim()}
+                          style={{ ...chipOpcion, background: '#1e3a8a', color: '#fff', borderColor: '#1e3a8a', opacity: resolviendoIdx === idx ? .6 : 1 }}
+                        >
+                          {resolviendoIdx === idx ? '...' : 'Enviar'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {result.sinPrecio.length > 0 && (
                 <div style={noteBox('#fffbeb', '#fde68a')}>
                   <b style={{ color: '#92400e' }}>Sin precio en tu lista:</b>{' '}
@@ -422,7 +531,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
               )}
 
               <div style={{ display: 'flex', gap: 10, marginTop: 16, alignItems: 'center' }}>
-                <button onClick={() => { setResult(null); setFase('listening'); setManual(!SpeechRec); finalRef.current=''; setTexto(''); setInterim(''); setEscuchando(false); setFoto(null); setFotoData(null); }} style={btnGhost}>
+                <button onClick={() => { setResult(null); setFase('listening'); setManual(!SpeechRec); finalRef.current=''; setTexto(''); setInterim(''); setEscuchando(false); setFoto(null); setFotoData(null); setRespLibre({}); setResolviendoIdx(null); }} style={btnGhost}>
                   Repetir
                 </button>
                 <button onClick={confirmar} disabled={nLineas === 0} style={btnPrimary(nLineas === 0)}>
@@ -506,6 +615,48 @@ async function comprimirImagen(file) {
   return { preview, mime: 'image/jpeg', b64: preview.split(',')[1] || '' };
 }
 
+// Resuelve localmente (sin llamar a Claude) los casos obvios de una respuesta libre
+// a un ítem ambiguo: rechazo explícito, un ordinal ("el segundo"), o un nombre que
+// sólo matchea una de las opciones. Devuelve: null = el cliente no quiere ninguna,
+// un objeto de opción = match directo, undefined = hace falta preguntarle a Claude
+// (respuesta fuzzy tipo "el más barato" que no se puede resolver con reglas fijas).
+function matchLocal(texto, opciones) {
+  const norm = (s) => String(s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  const t = norm(texto);
+  if (!t) return undefined;
+
+  const RECHAZO = ['ninguno', 'ninguna', 'ningua', 'ninguna de esas', 'ninguno de esos', 'no quiero', 'no gracias', 'nada', 'sacalo', 'sacala', 'saca eso', 'cancelar', 'no'];
+  if (RECHAZO.some(r => t === r || t.startsWith(r + ' ') || t.endsWith(' ' + r))) return null;
+
+  const tokens = t.split(/[^a-z0-9]+/).filter(Boolean);
+  const ORDINALES = [
+    ['primero', 'primera', '1ro', '1ra'],
+    ['segundo', 'segunda', '2do', '2da'],
+    ['tercero', 'tercera', '3ro', '3ra'],
+    ['cuarto', 'cuarta', '4to', '4ta'],
+    ['quinto', 'quinta', '5to', '5ta'],
+  ];
+  for (let i = 0; i < ORDINALES.length; i++) {
+    if (ORDINALES[i].some(w => tokens.includes(w)) && opciones[i]) return opciones[i];
+  }
+
+  // Coincidencia por nombre: si el texto trae una palabra significativa (>=3 letras)
+  // que aparece en UN SOLO producto de la lista, es un match seguro sin ambigüedad.
+  const palabras = tokens.filter(w => w.length >= 3);
+  if (palabras.length) {
+    const matches = opciones.filter(o => {
+      const n = norm(o.nombre);
+      return palabras.some(w => n.includes(w));
+    });
+    if (matches.length === 1) return matches[0];
+  }
+
+  return undefined;
+}
+
 // ── Estilos ──────────────────────────────────────────────────────────────────
 const ring = (delay) => ({
   position: 'absolute', width: 84, height: 84, borderRadius: '50%',
@@ -533,6 +684,14 @@ const noteBox = (bg, border) => ({
   marginTop: 8, padding: '9px 12px', borderRadius: 10, background: bg,
   border: `1px solid ${border}`, fontSize: 12.5, lineHeight: 1.4,
 });
+const chipOpcion = {
+  padding: '7px 12px', borderRadius: 999, border: '1.5px solid #93c5fd', background: '#fff',
+  color: '#1e3a8a', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+};
+const inputLibre = {
+  flex: 1, padding: '8px 12px', borderRadius: 999, border: '1.5px solid #93c5fd',
+  background: '#fff', color: '#1e3a8a', fontSize: 12.5, fontFamily: SANS, outline: 'none', minWidth: 0,
+};
 const chipSiempre = {
   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
   borderRadius: 999, border: '1.5px solid #d1fae5', background: '#ecfdf5',

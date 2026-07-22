@@ -167,6 +167,7 @@ async function saveConversation(row) {
 function renderCarrito(cart, displayName) {
   const lineas = cart.lineas || [];
   const sinPrecio = cart.sinPrecio || [];
+  const ambiguos = cart.ambiguos || [];
   const sinMatch = cart.sinMatch || [];
   const partes = [];
 
@@ -176,6 +177,14 @@ function renderCarrito(cart, displayName) {
       partes.push(`• ${l.qty} × ${l.nombre} (${l.unidad}) — ${money(l.subtotal)}`);
     });
     partes.push(`\n*Total: ${money(cart.total || 0)}*`);
+  }
+
+  if (ambiguos.length) {
+    partes.push('\n_Decime cuál de estos querés (respondé con el nombre):_');
+    ambiguos.forEach(a => {
+      const opts = a.opciones.map(o => o.nombre).join(', ');
+      partes.push(`• "${a.texto}" (${a.qty}) → ${opts}`);
+    });
   }
 
   if (sinPrecio.length) {
@@ -189,7 +198,7 @@ function renderCarrito(cart, displayName) {
 
   if (!lineas.length) {
     // Nada con precio para confirmar.
-    if (sinPrecio.length || sinMatch.length) {
+    if (ambiguos.length || sinPrecio.length || sinMatch.length) {
       return partes.join('\n') + '\n\nNo pude armar un pedido con precio. Revisá los productos o escribime de nuevo.';
     }
     return 'No entendí ningún producto. Probá escribiendo, por ejemplo: "10 cajas de coca, 5 de agua".';
@@ -329,12 +338,16 @@ export async function procesarMensajeBot(
   const cart = {
     lineas: interp.lineas || [],
     sinPrecio: interp.sinPrecio || [],
+    ambiguos: interp.ambiguos || [],
     sinMatch: interp.sinMatch || [],
     total: cartTotal(interp.lineas),
   };
 
-  const hayAlgo = cart.lineas.length || cart.sinPrecio.length || cart.sinMatch.length;
-  const nuevoEstado = cart.lineas.length ? 'revision' : 'idle';
+  const hayAlgo = cart.lineas.length || cart.sinPrecio.length || cart.ambiguos.length || cart.sinMatch.length;
+  // Si quedaron ítems ambiguos pendientes de aclarar, seguimos en 'revision' aunque
+  // no haya líneas todavía: así el próximo mensaje del cliente (ej. "Nestlé") se
+  // re-interpreta contra el mismo catálogo en vez de tratarse como pedido nuevo.
+  const nuevoEstado = (cart.lineas.length || cart.ambiguos.length) ? 'revision' : 'idle';
 
   await _save({
     ...base,

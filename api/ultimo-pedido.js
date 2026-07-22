@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     }
     const { items = [], portalCfg = {} } = catalogo;
     if (portalCfg.portalCatalogo === false) {
-      return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
+      return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], ambiguos: [], sinMatch: [] });
     }
 
     const ultimo = await getUltimoPedido({ org, clienteId });
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ ok: true, lineas, sinPrecio, sinMatch: [] });
+    return res.status(200).json({ ok: true, lineas, sinPrecio, ambiguos: [], sinMatch: [] });
   } catch (err) {
     console.error('[ultimo-pedido] Error:', err);
     return res.status(500).json({ error: 'Internal error' });

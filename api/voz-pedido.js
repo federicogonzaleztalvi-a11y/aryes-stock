@@ -14,7 +14,9 @@
 //
 // POST /api/voz-pedido   body: { texto }   headers: Authorization: Bearer <token>
 //   → 200 { ok, lineas:[{productId,nombre,unidad,qty,precio,subtotal}],
-//           sinPrecio:[{productId,nombre,qty}], sinMatch:[string] }
+//           sinPrecio:[{productId,nombre,qty}],
+//           ambiguos:[{texto,qty,opciones:[{productId,nombre,unidad,precio}]}],
+//           sinMatch:[string] }
 // ============================================================================
 
 import { setCorsHeaders } from './_cors.js';
@@ -55,7 +57,7 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   const texto = String(body?.texto || '').trim();
-  if (!texto) return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
+  if (!texto) return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], ambiguos: [], sinMatch: [] });
   if (texto.length > 2000) return res.status(400).json({ error: 'Texto demasiado largo' });
 
   try {
@@ -71,7 +73,7 @@ export default async function handler(req, res) {
 
     // Respeta el apagado del catálogo a nivel org.
     if (portalCfg.portalCatalogo === false) {
-      return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], sinMatch: [] });
+      return res.status(200).json({ ok: true, lineas: [], sinPrecio: [], ambiguos: [], sinMatch: [] });
     }
 
     // "Repetir último pedido": líneas del último pedido del cliente, para que el
@@ -96,6 +98,7 @@ export default async function handler(req, res) {
       ok: true,
       lineas:    r.lineas,
       sinPrecio: r.sinPrecio,
+      ambiguos:  r.ambiguos,
       sinMatch:  r.sinMatch,
     });
   } catch (err) {
