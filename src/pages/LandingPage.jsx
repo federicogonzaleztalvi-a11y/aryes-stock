@@ -393,7 +393,7 @@ export default function LandingPage() {
               </p>
             </div>
             <PhoneScreenshot
-              src="/screenshots/portal-b2b.png"
+              src="/screenshots/portal-b2b.png?v=2"
               alt="Portal B2B de Pazque en el celular del cliente"
             />
           </div>
