@@ -31,14 +31,14 @@ export const demoHoreca = {
 
   products: [
     // Lácteos — Conaprole
-    { id: 'h1', name: 'Queso Colonia Conaprole x 4kg', sku: 'LAC-001', category: 'Lácteos', supplier_id: 's1', unit: 'kg', price: 420, cost: 310, stock: 85, min_stock: 20, iva_rate: 22, imagen_url: null },
-    { id: 'h2', name: 'Queso Dambo Conaprole x 4kg', sku: 'LAC-002', category: 'Lácteos', supplier_id: 's1', unit: 'kg', price: 390, cost: 285, stock: 62, min_stock: 15, iva_rate: 22, imagen_url: null },
-    { id: 'h3', name: 'Muzzarella Conaprole x 5kg', sku: 'LAC-003', category: 'Lácteos', supplier_id: 's1', unit: 'kg', price: 350, cost: 260, stock: 120, min_stock: 30, iva_rate: 22, imagen_url: null },
-    { id: 'h4', name: 'Crema doble Conaprole x 1L', sku: 'LAC-004', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 145, cost: 105, stock: 48, min_stock: 12, iva_rate: 22, imagen_url: null },
-    { id: 'h5', name: 'Manteca Conaprole x 2kg', sku: 'LAC-005', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 520, cost: 395, stock: 35, min_stock: 10, iva_rate: 22, imagen_url: null },
-    { id: 'h6', name: 'Dulce de leche Conaprole x 1kg', sku: 'LAC-006', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 210, cost: 155, stock: 40, min_stock: 10, iva_rate: 22, imagen_url: null },
-    { id: 'h7', name: 'Ricotta Conaprole x 1kg', sku: 'LAC-007', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 175, cost: 128, stock: 28, min_stock: 8, iva_rate: 22, imagen_url: null },
-    { id: 'h8', name: 'Yogur natural Conaprole x 5L', sku: 'LAC-008', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 290, cost: 210, stock: 18, min_stock: 6, iva_rate: 22, imagen_url: null },
+    { id: 'h1', name: 'Queso Colonia Conaprole x 4kg', sku: 'LAC-001', category: 'Lácteos', supplier_id: 's1', unit: 'kg', price: 420, cost: 310, stock: 85, min_stock: 20, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&auto=format&q=75' },
+    { id: 'h2', name: 'Queso Dambo Conaprole x 4kg', sku: 'LAC-002', category: 'Lácteos', supplier_id: 's1', unit: 'kg', price: 390, cost: 285, stock: 62, min_stock: 15, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1552767059-ce182ead6c1b?w=400&auto=format&q=75' },
+    { id: 'h3', name: 'Muzzarella Conaprole x 5kg', sku: 'LAC-003', category: 'Lácteos', supplier_id: 's1', unit: 'kg', price: 350, cost: 260, stock: 120, min_stock: 30, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1626957341926-98752fc2ba90?w=400&auto=format&q=75' },
+    { id: 'h4', name: 'Crema doble Conaprole x 1L', sku: 'LAC-004', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 145, cost: 105, stock: 48, min_stock: 12, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&q=75' },
+    { id: 'h5', name: 'Manteca Conaprole x 2kg', sku: 'LAC-005', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 520, cost: 395, stock: 35, min_stock: 10, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&q=75' },
+    { id: 'h6', name: 'Dulce de leche Conaprole x 1kg', sku: 'LAC-006', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 210, cost: 155, stock: 40, min_stock: 10, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400&auto=format&q=75' },
+    { id: 'h7', name: 'Ricotta Conaprole x 1kg', sku: 'LAC-007', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 175, cost: 128, stock: 28, min_stock: 8, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1559561853-08451507cbe7?w=400&auto=format&q=75' },
+    { id: 'h8', name: 'Yogur natural Conaprole x 5L', sku: 'LAC-008', category: 'Lácteos', supplier_id: 's1', unit: 'un', price: 290, cost: 210, stock: 18, min_stock: 6, iva_rate: 22, imagen_url: 'https://images.unsplash.com/photo-1571212515416-fca325c7b3fd?w=400&auto=format&q=75' },
 
     // Carnes — BPU
     { id: 'h9', name: 'Bife angosto sin hueso x kg', sku: 'CAR-001', category: 'Carnes', supplier_id: 's2', unit: 'kg', price: 580, cost: 440, stock: 45, min_stock: 15, iva_rate: 22, imagen_url: null },

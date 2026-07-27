@@ -54,6 +54,29 @@ function BrowserFrame({ src, alt, style = {} }) {
   );
 }
 
+// ── Screenshot del portal, presentado como pantalla de celular ─────────────
+// Solo sombra + esquinas redondeadas + borde sutil. Sin marco de dispositivo
+// falso — el usuario odia los reborde negros gruesos que gritan "mockup".
+function PhoneScreenshot({ src, alt, style = {} }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      style={{
+        display: 'block',
+        maxWidth: 280,
+        width: '100%',
+        margin: '0 auto',
+        borderRadius: 22,
+        border: '1px solid #e5e5e2',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.18), 0 6px 16px rgba(0,0,0,0.08)',
+        ...style,
+      }}
+    />
+  );
+}
+
 // ── Responsive hook ──────────────────────────────────────────────────────
 function useIsMobile() {
   const [mobile, setMobile] = useState(false);
@@ -237,9 +260,9 @@ export default function LandingPage() {
         </FadeIn>
 
         <FadeIn delay={0.2}>
-          <p style={{ fontSize: mobile ? 15 : 17, color: '#6b7280', lineHeight: 1.6, maxWidth: 520, margin: '0 auto 32px' }}>
-            Inventario, ventas, rutas, cobros y portal B2B en un solo lugar.
-            Sin sistemas de USD 30.000. Listo en 24 horas.
+          <p style={{ fontSize: mobile ? 15 : 17, color: '#6b7280', lineHeight: 1.6, maxWidth: 540, margin: '0 auto 32px' }}>
+            Vos manejás inventario, ventas y rutas. Tus clientes piden solos, 24/7,
+            desde una app en su celular — sin llamarte, sin errores.
           </p>
         </FadeIn>
 
@@ -307,6 +330,36 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
+      {/* ── Diferenciador ────────────────────────────────────────────────── */}
+      <section style={{ background: '#eaf3de', padding: mobile ? '48px 20px' : '64px 24px' }}>
+        <FadeIn>
+          <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>
+              Lo que nadie más tiene
+            </div>
+            <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 22 : 'clamp(24px, 3vw, 32px)', fontWeight: 400, color: '#27500a', margin: '0 0 24px' }}>
+              Tus clientes piden desde su propia app, no desde una planilla tuya
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {['Cliente pide desde su cel', 'Stock baja solo', 'Ruta se arma', 'Entrega con firma'].map((step, i) => (
+                <span key={step} style={{ display: 'contents' }}>
+                  <span style={{
+                    background: '#fff', borderRadius: 8, padding: mobile ? '8px 12px' : '10px 16px',
+                    fontSize: 13, fontWeight: 500, color: '#27500a',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  }}>{step}</span>
+                  {i < 3 && <span style={{ color: '#3b6d11', fontSize: 16 }}>→</span>}
+                </span>
+              ))}
+            </div>
+            <p style={{ fontSize: 15, color: '#3b6d11', margin: 0, maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
+              Se instala en la pantalla de inicio del celular como una app, sin bajar nada de una tienda.
+              Todo automático. Sin copiar y pegar. Sin llamar al depósito.
+            </p>
+          </div>
+        </FadeIn>
+      </section>
+
       {/* ── Tres pilares ─────────────────────────────────────────────────── */}
       <section id="producto" style={{ maxWidth: 1080, margin: '0 auto', padding: '0 24px 80px' }}>
         <FadeIn>
@@ -320,7 +373,33 @@ export default function LandingPage() {
           </div>
         </FadeIn>
 
-        {/* Pilar 1 — WMS */}
+        {/* Pilar 1 — B2B (el diferencial va primero) */}
+        <FadeIn>
+          <div style={{
+            display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1.2fr) minmax(0,1fr)', gap: mobile ? 24 : 40,
+            alignItems: 'center', marginBottom: 64,
+          }}>
+            <div>
+              <div style={{
+                width: 44, height: 44, background: '#eeedfe', borderRadius: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 14, fontWeight: 500, color: '#534ab7', marginBottom: 16,
+              }}>B2B</div>
+              <h3 style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, margin: '0 0 8px' }}>Una app para que tus clientes pidan solos</h3>
+              <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.6, margin: 0 }}>
+                Tus clientes entran con OTP por WhatsApp (sin contraseñas), ven su catálogo con precios
+                personalizados y arman el pedido desde una app que se instala en su celular. Te llega
+                directo al sistema — sin llamadas, sin audios de WhatsApp, sin errores de transcripción.
+              </p>
+            </div>
+            <PhoneScreenshot
+              src="/screenshots/portal-b2b.png"
+              alt="Portal B2B de Pazque en el celular del cliente"
+            />
+          </div>
+        </FadeIn>
+
+        {/* Pilar 2 — WMS */}
         <FadeIn>
           <div style={{
             display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1fr) minmax(0,1.2fr)', gap: mobile ? 24 : 40,
@@ -346,11 +425,11 @@ export default function LandingPage() {
           </div>
         </FadeIn>
 
-        {/* Pilar 2 — TMS */}
+        {/* Pilar 3 — TMS */}
         <FadeIn>
           <div style={{
             display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1.2fr) minmax(0,1fr)', gap: mobile ? 24 : 40,
-            alignItems: 'center', marginBottom: 64,
+            alignItems: 'center',
           }}>
             <BrowserFrame
               src="/screenshots/rutas.png"
@@ -369,80 +448,6 @@ export default function LandingPage() {
                 foto de entrega y tracking público para tus clientes. Todo en tiempo real.
               </p>
             </div>
-          </div>
-        </FadeIn>
-
-        {/* Pilar 3 — B2B */}
-        <FadeIn>
-          <div style={{
-            display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1fr) minmax(0,1.2fr)', gap: mobile ? 24 : 40,
-            alignItems: 'center',
-          }}>
-            <div>
-              <div style={{
-                width: 44, height: 44, background: '#eeedfe', borderRadius: 12,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, fontWeight: 500, color: '#534ab7', marginBottom: 16,
-              }}>B2B</div>
-              <h3 style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, margin: '0 0 8px' }}>Portal de pedidos para tus clientes</h3>
-              <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.6, margin: 0 }}>
-                Tus clientes entran con OTP por WhatsApp, ven su catálogo con precios personalizados,
-                arman el pedido y te llega directo al sistema. Sin llamadas, sin errores.
-              </p>
-            </div>
-            <div style={{ background: '#f5f5f3', borderRadius: 12, padding: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>Catálogo — Panadería Don Luis</div>
-              <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10 }}>
-                {[
-                  { name: 'Harina 000 x25kg', price: '$680' },
-                  { name: 'Muzzarella x5kg', price: '$350' },
-                  { name: 'Aceite girasol 5L', price: '$380' },
-                ].map(p => (
-                  <div key={p.name} style={{ background: '#fff', borderRadius: 10, padding: 14, textAlign: 'center' }}>
-                    <div style={{
-                      width: '100%', height: 48, background: '#f0eeeb', borderRadius: 8,
-                      marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 20,
-                    }}>📦</div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18', marginBottom: 2 }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: '#9a9a96', marginBottom: 10 }}>{p.price} /u</div>
-                    <div style={{
-                      background: G, color: '#fff', borderRadius: 6, padding: '6px 0',
-                      fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                    }}>Agregar</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </FadeIn>
-      </section>
-
-      {/* ── Diferenciador ────────────────────────────────────────────────── */}
-      <section style={{ background: '#eaf3de', padding: mobile ? '48px 20px' : '64px 24px' }}>
-        <FadeIn>
-          <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
-            <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>
-              Lo que nadie más tiene
-            </div>
-            <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 22 : 'clamp(24px, 3vw, 32px)', fontWeight: 400, color: '#27500a', margin: '0 0 24px' }}>
-              Tu cliente y vos operan en la misma plataforma
-            </h2>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              {['Cliente pide', 'Stock baja', 'Ruta se arma', 'Entrega con firma'].map((step, i) => (
-                <span key={step} style={{ display: 'contents' }}>
-                  <span style={{
-                    background: '#fff', borderRadius: 8, padding: mobile ? '8px 12px' : '10px 16px',
-                    fontSize: 13, fontWeight: 500, color: '#27500a',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                  }}>{step}</span>
-                  {i < 3 && <span style={{ color: '#3b6d11', fontSize: 16 }}>→</span>}
-                </span>
-              ))}
-            </div>
-            <p style={{ fontSize: 15, color: '#3b6d11', margin: 0, maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}>
-              Todo automático. Sin copiar y pegar. Sin llamar al depósito.
-            </p>
           </div>
         </FadeIn>
       </section>
