@@ -19,6 +19,8 @@ import { createB2BOrder } from './_create-order.js';
 // La copia local no chequeaba `revoked`, así un token revocado (logout / baja de
 // cliente) seguía autenticando hasta expirar por TTL.
 import { validatePortalSession } from './_session.js';
+// Gate de acceso por-org (trial vencido pasada la gracia → no se toman pedidos).
+import { checkOrgAccess } from './_access.js';
 
 
 const SB_URL  = process.env.SUPABASE_URL;
@@ -341,6 +343,18 @@ async function handler(req, res) {
   const clienteId     = portalSession.cliente_id;
   const clienteTel    = portalSession.tel;
   const clienteNombre = (req.body?.clienteNombre || '').substring(0, 100);
+
+  // ── Gate de acceso (Fix #2/#3): si la org tiene el trial vencido pasada la
+  // gracia, no se toman pedidos nuevos. NO se borra ni cancela nada existente;
+  // es solo un portón. Fail-safe: ante duda checkOrgAccess devuelve ok:true.
+  const _access = await checkOrgAccess(org);
+  if (!_access.ok) {
+    log.warn('pedido', 'org sin acceso — pedido bloqueado', { org, reason: _access.reason });
+    return res.status(402).json({
+      error: 'Este portal está en pausa temporalmente. Escribinos para reactivarlo.',
+      code: 'org_no_access',
+    });
+  }
 
   // ── 3. Crear el pedido vía núcleo compartido ─────────────────────────────
   // createB2BOrder hace: validación de UUID + detección de anomalías + RPC

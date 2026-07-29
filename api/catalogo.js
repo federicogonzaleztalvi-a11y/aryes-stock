@@ -3,6 +3,8 @@ import { setCorsHeaders } from './_cors.js';
 import { getBearerToken, validatePortalSession } from './_session.js';
 // Núcleo compartido de resolución de precios (misma fuente de verdad que el bot WhatsApp).
 import { getCatalogoCliente } from './_catalog.js';
+// Gate de acceso por-org (trial vencido pasada la gracia → portal en pausa).
+import { checkOrgAccess } from './_access.js';
 
 // PRIVATE mode (?cliente=) requires a valid portal session. org_id and cliente_id
 // are derived from the validated session — query params are IGNORED for that path
@@ -61,6 +63,22 @@ export default async function handler(req, res) {
       setHeaders(res);
       return res.status(401).json({ error: 'Sesión inválida' });
     }
+  }
+
+  // ── Gate de acceso (Fix #2/#3): si la org tiene el trial vencido pasada la
+  // gracia, el portal queda "en pausa" — se devuelve catálogo vacío con la
+  // bandera para que el front muestre el aviso. NO se borra nada: la org y su
+  // data siguen intactas; reactivar es volver el status a 'active'. Fail-safe:
+  // ante cualquier duda checkOrgAccess devuelve ok:true y no corta.
+  const _access = await checkOrgAccess(org);
+  if (!_access.ok) {
+    setHeaders(res);
+    return res.status(200).json({
+      items: [], categorias: [], org,
+      portalDisabled: true,
+      servicioSuspendido: true,
+      motivo: _access.reason || 'sin_acceso',
+    });
   }
 
   try {

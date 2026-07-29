@@ -31,6 +31,10 @@ import { log } from './_log.js';
 import { sendEmail, templates } from './_email.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
 import { buildLineas, sumLineas, mapClienteFiscal } from './_pedido-data.js';
+// Fix #4: revalidación de precio server-side. Fuente de verdad = catálogo del
+// cliente (getCatalogoCliente) + misma matemática del carrito (_pricing.js).
+import { getCatalogoCliente } from './_catalog.js';
+import { calcLinea, calcTotales } from './_pricing.js';
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -113,6 +117,85 @@ export async function createB2BOrder({
     log.warn('create-order', 'anomaly check failed (non-fatal)', { error: anomalyErr.message });
   }
 
+  // ── Revalidación de precio server-side (Fix #4, modo revisión NO bloqueante) ─
+  // El cliente NO es fuente de verdad de precios. Recalculamos el total con la
+  // MISMA matemática del carrito pero sobre el catálogo del server (precios reales
+  // del cliente). Si el total del body no coincide más allá de una tolerancia por
+  // redondeo, NO rechazamos el pedido — lo marcamos requiere_revision para que el
+  // admin lo mire antes de confirmar. Así nunca bloqueamos un pedido legítimo por
+  // un centavo de redondeo, pero un total manipulado queda flagueado. Fail-safe:
+  // ante cualquier fallo (o item no matcheado), no flaguea ni bloquea.
+  try {
+    const cat  = await getCatalogoCliente({ org, clienteId });
+    const byId = new Map((cat.items || []).map((p) => [String(p.id), p]));
+    const lineas = [];
+    let faltantes = 0;
+    for (const it of items) {
+      const pid = String(it.productId || it.productoId || it.id || '');
+      const qty = Number(it.qty != null ? it.qty : it.cantidad) || 0;
+      const prod = byId.get(pid);
+      if (!prod || qty <= 0) { faltantes++; continue; }
+      lineas.push(calcLinea(prod, qty));
+    }
+    // Solo evaluamos si TODOS los items matchearon el catálogo. Si falta alguno,
+    // no podemos afirmar divergencia con certeza → lo dejamos pasar sin flaguear.
+    if (lineas.length && faltantes === 0) {
+      const totalReal = calcTotales(lineas).total;
+      const totalBody = Number(total) || 0;
+      const tol = Math.max(1, totalReal * 0.005);   // $1 o 0.5%, el mayor
+      if (Math.abs(totalReal - totalBody) > tol) {
+        requiere_revision = true;
+        anomaly_reasons.push(
+          'Total informado ($' + totalBody.toFixed(2) + ') no coincide con el catálogo ($' + totalReal.toFixed(2) + ')'
+        );
+        log.warn('create-order', 'price mismatch (flagged for review, not blocked)', {
+          org, clienteId, totalBody, totalReal,
+        });
+      }
+    }
+  } catch (priceErr) {
+    // No fatal — si falla la recarga del catálogo, no bloqueamos ni flagueamos.
+    log.warn('create-order', 'price revalidation failed (non-fatal)', { error: priceErr.message });
+  }
+
+  // ── Enforcement de stock: atado al toggle self-service "Controlo inventario" ─
+  // El RPC valida reservas leyendo `qty` de cada item, pero el portal manda
+  // `cantidad` → sin remapeo la validación queda muerta (lee qty=null → CONTINUE
+  // → no valida ni reserva, pero SÍ inserta el pedido). El remapeo cantidad→qty
+  // solo ocurre cuando la org CONTROLA inventario, es decir cuando el admin prendió
+  // el toggle "Controlo inventario" en Configuración → organizations.no_controla_stock
+  // = false. Con el toggle apagado (no_controla_stock = true, y también el default
+  // seguro para orgs nuevas), los items van tal cual → el RPC sigue siendo no-op →
+  // pedidos nunca se bloquean por stock. Una sola perilla, la misma que ve el
+  // distribuidor. Fail-safe: ante duda NO enforced (no bloquea pedidos).
+  let enforceStock = false;
+  try {
+    const orgRes = await fetch(
+      SB_URL + '/rest/v1/organizations?id=eq.' + org + '&select=no_controla_stock',
+      { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
+    );
+    if (orgRes.ok) {
+      const rows = await orgRes.json();
+      // Enforce SOLO si la org controla inventario de forma explícita (flag === false).
+      // NULL/ausente o true → no enforced (fail-safe).
+      enforceStock = rows && rows[0] && rows[0].no_controla_stock === false;
+    }
+  } catch (flagErr) {
+    // No fatal — ante duda NO enforced (fail-safe: no bloquea pedidos).
+    log.warn('create-order', 'no_controla_stock flag fetch failed (non-fatal, off)', { error: flagErr.message, org });
+  }
+
+  // Remap cantidad→qty SOLO si la org controla inventario. El RPC valida `qty` y
+  // `productId`; el portal manda `cantidad` + `productId`. Preservamos las claves
+  // originales (spread) para no romper el guardado del pedido ni el mail/PDF.
+  const rpcItems = enforceStock
+    ? items.map((it) => ({
+        ...it,
+        productId: it.productId || it.productoId || it.id,
+        qty: Number(it.qty != null ? it.qty : it.cantidad) || 0,
+      }))
+    : items;
+
   // ── RPC atómico: create_b2b_order_with_reservations ────────────────────────
   // Valida stock disponible de TODOS los items, crea TODAS las reservas e inserta
   // el pedido — todo en una transacción Postgres. Si un item no alcanza → rollback
@@ -123,7 +206,7 @@ export async function createB2BOrder({
     p_cliente_id:      clienteId,
     p_cliente_nombre:  clienteNombre,
     p_cliente_tel:     clienteTel,
-    p_items:           items,
+    p_items:           rpcItems,
     p_total:           Number(total) || 0,
     p_notas:           notas || '',
     p_idempotency_key: idempotencyKey || null,

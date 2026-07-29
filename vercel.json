@@ -24,6 +24,9 @@
     },
     "api/cron-carrito-abandonado.js": {
       "maxDuration": 60
+    },
+    "api/cron-reservations.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -69,6 +72,9 @@
     "schedule": "0 12 * * *"
   }, {
     "path": "/api/cron-carrito-abandonado",
+    "schedule": "0 * * * *"
+  }, {
+    "path": "/api/cron-reservations",
     "schedule": "0 * * * *"
   }],
   "version": 2
