@@ -57,6 +57,10 @@ const SYSTEM_PROMPT = `Sos un asistente que interpreta pedidos mayoristas escrit
 Te doy un CATÁLOGO numerado. Cada línea es:
   <ref>. <nombre> — <unidad> — $<precio>
 
+Algunos productos tienen VARIANTES (color, sabor, tamaño). En ese caso cada variante aparece en su PROPIA línea con la forma:
+  <ref>. <nombre> (<Etiqueta>: <opción>) — <unidad> — $<precio>
+Ej: "12. Softgel (Color: Rojo) — un — $50" y "13. Softgel (Color: Azul) — un — $50". Son productos DISTINTOS a los fines del pedido: cada variante tiene su propia ref y NO se suman entre sí.
+
 El pedido puede llegar como TEXTO o como una FOTO de una lista de compra escrita a mano o impresa. Si te doy una imagen, leé cada renglón de la lista (aunque la letra sea difícil) y tratá cada ítem igual que si lo hubiera escrito. Para cada ítem que el cliente pide, clasificalo en UNA de estas tres categorías:
 
 1. "items": mapea con confianza razonable a UN ÚNICO producto del catálogo (por significado, no solo texto exacto: "coca" → "Coca Cola", "agua chica" → el agua de menor tamaño, etc). Van con su "ref" y cantidad.
@@ -66,6 +70,7 @@ El pedido puede llegar como TEXTO o como una FOTO de una lista de compra escrita
 Reglas:
 - Preferí "ambiguos" sobre "sinMatch" siempre que exista al menos un producto del catálogo remotamente relacionado — es mejor ofrecer opciones que decir "no lo encontré".
 - Preferí "items" sobre "ambiguos" cuando el cliente ya fue específico (marca, tamaño, o el catálogo solo tiene una opción de esa categoría) — no generes ambigüedad artificial.
+- VARIANTES: si el cliente especifica la variante ("softgel rojo", "3 rojos y 2 azules"), matcheá cada una a la ref de SU variante por separado en "items" (dos refs distintas, sin sumarlas). Si nombra el producto base SIN especificar la variante y hay 2 o más variantes, ponelo en "ambiguos" con las refs de las variantes para que el cliente elija el color/sabor/tamaño.
 - NO inventes refs que no estén en el catálogo. NO inventes precios.
 - Si el cliente repite un producto, sumá las cantidades en una sola línea.
 - Ignorá saludos, "gracias", "por favor", y texto que no sea un ítem de pedido.
@@ -142,9 +147,30 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
     return out;
   }
 
-  // Lista numerada 1..N para el prompt. El índice (ref) = posición+1.
-  const listado = catalogo
-    .map((p, i) => `${i + 1}. ${p.nombre} — ${p.unidad || 'un'} — $${Number(p.precio) || 0}`)
+  // Aplanamos variantes: cada opción (color/sabor/tamaño) es su PROPIA entrada,
+  // así la IA puede identificar "softgel rojo" vs "softgel azul" y no colapsarlas
+  // en un único producto. Las variantes comparten precio/unidad del padre; sólo
+  // cambian etiqueta+SKU. `flat[i]` guarda a qué producto+variante apunta la ref.
+  const flat = [];
+  for (const p of catalogo) {
+    const opts = p?.variants?.options;
+    if (Array.isArray(opts) && opts.length) {
+      const label = p.variants.label || 'Variante';
+      for (const o of opts) {
+        if (!o?.id) continue;
+        flat.push({ producto: p, variantId: o.id, variantEtiqueta: `${label}: ${o.label || o.id}` });
+      }
+    } else {
+      flat.push({ producto: p, variantId: null, variantEtiqueta: null });
+    }
+  }
+
+  // Lista numerada 1..N para el prompt. El índice (ref) = posición+1 en `flat`.
+  const listado = flat
+    .map((f, i) => {
+      const nom = f.variantEtiqueta ? `${f.producto.nombre} (${f.variantEtiqueta})` : f.producto.nombre;
+      return `${i + 1}. ${nom} — ${f.producto.unidad || 'un'} — $${Number(f.producto.precio) || 0}`;
+    })
     .join('\n');
 
   // Contenido del mensaje: texto solo, o imagen (+ texto opcional). Cuando hay
@@ -171,18 +197,24 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
     return out;
   }
 
-  // Resolver refs → productos del catálogo. Precio/nombre/unidad SIEMPRE del catálogo.
-  const acumulado = new Map();  // productId → { producto, qty }
+  // Clave de acumulación: "productId" (simple) o "productId::variantId" (con
+  // variante), igual que la clave de carrito del portal. Dos variantes del mismo
+  // padre NO se colapsan.
+  const keyOf = (f) => (f.variantId ? `${f.producto.id}::${f.variantId}` : f.producto.id);
+
+  // Resolver refs → entradas del catálogo aplanado. Precio/nombre/unidad SIEMPRE del catálogo.
+  const acumulado = new Map();  // key → { producto, variantId, variantEtiqueta, qty }
   for (const it of parsed.items) {
     const ref = Math.floor(Number(it?.ref));
     const qty = Number(it?.qty);
-    if (!Number.isFinite(ref) || ref < 1 || ref > catalogo.length) continue;  // ref inválida → ignorar
+    if (!Number.isFinite(ref) || ref < 1 || ref > flat.length) continue;  // ref inválida → ignorar
     if (!Number.isFinite(qty) || qty <= 0) continue;
-    const prod = catalogo[ref - 1];
-    if (!prod?.id) continue;
-    const prev = acumulado.get(prod.id);
-    if (prev) prev.qty += qty;                       // mismo producto repetido → sumar
-    else acumulado.set(prod.id, { producto: prod, qty });
+    const f = flat[ref - 1];
+    if (!f?.producto?.id) continue;
+    const k = keyOf(f);
+    const prev = acumulado.get(k);
+    if (prev) prev.qty += qty;                       // mismo producto/variante repetido → sumar
+    else acumulado.set(k, { producto: f.producto, variantId: f.variantId, variantEtiqueta: f.variantEtiqueta, qty });
   }
 
   // "Lo de siempre": si el modelo detectó el pedido habitual, expandimos los
@@ -196,20 +228,22 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
       if (!prod?.id) continue;                        // ya no está en el catálogo → ignorar
       if (acumulado.has(prod.id)) continue;           // el cliente ya lo pidió explícito
       const qty = Math.max(1, Math.floor(Number(h?.qtyTipica) || 1));
-      acumulado.set(prod.id, { producto: prod, qty });
+      acumulado.set(prod.id, { producto: prod, variantId: null, variantEtiqueta: null, qty });
     }
   }
 
-  for (const { producto, qty } of acumulado.values()) {
+  for (const { producto, variantId, variantEtiqueta, qty } of acumulado.values()) {
     const precio = Number(producto.precio) || 0;
+    const nombre = variantEtiqueta ? `${producto.nombre} (${variantEtiqueta})` : producto.nombre;
     if (precio <= 0) {
       // Producto en catálogo pero sin precio en la lista del cliente → "consultar".
-      out.sinPrecio.push({ productId: producto.id, nombre: producto.nombre, qty });
+      out.sinPrecio.push({ productId: producto.id, variantId: variantId || null, nombre, qty });
       continue;
     }
     out.lineas.push({
       productId: producto.id,
-      nombre:    producto.nombre,
+      variantId: variantId || null,
+      nombre,
       unidad:    producto.unidad || 'un',
       qty,
       precio,
@@ -228,42 +262,52 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
       if (!texto || !Number.isFinite(qty) || qty <= 0) continue;
       const refs = Array.isArray(a?.refs) ? a.refs : [];
       const vistos = new Set();
-      const opciones = [];
+      const opciones = [];  // entradas de `flat`
       for (const r of refs) {
         const ref = Math.floor(Number(r));
-        if (!Number.isFinite(ref) || ref < 1 || ref > catalogo.length) continue;
-        const prod = catalogo[ref - 1];
-        if (!prod?.id || vistos.has(prod.id)) continue;
-        vistos.add(prod.id);
-        opciones.push(prod);
+        if (!Number.isFinite(ref) || ref < 1 || ref > flat.length) continue;
+        const f = flat[ref - 1];
+        if (!f?.producto?.id) continue;
+        const k = keyOf(f);
+        if (vistos.has(k)) continue;
+        vistos.add(k);
+        opciones.push(f);
         if (opciones.length >= 5) break;
       }
       if (opciones.length === 0) {
         out.sinMatch.push(texto);                        // sin candidatos válidos → sinMatch
       } else if (opciones.length === 1) {
         // Un solo candidato válido → ya no es ambiguo, resolver directo.
-        const prod = opciones[0];
-        const prev = acumulado.get(prod.id);
-        if (prev) prev.qty += qty; else acumulado.set(prod.id, { producto: prod, qty });
+        const f = opciones[0];
+        const k = keyOf(f);
+        const prev = acumulado.get(k);
+        if (prev) prev.qty += qty;
+        else acumulado.set(k, { producto: f.producto, variantId: f.variantId, variantEtiqueta: f.variantEtiqueta, qty });
       } else {
         out.ambiguos.push({
           texto, qty,
-          opciones: opciones.map(p => ({
-            productId: p.id, nombre: p.nombre, unidad: p.unidad || 'un', precio: Number(p.precio) || 0,
+          opciones: opciones.map(f => ({
+            productId: f.producto.id,
+            variantId: f.variantId || null,
+            nombre: f.variantEtiqueta ? `${f.producto.nombre} (${f.variantEtiqueta})` : f.producto.nombre,
+            unidad: f.producto.unidad || 'un',
+            precio: Number(f.producto.precio) || 0,
           })),
         });
       }
     }
     // Si un candidato de "ambiguos" se resolvió solo, recién ahora lo pasamos a
     // líneas/sinPrecio (mismo criterio de precio que el resto del pedido).
-    for (const { producto, qty } of acumulado.values()) {
-      const yaAgregado = out.lineas.some(l => l.productId === producto.id)
-        || out.sinPrecio.some(s => s.productId === producto.id);
+    for (const { producto, variantId, variantEtiqueta, qty } of acumulado.values()) {
+      const vId = variantId || null;
+      const yaAgregado = out.lineas.some(l => l.productId === producto.id && (l.variantId || null) === vId)
+        || out.sinPrecio.some(s => s.productId === producto.id && (s.variantId || null) === vId);
       if (yaAgregado) continue;
       const precio = Number(producto.precio) || 0;
-      if (precio <= 0) { out.sinPrecio.push({ productId: producto.id, nombre: producto.nombre, qty }); continue; }
+      const nombre = variantEtiqueta ? `${producto.nombre} (${variantEtiqueta})` : producto.nombre;
+      if (precio <= 0) { out.sinPrecio.push({ productId: producto.id, variantId: vId, nombre, qty }); continue; }
       out.lineas.push({
-        productId: producto.id, nombre: producto.nombre, unidad: producto.unidad || 'un',
+        productId: producto.id, variantId: vId, nombre, unidad: producto.unidad || 'un',
         qty, precio, subtotal: Math.round(precio * qty * 100) / 100,
       });
     }
@@ -294,7 +338,7 @@ export async function interpretarPedido({ texto, catalogo = [], habituales = [],
 //       productId=null → el cliente no eligió ninguna opción, o no se pudo
 //       determinar con confianza cuál quiso decir (se le vuelve a preguntar).
 export async function resolverOpcionLibre({ texto, opciones = [], model } = {}) {
-  const out = { ok: false, productId: null, error: null };
+  const out = { ok: false, productId: null, variantId: null, error: null };
 
   if (!ANTHROPIC_KEY) { out.error = 'anthropic_not_configured'; return out; }
   const t = String(texto || '').trim();
@@ -321,6 +365,7 @@ Respondé ÚNICAMENTE con este JSON, sin texto adicional:
   const idx = Math.floor(Number(parsed?.opcion));
   if (Number.isFinite(idx) && idx >= 1 && idx <= opciones.length) {
     out.productId = opciones[idx - 1].productId;
+    out.variantId = opciones[idx - 1].variantId || null;
   }
   out.ok = true;
   return out;

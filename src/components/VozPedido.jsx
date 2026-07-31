@@ -25,6 +25,12 @@ const Z_OVERLAY = 60;
 
 const money = n => '$' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('es-UY');
 
+// Clave de una línea/opción: "productId" (simple) o "productId::variantId" (con
+// variante color/sabor/tamaño). Misma convención que la clave de carrito del
+// portal, así dos variantes del mismo padre no se pisan en la revisión.
+const lineKey = (l) => (l && l.variantId ? `${l.productId}::${l.variantId}` : (l ? l.productId : undefined));
+const sameLine = (a, b) => a.productId === b.productId && (a.variantId || null) === (b.variantId || null);
+
 // Reconocimiento de voz nativo del navegador (Chrome/Android/Edge; iOS 14.5+).
 const SpeechRec = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -141,7 +147,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
       setFase('error'); return;
     }
     const initQ = {};
-    lineas.forEach(l => { initQ[l.productId] = l.qty; });
+    lineas.forEach(l => { initQ[lineKey(l)] = l.qty; });
     setQtys(initQ);
     setResult({ lineas, sinPrecio: d.sinPrecio || [], ambiguos, sinMatch: d.sinMatch || [] });
     setFase('review');
@@ -156,16 +162,16 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
     if (!amb) return;
     setResult(prev => {
       if (!prev) return prev;
-      const yaEsta = prev.lineas.some(l => l.productId === opcion.productId);
+      const yaEsta = prev.lineas.some(l => sameLine(l, opcion));
       const lineas = yaEsta
-        ? prev.lineas.map(l => l.productId === opcion.productId ? { ...l, qty: l.qty + amb.qty, subtotal: Math.round((l.qty + amb.qty) * l.precio * 100) / 100 } : l)
+        ? prev.lineas.map(l => sameLine(l, opcion) ? { ...l, qty: l.qty + amb.qty, subtotal: Math.round((l.qty + amb.qty) * l.precio * 100) / 100 } : l)
         : [...prev.lineas, {
-            productId: opcion.productId, nombre: opcion.nombre, unidad: opcion.unidad,
+            productId: opcion.productId, variantId: opcion.variantId || null, nombre: opcion.nombre, unidad: opcion.unidad,
             qty: amb.qty, precio: opcion.precio, subtotal: Math.round(amb.qty * opcion.precio * 100) / 100,
           }];
       return { ...prev, lineas, ambiguos: prev.ambiguos.filter((_, i) => i !== idx) };
     });
-    setQtys(q => ({ ...q, [opcion.productId]: (q[opcion.productId] || 0) + amb.qty }));
+    setQtys(q => ({ ...q, [lineKey(opcion)]: (q[lineKey(opcion)] || 0) + amb.qty }));
   }, [result]);
 
   // Descartar un ítem ambiguo sin agregarlo (el cliente no quiso ninguna opción).
@@ -202,7 +208,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
       });
       if (r.ok) {
         const d = await r.json();
-        const opcion = amb.opciones.find(o => o.productId === d?.productId);
+        const opcion = amb.opciones.find(o => o.productId === d?.productId && (o.variantId || null) === (d?.variantId || null));
         if (opcion) resolverAmbiguo(idx, opcion);
         // si no matcheó ninguna, dejamos el pendiente tal cual: puede tocar un botón o reintentar.
       }
@@ -274,7 +280,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
 
   const confirmar = () => {
     const lineas = (result?.lineas || [])
-      .map(l => ({ productId: l.productId, qty: qtys[l.productId] || 0 }))
+      .map(l => ({ productId: l.productId, variantId: l.variantId || null, qty: qtys[lineKey(l)] || 0 }))
       .filter(l => l.qty > 0);
     if (lineas.length === 0) { onClose(); return; }
     onConfirm(lineas);
@@ -283,8 +289,8 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
   if (!open) return null;
 
   const totalRevision = (result?.lineas || [])
-    .reduce((s, l) => s + (qtys[l.productId] || 0) * (l.precio || 0), 0);
-  const nLineas = (result?.lineas || []).filter(l => (qtys[l.productId] || 0) > 0).length;
+    .reduce((s, l) => s + (qtys[lineKey(l)] || 0) * (l.precio || 0), 0);
+  const nLineas = (result?.lineas || []).filter(l => (qtys[lineKey(l)] || 0) > 0).length;
 
   // ── UI ─────────────────────────────────────────────────────────────────────
   return (
@@ -324,8 +330,9 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
 
         <div style={{ padding: '4px 18px 18px', overflowY: 'auto' }}>
 
-          {/* Input de foto oculto (cámara en móvil / archivo en desktop). */}
-          <input ref={fileRef} type="file" accept="image/*" capture="environment"
+          {/* Input de foto oculto. Sin `capture`: el celular deja elegir entre
+              galería o cámara (con capture forzaba solo la cámara). */}
+          <input ref={fileRef} type="file" accept="image/*"
             onChange={onFile} style={{ display: 'none' }} />
 
           {/* ---------- ESCUCHANDO / ESCRIBIR / FOTO ---------- */}
@@ -449,9 +456,10 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
               {result.lineas.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
                   {result.lineas.map(l => {
-                    const q = qtys[l.productId] || 0;
+                    const k = lineKey(l);
+                    const q = qtys[k] || 0;
                     return (
-                      <div key={l.productId} style={{ display: 'flex', alignItems: 'center', gap: 10,
+                      <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10,
                         padding: '10px 12px', borderRadius: 12, background: '#f7f7f4',
                         opacity: q > 0 ? 1 : 0.5 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -460,12 +468,12 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 2,
                           background: '#fff', border: '1px solid #e0e0d8', borderRadius: 20, padding: 2 }}>
-                          <button onClick={() => setQ(l.productId, q - 1)} aria-label="Menos" style={btnStep}>−</button>
-                          <input value={q} onChange={e => setQ(l.productId, e.target.value)}
+                          <button onClick={() => setQ(k, q - 1)} aria-label="Menos" style={btnStep}>−</button>
+                          <input value={q} onChange={e => setQ(k, e.target.value)}
                             inputMode="numeric" aria-label={`Cantidad de ${l.nombre}`}
                             style={{ width: 34, textAlign: 'center', border: 'none', outline: 'none',
                               fontSize: 14, fontWeight: 600, fontFamily: SANS, color: '#141614', background: 'transparent' }} />
-                          <button onClick={() => setQ(l.productId, q + 1)} aria-label="Más" style={btnStep}>+</button>
+                          <button onClick={() => setQ(k, q + 1)} aria-label="Más" style={btnStep}>+</button>
                         </div>
                       </div>
                     );
@@ -482,7 +490,7 @@ export default function VozPedido({ open, token, isMobile, onClose, onConfirm })
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {a.opciones.map(o => (
-                          <button key={o.productId} onClick={() => resolverAmbiguo(idx, o)}
+                          <button key={lineKey(o)} onClick={() => resolverAmbiguo(idx, o)}
                             style={chipOpcion}>
                             {o.nombre} <span style={{ opacity: .7 }}>· {money(o.precio)}/{o.unidad}</span>
                           </button>

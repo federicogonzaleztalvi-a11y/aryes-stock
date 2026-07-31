@@ -60,6 +60,7 @@ export default async function handler(req, res) {
     .filter(o => o && typeof o.productId === 'string' && o.productId)
     .map(o => ({
       productId: o.productId,
+      variantId: (typeof o.variantId === 'string' && o.variantId) ? o.variantId : null,
       nombre: String(o.nombre || '').slice(0, 200),
       unidad: String(o.unidad || 'un').slice(0, 40),
       precio: Number(o.precio) || 0,
@@ -73,7 +74,7 @@ export default async function handler(req, res) {
       const status = code === 'anthropic_not_configured' ? 503 : 502;
       return res.status(status).json({ error: code });
     }
-    return res.status(200).json({ ok: true, productId: r.productId });
+    return res.status(200).json({ ok: true, productId: r.productId, variantId: r.variantId || null });
   } catch (err) {
     console.error('[resolver-ambiguo] Error:', err);
     return res.status(500).json({ error: 'Internal error' });

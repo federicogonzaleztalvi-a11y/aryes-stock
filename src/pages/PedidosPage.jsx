@@ -2925,9 +2925,14 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // elige categoría + subcategoría de una, y no queremos que este reset la pise).
   useEffect(() => { setSubFil(prev => (prev && subActuales.includes(prev) ? prev : '')); }, [catFil, subActuales]);
 
+  // Normaliza para comparar categoría/subcategoría sin que diferencias de mayúsculas
+  // o espacios sobrantes escondan productos: la etiqueta del filtro viene de la
+  // taxonomía (admin) y el valor del producto viene de su ficha, y pueden diferir
+  // en casing/espacios aunque sean "la misma" categoría.
+  const norm = (s) => String(s || '').trim().toLowerCase();
   const filtered = useMemo(() => items.filter(i => {
-    const mCat = catFil === 'Todos' || i.categoria === catFil;
-    const mSub = !subFil || i.subcategoria === subFil;
+    const mCat = catFil === 'Todos' || norm(i.categoria) === norm(catFil);
+    const mSub = !subFil || norm(i.subcategoria) === norm(subFil);
     const mQ   = !busq || i.nombre.toLowerCase().includes(busq.toLowerCase())
       || (i.marca || '').toLowerCase().includes(busq.toLowerCase());
     return mCat && mSub && mQ;
@@ -2988,9 +2993,12 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       (lineas || []).forEach(l => {
         const it = items.find(p => p.id === l.productId);
         if (!it) return;
+        // Clave con variante (color/sabor/tamaño) igual que en el catálogo manual:
+        // "id::variantId". Sin variante queda "id".
+        const k = cartKey(it, l.variantId || null);
         const min = it.min_order_qty || 1;
         const add = Math.max(min, Math.floor(l.qty) || min);
-        n[l.productId] = (n[l.productId] || 0) + add;
+        n[k] = (n[k] || 0) + add;
       });
       return n;
     });

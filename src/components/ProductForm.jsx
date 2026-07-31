@@ -1,8 +1,17 @@
 import ImageUpload from './ImageUpload.jsx';
 import { getOrgId } from '../lib/constants.js';
 import { getTaxConfig } from '../lib/taxConfig.js';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { T, totalLead, rop, safetyStock, eoq, Inp, Sel, Field, Btn, Cap } from '../lib/ui.jsx';
+
+// Taxonomía de categorías (tabla `categories`) — la MISMA fuente de verdad que
+// gestiona CategoriasManager. El form la lee directo para que el dropdown de
+// subcategorías NO dependa de qué productos alcanzaron a cargar en memoria (esa
+// dependencia hacía que "según cuándo inicies se vieran menos subcategorías").
+function _sessionToken() {
+  try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.access_token || ''; }
+  catch { return ''; }
+}
 
 // Combobox estilo Shopify: elegí una opción ya creada (flecha ▾ + lista visible,
 // filtra a medida que tipeás) o creá una nueva inline ("Crear …"). Reemplaza al
@@ -67,6 +76,41 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
   const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]}};
   const normVariants=(v)=>{const o=v&&typeof v==="object"&&!Array.isArray(v)?v:{};return{label:o.label??"Color",options:Array.isArray(o.options)?o.options:[]};};
   const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[],variants:normVariants(product.variants)}:blank);
+
+  // Filas de la taxonomía: [{id,nombre,parent_id}]. Se cargan una vez al abrir el
+  // form. Si falla (sesión, red), quedamos con lo derivado de productos (props).
+  const [taxRows,setTaxRows]=useState([]);
+  useEffect(()=>{
+    let vivo=true;
+    const tk=_sessionToken();
+    if(!tk)return;
+    fetch('/api/categories?action=list',{headers:{Authorization:`Bearer ${tk}`}})
+      .then(r=>r.ok?r.json():[])
+      .then(rows=>{if(vivo&&Array.isArray(rows))setTaxRows(rows);})
+      .catch(()=>{});
+    return()=>{vivo=false;};
+  },[]);
+
+  // Categorías = unión (taxonomía madre + las derivadas de productos por props).
+  const cats=useMemo(()=>{
+    const set=new Map(); // lower -> label (preserva el casing de la taxonomía)
+    for(const c of taxRows){ if(!c.parent_id&&c.nombre){const k=c.nombre.trim().toLowerCase();if(!set.has(k))set.set(k,c.nombre.trim());} }
+    for(const c of categories){ if(c){const k=String(c).trim().toLowerCase();if(!set.has(k))set.set(k,String(c).trim());} }
+    return [...set.values()].sort((a,b)=>a.localeCompare(b,'es'));
+  },[taxRows,categories]);
+
+  // Subcategorías por categoría = unión (subcats de la taxonomía bajo esa madre +
+  // las que ya usan los productos). Dedup case-insensitive, sin depender de la carga.
+  const subsByCat=useMemo(()=>{
+    const madreById=new Map(); // id -> nombre madre
+    for(const c of taxRows){ if(!c.parent_id&&c.nombre)madreById.set(c.id,c.nombre.trim()); }
+    const out={}; // catLower -> Map(subLower->label)
+    const add=(cat,sub)=>{ if(!cat||!sub)return; const ck=String(cat).trim().toLowerCase(); const sk=String(sub).trim().toLowerCase(); (out[ck]=out[ck]||new Map()); if(!out[ck].has(sk))out[ck].set(sk,String(sub).trim()); };
+    for(const c of taxRows){ if(c.parent_id){const madre=madreById.get(c.parent_id); add(madre,c.nombre);} }
+    for(const [cat,set] of Object.entries(subcatsByCat||{})){ for(const s of set) add(cat,s); }
+    // resolver para la categoría elegida por su nombre (case-insensitive)
+    return (catName)=>{ const ck=String(catName||'').trim().toLowerCase(); return out[ck]?[...out[ck].values()].sort((a,b)=>a.localeCompare(b,'es')):[]; };
+  },[taxRows,subcatsByCat]);
 
   // WA template in localStorage
   // wa template — read from localStorage, not used in current form UI
@@ -143,10 +187,10 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
         </Field>
         <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
         <Field label="Categoría" hint="Agrupa el producto en el portal. Elegí una existente o escribí una nueva. Vacío = sin categoría.">
-          <Combobox value={f.category||""} onChange={v=>set("category",v)} options={categories} placeholder="Elegí o escribí una categoría"/>
+          <Combobox value={f.category||""} onChange={v=>set("category",v)} options={cats} placeholder="Elegí o escribí una categoría"/>
         </Field>
         <Field label="Subcategoría" hint="Opcional. Sub-nivel dentro de la categoría (ej: dentro de Bebidas → Gaseosas). Gestioná las opciones desde el botón Categorías.">
-          <Combobox value={f.subcategoria||""} onChange={v=>set("subcategoria",v)} options={[...(subcatsByCat[f.category]||[])]}
+          <Combobox value={f.subcategoria||""} onChange={v=>set("subcategoria",v)} options={subsByCat(f.category)}
             placeholder={f.category?"Elegí o escribí una subcategoría":"Elegí primero una categoría"} disabled={!f.category}/>
         </Field>
         <Field label={"Costo unitario (" + taxCfg.currency + ")"}>
