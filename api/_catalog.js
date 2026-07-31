@@ -370,8 +370,17 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
     }
     categorias = categoriasArbol.map(m => m.nombre);
   } else {
+    // Sin taxonomía en la tabla `categories`: derivamos todo de los productos.
+    // Las subcategorías salen de lo que los productos usan bajo cada categoría
+    // (fuente autoritativa) — así no desaparecen del portal solo porque la
+    // taxonomía esté vacía. El match es auto-consistente (misma cadena categoria).
     categorias = [...new Set(items.map(i => i.categoria))].sort();
-    categoriasArbol = categorias.map(nombre => ({ nombre, subcategorias: [] }));
+    categoriasArbol = categorias.map(nombre => {
+      const subcategorias = [...new Set(
+        items.filter(i => i.categoria === nombre && i.subcategoria).map(i => i.subcategoria)
+      )];
+      return { nombre, subcategorias };
+    });
   }
 
   // ── 4. Config del portal (brandcfg) de la org ──────────────────────────────
