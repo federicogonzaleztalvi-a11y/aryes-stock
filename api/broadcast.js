@@ -70,10 +70,10 @@ async function lastOrderByClient(org, svcH) {
     if (!last[cid] || t > last[cid]) last[cid] = t;
   };
   const [vRes, bRes] = await Promise.all([
-    fetch(`${SB_URL}/rest/v1/ventas?org_id=eq.${encodeURIComponent(org)}&estado=neq.cancelada&select=cliente_id,fecha,created_at&order=created_at.desc&limit=5000`, { headers: svcH }),
+    fetch(`${SB_URL}/rest/v1/ventas?org_id=eq.${encodeURIComponent(org)}&estado=neq.cancelada&select=cliente_id,fecha,creado_en&order=creado_en.desc&limit=5000`, { headers: svcH }),
     fetch(`${SB_URL}/rest/v1/b2b_orders?org_id=eq.${encodeURIComponent(org)}&estado=neq.cancelada&select=cliente_id,creado_en&order=creado_en.desc&limit=5000`, { headers: svcH }),
   ]);
-  if (vRes.ok) (await vRes.json()).forEach(v => bump(v.cliente_id, v.created_at || v.fecha));
+  if (vRes.ok) (await vRes.json()).forEach(v => bump(v.cliente_id, v.creado_en || v.fecha));
   if (bRes.ok) (await bRes.json()).forEach(o => bump(o.cliente_id, o.creado_en));
   return last;
 }

@@ -195,7 +195,7 @@ export default async function handler(req, res) {
         // sólo lo que el admin importó. Normalizamos productId→productoId.
         const [otherVentasRes, otherPortalRes] = await Promise.all([
           fetch(
-            SB_URL + '/rest/v1/ventas?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=created_at.desc&limit=100',
+            SB_URL + '/rest/v1/ventas?org_id=eq.' + org + '&cliente_id=neq.' + clienteId + '&estado=neq.cancelada&select=items,cliente_id&order=creado_en.desc&limit=100',
             { headers: svcHeaders }
           ),
           fetch(
