@@ -373,14 +373,21 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
     // Sin taxonomía en la tabla `categories`: derivamos todo de los productos.
     // Las subcategorías salen de lo que los productos usan bajo cada categoría
     // (fuente autoritativa) — así no desaparecen del portal solo porque la
-    // taxonomía esté vacía. El match es auto-consistente (misma cadena categoria).
-    categorias = [...new Set(items.map(i => i.categoria))].sort();
-    categoriasArbol = categorias.map(nombre => {
-      const subcategorias = [...new Set(
-        items.filter(i => i.categoria === nombre && i.subcategoria).map(i => i.subcategoria)
-      )];
-      return { nombre, subcategorias };
-    });
+    // taxonomía esté vacía.
+    // Hacemos TRIM de categoría y subcategoría al agrupar: colapsa duplicados por
+    // espacios sobrantes cargados a mano (" Mix" vs "Mix", "Premezclas " vs
+    // "Premezclas"). El filtro del portal ya normaliza (trim+minúsculas), así que
+    // el match producto↔menú sigue funcionando aunque el dato crudo tenga espacios.
+    const byCat = new Map(); // categoríaTrim -> Set(subcategoríaTrim)
+    for (const i of items) {
+      const c = String(i.categoria || '').trim();
+      if (!c) continue;
+      if (!byCat.has(c)) byCat.set(c, new Set());
+      const s = String(i.subcategoria || '').trim();
+      if (s) byCat.get(c).add(s);
+    }
+    categorias = [...byCat.keys()].sort();
+    categoriasArbol = categorias.map(nombre => ({ nombre, subcategorias: [...byCat.get(nombre)] }));
   }
 
   // ── 4. Config del portal (brandcfg) de la org ──────────────────────────────
