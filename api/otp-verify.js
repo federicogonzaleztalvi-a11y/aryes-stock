@@ -3,6 +3,7 @@
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { findClientByPhone } from './_client-lookup.js';
+import { getClientIp } from './_client-ip.js';
 
 const SB_URL     = process.env.SUPABASE_URL;
 const SB_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -39,7 +40,7 @@ export default async function handler(req, res) {
 
   // Rate limit por IP además del MAX_ATTEMPTS por-OTP: frena fuerza bruta que rota
   // entre múltiples OTPs/teléfonos desde una misma IP.
-  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  const _ip = getClientIp(req);
   if (!(await checkRateLimit('otp-verify:' + _ip, 600, 30, { failClosed: true })))
     return res.status(429).json({ error: 'Demasiados intentos. Esperá un momento.' });
 

@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pazque · Manual del distribuidor</title>
+<style>
+  :root{
+    --g:#059669; --g-dark:#047857; --g-soft:#ecfdf5; --g-line:#a7f3d0;
+    --ink:#1a1a18; --muted:#5b6660; --line:#e6e9e7; --bg:#ffffff; --paper:#f7f9f8;
+    --amber:#b45309; --amber-soft:#fffbeb; --amber-line:#fde68a;
+    --radius:16px; --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(2,40,30,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; color:var(--ink); background:var(--paper);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:0 24px}
+  h1,h2,h3,h4{line-height:1.2; letter-spacing:-.02em; margin:0}
+  p{margin:0 0 14px}
+  a{color:var(--g-dark); text-decoration:none}
+  .muted{color:var(--muted)}
+  .tag{display:inline-block; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--g-dark); background:var(--g-soft); border:1px solid var(--g-line); padding:4px 10px; border-radius:999px}
+
+  /* ---------- Cover ---------- */
+  .cover{
+    background:linear-gradient(180deg,#f1f8f4 0%,#ffffff 72%);
+    color:var(--ink); padding:60px 0 52px; position:relative; overflow:hidden;
+    border-bottom:1px solid var(--line);
+  }
+  .cover::after{content:""; position:absolute; inset:-32% -18% auto auto; width:520px; height:520px;
+    background:radial-gradient(closest-side, rgba(5,150,105,.13), transparent); z-index:0}
+  .cover .wrap{position:relative; z-index:1}
+  .brandrow{display:flex; align-items:center; gap:14px; margin-bottom:38px}
+  .brandrow .name{font-weight:800; font-size:20px; letter-spacing:-.01em; color:var(--ink)}
+  .cover h1{font-size:52px; font-weight:850; max-width:15ch; color:var(--ink)}
+  .cover h1 .hl{color:var(--g)}
+  .cover .lead{font-size:20px; color:var(--muted); max-width:52ch; margin-top:18px}
+  .cover .lead b{color:var(--ink); font-weight:700}
+  .cover .meta{margin-top:34px; display:flex; gap:28px; flex-wrap:wrap; font-size:14px; color:var(--muted)}
+  .cover .meta b{color:var(--ink); font-weight:700}
+  .pill-list{display:flex; gap:10px; flex-wrap:wrap; margin-top:28px; position:relative; z-index:2}
+  .pill-list span{font-size:13px; font-weight:600; padding:7px 13px; border:1px solid var(--g-line);
+    border-radius:999px; color:var(--g-dark); background:var(--g-soft)}
+
+  /* ---------- Sections ---------- */
+  section{padding:54px 0; border-bottom:1px solid var(--line)}
+  section.alt{background:var(--bg)}
+  .kicker{font-size:13px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--g); margin-bottom:10px}
+  h2.sec{font-size:34px; font-weight:820; margin-bottom:10px}
+  .sec-lead{font-size:18px; color:var(--muted); max-width:64ch; margin-bottom:30px}
+
+  /* ---------- TOC ---------- */
+  .toc{display:grid; grid-template-columns:repeat(2,1fr); gap:10px 26px; margin-top:8px}
+  .toc a{display:flex; gap:12px; align-items:baseline; padding:9px 0; border-bottom:1px dashed var(--line); color:var(--ink); font-weight:600}
+  .toc a .n{color:var(--g); font-weight:800; min-width:26px}
+  .toc a:hover{color:var(--g-dark)}
+
+  /* ---------- Value cards ---------- */
+  .grid{display:grid; gap:16px}
+  .grid.c3{grid-template-columns:repeat(3,1fr)}
+  .grid.c2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:22px; box-shadow:var(--shadow)}
+  .card h3{font-size:18px; margin-bottom:8px}
+  .card p{font-size:15px; color:var(--muted); margin:0}
+  .ic{width:38px; height:38px; border-radius:10px; background:var(--g-soft); border:1px solid var(--g-line);
+    display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:14px}
+
+  /* ---------- Feature module ---------- */
+  .mod{background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:24px 26px; box-shadow:var(--shadow); margin-bottom:16px}
+  .mod-head{display:flex; align-items:center; gap:14px; margin-bottom:6px}
+  .mod-head .badge{font-size:12px; font-weight:800; color:#fff; background:var(--g); border-radius:8px; padding:3px 9px; letter-spacing:.02em; white-space:nowrap}
+  .mod-head h3{font-size:21px}
+  .mod .role{font-size:12px; font-weight:700; color:var(--muted); margin-left:auto; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap}
+  .mod .what{font-size:16px; color:var(--ink); margin:6px 0 12px}
+  .mod h4.sub{font-size:13px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--g-dark); margin:14px 0 8px}
+  .mod ul{margin:0; padding-left:20px}
+  .mod ul li{font-size:15px; color:var(--muted); margin-bottom:6px}
+  .mod ul li b{color:var(--ink); font-weight:650}
+  .group-title{font-size:14px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--g-dark);
+    margin:30px 0 14px; display:flex; align-items:center; gap:10px}
+  .group-title::after{content:""; flex:1; height:1px; background:var(--g-line)}
+
+  /* ---------- Flow ---------- */
+  .flow{counter-reset:step; display:grid; gap:14px}
+  .step{display:flex; gap:16px; align-items:flex-start; background:var(--bg); border:1px solid var(--line);
+    border-radius:14px; padding:18px 20px; box-shadow:var(--shadow)}
+  .step::before{counter-increment:step; content:counter(step); flex:0 0 34px; height:34px; border-radius:50%;
+    background:var(--g); color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center}
+  .step h4{font-size:16px; margin-bottom:4px}
+  .step p{font-size:14px; color:var(--muted); margin:0}
+
+  /* ---------- Callout ---------- */
+  .callout{background:var(--g-soft); border:1px solid var(--g-line); border-left:4px solid var(--g);
+    border-radius:12px; padding:18px 20px; margin:14px 0}
+  .callout b{color:var(--g-dark)}
+  .callout p{margin:0; font-size:15px}
+  .callout.warn{background:var(--amber-soft); border-color:var(--amber-line); border-left-color:var(--amber)}
+  .callout.warn b{color:var(--amber)}
+
+  /* ---------- Footer ---------- */
+  footer{padding:46px 0 60px; color:var(--muted); font-size:14px}
+  footer .name{color:var(--ink); font-weight:800}
+
+  @media (max-width:720px){
+    .cover h1{font-size:38px}
+    .grid.c3,.grid.c2,.toc{grid-template-columns:1fr}
+    h2.sec{font-size:27px}
+    .mod-head{flex-wrap:wrap}
+    .mod .role{margin-left:0}
+  }
+  @media print{
+    body{background:#fff}
+    section{border-bottom:none; padding:8px 0 26px; break-before:page; page-break-before:always}
+    #intro{break-before:auto; page-break-before:auto}
+    .cover{padding:40px 0}
+    .mod,.card,.step,.callout{box-shadow:none}
+    .mod,.card,.step,.callout,.toc a{break-inside:avoid; page-break-inside:avoid}
+    h2.sec,h3{break-after:avoid; page-break-after:avoid}
+    a{color:var(--ink)}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<header class="cover">
+  <div class="wrap">
+    <div class="brandrow"><span class="name">Pazque</span></div>
+    <span class="tag">Manual del distribuidor</span>
+    <h1>Todo lo que hace tu <span class="hl">plataforma</span>, pestaña por pestaña.</h1>
+    <p class="lead">Esta guía te explica <b>qué hace cada sección</b> del panel y <b>cómo configurarla</b> para que trabaje por vos: stock, pedidos, facturación, logística, el portal de tus clientes y el copiloto de IA.</p>
+    <div class="pill-list">
+      <span>Panel de administración</span><span>Portal de clientes</span><span>Portal de vendedores</span>
+      <span>Facturación</span><span>Depósito y rutas</span><span>WhatsApp</span><span>Analítica</span>
+    </div>
+    <div class="meta">
+      <div><b>Para</b> distribuidoras mayoristas · gastronomía · alimentos · cosmética</div>
+      <div><b>Acceso</b> pazque.com</div>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== CÓMO LEER ===================== -->
+<section class="alt" id="intro">
+  <div class="wrap">
+    <div class="kicker">Cómo usar este manual</div>
+    <h2 class="sec">Cada sección es una pestaña del panel.</h2>
+    <p class="sec-lead">El panel está dividido en 5 bloques en el menú de la izquierda. Este manual sigue el mismo orden. Para cada pestaña vas a ver <b>qué hace</b> y <b>qué tenés que cargar o prender</b> para que funcione.</p>
+    <div class="grid c3">
+      <div class="card"><div class="ic">🟢</div><h3>Lista para usar</h3><p>La pestaña funciona apenas cargás tus datos. No requiere configuración especial.</p></div>
+      <div class="card"><div class="ic">⚙️</div><h3>Requiere activarse</h3><p>Necesita que prendas una integración o cargues algo antes (te lo aclaramos en cada caso).</p></div>
+      <div class="card"><div class="ic">🤖</div><h3>Con inteligencia artificial</h3><p>La IA hace el trabajo pesado: recomienda, sugiere reposición y analiza tus campañas.</p></div>
+    </div>
+    <div class="callout"><p><b>Roles:</b> no todos ven todo. El <b>Admin</b> ve el panel completo. El <b>Operador</b> ve depósito y operación. El <b>Vendedor</b> entra por su propio portal. El <b>Contador</b> ve facturación y análisis. Configurás los roles en <b>Configuración → Usuarios</b>.</p></div>
+  </div>
+</section>
+
+<!-- ===================== TOC ===================== -->
+<section id="toc">
+  <div class="wrap">
+    <div class="kicker">Contenido</div>
+    <h2 class="sec">Índice</h2>
+    <div class="toc">
+      <a href="#primeros-pasos"><span class="n">0</span> Primeros pasos (puesta en marcha)</a>
+      <a href="#principal"><span class="n">1</span> Principal (tu día a día)</a>
+      <a href="#operaciones"><span class="n">2</span> Operaciones (depósito y logística)</a>
+      <a href="#comercial"><span class="n">3</span> Comercial (clientes y ventas)</a>
+      <a href="#analisis"><span class="n">4</span> Análisis (números y decisiones)</a>
+      <a href="#sistema"><span class="n">5</span> Sistema (importar y conectar)</a>
+      <a href="#portal"><span class="n">6</span> El portal de tus clientes</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 0 · PRIMEROS PASOS ===================== -->
+<section class="alt" id="primeros-pasos">
+  <div class="wrap">
+    <div class="kicker">Bloque 0</div>
+    <h2 class="sec">Primeros pasos</h2>
+    <p class="sec-lead">El orden recomendado para poner la plataforma en marcha. Cada paso se hace desde la pestaña que se indica.</p>
+    <div class="flow">
+      <div class="step"><div><h4>Cargá tus productos</h4><p>Pestaña <b>Importar datos</b>: descargás la plantilla de Excel, la completás y la subís. También podés cargarlos a mano desde <b>Inventario</b>.</p></div></div>
+      <div class="step"><div><h4>Cargá tus clientes</h4><p>Pestaña <b>Importar clientes</b>: misma lógica, plantilla de Excel con teléfono, RUT, zona y lista de precios.</p></div></div>
+      <div class="step"><div><h4>Armá tus listas de precios</h4><p>Pestaña <b>Precios</b>: definís precios y descuentos por lista (mayorista, minorista, etc.) y se los asignás a cada cliente.</p></div></div>
+      <div class="step"><div><h4>Decidí si controlás stock</h4><p>Pestaña <b>Configuración</b>: el toggle "Controlo inventario". Si lo prendés, el sistema valida stock real en cada pedido.</p></div></div>
+      <div class="step"><div><h4>Poné el email de avisos</h4><p>Pestaña <b>Configuración</b>: dónde querés recibir el aviso cada vez que entra un pedido del portal.</p></div></div>
+      <div class="step"><div><h4>Compartí tu portal</h4><p>Pasale a tus clientes el link de tu portal. Entran con su WhatsApp y ya te compran solos.</p></div></div>
+    </div>
+    <div class="callout"><p><b>No hace falta hacer todo el primer día.</b> Con productos + clientes + precios ya podés empezar a vender por el portal. El resto (depósito, rutas, facturación) lo vas prendiendo cuando lo necesites.</p></div>
+  </div>
+</section>
+
+<!-- ===================== 1 · PRINCIPAL ===================== -->
+<section id="principal">
+  <div class="wrap">
+    <div class="kicker">Bloque 1</div>
+    <h2 class="sec">Principal</h2>
+    <p class="sec-lead">Lo que mirás todos los días: el estado de tu negocio, tus productos, tus compras a proveedores y tus precios.</p>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Tablero</span><h3>Inicio / Dashboard</h3><span class="role">Admin</span></div>
+      <p class="what">La foto de tu negocio al entrar: capital inmovilizado en stock, productos en cero o críticos, entregas del día y alertas de vencimientos.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Se carga solo al entrar. No configurás nada.</li>
+        <li>Tiene un <b>checklist de puesta en marcha</b> que te guía si recién arrancás.</li>
+        <li>Exportás el <b>reporte diario</b> en CSV con un clic.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Stock</span><h3>Inventario / Productos</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">La tabla de todos tus productos: stock actual, punto de repedido, rotación y una mini-tendencia de ventas por producto.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Buscás por nombre, código o proveedor.</li>
+        <li>Editás la ficha de cada producto (precio, foto, categoría, proveedor).</li>
+        <li>Importás y exportás en Excel desde acá también.</li>
+        <li>Imprimís etiquetas de producto.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Compras</span><h3>Pedidos a proveedores</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Un pipeline visual de tus importaciones/compras en 4 fases: Preparación → Aduana → Flete → Depósito. Ves dónde está cada orden y cuántos días faltan (o de atraso, en rojo).</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Clic en una orden para ver el detalle y en qué fase está.</li>
+        <li>Botón directo a <b>WhatsApp del proveedor</b> para consultar el estado.</li>
+        <li>Cuando llega la mercadería, "Recibir" te lleva a la pestaña <b>Recepción</b>.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Proveedores</span><h3>Proveedores</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Fichas de cada proveedor: calificación, tiempos de entrega desglosados, condiciones de pago, mínimo de pedido, descuento y qué productos te provee.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Cargás un proveedor nuevo con sus datos y condiciones comerciales.</li>
+        <li>Los tiempos de entrega que cargues acá alimentan el cálculo de reposición en <b>Demanda</b>.</li>
+        <li>Tabla comparativa para decidir a quién comprarle.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Precios</span><h3>Precios y listas</h3><span class="role">Admin</span></div>
+      <p class="what">El corazón de tu política comercial. Armás listas (mayorista, minorista, cliente VIP…) y para cada producto definís un precio especial o descuentos por condición.</p>
+      <h4 class="sub">Cómo se configura</h4>
+      <ul>
+        <li><b>Precio especial fijo:</b> si lo ponés, ese es el precio, sin descuentos.</li>
+        <li><b>Descuento siempre:</b> % fijo sobre cualquier cantidad.</li>
+        <li><b>Descuento por caja cerrada:</b> % solo a las unidades que completan cajas.</li>
+        <li><b>Descuento por cantidad:</b> escalas tipo "desde 24 unidades, 15%".</li>
+      </ul>
+      <div class="callout"><p><b>Los descuentos nunca se suman:</b> el sistema aplica el <b>mayor</b> que corresponda a esa cantidad. Un preview en vivo te muestra lo que paga el cliente por cada cantidad antes de guardar.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 2 · OPERACIONES ===================== -->
+<section class="alt" id="operaciones">
+  <div class="wrap">
+    <div class="kicker">Bloque 2</div>
+    <h2 class="sec">Operaciones</h2>
+    <p class="sec-lead">Todo el movimiento físico de la mercadería: depósito, recepción, conteo, transferencias, rutas y seguimiento. Si no controlás stock físico todavía, este bloque lo prendés cuando quieras.</p>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Historial</span><h3>Movimientos</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">El libro mayor de tu stock: cada entrada y salida queda registrada (venta, recepción, ajuste, transferencia) con fecha, cantidad y motivo.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Es de consulta. Filtrás por producto o tipo de movimiento para auditar qué pasó con el stock.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Vencimientos</span><h3>Lotes</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Trazabilidad por lote con fecha de vencimiento. El sistema prioriza vender primero lo que vence antes (FEFO).</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Cargás un lote al recibir mercadería (número de lote + vencimiento).</li>
+        <li>El Dashboard te alerta de lo que está por vencer.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Ubicaciones</span><h3>Depósito</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">El mapa de tu depósito: dividís en ambientes (ej. seco y frío), pasillos, estantes y niveles. Cada producto tiene su ubicación (ej. A-03-B-2-05) y el sistema arma la ruta de armado más corta.</p>
+      <h4 class="sub">Cómo se configura</h4>
+      <ul>
+        <li>Definís las zonas de tu depósito y las posiciones (bins).</li>
+        <li>Asignás cada producto a una posición.</li>
+        <li>Al preparar un pedido, te da el recorrido óptimo (serpentina) respetando vencimientos.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Traslados</span><h3>Transferencias</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Mover stock entre depósitos o entre ubicaciones sin que se pierda el registro.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Elegís producto, origen, destino y cantidad. Queda asentado en Movimientos.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Reparto</span><h3>Rutas</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Armás las rutas de reparto del día: agrupás pedidos por zona y los asignás a un repartidor.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Seleccionás los pedidos a entregar y armás la ruta.</li>
+        <li>Cada ruta genera un link de seguimiento (ver Tracking).</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Seguimiento</span><h3>Tracking</h3><span class="role">Admin · Operador · Cliente</span></div>
+      <p class="what">Un link público de seguimiento para que tu cliente vea en tiempo real dónde está su entrega, sin tener que llamarte.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Se genera solo al crear la ruta. Le compartís el link al cliente por WhatsApp.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Entrada</span><h3>Recepción</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Recibís la mercadería del proveedor y suma stock automáticamente, todo en una sola operación segura (no se duplica ni se pierde).</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Llega de "Pedidos a proveedores" o la abrís directo.</li>
+        <li>Confirmás cantidades recibidas → el stock sube y queda el movimiento registrado.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Ajuste</span><h3>Conteo físico</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Conteo de inventario: comparás lo que dice el sistema contra lo que contás en el depósito y ajustás las diferencias de forma segura.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Cargás la cantidad física de cada producto.</li>
+        <li>El sistema ajusta el stock <b>sin pisar</b> una venta que entre mientras contás (protección de concurrencia).</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Facturas de compra</span><h3>Compras</h3><span class="role">Admin · Contador</span></div>
+      <p class="what">Registrás las facturas de compra a tus proveedores. Alimentan el costo de la mercadería (COGS) que usa el Estado de Resultados.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Cargás la factura del proveedor con sus ítems y montos.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Cámara</span><h3>Escáner</h3><span class="role">Admin · Operador</span></div>
+      <p class="what">Escaneás el código de barras con la cámara del celular para dar entrada o localizar un producto sin teclear.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Abrís la pestaña, permitís la cámara y apuntás al código. El movimiento queda registrado.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Despacho</span><h3>Packing y Batch Picking</h3><span class="role">Operador</span></div>
+      <p class="what">Herramientas para preparar despachos: <b>Packing</b> arma el bulto antes de enviarlo; <b>Batch Picking</b> prepara varios pedidos juntos en un solo recorrido.</p>
+      <div class="callout warn"><p><b>A tener en cuenta:</b> Packing hoy guarda el armado en el navegador donde estás trabajando. Si el operario cambia de computadora, no ve el bulto a medio armar. Son herramientas avanzadas; la mayoría opera bien sin ellas al arrancar.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 3 · COMERCIAL ===================== -->
+<section id="comercial">
+  <div class="wrap">
+    <div class="kicker">Bloque 3</div>
+    <h2 class="sec">Comercial</h2>
+    <p class="sec-lead">Tus clientes, tus ventas, tus pedidos del portal, la facturación y los mensajes. Es el bloque que más plata mueve.</p>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Clientes</span><h3>Clientes</h3><span class="role">Admin · Vendedor</span></div>
+      <p class="what">Tu cartera: nombre, teléfono, direcciones, lista de precios asignada y qué vendedor lo atiende.</p>
+      <h4 class="sub">Cómo se configura</h4>
+      <ul>
+        <li>Le asignás a cada cliente su <b>lista de precios</b> (así ve sus precios negociados en el portal).</li>
+        <li>Cargás <b>direcciones y teléfonos secundarios</b> (sucursales).</li>
+        <li>Con el campo <b>vendedor</b> definís quién lo atiende (habilita el Portal del vendedor).</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Leads ⚙️</span><h3>Prospectos</h3><span class="role">Admin</span></div>
+      <p class="what">Tu cantera de interesados: gente que dejó sus datos en tu portal pero todavía no es cliente. Ves de dónde vinieron (anuncio de Meta, Google, orgánico) y los aprobás o descartás.</p>
+      <h4 class="sub">Cómo se activa</h4>
+      <ul>
+        <li>Prendés <b>"Activar captación"</b> para que el portal muestre el botón "Pedí acceso" a las visitas.</li>
+        <li>Cargás tu <b>WhatsApp y email</b> para que te avise cuando llega un prospecto nuevo.</li>
+        <li>Al aprobar un prospecto, se crea como cliente automáticamente.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Ventas</span><h3>Ventas</h3><span class="role">Admin · Vendedor</span></div>
+      <p class="what">Todas las ventas que aceptaste, con su estado (pendiente → confirmada → preparada → entregada). Desde acá cobrás, facturás e imprimís remitos.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Abrís una venta, le agregás un cobro, la facturás o la pasás a preparación.</li>
+        <li>El stock se descuenta de forma segura al confirmar.</li>
+        <li>La numeración de ventas es correlativa y a prueba de choques.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">🤖 Resultado</span><h3>El portal vende</h3><span class="role">Admin</span></div>
+      <p class="what">La respuesta honesta a "¿cuánto me vendió el portal sin que yo mueva un dedo?": total facturado por el portal, cantidad de pedidos, ticket promedio, qué clientes compran más y cuánto se vende fuera de horario.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Elegís el período (3, 6 o 12 meses) y ves el número en grande.</li>
+        <li>Son números duros: solo ventas reales no canceladas.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Portal → Venta</span><h3>Órdenes enviadas</h3><span class="role">Admin</span></div>
+      <p class="what">La bandeja de pedidos que entraron por el portal de tus clientes. Los revisás y los "importás" como venta: se descuenta stock y el pedido queda marcado como procesado.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Ves los pedidos pendientes, abrís uno, revisás ítems y total.</li>
+        <li>"Importar como venta" lo pasa a la pestaña Ventas.</li>
+      </ul>
+      <div class="callout"><p><b>Ya quedó blindado:</b> la importación descuenta stock y libera la reserva en una sola operación atómica (evita vender dos veces el mismo stock). Esto se activó con el SQL de puesta a punto.</p></div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Facturación</span><h3>Facturación (CFE)</h3><span class="role">Admin · Contador</span></div>
+      <p class="what">Emitís comprobantes fiscales electrónicos, registrás cobros y seguís el estado de cada factura (emitida → cobrada parcial → cobrada), con estado de cuenta por cliente.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>"+ CFE nuevo", cargás cliente e ítems (o los traés desde una venta).</li>
+        <li>Registrás cobros y el saldo pendiente se actualiza solo.</li>
+        <li>La numeración de comprobantes es correlativa y segura.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Referencia</span><h3>Descuentos</h3><span class="role">Admin</span></div>
+      <p class="what">Una tabla de solo lectura para chequear de un vistazo qué descuento tiene cargado cada producto. No se edita desde acá.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Los descuentos reales se configuran en <b>Precios y listas</b>. Esta pestaña es solo para verificar.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">⚙️ WhatsApp</span><h3>Mensajes (broadcasts)</h3><span class="role">Admin</span></div>
+      <p class="what">Mandás mensajes masivos de WhatsApp a tus clientes: ideal para reactivar a los que hace rato no te compran o empujar un producto. Se personaliza con el nombre de cada uno.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Elegís la audiencia (ej. "sin comprar hace 30+ días").</li>
+        <li>Escribís el mensaje (con {nombre} para personalizar).</li>
+        <li>Marcás a quién incluir y enviás.</li>
+      </ul>
+      <div class="callout"><p><b>Requiere WhatsApp conectado</b> (ver Integraciones). Por política de Meta, el envío usa una plantilla pre-aprobada; el sistema ya la gestiona por vos.</p></div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Devoluciones</span><h3>Devoluciones</h3><span class="role">Admin · Vendedor</span></div>
+      <p class="what">El cliente pide una devolución desde el portal (o la cargás vos). Revisás ítem por ítem qué aceptás; el stock se restaura solo de lo aprobado y se genera la nota de crédito.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Desde el portal, el cliente elige la venta entregada, los ítems y el motivo.</li>
+        <li>Vos aprobás/rechazás y confirmás.</li>
+      </ul>
+      <div class="callout"><p><b>Ya quedó operativa:</b> se agregaron los datos que le faltaban a la tabla con el SQL de puesta a punto, así que las devoluciones desde el portal ahora se registran bien.</p></div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Equipo</span><h3>Portal del vendedor</h3><span class="role">Vendedor</span></div>
+      <p class="what">Un portal aparte para tu equipo de venta. El vendedor entra con su usuario, ve solo sus clientes asignados y arma pedidos en nombre de ellos. El pedido sale por el mismo motor que el portal del cliente.</p>
+      <h4 class="sub">Cómo se configura</h4>
+      <ul>
+        <li>Creás el usuario vendedor en <b>Configuración → Usuarios</b>.</li>
+        <li>En <b>Clientes</b>, asignás cada cliente a su vendedor.</li>
+        <li>El vendedor entra a <b>pazque.com/vendedor</b>, elige un cliente y le arma el pedido.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 4 · ANÁLISIS ===================== -->
+<section class="alt" id="analisis">
+  <div class="wrap">
+    <div class="kicker">Bloque 4</div>
+    <h2 class="sec">Análisis</h2>
+    <p class="sec-lead">Los números para tomar decisiones: indicadores, rentabilidad, reportes, cómo usan tu portal y qué te conviene reponer. Varias de estas pestañas mejoran cuanto más completos estén tus datos (costos, tiempos de proveedor).</p>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Indicadores</span><h3>KPIs</h3><span class="role">Admin · Contador</span></div>
+      <p class="what">El tablero de salud del negocio: ventas del período, margen bruto, stock crítico, vencimientos, efectividad de entregas y top de productos.</p>
+      <h4 class="sub">Cómo sacarle jugo</h4>
+      <ul><li>El <b>margen</b> necesita que tus productos tengan cargado el <b>costo</b>. Si no, aparece "—".</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Rentabilidad</span><h3>Estado de resultados</h3><span class="role">Admin · Contador</span></div>
+      <p class="what">Un P&L simplificado por mes: ingresos, costo de la mercadería vendida, margen bruto y compras a proveedores.</p>
+      <h4 class="sub">Cómo sacarle jugo</h4>
+      <ul>
+        <li>El costo de la mercadería sale de los <b>costos cargados en tus productos</b> al momento de la venta.</li>
+        <li>Si no cargás costos, muestra un aviso y el margen queda incompleto. Mantené los costos al día.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Reportes</span><h3>Informes</h3><span class="role">Admin · Contador</span></div>
+      <p class="what">Centro de exportación: bajás en CSV el stock, movimientos, ventas, lotes, clientes y entregas. También imprimís remitos.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Elegís el período y el reporte, y descargás. Listo para tu contador o tu Excel.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">🤖 Web ⚙️</span><h3>Analítica web</h3><span class="role">Admin · Contador</span></div>
+      <p class="what">Cómo usan tus clientes el portal: visitas, clientes activos, embudo (catálogo → producto → carrito → pedido), productos más vistos y si el "vendedor digital" (las recomendaciones) está convirtiendo.</p>
+      <h4 class="sub">Cómo se activa</h4>
+      <ul><li>Requiere que esté creada la tabla de eventos web. Si no aparecen datos, la propia pestaña te muestra el paso a paso para habilitarla.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">🤖 Meta Ads ⚙️</span><h3>Campañas Meta</h3><span class="role">Admin</span></div>
+      <p class="what">Tablero visual de tus anuncios de Facebook e Instagram: retorno de inversión (ROAS), costo por adquisición, gasto diario y <b>sugerencias de la IA</b> sobre qué anuncio conviene pausar o potenciar.</p>
+      <h4 class="sub">Cómo se activa</h4>
+      <ul><li>Conectás tu cuenta de Meta Ads en <b>Integraciones</b>. Sin conectar, la pestaña te muestra el botón para hacerlo.</li></ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">🤖 Reposición</span><h3>Demanda predictiva</h3><span class="role">Admin</span></div>
+      <p class="what">Calcula la rotación de cada producto y te dice qué reponer y cuándo: días de stock restante, punto de repedido dinámico y estado (URGENTE / PRÓXIMO / CRÍTICO). Además detecta clientes que ya deberían haberte comprado y no lo hicieron.</p>
+      <h4 class="sub">Cómo sacarle jugo</h4>
+      <ul>
+        <li>Cargá los <b>tiempos de entrega de tus proveedores</b> (en Proveedores) para que la reposición sea precisa.</li>
+        <li>El detector de clientes dormidos te da un mensaje de WhatsApp listo para mandarle a cada uno.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Trazabilidad</span><h3>Auditoría</h3><span class="role">Admin</span></div>
+      <p class="what">El registro de quién hizo qué: ventas, recepciones, ajustes, logins, cambios de configuración. Filtrás por usuario o tipo y exportás.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul><li>Muestra los últimos eventos. Útil para revisar movimientos sensibles o resolver una discusión de "¿quién tocó esto?".</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 5 · SISTEMA ===================== -->
+<section id="sistema">
+  <div class="wrap">
+    <div class="kicker">Bloque 5</div>
+    <h2 class="sec">Sistema</h2>
+    <p class="sec-lead">Cargar tus datos y conectar tus herramientas. Es lo que hacés al principio y cada tanto cuando sumás una integración.</p>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Carga masiva</span><h3>Importar datos (productos)</h3><span class="role">Admin</span></div>
+      <p class="what">Subís todo tu catálogo de una desde Excel. El sistema reconoce las columnas aunque no estén perfectas y te muestra una vista previa antes de confirmar.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Descargás la <b>plantilla</b>, la completás en Excel y la subís.</li>
+        <li>Si un producto ya existe (mismo código o nombre), lo <b>actualiza</b> en vez de duplicarlo.</li>
+        <li>Si algo no llega al servidor, te avisa para reintentar.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Carga masiva</span><h3>Importar clientes</h3><span class="role">Admin</span></div>
+      <p class="what">Igual que productos pero para tu cartera: teléfono, RUT, condición de pago, zona, horarios y lista de precios. Detecta duplicados por teléfono.</p>
+      <h4 class="sub">Cómo se usa</h4>
+      <ul>
+        <li>Plantilla con una fila de ejemplo → completás → subís.</li>
+        <li>La vista previa marca en amarillo los teléfonos repetidos y en verde los nuevos.</li>
+      </ul>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">⚙️ Conexiones</span><h3>Integraciones</h3><span class="role">Admin</span></div>
+      <p class="what">El centro de conexiones con herramientas externas, todo self-service (lo conectás vos, sin depender de nadie):</p>
+      <h4 class="sub">Qué podés conectar</h4>
+      <ul>
+        <li><b>WhatsApp Business:</b> para el login de tus clientes al portal y los broadcasts. Se conecta con tu propia cuenta de Meta.</li>
+        <li><b>Meta Ads:</b> para ver tus campañas en la pestaña Campañas.</li>
+        <li><b>SimpliRoute:</b> para enviar tus pedidos a tu software de ruteo automáticamente.</li>
+        <li><b>Control de inventario:</b> el toggle "Controlo inventario" (también en Configuración).</li>
+        <li><b>Email de notificaciones:</b> dónde recibir el aviso de cada pedido.</li>
+      </ul>
+      <div class="callout"><p><b>Seguridad:</b> los tokens de tus cuentas se guardan del lado del servidor, nunca en tu navegador. Cada conexión es tuya y privada.</p></div>
+    </div>
+
+    <div class="mod">
+      <div class="mod-head"><span class="badge">Ajustes</span><h3>Configuración</h3><span class="role">Admin</span></div>
+      <p class="what">Los ajustes centrales de tu cuenta: email de avisos, control de inventario, y la gestión de tu equipo (usuarios y roles).</p>
+      <h4 class="sub">Cómo se configura</h4>
+      <ul>
+        <li><b>Email de pedidos:</b> tipeás y guardás.</li>
+        <li><b>Controlo inventario:</b> si lo prendés, el sistema valida stock real en cada pedido y baja el stock ficticio a cero para que cargues el real.</li>
+        <li><b>Usuarios y roles:</b> das de alta a tu equipo (operador, vendedor, contador) y qué puede ver cada uno.</li>
+      </ul>
+      <div class="callout warn"><p><b>Ojo con "Controlo inventario":</b> mientras esté apagado, el portal nunca frena un pedido por falta de stock (ideal si todavía no cargaste inventario real). Prendelo recién cuando tengas el stock real cargado.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 6 · PORTAL ===================== -->
+<section class="alt" id="portal">
+  <div class="wrap">
+    <div class="kicker">Bloque 6</div>
+    <h2 class="sec">El portal de tus clientes</h2>
+    <p class="sec-lead">Lo que ve tu cliente cuando entra a comprarte. Es tu vendedor digital: trabaja de noche, los fines de semana y nunca se olvida de ofrecer.</p>
+
+    <div class="grid c3">
+      <div class="card"><div class="ic">📱</div><h3>Entra con su WhatsApp</h3><p>Tu cliente ingresa con su número y un código que le llega por WhatsApp. Sin contraseñas que olvidar.</p></div>
+      <div class="card"><div class="ic">🏷️</div><h3>Ve sus precios</h3><p>Cada cliente ve su lista de precios negociada, con sus descuentos por cantidad y por caja.</p></div>
+      <div class="card"><div class="ic">🛒</div><h3>Arma el pedido solo</h3><p>Navega tu catálogo con fotos, arma el carrito y confirma. El pedido te entra al panel al instante.</p></div>
+      <div class="card"><div class="ic">🔁</div><h3>"Volver a pedir"</h3><p>Le sugiere repetir lo que compró antes, para que el pedido recurrente sea de un toque.</p></div>
+      <div class="card"><div class="ic">🤖</div><h3>Recomendado para vos</h3><p>El vendedor digital le sugiere productos según lo que suele comprar. Upsell automático.</p></div>
+      <div class="card"><div class="ic">📲</div><h3>Se instala como app</h3><p>El portal es una app instalable: tu cliente lo agrega a la pantalla de su celular.</p></div>
+    </div>
+
+    <div class="callout"><p><b>Cómo lo activás:</b> compartís el link de tu portal (pazque.com con tu identificador) a tus clientes. Ellos entran, se validan por WhatsApp y ya te compran. Cada pedido cae en <b>Órdenes enviadas</b> y te llega el aviso por email.</p></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brandrow"><span class="name">Pazque</span></div>
+    <p class="muted">Manual del distribuidor · La plataforma que opera tu distribuidora por vos.<br>
+    Para imprimir en PDF: abrí este archivo en el navegador y usá Imprimir → Guardar como PDF.</p>
+  </div>
+</footer>
+
+</body>
+</html>

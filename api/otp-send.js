@@ -4,6 +4,7 @@
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { findClientByPhone } from './_client-lookup.js';
+import { getClientIp } from './_client-ip.js';
 import { randomInt } from 'node:crypto';
 
 const SB_URL     = process.env.SUPABASE_URL;
@@ -77,7 +78,8 @@ export default async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
-  const _ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  // IP real (no el primer valor spoofable de x-forwarded-for). Ver _client-ip.js.
+  const _ip = getClientIp(req);
   // Rate limit persistente (Supabase RPC) — efectivo en serverless multi-instancia.
   // El Map en memoria anterior no servía: cada lambda tenía su propio Map.
   if (!(await checkRateLimit('otp-send:' + _ip, 600, 5, { failClosed: true })))
