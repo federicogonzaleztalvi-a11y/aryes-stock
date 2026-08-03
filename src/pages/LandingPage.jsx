@@ -452,6 +452,73 @@ export default function LandingPage() {
         </FadeIn>
       </section>
 
+      {/* ── Se paga solo (anclaje de costo, estilo Amazon) ───────────────── */}
+      <FadeIn>
+        <section style={{ background: '#f5f5f3', padding: mobile ? '48px 20px' : '72px 24px' }}>
+          <div style={{ maxWidth: 880, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: 40 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>SE PAGA SOLO</div>
+              <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 26 : 'clamp(26px, 3.2vw, 34px)', fontWeight: 400, color: '#1a1a18', margin: 0, lineHeight: 1.15 }}>
+                No es un gasto nuevo. Es dejar de pagar lo de siempre.
+              </h2>
+              <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 540, margin: '14px auto 0', lineHeight: 1.6 }}>
+                Operar con planillas y WhatsApp ya te cuesta — en horas, en ventas que se caen y en gente. Pazque reemplaza todo eso por una sola cuota.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr auto 1fr', gap: mobile ? 16 : 20, alignItems: 'stretch' }}>
+              {/* Hoy, sin Pazque */}
+              <div style={{ background: '#fff', border: '1px solid #e8e8e6', borderRadius: 14, padding: '24px 24px 8px' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#9a7b3a', marginBottom: 18, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hoy, sin Pazque</div>
+                {[
+                  ['Horas cada día', 'pasando pedidos de WhatsApp a la planilla, a mano'],
+                  ['Ventas que se caen', 'por errores de stock o de transcripción'],
+                  ['Tu día interrumpido', 'con llamados de "¿dónde está mi pedido?"'],
+                  ['Alguien tomando pedidos', 'por teléfono, solo en horario de oficina'],
+                ].map(function(row) {
+                  return (
+                    <div key={row[0]} style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'flex-start' }}>
+                      <span style={{ color: '#c0a052', fontSize: 15, fontWeight: 700, lineHeight: 1.4, flexShrink: 0 }}>—</span>
+                      <span style={{ fontSize: 14, color: '#4b4b48', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#1a1a18', fontWeight: 600 }}>{row[0]}</strong> {row[1]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {!mobile && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c0c0bc', fontSize: 24 }}>→</div>
+              )}
+
+              {/* Con Pazque */}
+              <div style={{ background: '#f0fdf4', border: '2px solid ' + G, borderRadius: 14, padding: '24px 24px 8px', boxShadow: '0 8px 30px rgba(26,138,60,0.08)' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: G, marginBottom: 18, textTransform: 'uppercase', letterSpacing: 0.5 }}>Con Pazque</div>
+                {[
+                  ['Tus clientes piden solos', '24/7, desde su celular'],
+                  ['El stock baja solo', 'sin errores ni doble carga'],
+                  ['Tracking en vivo', 'cero llamados de seguimiento'],
+                  ['Una sola cuota fija', 'sin sumar sueldos ni horas extra'],
+                ].map(function(row) {
+                  return (
+                    <div key={row[0]} style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'flex-start' }}>
+                      <span style={{ color: G, fontSize: 14, fontWeight: 700, lineHeight: 1.4, flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: 14, color: '#2a2a28', lineHeight: 1.5 }}>
+                        <strong style={{ color: '#1a1a18', fontWeight: 600 }}>{row[0]}</strong> {row[1]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p style={{ textAlign: 'center', fontSize: mobile ? 15 : 16, color: '#27500a', margin: '28px auto 0', maxWidth: 560, lineHeight: 1.55 }}>
+              Si Pazque te evita <strong>una sola venta perdida al mes</strong>, ya se pagó solo.
+            </p>
+          </div>
+        </section>
+      </FadeIn>
+
       {/* ── Pricing ──────────────────────────────────────────────────────── */}
       <section id="precios" style={{ maxWidth: 480, margin: '0 auto', padding: mobile ? '56px 20px' : '80px 24px', textAlign: 'center' }}>
         <FadeIn>
@@ -478,7 +545,11 @@ export default function LandingPage() {
               <span style={{ fontSize: 15, color: '#9a9a96' }}>/mes</span>
             </div>
             <p style={{ fontSize: 13, color: G, fontWeight: 500, margin: '0 0 4px' }}>Precio de lanzamiento por 3 meses</p>
-            <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 24px' }}>Luego USD 299/mes</p>
+            <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 16px' }}>Luego USD 299/mes</p>
+
+            <div style={{ background: '#f0fdf4', border: '1px solid #d6efdc', borderRadius: 10, padding: '10px 14px', margin: '0 0 20px', fontSize: 12.5, color: '#27500a', lineHeight: 1.5, textAlign: 'left' }}>
+              Menos que <strong>medio sueldo de un vendedor part-time</strong>, y el portal toma pedidos por vos las 24 horas.
+            </div>
 
             <div style={{ borderTop: '1px solid #f0eeeb', paddingTop: 20, textAlign: 'left', fontSize: 14, color: '#4b4b48', lineHeight: 2.2 }}>
               {['Inventario ilimitado', 'Ventas y facturación', 'Rutas con GPS y tracking', 'Portal B2B para tus clientes',
