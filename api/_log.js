@@ -24,6 +24,10 @@ function emit(level, service, msg, extra = {}) {
   const output = JSON.stringify(entry);
   if (LEVELS[level] >= LEVELS.error) {
     console.error(output);
+    // Torre de Control: alerta proactiva ante error/fatal. Import dinámico para
+    // no cargar nada en el camino normal (info/debug) y fire-and-forget para no
+    // bloquear ni romper nunca el request. Ver api/_alert.js.
+    import('./_alert.js').then(m => m.maybeAlert(entry)).catch(() => {});
   } else {
     console.log(output);
   }
