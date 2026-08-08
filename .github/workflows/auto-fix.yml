@@ -48,15 +48,16 @@ jobs:
             - En la descripción del PR, en lenguaje claro (el que aprueba no
               programa): qué se rompía, qué cambia tu fix, y cómo probarlo en el
               Preview Deploy de Vercel.
-          # Bash está DESACTIVADO por defecto en la Action (seguridad). En v1 los
-          # permisos y max_turns se aplican de forma confiable por `settings` (JSON),
-          # NO por claude_args (que tiene bugs conocidos para esos flags). Sin esto el
-          # agente choca contra denegaciones de permiso y no puede editar ni abrir PR.
+          # Bash está DESACTIVADO por defecto en la Action (seguridad). Los permisos
+          # se aplican por `settings` (formato settings.json de Claude Code). OJO: sólo
+          # claves válidas de settings.json — una clave inválida (ej. max_turns) hace
+          # que la Action descarte TODO el bloque y el agente quede sin permisos.
+          # defaultMode acceptEdits = auto-aprueba ediciones (no hay humano en CI).
           settings: |
             {
               "model": "claude-opus-4-8",
-              "max_turns": 40,
               "permissions": {
-                "allow": ["Read", "Edit", "Write", "Bash(git:*)", "mcp__github__create_pull_request"]
+                "defaultMode": "acceptEdits",
+                "allow": ["Read", "Edit", "Write", "Bash", "mcp__github__create_pull_request"]
               }
             }
