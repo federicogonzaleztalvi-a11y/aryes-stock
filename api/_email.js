@@ -148,9 +148,9 @@ export const templates = {
     subject: 'Tu código para entrar a Pazque: ' + code,
     html: `
       <div style="font-family:'Inter',system-ui,sans-serif;max-width:440px;margin:0 auto;padding:32px 24px">
-        <div style="display:inline-block;background:#eef7ee;color:#059669;font-size:12px;font-weight:600;padding:4px 12px;border-radius:50px;margin-bottom:16px">Pazque · Dueño</div>
+        <div style="display:inline-block;background:#eef7ee;color:#059669;font-size:12px;font-weight:600;padding:4px 12px;border-radius:50px;margin-bottom:16px">Pazque</div>
         <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 6px">Tu código de acceso</h1>
-        <p style="font-size:14px;color:#6a6a68;margin:0 0 20px">Usalo para entrar a tu consola privada. Vence en ${esc(minutes)} minutos.</p>
+        <p style="font-size:14px;color:#6a6a68;margin:0 0 20px">Ingresalo para entrar a tu panel. Vence en ${esc(minutes)} minutos.</p>
         <div style="font-size:36px;font-weight:700;letter-spacing:8px;color:#1a1a18;background:#fafaf9;border:1px solid #e8e8e6;border-radius:12px;padding:18px;text-align:center">${esc(code)}</div>
         <p style="font-size:12px;color:#9a9a98;margin-top:24px">Si no fuiste vos, ignorá este mail: nadie puede entrar sin este código. Aviso automático de Pazque.</p>
       </div>`,

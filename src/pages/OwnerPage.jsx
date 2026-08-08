@@ -114,13 +114,13 @@ function Gate({ onEnter }) {
     const { ok } = await ownerFetch({ action: 'request-code', email: mail });
     setBusy(false);
     if (ok) { setStep('code'); setErr(''); }
-    else setErr('No pudimos enviar el código. Probá de nuevo.');
+    else setErr('No pudimos enviar el código en este momento. Volvé a intentar en unos segundos.');
   };
 
   const verify = async (e) => {
     e.preventDefault();
     const c = code.trim().replace(/\D/g, '');
-    if (c.length !== 6) { setErr('El código son 6 dígitos.'); return; }
+    if (c.length !== 6) { setErr('El código tiene 6 dígitos.'); return; }
     setBusy(true); setErr('');
     const { ok, status, data } = await ownerFetch({ action: 'verify-code', email: email.trim().toLowerCase(), code: c });
     setBusy(false);
@@ -129,7 +129,7 @@ function Gate({ onEnter }) {
       onEnter(data.token);
       return;
     }
-    setErr(status === 401 ? 'Código incorrecto o vencido.' : 'No pudimos validar. Probá de nuevo.');
+    setErr(status === 401 ? 'El código no es válido o ya expiró. Pedí uno nuevo.' : 'No pudimos verificar el código. Volvé a intentar.');
   };
 
   return (
@@ -144,25 +144,25 @@ function Gate({ onEnter }) {
         {step === 'email' ? (
           <form onSubmit={askCode}>
             <div style={{ fontFamily: C.serif, fontSize: 28, fontWeight: 400, color: C.ink, lineHeight: 1.15, marginBottom: 6 }}>
-              Entrá a tu panel
+              Ingresá a tu panel
             </div>
             <div style={{ fontSize: 14, color: C.sub, marginBottom: 22 }}>
-              Te mandamos un código a tu mail para entrar seguro.
+              Por tu seguridad, te enviamos un código de acceso a tu correo. Sin contraseñas.
             </div>
-            <input type="email" value={email} autoFocus placeholder="tu@mail.com"
+            <input type="email" value={email} autoFocus placeholder="Tu correo electrónico"
               onChange={e => setEmail(e.target.value)} style={inputStyle} />
             {err && <div style={{ color: C.red, fontSize: 13, marginTop: 10 }}>{err}</div>}
             <button type="submit" disabled={busy} style={btnStyle(busy)}>
-              {busy ? 'Enviando…' : 'Enviarme el código'}
+              {busy ? 'Enviando código…' : 'Enviar código'}
             </button>
           </form>
         ) : (
           <form onSubmit={verify}>
             <div style={{ fontFamily: C.serif, fontSize: 28, fontWeight: 400, color: C.ink, lineHeight: 1.15, marginBottom: 6 }}>
-              Revisá tu mail
+              Revisá tu correo
             </div>
             <div style={{ fontSize: 14, color: C.sub, marginBottom: 22 }}>
-              Te enviamos un código de 6 dígitos a <strong>{email}</strong>. Pegalo acá.
+              Enviamos un código de 6 dígitos a <strong>{email}</strong>. Ingresalo para continuar.
             </div>
             <input type="text" inputMode="numeric" autoComplete="one-time-code" value={code}
               autoFocus placeholder="000000" maxLength={6}
@@ -170,12 +170,12 @@ function Gate({ onEnter }) {
               style={{ ...inputStyle, fontSize: 24, letterSpacing: 8, textAlign: 'center', fontWeight: 600 }} />
             {err && <div style={{ color: C.red, fontSize: 13, marginTop: 10 }}>{err}</div>}
             <button type="submit" disabled={busy} style={btnStyle(busy)}>
-              {busy ? 'Entrando…' : 'Entrar'}
+              {busy ? 'Ingresando…' : 'Ingresar'}
             </button>
             <button type="button" onClick={() => { setStep('email'); setCode(''); setErr(''); }} style={{
               width: '100%', marginTop: 10, fontSize: 13, color: C.sub, background: 'transparent',
               border: 'none', cursor: 'pointer', fontFamily: C.sans }}>
-              Usar otro mail
+              Usar otro correo
             </button>
           </form>
         )}
@@ -242,7 +242,7 @@ function LeadCard({ l, onUpdate, busy }) {
           <button onClick={() => onUpdate(l.id, { estado: next })} disabled={busy} style={{
             fontSize: 13, fontWeight: 600, color: '#fff', background: busy ? '#b0b0a8' : C.ink,
             border: 'none', borderRadius: 50, padding: '8px 16px', cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
-            Marcar {ESTADO[next].label.toLowerCase()}
+            Marcar como {ESTADO[next].label.toLowerCase()}
           </button>
         )}
         {l.estado !== 'descartado' && l.estado !== 'convertido' && (
@@ -262,7 +262,7 @@ function LeadCard({ l, onUpdate, busy }) {
       {editing && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={3}
-            placeholder="Anotá lo que hablaron, próximos pasos…"
+            placeholder="Anotá lo que hablaron y los próximos pasos del seguimiento."
             style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, fontFamily: C.sans, color: C.ink,
               border: `1px solid ${C.line}`, borderRadius: 8, padding: '8px 10px', outline: 'none', resize: 'vertical' }} />
           <div>
@@ -318,15 +318,15 @@ function Inbox({ token, onLogout }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontFamily: C.serif, fontSize: 30, fontWeight: 400, margin: 0, lineHeight: 1.1 }}>Prospectos de Pazque</h1>
+            <h1 style={{ fontFamily: C.serif, fontSize: 30, fontWeight: 400, margin: 0, lineHeight: 1.1 }}>Prospectos</h1>
             <p style={{ fontSize: 13, color: C.sub, margin: '4px 0 0' }}>
-              Distribuidoras interesadas en contratar Pazque. Cada una que pide una demo aparece acá.
+              Distribuidoras que pidieron una demo. Contactalas y llevá el seguimiento de cada una.
             </p>
           </div>
           <button onClick={onLogout} style={{
             fontSize: 12.5, color: C.faint, background: 'transparent', border: `1px solid ${C.line}`,
             borderRadius: 50, padding: '6px 12px', cursor: 'pointer', fontFamily: C.sans }}>
-            Salir
+            Cerrar sesión
           </button>
         </div>
 
@@ -352,7 +352,7 @@ function Inbox({ token, onLogout }) {
           <div style={{ background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14, padding: '48px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Todavía no hay prospectos</div>
             <div style={{ fontSize: 13, color: C.sub, maxWidth: 420, margin: '0 auto' }}>
-              Cuando una distribuidora pida una demo desde la landing, va a aparecer acá con la campaña de la que vino.
+              Cuando una distribuidora pida una demo desde tu sitio, vas a verla acá con la campaña por la que llegó.
             </div>
           </div>
         ) : (
