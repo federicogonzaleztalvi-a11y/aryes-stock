@@ -21,6 +21,7 @@ const TrackingPage     = lazyWithRetry(() => import('./pages/TrackingPage.jsx'))
 const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage.jsx'));
 const TermsPage   = lazyWithRetry(() => import('./pages/TermsPage.jsx'));
 const PrivacyPage = lazyWithRetry(() => import('./pages/PrivacyPage.jsx'));
+const OwnerPage   = lazyWithRetry(() => import('./pages/OwnerPage.jsx'));
 const ONBOARDING_KEY = 'stock-onboarding-done';
 
 // ── Demo mode ─────────────────────────────────────────────────────
@@ -418,6 +419,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/terms" element={<Suspense fallback={<div/>}><TermsPage /></Suspense>} />
           <Route path="/privacy" element={<Suspense fallback={<div/>}><PrivacyPage /></Suspense>} />
           <Route path="/reset-password" element={<Suspense fallback={<div/>}><ResetPasswordPage /></Suspense>} />
+          {/* Consola privada del dueño (Federico). Auth propia por OWNER_KEY,
+              separada del sistema de roles por-org. Fuera de buscadores. */}
+          <Route path="/owner" element={<Suspense fallback={<div/>}><OwnerPage /></Suspense>} />
           {/* Upgrade / pricing page */}
           <Route path="/upgrade" element={<UpgradePage session={null} reason="upgrade" />} />
           {/* Everything else → authenticated app */}

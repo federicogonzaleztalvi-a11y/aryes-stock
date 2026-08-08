@@ -141,6 +141,21 @@ export const templates = {
     };
   },
 
+  // Código de acceso a la consola de DUEÑO (/owner). Login sin contraseña:
+  // Federico pide entrar, le llega este código de 6 dígitos, lo pega y queda
+  // con sesión. Enviado por api/owner.js SOLO al mail de dueño configurado.
+  ownerLoginCode: (code, minutes = 10) => ({
+    subject: 'Tu código para entrar a Pazque: ' + code,
+    html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:440px;margin:0 auto;padding:32px 24px">
+        <div style="display:inline-block;background:#eef7ee;color:#059669;font-size:12px;font-weight:600;padding:4px 12px;border-radius:50px;margin-bottom:16px">Pazque · Dueño</div>
+        <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 6px">Tu código de acceso</h1>
+        <p style="font-size:14px;color:#6a6a68;margin:0 0 20px">Usalo para entrar a tu consola privada. Vence en ${esc(minutes)} minutos.</p>
+        <div style="font-size:36px;font-weight:700;letter-spacing:8px;color:#1a1a18;background:#fafaf9;border:1px solid #e8e8e6;border-radius:12px;padding:18px;text-align:center">${esc(code)}</div>
+        <p style="font-size:12px;color:#9a9a98;margin-top:24px">Si no fuiste vos, ignorá este mail: nadie puede entrar sin este código. Aviso automático de Pazque.</p>
+      </div>`,
+  }),
+
   // Mail al CLIENTE con su comprobante de pedido adjunto en PDF. Distinto del
   // nuevoPedido (que va a la casilla del distribuidor): éste lo pide el cliente
   // desde el portal tras confirmar, para tener su orden en PDF en su bandeja.

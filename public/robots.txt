@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Consola privada del dueño — fuera de los buscadores.
+Disallow: /owner
