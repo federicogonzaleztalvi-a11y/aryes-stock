@@ -1,6 +1,6 @@
 import { useApp } from '../context/AppContext.tsx';
-import { useState } from 'react';
-import { LS, getSession } from '../lib/constants.js';
+import { useState, useEffect } from 'react';
+import { LS, db, getOrgId, getSession } from '../lib/constants.js';
 
 function PackingTab(){
   const G="#059669";
@@ -12,6 +12,21 @@ function PackingTab(){
   const [bultos,setBultos]=useState(1);
   const [notas,setNotas]=useState("");
   const [msg,setMsg]=useState("");
+
+  // Fuente de verdad: Supabase (tabla packings, multi-tenant por org_id).
+  // LS = cache offline. En demo (sin sesión) db.get es no-op → queda el LS.
+  // Antes esto vivía SÓLO en localStorage sin org_id: se perdía al recargar
+  // y se mezclaba entre orgs en el mismo navegador.
+  useEffect(()=>{
+    if(isDemoMode)return;
+    const org=getOrgId();
+    db.get('packings',`org_id=eq.${org}&order=creado_en.desc`).then(rows=>{
+      if(Array.isArray(rows)){
+        const mapped=rows.map(r=>({id:r.id,ventaId:r.venta_id,nroVenta:r.nro_venta,clienteNombre:r.cliente_nombre,items:r.items||[],bultos:r.bultos,notas:r.notas,estado:r.estado,fecha:new Date(r.creado_en).toLocaleDateString("es"),creadoEn:r.creado_en}));
+        setPackings(mapped); LS.set(KPACK,mapped);
+      }
+    }).catch(()=>{});
+  },[isDemoMode]);
 
   // Only ventas confirmadas/preparadas que no tienen packing aun
   const pendPacking=ventas.filter(v=>["confirmada","preparada"].includes(v.estado)&&!packings.find(p=>p.ventaId===v.id&&p.estado==="listo"));
@@ -34,6 +49,17 @@ function PackingTab(){
     const upd=[pk,...packings];
     setPackings(upd);
     LS.set(KPACK,upd);
+
+    // Persistir el registro de packing a Supabase (fuente de verdad, por org_id).
+    // Best-effort: si falla, el estado + LS ya cubren la UI y se reintenta al
+    // recargar. No bloquea la transición de estado de la venta.
+    if(!isDemoMode){
+      db.insert('packings',{
+        id:pk.id, org_id:getOrgId(), venta_id:pk.ventaId, nro_venta:pk.nroVenta,
+        cliente_nombre:pk.clienteNombre, items:pk.items, bultos:Number(pk.bultos)||1,
+        notas:pk.notas, estado:pk.estado, creado_en:pk.creadoEn
+      }).catch(e=>console.warn('[packing] insert failed:',e?.message||e));
+    }
 
     // Avanzar la venta en la máquina de estados: confirmada → preparada.
     // Si ya estaba preparada no requiere transición (el packing sólo deja registro).
