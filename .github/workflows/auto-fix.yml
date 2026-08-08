@@ -33,7 +33,6 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          label_trigger: auto-fix
           branch_prefix: auto-fix/
           prompt: |
             Este repo es Pazque, un SaaS B2B multi-tenant en producción con un
