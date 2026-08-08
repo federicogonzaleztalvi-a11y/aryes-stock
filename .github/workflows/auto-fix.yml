@@ -48,4 +48,4 @@ jobs:
             - En la descripción del PR, en lenguaje claro (el que aprueba no
               programa): qué se rompía, qué cambia tu fix, y cómo probarlo en el
               Preview Deploy de Vercel.
-          claude_args: "--max-turns 15 --model claude-opus-4-8"
+          claude_args: "--max-turns 40 --model claude-opus-4-8"
