@@ -1,0 +1,52 @@
+name: Auto-Fix (Torre de Control · peldaño 2)
+
+# Se dispara cuando un Issue recibe el label `auto-fix`. Ese label lo pone
+# automáticamente la Torre de Control (api/_autofix.js) ante un error en prod,
+# o vos a mano en cualquier issue que quieras que el agente intente resolver.
+#
+# El agente (Claude Code Action oficial) lee el issue, explora el repo, propone
+# un fix en una rama nueva y ABRE UN PULL REQUEST. NUNCA mergea: el PR queda
+# esperando tu aprobación. El gate real antes de que un fix llegue a Eric es:
+#   1) CI (tests + build) corre sobre el PR — ver ci.yml
+#   2) Vercel crea un Preview Deploy del PR — URL aislada para probar el fix
+#   3) Vos mergeás con un clic (branch protection recomendada en main)
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  auto-fix:
+    # Sólo corre para el label exacto `auto-fix`. Cualquier otro label lo ignora.
+    if: github.event.label.name == 'auto-fix'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # crear la rama con el fix
+      pull-requests: write    # abrir el PR
+      issues: write           # comentar/actualizar el issue
+      id-token: write         # auth OIDC de la GitHub App de Claude
+      actions: read           # leer resultados de CI para razonar sobre fallos
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          label_trigger: auto-fix
+          branch_prefix: auto-fix/
+          prompt: |
+            Este repo es Pazque, un SaaS B2B multi-tenant en producción con un
+            cliente real (Eric, org aryes-ltda-6223). NADA puede romper su
+            operación. Leé CLAUDE.md antes de tocar nada.
+
+            Implementá un fix para el error descrito en este Issue de GitHub:
+            - Leé bien la descripción y el detalle del error.
+            - Explorá el repo para entender la causa raíz antes de cambiar código.
+            - Hacé el fix MÍNIMO y seguro. No cambies comportamiento no relacionado.
+            - Agregá o ajustá tests si aplica.
+            - Abrí un Pull Request para revisión humana. NO mergees.
+            - En la descripción del PR, en lenguaje claro (el que aprueba no
+              programa): qué se rompía, qué cambia tu fix, y cómo probarlo en el
+              Preview Deploy de Vercel.
+          claude_args: "--max-turns 15 --model claude-opus-4-8"
