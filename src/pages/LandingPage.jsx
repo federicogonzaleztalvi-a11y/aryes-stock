@@ -163,6 +163,100 @@ function ROICalc() {
   );
 }
 
+// ── Formulario "Pedí una demo" — captación de prospectos PROPIOS de Pazque ──
+// Una distribuidora interesada deja sus datos → api/demo-request.js los guarda
+// y le avisa a Federico por email. Captura la atribución de campaña (utm/fbclid)
+// al montarse, para saber de qué anuncio llegó.
+function DemoForm({ mobile }) {
+  const [f, setF] = useState({ nombre: '', empresa: '', email: '', tel: '', rubro: '', mensaje: '' });
+  const [status, setStatus] = useState('idle'); // idle | sending | ok
+  const [err, setErr] = useState('');
+  const attr = useRef({});
+
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      attr.current = {
+        utm_source:   p.get('utm_source') || '',
+        utm_medium:   p.get('utm_medium') || '',
+        utm_campaign: p.get('utm_campaign') || '',
+        fbclid:       p.get('fbclid') || '',
+        gclid:        p.get('gclid') || '',
+        referrer:     document.referrer || '',
+        landing_url:  (window.location.href || '').slice(0, 255),
+      };
+    } catch { /* atribución best-effort */ }
+  }, []);
+
+  const upd = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr('');
+    if (!f.nombre.trim()) { setErr('Ingresá tu nombre'); return; }
+    if (!f.email.trim() && !f.tel.trim()) { setErr('Dejanos un email o un WhatsApp'); return; }
+    setStatus('sending');
+    try {
+      const r = await fetch('/api/demo-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...f, ...attr.current }),
+      });
+      if (r.ok) { setStatus('ok'); return; }
+      const d = await r.json().catch(() => ({}));
+      setErr(d.error || 'No pudimos enviar. Probá de nuevo.');
+      setStatus('idle');
+    } catch {
+      setErr('Error de conexión. Probá de nuevo.');
+      setStatus('idle');
+    }
+  };
+
+  const inp = {
+    width: '100%', boxSizing: 'border-box', padding: '12px 14px',
+    border: '1px solid #e0e0dc', borderRadius: 10, fontSize: 14,
+    fontFamily: F.sans, outline: 'none', color: '#1a1a18',
+  };
+
+  if (status === 'ok') {
+    return (
+      <div style={{ background: '#f0fdf4', border: '1px solid #d6efdc', borderRadius: 14, padding: '32px 24px', textAlign: 'center' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+        <div style={{ fontSize: 18, fontWeight: 600, fontFamily: F.serif, color: '#27500a', marginBottom: 6 }}>
+          ¡Listo, gracias!
+        </div>
+        <p style={{ fontSize: 14, color: '#3b6d11', margin: 0 }}>
+          Recibimos tus datos. Te contactamos en breve para coordinar la demo.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+        <input style={inp} placeholder="Tu nombre *" value={f.nombre} onChange={upd('nombre')} />
+        <input style={inp} placeholder="Tu distribuidora" value={f.empresa} onChange={upd('empresa')} />
+        <input style={inp} type="email" placeholder="Email" value={f.email} onChange={upd('email')} />
+        <input style={inp} type="tel" inputMode="tel" placeholder="WhatsApp" value={f.tel} onChange={upd('tel')} />
+      </div>
+      <input style={inp} placeholder="¿Qué distribuís? (opcional)" value={f.rubro} onChange={upd('rubro')} />
+      <textarea style={{ ...inp, minHeight: 72, resize: 'vertical' }} placeholder="Contanos qué necesitás (opcional)" value={f.mensaje} onChange={upd('mensaje')} />
+      {err && <div style={{ fontSize: 13, color: '#c0392b', textAlign: 'left' }}>{err}</div>}
+      <button type="submit" disabled={status === 'sending'} style={{
+        padding: '14px', background: status === 'sending' ? '#7dbd9f' : G, color: '#fff',
+        border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600,
+        cursor: status === 'sending' ? 'default' : 'pointer', fontFamily: F.sans,
+      }}>
+        {status === 'sending' ? 'Enviando…' : 'Pedí tu demo'}
+      </button>
+      <p style={{ fontSize: 11, color: '#b0b0ac', margin: 0, textAlign: 'center' }}>
+        Te contactamos por WhatsApp o email. Sin compromiso.
+      </p>
+    </form>
+  );
+}
+
 export default function LandingPage() {
   const mobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -296,7 +390,13 @@ export default function LandingPage() {
               Explorá el producto
             </button>
           </div>
-          <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 48px' }}>Sin tarjeta de crédito · Cancelá cuando quieras</p>
+          <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 8px' }}>Sin tarjeta de crédito · Cancelá cuando quieras</p>
+          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 48px' }}>
+            ¿Preferís que te lo mostremos?{' '}
+            <span onClick={() => scrollTo('demo')} style={{ color: G, cursor: 'pointer', fontWeight: 500 }}>
+              Pedí una demo →
+            </span>
+          </p>
         </FadeIn>
 
         <FadeIn delay={0.4}>
@@ -675,58 +775,22 @@ export default function LandingPage() {
         </section>
       </FadeIn>
 
-            {/* ── Email capture ────────────────────────────────────────────────── */}
+            {/* ── Pedí una demo (captación de prospectos propios) ──────────────── */}
       <FadeIn>
-        <section style={{ padding: '48px 24px', background: '#f9f9f7', borderTop: '1px solid #e8e8e6' }}>
-          <div style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 600, fontFamily: F.serif, color: '#1a1a18', marginBottom: 8 }}>
-              No te pierdas nada
+        <section id="demo" style={{ padding: mobile ? '48px 20px' : '64px 24px', background: '#f9f9f7', borderTop: '1px solid #e8e8e6' }}>
+          <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: '#3b6d11', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>
+              PEDÍ UNA DEMO
             </div>
-            <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
-              Dejanos tu email y te avisamos cuando lancemos novedades.
+            <h2 style={{ fontFamily: F.serif, fontSize: mobile ? 26 : 'clamp(26px, 3.2vw, 34px)', fontWeight: 400, color: '#1a1a18', margin: '0 0 8px' }}>
+              ¿Querés verlo con tus datos?
+            </h2>
+            <p style={{ fontSize: 15, color: '#6b7280', maxWidth: 460, margin: '0 auto 28px', lineHeight: 1.6 }}>
+              Dejanos tus datos y te mostramos cómo Pazque funciona para tu distribuidora. Sin compromiso.
             </p>
-            <form onSubmit={function(e) {
-              e.preventDefault();
-              var emailInput = e.target.querySelector('input[type=email]');
-              var btn = e.target.querySelector('button');
-              var email = emailInput?.value?.trim();
-              if (!email) return;
-              btn.textContent = 'Enviando...';
-              btn.disabled = true;
-              fetch((import.meta.env.VITE_SUPABASE_URL || '') + '/rest/v1/leads', {
-                method: 'POST',
-                headers: {
-                  apikey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-                  Authorization: 'Bearer ' + (import.meta.env.VITE_SUPABASE_ANON_KEY || ''),
-                  'Content-Type': 'application/json',
-                  Prefer: 'return=minimal',
-                },
-                body: JSON.stringify({ email: email, source: 'landing' }),
-              }).then(function(r) {
-                if (r.ok || r.status === 409) {
-                  emailInput.value = '';
-                  btn.textContent = 'Listo!';
-                  btn.style.background = '#166534';
-                  setTimeout(function() { btn.textContent = 'Suscribirme'; btn.disabled = false; btn.style.background = G; }, 3000);
-                } else {
-                  btn.textContent = 'Error, intenta de nuevo';
-                  btn.disabled = false;
-                  setTimeout(function() { btn.textContent = 'Suscribirme'; btn.style.background = G; }, 3000);
-                }
-              }).catch(function() {
-                btn.textContent = 'Error de conexion';
-                btn.disabled = false;
-                setTimeout(function() { btn.textContent = 'Suscribirme'; btn.style.background = G; }, 3000);
-              });
-            }} style={{ display: 'flex', gap: 8, maxWidth: 420, margin: '0 auto' }}>
-              <input type="email" required placeholder="tu@email.com"
-                style={{ flex: 1, padding: '12px 16px', border: '1px solid #e0e0dc', borderRadius: 10, fontSize: 14, fontFamily: F.sans, outline: 'none' }} />
-              <button type="submit"
-                style={{ padding: '12px 24px', background: G, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: F.sans, whiteSpace: 'nowrap' }}>
-                Suscribirme
-              </button>
-            </form>
-            <p style={{ fontSize: 11, color: '#b0b0ac', marginTop: 10 }}>Sin spam. Solo novedades del producto.</p>
+            <div style={{ maxWidth: 460, margin: '0 auto', textAlign: 'left' }}>
+              <DemoForm mobile={mobile} />
+            </div>
           </div>
         </section>
       </FadeIn>

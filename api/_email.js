@@ -104,6 +104,43 @@ export const templates = {
     };
   },
 
+  // Mail a FEDERICO cuando una distribuidora deja sus datos en la landing de
+  // Pazque pidiendo una demo (embudo PROPIO, api/demo-request.js). Incluye la
+  // fuente de campaña para medir de qué anuncio vino. Distinto de nuevoProspecto
+  // (que va al distribuidor por los compradores de SU portal).
+  nuevoLeadPazque: (lead) => {
+    const fuente = [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' · ')
+      || (lead.fbclid ? 'Meta Ads' : (lead.gclid ? 'Google Ads' : (lead.referrer || 'Directo')));
+    const row = (label, val) => val
+      ? `<tr><td style="padding:6px 0;color:#6a6a68;width:120px">${esc(label)}</td><td style="padding:6px 0;color:#1a1a18;font-weight:600">${esc(val)}</td></tr>`
+      : '';
+    const waBtn = lead.tel
+      ? `<a href="https://wa.me/${esc(String(lead.tel).replace(/\D/g,''))}" style="display:inline-block;margin-top:24px;margin-right:8px;padding:12px 24px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">Escribir por WhatsApp</a>`
+      : '';
+    const mailBtn = lead.email
+      ? `<a href="mailto:${esc(lead.email)}" style="display:inline-block;margin-top:24px;padding:12px 24px;background:#1a1a18;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">Responder por email</a>`
+      : '';
+    return {
+      subject: 'Nueva distribuidora interesada: ' + (lead.empresa || lead.nombre || 'sin nombre'),
+      html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        <h1 style="font-size:20px;font-weight:700;color:#1a1a18;margin:0 0 4px">Nueva distribuidora interesada en Pazque</h1>
+        <p style="font-size:13px;color:#6a6a68;margin:0 0 20px">Dejó sus datos desde la landing pidiendo una demo.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px">
+          ${row('Nombre', lead.nombre)}
+          ${row('Distribuidora', lead.empresa)}
+          ${row('Email', lead.email)}
+          ${row('WhatsApp', lead.tel)}
+          ${row('Rubro', lead.rubro)}
+          ${row('Mensaje', lead.mensaje)}
+          ${row('Fuente', fuente)}
+        </table>
+        <div>${waBtn}${mailBtn}</div>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px">Prospecto propio de Pazque. Guardado para seguimiento. Aviso automático.</p>
+      </div>`,
+    };
+  },
+
   // Mail al CLIENTE con su comprobante de pedido adjunto en PDF. Distinto del
   // nuevoPedido (que va a la casilla del distribuidor): éste lo pide el cliente
   // desde el portal tras confirmar, para tener su orden en PDF en su bandeja.
