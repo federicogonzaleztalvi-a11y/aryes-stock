@@ -48,4 +48,9 @@ jobs:
             - En la descripción del PR, en lenguaje claro (el que aprueba no
               programa): qué se rompía, qué cambia tu fix, y cómo probarlo en el
               Preview Deploy de Vercel.
-          claude_args: "--max-turns 40 --model claude-opus-4-8"
+          # Bash está DESACTIVADO por defecto en la Action (seguridad). Sin esto el
+          # agente choca contra denegaciones de permiso y no puede editar ni abrir PR.
+          claude_args: |
+            --max-turns 40
+            --model claude-opus-4-8
+            --allowedTools "Read,Edit,Write,Bash(git:*),mcp__github__create_pull_request"
