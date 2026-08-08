@@ -34,9 +34,15 @@ function emit(level, service, msg, extra = {}) {
     const alertDone = import('./_alert.js')
       .then(m => m.maybeAlert(entry))
       .catch(() => {});
+    // Torre de Control · peldaño 2: además de avisar, crea un Issue de GitHub con
+    // el label auto-fix para que el agente proponga un PR. Apagado por defecto
+    // (AUTOFIX_ENABLED) y sólo abre PRs — nunca mergea. Ver api/_autofix.js.
+    const issueDone = import('./_autofix.js')
+      .then(m => m.maybeFileIssue(entry))
+      .catch(() => {});
     import('@vercel/functions')
-      .then(({ waitUntil }) => waitUntil(alertDone))
-      .catch(() => {});   // fuera de Vercel (local): la promesa corre igual, best-effort
+      .then(({ waitUntil }) => { waitUntil(alertDone); waitUntil(issueDone); })
+      .catch(() => {});   // fuera de Vercel (local): las promesas corren igual, best-effort
   } else {
     console.log(output);
   }
