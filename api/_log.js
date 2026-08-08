@@ -25,9 +25,18 @@ function emit(level, service, msg, extra = {}) {
   if (LEVELS[level] >= LEVELS.error) {
     console.error(output);
     // Torre de Control: alerta proactiva ante error/fatal. Import dinámico para
-    // no cargar nada en el camino normal (info/debug) y fire-and-forget para no
-    // bloquear ni romper nunca el request. Ver api/_alert.js.
-    import('./_alert.js').then(m => m.maybeAlert(entry)).catch(() => {});
+    // no cargar nada en el camino normal (info/debug). Ver api/_alert.js.
+    //
+    // La cadena espera al envío real (maybeAlert DEVUELVE la promesa de Resend,
+    // y .then la adopta) y se la pasamos a waitUntil: así la lambda sigue viva
+    // hasta que el mail sale, SIN bloquear el request que lo originó. Sin esto,
+    // Vercel congela la función al responder y el fetch a Resend queda a medias.
+    const alertDone = import('./_alert.js')
+      .then(m => m.maybeAlert(entry))
+      .catch(() => {});
+    import('@vercel/functions')
+      .then(({ waitUntil }) => waitUntil(alertDone))
+      .catch(() => {});   // fuera de Vercel (local): la promesa corre igual, best-effort
   } else {
     console.log(output);
   }

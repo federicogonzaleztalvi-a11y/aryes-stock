@@ -50,13 +50,17 @@ function _esc(v) {
 }
 
 // Punto de entrada llamado por _log.js. `entry` = { ts, level, service, msg, ...extra }.
+// DEVUELVE la promesa del envío (o null si se descarta) para que _log.js pueda
+// pasarla a waitUntil y mantener viva la lambda hasta que el mail salga. En
+// serverless, si el request responde antes, la lambda se congela y el fetch a
+// Resend queda a medias: por eso hay que esperar el envío sin bloquear el request.
 export function maybeAlert(entry) {
   try {
-    if (!IS_PROD || !ALERT_EMAIL) return;
+    if (!IS_PROD || !ALERT_EMAIL) return null;
     const sig = (entry.service || '?') + '|' + (entry.msg || '?');
-    if (_throttled(sig)) return;
-    _send(entry).catch(() => {});     // fire-and-forget, jamás propaga error
-  } catch { /* alertar nunca rompe el request */ }
+    if (_throttled(sig)) return null;
+    return _send(entry).catch(() => {});   // nunca propaga error; se puede await/waitUntil
+  } catch { /* alertar nunca rompe el request */ return null; }
 }
 
 async function _send(entry) {
