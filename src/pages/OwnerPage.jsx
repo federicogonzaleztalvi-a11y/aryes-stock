@@ -139,15 +139,15 @@ function Gate({ onEnter }) {
       <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 16,
         padding: '36px 32px', width: '100%', maxWidth: 400, boxShadow: '0 8px 40px rgba(39,80,10,.06)' }}>
         <div style={{ display: 'inline-block', background: C.greenSoft, color: C.green, fontSize: 12,
-          fontWeight: 600, padding: '4px 12px', borderRadius: 50, marginBottom: 16 }}>Pazque · Dueño</div>
+          fontWeight: 600, padding: '4px 12px', borderRadius: 50, marginBottom: 16 }}>Pazque</div>
 
         {step === 'email' ? (
           <form onSubmit={askCode}>
             <div style={{ fontFamily: C.serif, fontSize: 28, fontWeight: 400, color: C.ink, lineHeight: 1.15, marginBottom: 6 }}>
-              Tu consola privada
+              Entrá a tu panel
             </div>
             <div style={{ fontSize: 14, color: C.sub, marginBottom: 22 }}>
-              Te mandamos un código a tu mail para entrar.
+              Te mandamos un código a tu mail para entrar seguro.
             </div>
             <input type="email" value={email} autoFocus placeholder="tu@mail.com"
               onChange={e => setEmail(e.target.value)} style={inputStyle} />
