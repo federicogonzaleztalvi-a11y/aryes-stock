@@ -35,6 +35,18 @@ const ESTADO = {
   descartado: { label: 'Descartado', bg: '#f3f4f6', fg: C.faint },
 };
 
+const PRIOR = {
+  alta:  { label: 'Prioridad alta',  bg: C.greenBg, fg: C.green },
+  media: { label: 'Prioridad media', bg: C.amberBg, fg: C.amber },
+  baja:  { label: 'Prioridad baja',  bg: '#f3f4f6', fg: C.faint },
+};
+
+function waLink(tel, msg) {
+  const num = String(tel || '').replace(/\D/g, '');
+  const q = msg ? `?text=${encodeURIComponent(msg)}` : '';
+  return num ? `https://wa.me/${num}${q}` : '';
+}
+
 function fmtDate(s) {
   if (!s) return '';
   try {
@@ -54,12 +66,23 @@ export default function ProspectosTab() {
   const [busy,    setBusy]    = React.useState('');   // id en proceso
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
 
+  // Sourcing por-org: buscar comercios reales del rubro del cliente.
+  const [srcCfg,     setSrcCfg]     = React.useState({ rubros: [], ciudad: '', tope: 20, usadas: 0 });
+  const [srcBusy,    setSrcBusy]    = React.useState('');  // rubro buscándose
+  const [srcMsg,     setSrcMsg]     = React.useState('');
+  const [editRubros, setEditRubros] = React.useState(false);
+  const [newRubro,   setNewRubro]   = React.useState('');
+  const [ciudadIn,   setCiudadIn]   = React.useState('');
+  const [enrichBusy, setEnrichBusy] = React.useState('');  // id enriqueciéndose
+  const [openEnrich, setOpenEnrich] = React.useState('');  // id con panel abierto
+
   const load = React.useCallback(async () => {
     setLoading(true); setError('');
     try {
-      const [lr, cr] = await Promise.all([
-        fetch('/api/lead?action=list',   { headers: getAuthHeaders() }),
-        fetch('/api/lead?action=config', { headers: getAuthHeaders() }),
+      const [lr, cr, sr] = await Promise.all([
+        fetch('/api/lead?action=list',            { headers: getAuthHeaders() }),
+        fetch('/api/lead?action=config',          { headers: getAuthHeaders() }),
+        fetch('/api/lead?action=sourcing-config', { headers: getAuthHeaders() }),
       ]);
       if (!lr.ok) throw new Error('No se pudieron cargar los prospectos');
       const ld = await lr.json();
@@ -71,6 +94,11 @@ export default function ProspectosTab() {
         setSavedPh(cfg?.notify_phone || '');
         setEmail(cfg?.notify_email || '');
         setSavedEm(cfg?.notify_email || '');
+      }
+      if (sr.ok) {
+        const s = await sr.json();
+        setSrcCfg({ rubros: s.rubros || [], ciudad: s.ciudad || '', tope: s.tope ?? 20, usadas: s.usadas ?? 0 });
+        setCiudadIn(s.ciudad || '');
       }
     } catch (e) {
       setError(e.message || 'Error al cargar');
@@ -141,6 +169,62 @@ export default function ProspectosTab() {
     finally { setBusy(''); }
   };
 
+  // ── Sourcing: buscar comercios reales por rubro ──────────────────────────
+  const runSource = async (rubro) => {
+    if (srcBusy) return;
+    setSrcBusy(rubro); setSrcMsg('');
+    try {
+      const r = await fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'source', rubro }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d.tope != null) setSrcCfg(s => ({ ...s, usadas: d.usadas ?? s.usadas, tope: d.tope }));
+      if (!r.ok) { setSrcMsg(d.error || 'No se pudo buscar'); return; }
+      setSrcMsg(d.added > 0
+        ? `Se agregaron ${d.added} comercios nuevos de “${rubro}”.`
+        : `Sin comercios nuevos de “${rubro}” (ya los tenías o no hubo resultados).`);
+      await load();
+    } catch { setSrcMsg('Error de conexión'); }
+    finally { setSrcBusy(''); }
+  };
+
+  const saveRubros = async (rubros, ciudad) => {
+    setSrcCfg(s => ({ ...s, rubros, ciudad })); // optimista
+    try {
+      await fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'sourcing-config', rubros, ciudad }),
+      });
+    } catch { /* noop */ }
+  };
+  const addRubro = () => {
+    const v = newRubro.trim();
+    if (!v || srcCfg.rubros.includes(v)) { setNewRubro(''); return; }
+    setNewRubro('');
+    saveRubros([...srcCfg.rubros, v].slice(0, 12), ciudadIn.trim());
+  };
+  const removeRubro = (r) => saveRubros(srcCfg.rubros.filter(x => x !== r), ciudadIn.trim());
+  const saveCiudad = () => { if (ciudadIn.trim() !== srcCfg.ciudad) saveRubros(srcCfg.rubros, ciudadIn.trim()); };
+
+  // ── Enriquecer un comercio con IA ────────────────────────────────────────
+  const enrich = async (l) => {
+    setEnrichBusy(l.id);
+    try {
+      const r = await fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'enrich', id: l.id }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.enriquecimiento) {
+        setLeads(prev => prev.map(x => x.id === l.id
+          ? { ...x, enriquecimiento: d.enriquecimiento, enriquecido_at: new Date().toISOString() } : x));
+        setOpenEnrich(l.id);
+      } else alert(d.error || 'No se pudo enriquecer');
+    } catch { alert('Error de conexión'); }
+    finally { setEnrichBusy(''); }
+  };
+
   const visibles = filtro === 'todos'
     ? leads
     : leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado');
@@ -201,6 +285,71 @@ export default function ProspectosTab() {
         </div>
       </div>
 
+      {/* Buscar comercios (sourcing por-org) */}
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, padding: 18, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Buscar comercios</div>
+            <div style={{ fontSize: 12.5, color: C.sub, marginTop: 2, maxWidth: 540 }}>
+              Traé comercios reales de tu rubro desde Google. Después los enriquecés con IA y les escribís por WhatsApp a mano.
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: C.faint, whiteSpace: 'nowrap' }}>
+            {srcCfg.usadas}/{srcCfg.tope} búsquedas este mes
+          </div>
+        </div>
+
+        {/* Zona + editar rubros */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '12px 0' }}>
+          <label style={{ fontSize: 12, color: C.faint }}>Zona</label>
+          <input value={ciudadIn} onChange={e => setCiudadIn(e.target.value)} onBlur={saveCiudad}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} placeholder="Ej: Montevideo"
+            style={{ fontSize: 13, fontFamily: C.sans, color: C.ink, border: `1px solid ${C.line}`,
+              borderRadius: 8, padding: '6px 10px', outline: 'none', width: 180 }} />
+          <button onClick={() => setEditRubros(v => !v)} style={{ marginLeft: 'auto', fontSize: 12.5, color: C.blue,
+            background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: C.sans }}>
+            {editRubros ? 'Listo' : 'Editar rubros'}
+          </button>
+        </div>
+
+        {/* Chips de rubro */}
+        {srcCfg.rubros.length === 0 && !editRubros ? (
+          <div style={{ fontSize: 13, color: C.sub }}>
+            Todavía no configuraste rubros. Tocá <b>Editar rubros</b> y agregá los tipos de comercio que querés buscar
+            (ej: Cafeterías, Restaurantes, Hoteles).
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {srcCfg.rubros.map(r => (
+              <span key={r} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button onClick={() => runSource(r)} disabled={!!srcBusy} style={{
+                  fontSize: 13, fontFamily: C.sans, cursor: srcBusy ? 'default' : 'pointer',
+                  border: `1px solid ${C.line}`, background: srcBusy === r ? C.ink : C.bg,
+                  color: srcBusy === r ? '#fff' : C.ink, borderRadius: 50, padding: '7px 14px', fontWeight: 500 }}>
+                  {srcBusy === r ? 'Buscando…' : `＋ ${r}`}
+                </button>
+                {editRubros && (
+                  <button onClick={() => removeRubro(r)} aria-label={`Quitar ${r}`} style={{ fontSize: 16, lineHeight: 1,
+                    color: C.faint, background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
+                )}
+              </span>
+            ))}
+            {editRubros && (
+              <span style={{ display: 'inline-flex', gap: 6 }}>
+                <input value={newRubro} onChange={e => setNewRubro(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addRubro(); } }} placeholder="Agregar rubro…"
+                  style={{ fontSize: 13, fontFamily: C.sans, border: `1px solid ${C.line}`, borderRadius: 50,
+                    padding: '7px 12px', outline: 'none', width: 150 }} />
+                <button onClick={addRubro} style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: C.ink,
+                  border: 'none', borderRadius: 50, padding: '7px 14px', cursor: 'pointer', fontFamily: C.sans }}>Agregar</button>
+              </span>
+            )}
+          </div>
+        )}
+
+        {srcMsg && <div style={{ fontSize: 12.5, color: C.sub, marginTop: 12 }}>{srcMsg}</div>}
+      </div>
+
       {/* Filtro */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
         {[['activos', `Activos${nuevos ? ` (${nuevos})` : ''}`], ['todos', 'Todos']].map(([id, lbl]) => (
@@ -234,6 +383,11 @@ export default function ProspectosTab() {
             const est = ESTADO[l.estado] || ESTADO.nuevo;
             const isBusy = busy === l.id;
             const open = l.estado === 'nuevo' || l.estado === 'contactado';
+            const isSourced = l.origen === 'sourcing';
+            const enr = l.enriquecimiento;
+            const eb = enrichBusy === l.id;
+            const showEnr = openEnrich === l.id && enr;
+            const wa = waLink(l.tel, enr?.mensaje_wa);
             return (
               <div key={l.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
                 display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -241,21 +395,44 @@ export default function ProspectosTab() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: 15 }}>{l.nombre}</span>
                     <span style={{ background: est.bg, color: est.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{est.label}</span>
+                    {enr?.prioridad && (() => { const p = PRIOR[enr.prioridad] || PRIOR.media; return (
+                      <span style={{ background: p.bg, color: p.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{p.label}</span>
+                    ); })()}
                   </div>
                   <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>
                     {l.comercio ? l.comercio + ' · ' : ''}{l.ciudad || ''}
                   </div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 12.5, color: C.faint }}>
                     <span>📅 {fmtDate(l.created_at)}</span>
-                    <span title="Fuente de campaña">🎯 {fuenteOf(l)}</span>
+                    {isSourced
+                      ? <span title="Encontrado en Google">🔎 Google</span>
+                      : <span title="Fuente de campaña">🎯 {fuenteOf(l)}</span>}
+                    {l.landing_url && (
+                      <a href={/^https?:\/\//i.test(l.landing_url) ? l.landing_url : 'https://' + l.landing_url}
+                        target="_blank" rel="noopener noreferrer" style={{ color: C.blue, textDecoration: 'none' }}>🌐 Ver sitio</a>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <a href={`https://wa.me/${String(l.tel || '').replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 13, fontWeight: 600, color: C.green, textDecoration: 'none',
-                      border: `1px solid ${C.green}55`, borderRadius: 50, padding: '7px 14px' }}>
-                    WhatsApp
-                  </a>
+                  {wa && (
+                    <a href={wa} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 13, fontWeight: 600, color: C.green, textDecoration: 'none',
+                        border: `1px solid ${C.green}55`, borderRadius: 50, padding: '7px 14px' }}>
+                      WhatsApp
+                    </a>
+                  )}
+                  {isSourced && (enr
+                    ? <button onClick={() => setOpenEnrich(showEnr ? '' : l.id)} style={{
+                        fontSize: 13, fontWeight: 600, color: C.blue, background: C.blueBg, border: 'none',
+                        borderRadius: 50, padding: '8px 16px', cursor: 'pointer', fontFamily: C.sans }}>
+                        {showEnr ? 'Ocultar análisis' : 'Ver análisis'}
+                      </button>
+                    : <button onClick={() => enrich(l)} disabled={eb} style={{
+                        fontSize: 13, fontWeight: 600, color: '#fff', background: eb ? '#b0b0a8' : C.ink, border: 'none',
+                        borderRadius: 50, padding: '8px 16px', cursor: eb ? 'default' : 'pointer', fontFamily: C.sans }}>
+                        {eb ? 'Analizando…' : '✨ Enriquecer'}
+                      </button>
+                  )}
                   {open && (
                     <>
                       <button onClick={() => approve(l)} disabled={isBusy} style={{
@@ -274,6 +451,40 @@ export default function ProspectosTab() {
                     <span style={{ fontSize: 12, color: C.green, fontWeight: 500 }}>✓ Ya es cliente</span>
                   )}
                 </div>
+
+                {showEnr && (
+                  <div style={{ flexBasis: '100%', borderTop: `1px solid ${C.line}`, marginTop: 4, paddingTop: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8, fontSize: 12.5, color: C.sub }}>
+                      {enr.rubro && enr.rubro !== 'sin datos' && <span style={{ color: C.ink, fontWeight: 600 }}>{enr.rubro}</span>}
+                      {enr.tamano && enr.tamano !== 'sin datos' && <span>· tamaño {enr.tamano}</span>}
+                    </div>
+                    {enr.angulo && <div style={{ fontSize: 13, color: C.ink, marginBottom: 8 }}>{enr.angulo}</div>}
+                    {Array.isArray(enr.senales) && enr.senales.length > 0 && (
+                      <ul style={{ margin: '0 0 10px', paddingLeft: 18, color: C.sub, fontSize: 12.5 }}>
+                        {enr.senales.map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    )}
+                    {enr.mensaje_wa && (
+                      <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
+                        <div style={{ fontSize: 10.5, color: C.faint, fontWeight: 700, letterSpacing: 0.4, marginBottom: 6 }}>MENSAJE DE WHATSAPP LISTO</div>
+                        <div style={{ fontSize: 13.5, color: C.ink, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{enr.mensaje_wa}</div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                          {wa
+                            ? <a href={wa} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600,
+                                color: '#fff', background: C.green, textDecoration: 'none', borderRadius: 50, padding: '8px 16px' }}>
+                                Abrir en WhatsApp
+                              </a>
+                            : <span style={{ fontSize: 12, color: C.faint, alignSelf: 'center' }}>Sin teléfono — copiá el mensaje</span>}
+                          <button onClick={() => { try { navigator.clipboard?.writeText(enr.mensaje_wa); } catch { /* noop */ } }}
+                            style={{ fontSize: 13, color: C.ink, background: 'transparent', border: `1px solid ${C.line}`,
+                              borderRadius: 50, padding: '8px 16px', cursor: 'pointer', fontFamily: C.sans }}>
+                            Copiar mensaje
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
