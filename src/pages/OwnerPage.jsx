@@ -79,6 +79,24 @@ function fmtDate(s) {
   } catch { return s; }
 }
 
+// Días enteros transcurridos desde una fecha (para "le escribiste hace X días").
+function diasDesde(s) {
+  if (!s) return null;
+  const ms = Date.now() - new Date(s).getTime();
+  if (isNaN(ms)) return null;
+  return Math.floor(ms / 86400000);
+}
+
+// Un prospecto "toca seguir" si está activo (contactado/demo), ya le escribiste
+// alguna vez y la fecha del próximo toque (seguir_desde) ya pasó.
+const ACTIVOS_SEGUIBLES = ['contactado', 'demo'];
+function tocaSeguir(l) {
+  if (!ACTIVOS_SEGUIBLES.includes(l.estado)) return false;
+  if (!l.ultimo_contacto_at) return false;
+  if (!l.seguir_desde) return true; // le escribiste pero no hay próximo toque agendado
+  return new Date(l.seguir_desde).getTime() <= Date.now();
+}
+
 // Llama a api/owner.js. Si hay token de sesión, lo manda en el header.
 // Devuelve {ok, status, data}.
 async function ownerFetch(body, token) {
@@ -222,14 +240,8 @@ function EnrichPanel({ e }) {
       )}
       {e.mensaje_wa && (
         <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>1 · MENSAJE DE APERTURA</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>MENSAJE DE WHATSAPP LISTO</div>
           <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.mensaje_wa}</div>
-        </div>
-      )}
-      {e.mensaje_seguimiento && (
-        <div style={{ marginTop: 8, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>2 · SEGUIMIENTO (CON LINK, SI ENGANCHA)</div>
-          <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.mensaje_seguimiento}</div>
         </div>
       )}
     </div>
@@ -245,8 +257,8 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   const next = idx >= 0 && idx < 3 ? FLUJO[idx + 1] : null; // avanza hasta "convertido"
   const msgWa = l.enriquecimiento?.mensaje_wa || '';
   const whref = waLink(l.tel, msgWa);
-  const msgSeg = l.enriquecimiento?.mensaje_seguimiento || '';
-  const segHref = waLink(l.tel, msgSeg);
+  const dias = diasDesde(l.ultimo_contacto_at);
+  const seguir = tocaSeguir(l);
 
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
@@ -256,6 +268,9 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>{l.nombre}</span>
             <span style={{ background: est.bg, color: est.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{est.label}</span>
+            {seguir && (
+              <span style={{ background: C.amberBg, color: C.amber, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 50 }}>⏰ Seguí hoy</span>
+            )}
           </div>
           {(l.empresa || l.rubro) && (
             <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>
@@ -271,6 +286,11 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: 12.5, color: C.faint }}>
             <span>📅 {fmtDate(l.created_at)}</span>
             <span title="De qué campaña vino">🎯 {fuenteOf(l)}</span>
+            {dias != null && (
+              <span title="Última vez que le escribiste" style={{ color: seguir ? C.amber : C.faint, fontWeight: seguir ? 600 : 400 }}>
+                💬 {dias === 0 ? 'Le escribiste hoy' : `Hace ${dias} día${dias === 1 ? '' : 's'}`}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -281,14 +301,6 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
                 background: msgWa ? C.green : 'transparent', textDecoration: 'none',
                 border: `1px solid ${msgWa ? C.green : C.green + '55'}`, borderRadius: 50, padding: '7px 14px' }}>
               {msgWa ? 'Abrir en WhatsApp' : 'WhatsApp'}
-            </a>
-          )}
-          {segHref && (
-            <a href={segHref} target="_blank" rel="noopener noreferrer"
-              title="Segundo mensaje, con el link a pazque.com. Mandalo cuando ya mostró interés."
-              style={{ fontSize: 13, fontWeight: 600, color: C.green, background: 'transparent',
-                textDecoration: 'none', border: `1px solid ${C.green}55`, borderRadius: 50, padding: '7px 14px' }}>
-              Enviar presentación
             </a>
           )}
           {l.email && (
@@ -312,6 +324,23 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
           cursor: enriching ? 'default' : 'pointer', fontFamily: C.sans, opacity: enriching ? .6 : 1 }}>
           {enriching ? 'Analizando…' : (l.enriquecimiento ? '↻ Re-analizar' : '✨ Enriquecer')}
         </button>
+        {l.estado !== 'descartado' && l.estado !== 'convertido' && (
+          <button onClick={() => onUpdate(l.id, { marcar_contacto: true })} disabled={busy}
+            title="Registra que ya le escribiste. Te lo recuerdo para seguirlo en unos días." style={{
+            fontSize: 13, fontWeight: 600, color: C.ink, background: C.card,
+            border: `1px solid ${C.line}`, borderRadius: 50, padding: '8px 14px',
+            cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+            ✓ Ya le escribí
+          </button>
+        )}
+        {seguir && (
+          <button onClick={() => onUpdate(l.id, { posponer: 3 })} disabled={busy}
+            title="Posponer el seguimiento 3 días" style={{
+            fontSize: 13, color: C.sub, background: 'transparent', border: `1px solid ${C.line}`,
+            borderRadius: 50, padding: '8px 14px', cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+            Posponer 3 días
+          </button>
+        )}
         {next && (
           <button onClick={() => onUpdate(l.id, { estado: next })} disabled={busy} style={{
             fontSize: 13, fontWeight: 600, color: '#fff', background: busy ? '#b0b0a8' : C.ink,
@@ -352,6 +381,23 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   );
 }
 
+// Link fijo a la landing, copiable de un clic. Para pasarle la web al prospecto
+// cuando engancha, sin depender de que la IA lo redacte cada vez.
+function CopyLink() {
+  const [copied, setCopied] = React.useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText('https://pazque.com'); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* noop */ }
+  };
+  return (
+    <button onClick={copy} title="Copiar el link de la web para pasárselo al prospecto" style={{
+      fontSize: 12.5, fontWeight: 600, color: copied ? C.green : C.sub, background: copied ? C.greenSoft : C.card,
+      border: `1px solid ${copied ? C.green + '55' : C.line}`, borderRadius: 50, padding: '6px 12px',
+      cursor: 'pointer', fontFamily: C.sans }}>
+      {copied ? '✓ Copiado' : '🔗 pazque.com'}
+    </button>
+  );
+}
+
 // ── Bandeja ──────────────────────────────────────────────────────────
 function Inbox({ token, onLogout }) {
   const [leads,   setLeads]   = React.useState([]);
@@ -376,8 +422,23 @@ function Inbox({ token, onLogout }) {
 
   const update = async (id, patch) => {
     setBusy(id);
-    // Optimista: reflejamos el cambio ya para que se sienta instantáneo.
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l));
+    // Optimista: traducimos los flags de control (marcar_contacto/posponer) a los
+    // campos reales que muestra la tarjeta, replicando lo que hace el server.
+    const now = Date.now();
+    const vista = {};
+    for (const [k, v] of Object.entries(patch)) {
+      if (k === 'marcar_contacto' || k === 'posponer') continue;
+      vista[k] = v;
+    }
+    if (patch.marcar_contacto) {
+      vista.ultimo_contacto_at = new Date(now).toISOString();
+      vista.seguir_desde = new Date(now + 3 * 86400000).toISOString();
+      vista.estado = patch.estado || 'contactado';
+    }
+    if (patch.posponer != null) {
+      vista.seguir_desde = new Date(now + (patch.posponer || 3) * 86400000).toISOString();
+    }
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...vista } : l));
     const { ok, status } = await ownerFetch({ action: 'update', id, ...patch }, token);
     if (status === 401) { onLogout(); return; }
     if (!ok) await load(); // si falló, recargamos la verdad del server
@@ -413,7 +474,9 @@ function Inbox({ token, onLogout }) {
   };
 
   const activos = leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado' || l.estado === 'demo');
-  const visibles = filtro === 'todos' ? leads : activos;
+  const paraSeguir = leads.filter(tocaSeguir)
+    .sort((a, b) => new Date(a.seguir_desde || 0) - new Date(b.seguir_desde || 0)); // más atrasado primero
+  const visibles = filtro === 'todos' ? leads : filtro === 'seguir' ? paraSeguir : activos;
   const nuevos = leads.filter(l => l.estado === 'nuevo').length;
 
   return (
@@ -428,11 +491,14 @@ function Inbox({ token, onLogout }) {
               Distribuidoras que pidieron una demo. Contactalas y llevá el seguimiento de cada una.
             </p>
           </div>
-          <button onClick={onLogout} style={{
-            fontSize: 12.5, color: C.faint, background: 'transparent', border: `1px solid ${C.line}`,
-            borderRadius: 50, padding: '6px 12px', cursor: 'pointer', fontFamily: C.sans }}>
-            Cerrar sesión
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <CopyLink />
+            <button onClick={onLogout} style={{
+              fontSize: 12.5, color: C.faint, background: 'transparent', border: `1px solid ${C.line}`,
+              borderRadius: 50, padding: '6px 12px', cursor: 'pointer', fontFamily: C.sans }}>
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
         {/* Sourcing: el agente busca distribuidoras reales en Google */}
@@ -465,15 +531,24 @@ function Inbox({ token, onLogout }) {
         </div>
 
         {/* Filtro */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-          {[['activos', `Activos${nuevos ? ` (${nuevos})` : ''}`], ['todos', `Todos (${leads.length})`]].map(([id, lbl]) => (
-            <button key={id} onClick={() => setFiltro(id)} style={{
-              padding: '6px 14px', borderRadius: 50, fontSize: 13, fontFamily: C.sans, cursor: 'pointer',
-              border: `1px solid ${filtro === id ? C.ink : C.line}`,
-              background: filtro === id ? C.ink : C.card, color: filtro === id ? '#fff' : C.sub, fontWeight: 500 }}>
-              {lbl}
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+          {[
+            ['seguir',  `⏰ Para seguir${paraSeguir.length ? ` (${paraSeguir.length})` : ''}`],
+            ['activos', `Activos${nuevos ? ` (${nuevos})` : ''}`],
+            ['todos',   `Todos (${leads.length})`],
+          ].map(([id, lbl]) => {
+            const sel = filtro === id;
+            const alert = id === 'seguir' && paraSeguir.length > 0;
+            return (
+              <button key={id} onClick={() => setFiltro(id)} style={{
+                padding: '6px 14px', borderRadius: 50, fontSize: 13, fontFamily: C.sans, cursor: 'pointer', fontWeight: 500,
+                border: `1px solid ${sel ? (alert ? C.amber : C.ink) : (alert ? C.amber + '55' : C.line)}`,
+                background: sel ? (alert ? C.amber : C.ink) : C.card,
+                color: sel ? '#fff' : (alert ? C.amber : C.sub) }}>
+                {lbl}
+              </button>
+            );
+          })}
         </div>
 
         {loading ? (

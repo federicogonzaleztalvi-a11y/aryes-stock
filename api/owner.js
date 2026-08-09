@@ -48,6 +48,7 @@ const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'federico@pazque.com').trim().to
 const CODE_TTL_MIN = 10;                 // el código vence a los 10 minutos
 const SESSION_DAYS = 30;                 // la sesión dura 30 días por dispositivo
 const MAX_CODE_ATTEMPTS = 5;             // intentos por código antes de invalidarlo
+const FOLLOW_UP_DAYS = 3;                // cadencia por defecto entre toques de seguimiento
 
 const ESTADOS = ['nuevo', 'contactado', 'demo', 'convertido', 'descartado'];
 
@@ -115,7 +116,7 @@ Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas
 
 Reglas:
 - Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
-- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...], "mensaje_wa": "string", "mensaje_seguimiento": "string" }
+- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...], "mensaje_wa": "string" }
 - "rubro": qué distribuye, inferido y normalizado (ej: "Panadería y repostería"). Si no hay pista, poné "sin datos".
 - "tamano": estimá el tamaño por las señales (cantidad de clientes, vendedores, volumen). Si no hay ninguna señal, poné "sin datos" — NO adivines.
 - "prioridad": qué tan buen fit es para Pazque. Alta = tiene el dolor exacto que Pazque resuelve (muchos pedidos por WhatsApp, muchos clientes/revendedores, varios vendedores). Baja = poca señal o mal fit.
@@ -130,7 +131,6 @@ Reglas:
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
     · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
-- "mensaje_seguimiento": un SEGUNDO mensaje breve, para mandar DESPUÉS del opener cuando la distribuidora muestra interés. Objetivo: pasarle la web para que la mire con calma. Reglas: mismo tono (personal pero profesional, voseo, sin emojis ni exclamaciones), MÁXIMO 2 líneas, incluí el link literal https://pazque.com, invitá a mirarla sin presión. Ej: "Te dejo la web así lo ves con calma: https://pazque.com — cualquier cosa me escribís y lo vemos juntos." No repitas lo que ya dijiste en el opener.
 - Usá SOLO lo que te paso. No inventes datos que no están (no navegás la web).`;
 
   try {
@@ -159,7 +159,6 @@ Reglas:
       angulo:     clean(parsed.angulo, 400),
       senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
       mensaje_wa: clean(parsed.mensaje_wa, 700),
-      mensaje_seguimiento: clean(parsed.mensaje_seguimiento, 400),
     };
     return { enriquecimiento: out };
   } catch (e) {
@@ -413,6 +412,20 @@ export default async function handler(req, res) {
       patch.estado = estado;
     }
     if (req.body?.notas != null) patch.notas = clean(req.body.notas, 2000) || null;
+
+    // Seguimiento: "Ya le escribí" registra el contacto y agenda el próximo toque.
+    if (req.body?.marcar_contacto === true) {
+      const now = Date.now();
+      patch.ultimo_contacto_at = new Date(now).toISOString();
+      patch.seguir_desde = new Date(now + FOLLOW_UP_DAYS * 86400000).toISOString();
+      // Si estaba "nuevo", el primer contacto lo pasa a "contactado".
+      if (!patch.estado) patch.estado = 'contactado';
+    }
+    // "Posponer": corre el próximo toque sin tocar el último contacto real.
+    if (req.body?.posponer != null) {
+      const dias = Math.min(Math.max(parseInt(req.body.posponer, 10) || FOLLOW_UP_DAYS, 1), 60);
+      patch.seguir_desde = new Date(Date.now() + dias * 86400000).toISOString();
+    }
 
     const upd = await fetch(
       `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}`,
