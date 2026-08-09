@@ -17,7 +17,7 @@
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { sendEmail, templates } from './_email.js';
-import { readWeb, placesSearch, placesConfigured, anthropicJSON, anthropicConfigured } from './_prospecting.js';
+import { readWeb, findSocial, placesSearch, placesConfigured, anthropicJSON, anthropicConfigured } from './_prospecting.js';
 import crypto from 'node:crypto';
 
 // Los scrapers de redes (Apify) del enriquecimiento tardan; le damos aire a la
@@ -216,7 +216,10 @@ async function sourceVenues(org, rubro) {
 async function enrichPortalLead(lead, orgName) {
   if (!anthropicConfigured()) return { error: 'anthropic_not_configured' };
 
-  const web = await readWeb(lead.landing_url);
+  // Mejor fuente: la web/red que ya conocemos. Si el comercio no tiene nada
+  // (ni web ni red en Google), buscamos su IG por nombre y lo verificamos.
+  let web = await readWeb(lead.landing_url);
+  if (!web) web = await findSocial(lead.nombre, lead.ciudad);
   const compact = {
     comercio: lead.nombre || lead.comercio || '',
     tipo:     lead.comercio || '',      // rubro/tipo del comercio (de Google)

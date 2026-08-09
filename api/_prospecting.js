@@ -102,6 +102,42 @@ async function apifyRun(actorId, input, timeoutSec = 40) {
   } catch (e) { clearTimeout(t); console.warn('[prospecting] apify fail:', actorId, e.message); return []; }
 }
 
+// Da formato al perfil de IG que devuelve Apify (bio, seguidores, últimos posts).
+function fmtIG(p) {
+  const posts = Array.isArray(p.latestPosts)
+    ? p.latestPosts.slice(0, 6).map(x => x?.caption).filter(Boolean).join(' | ') : '';
+  return [
+    p.fullName && `Nombre: ${p.fullName}`,
+    p.username && `IG: @${p.username}`,
+    p.biography && `Bio: ${p.biography}`,
+    p.followersCount != null && `Seguidores: ${p.followersCount}`,
+    p.postsCount != null && `Posts: ${p.postsCount}`,
+    p.businessCategoryName && `Categoría: ${p.businessCategoryName}`,
+    posts && `Últimos posts: ${posts}`,
+  ].filter(Boolean).join(' · ').slice(0, 2500);
+}
+
+// Normaliza texto para comparar: sin acentos, minúsculas, solo alfanumérico.
+function norm(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// ¿El perfil se corresponde DE VERDAD con este comercio? Exige que el nombre del
+// comercio aparezca en el perfil (la mayoría de sus palabras) y, si tenemos
+// ciudad, que la ciudad también esté. Estricto a propósito: preferimos devolver
+// '' antes que pegarle a una cuenta equivocada (nada de humo).
+function profileMatches(p, name, city) {
+  const hay = norm([p.fullName, p.username, p.biography, p.businessCategoryName, p.businessAddress]
+    .filter(Boolean).join(' '));
+  const tokens = norm(name).split(' ').filter(t => t.length >= 3);
+  if (!tokens.length) return false;
+  const hits = tokens.filter(t => hay.includes(t)).length;
+  if (hits < Math.ceil(tokens.length * 0.6)) return false;  // el nombre tiene que estar
+  const c = norm(city);
+  return !c || hay.includes(c);                              // y la ciudad, si la hay
+}
+
 // Perfil real de IG/FB del comercio (bio, seguidores, últimos posts). '' si no
 // hay token, no es red o el actor no devuelve nada.
 async function scrapeSocial(url) {
@@ -116,16 +152,7 @@ async function scrapeSocial(url) {
     if (!user || skip.includes(user.toLowerCase())) return '';
     const p = (await apifyRun('apify~instagram-profile-scraper', { usernames: [user] }))[0];
     if (!p) return '';
-    const posts = Array.isArray(p.latestPosts)
-      ? p.latestPosts.slice(0, 6).map(x => x?.caption).filter(Boolean).join(' | ') : '';
-    return [
-      p.fullName && `Nombre: ${p.fullName}`,
-      p.biography && `Bio: ${p.biography}`,
-      p.followersCount != null && `Seguidores: ${p.followersCount}`,
-      p.postsCount != null && `Posts: ${p.postsCount}`,
-      p.businessCategoryName && `Categoría: ${p.businessCategoryName}`,
-      posts && `Últimos posts: ${posts}`,
-    ].filter(Boolean).join(' · ').slice(0, 2500);
+    return fmtIG(p);
   }
 
   if (/(^|\.)(facebook\.com|fb\.com)$/i.test(host)) {
@@ -157,6 +184,25 @@ export async function readWeb(url) {
   if (!social && site.fb) social = await scrapeSocial(site.fb);
   return [site.text, social && `Redes del comercio: ${social}`]
     .filter(Boolean).join('\n').slice(0, 4000);
+}
+
+// Último recurso: el comercio NO tiene web ni red publicada (ni en su sitio ni
+// como "sitio" en Google). Buscamos su Instagram por nombre y SOLO lo usamos si
+// el perfil se VERIFICA (nombre + ciudad coinciden). Requiere Apify. '' si no
+// hay match confiable — antes que un dato falso, nada.
+export async function findSocial(name, city) {
+  if (!APIFY_TOKEN || !name) return '';
+  const found = await apifyRun('apify~instagram-search-scraper', { search: name, searchType: 'user' });
+  const users = [];
+  for (const it of found) {
+    if (it?.username) users.push(it.username);
+    if (Array.isArray(it?.users)) for (const u of it.users) if (u?.username) users.push(u.username);
+  }
+  for (const user of users.slice(0, 3)) {
+    const p = (await apifyRun('apify~instagram-profile-scraper', { usernames: [user] }))[0];
+    if (p && profileMatches(p, name, city)) return fmtIG(p);
+  }
+  return '';
 }
 
 // ── Google Places (New) ─────────────────────────────────────────────────────
