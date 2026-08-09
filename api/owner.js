@@ -117,7 +117,24 @@ function metaContent(html, key) {
   return (html.match(re1) || html.match(re2) || [])[1] || '';
 }
 
-async function fetchSiteText(url) {
+// Descubre el Instagram/Facebook que el propio sitio LINKEA (dato verdadero: es
+// la red que ellos mismos publican). Salta links que no son de perfil.
+function firstSocialLink(html, network) {
+  if (network === 'instagram') {
+    const skip = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'accounts', 'about', 'legal', 'privacy', 'developer'];
+    const re = /instagram\.com\/([A-Za-z0-9._]{2,30})/ig; let m;
+    while ((m = re.exec(html))) { const u = m[1]; if (!skip.includes(u.toLowerCase())) return `https://instagram.com/${u}`; }
+    return '';
+  }
+  const skip = ['sharer', 'sharer.php', 'plugins', 'login', 'dialog', 'tr', 'profile.php', 'people'];
+  const re = /facebook\.com\/([A-Za-z0-9.-]{2,60})/ig; let m;
+  while ((m = re.exec(html))) { const u = m[1]; if (!skip.includes(u.toLowerCase())) return `https://facebook.com/${u}`; }
+  return '';
+}
+
+// Lee un sitio y devuelve { text, ig, fb }. En IG/FB el body es muro de login →
+// solo og:. En una web normal: og: + texto + los links de redes que publica.
+async function fetchSite(url) {
   try {
     const u = /^https?:\/\//i.test(url) ? url : 'https://' + url;
     const host = (() => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } })();
@@ -130,21 +147,23 @@ async function fetchSiteText(url) {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PazqueBot/1.0)' },
     });
     clearTimeout(t);
-    if (!r.ok) return '';
-    if (!/text\/html|text\/plain/i.test(r.headers.get('content-type') || '')) return '';
+    if (!r.ok) return { text: '', ig: '', fb: '' };
+    if (!/text\/html|text\/plain/i.test(r.headers.get('content-type') || '')) return { text: '', ig: '', fb: '' };
     let html = (await r.text()).slice(0, 200000);
     // Etiquetas que las redes/sitios exponen a los buscadores (resumen del negocio).
     const head = [metaContent(html, 'og:title'), metaContent(html, 'og:description'), metaContent(html, 'description')]
       .filter(Boolean).join(' · ');
     // En IG/FB el body es un muro de login: nos quedamos solo con las og:.
-    if (social) return head.slice(0, 1200);
+    if (social) return { text: head.slice(0, 1200), ig: '', fb: '' };
+    // Redes que el propio sitio linkea (fuente confiable de su IG/FB).
+    const ig = firstSocialLink(html, 'instagram');
+    const fb = firstSocialLink(html, 'facebook');
     html = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ');
-    const text = (head + ' ' + html).replace(/\s+/g, ' ').trim();
-    return text.slice(0, 3500);
-  } catch { return ''; }
+    return { text: (head + ' ' + html).replace(/\s+/g, ' ').trim().slice(0, 3500), ig, fb };
+  } catch { return { text: '', ig: '', fb: '' }; }
 }
 
 // ── Lectura profunda de redes vía Apify (opcional) ──────────────────────────
@@ -170,6 +189,42 @@ async function apifyRun(actorId, input, timeoutSec = 40) {
   } catch (e) { clearTimeout(t); console.warn('[owner] apify fail:', actorId, e.message); return []; }
 }
 
+// Da formato al perfil de IG que devuelve Apify (bio, seguidores, últimos posts).
+function fmtIG(p) {
+  const posts = Array.isArray(p.latestPosts)
+    ? p.latestPosts.slice(0, 6).map(x => x?.caption).filter(Boolean).join(' | ') : '';
+  return [
+    p.fullName && `Nombre: ${p.fullName}`,
+    p.username && `IG: @${p.username}`,
+    p.biography && `Bio: ${p.biography}`,
+    p.followersCount != null && `Seguidores: ${p.followersCount}`,
+    p.postsCount != null && `Posts: ${p.postsCount}`,
+    p.businessCategoryName && `Categoría: ${p.businessCategoryName}`,
+    posts && `Últimos posts: ${posts}`,
+  ].filter(Boolean).join(' · ').slice(0, 2500);
+}
+
+// Normaliza texto para comparar: sin acentos, minúsculas, solo alfanumérico.
+function norm(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// ¿El perfil se corresponde DE VERDAD con este negocio? Exige que el nombre
+// aparezca en el perfil (la mayoría de sus palabras) y, si tenemos ciudad, que
+// la ciudad también esté. Estricto a propósito: antes que pegarle a la cuenta
+// equivocada, devolvemos '' (nada de humo).
+function profileMatches(p, name, city) {
+  const hay = norm([p.fullName, p.username, p.biography, p.businessCategoryName, p.businessAddress]
+    .filter(Boolean).join(' '));
+  const tokens = norm(name).split(' ').filter(t => t.length >= 3);
+  if (!tokens.length) return false;
+  const hits = tokens.filter(t => hay.includes(t)).length;
+  if (hits < Math.ceil(tokens.length * 0.6)) return false;
+  const c = norm(city);
+  return !c || hay.includes(c);
+}
+
 async function scrapeSocial(url) {
   if (!APIFY_TOKEN || !url) return '';
   let host = '';
@@ -183,16 +238,7 @@ async function scrapeSocial(url) {
     if (!user || skip.includes(user.toLowerCase())) return '';
     const p = (await apifyRun('apify~instagram-profile-scraper', { usernames: [user] }))[0];
     if (!p) return '';
-    const posts = Array.isArray(p.latestPosts)
-      ? p.latestPosts.slice(0, 6).map(x => x?.caption).filter(Boolean).join(' | ') : '';
-    return [
-      p.fullName && `Nombre: ${p.fullName}`,
-      p.biography && `Bio: ${p.biography}`,
-      p.followersCount != null && `Seguidores: ${p.followersCount}`,
-      p.postsCount != null && `Posts: ${p.postsCount}`,
-      p.businessCategoryName && `Categoría: ${p.businessCategoryName}`,
-      posts && `Últimos posts: ${posts}`,
-    ].filter(Boolean).join(' · ').slice(0, 2500);
+    return fmtIG(p);
   }
 
   // Facebook: page scraper por URL.
@@ -208,7 +254,39 @@ async function scrapeSocial(url) {
     ].filter(Boolean).join(' · ').slice(0, 2500);
   }
 
-  return ''; // no es red social → lo maneja fetchSiteText
+  return ''; // no es red social → lo maneja fetchSite
+}
+
+// Lee lo mejor que haya: si la URL YA es IG/FB, a fondo directo; si es web,
+// su texto + el IG/FB que ELLOS linkean (leído a fondo con Apify).
+async function readWeb(url) {
+  if (!url) return '';
+  const direct = await scrapeSocial(url);
+  if (direct) return direct;
+  const site = await fetchSite(url);
+  let social = '';
+  if (site.ig) social = await scrapeSocial(site.ig);
+  if (!social && site.fb) social = await scrapeSocial(site.fb);
+  return [site.text, social && `Redes del negocio: ${social}`]
+    .filter(Boolean).join('\n').slice(0, 4000);
+}
+
+// Último recurso: el negocio NO tiene web ni red publicada. Buscamos su
+// Instagram por nombre y SOLO lo usamos si el perfil se VERIFICA (nombre +
+// ciudad coinciden). Antes que un dato falso, nada.
+async function findSocial(name, city) {
+  if (!APIFY_TOKEN || !name) return '';
+  const found = await apifyRun('apify~instagram-search-scraper', { search: name, searchType: 'user' });
+  const users = [];
+  for (const it of found) {
+    if (it?.username) users.push(it.username);
+    if (Array.isArray(it?.users)) for (const u of it.users) if (u?.username) users.push(u.username);
+  }
+  for (const user of users.slice(0, 3)) {
+    const p = (await apifyRun('apify~instagram-profile-scraper', { usernames: [user] }))[0];
+    if (p && profileMatches(p, name, city)) return fmtIG(p);
+  }
+  return '';
 }
 
 // ── Enriquecimiento: Claude infiere rubro/tamaño/prioridad/ángulo ───────────
@@ -220,13 +298,10 @@ const PRIORIDS = ['alta', 'media', 'baja'];
 async function enrichLead(lead) {
   if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
 
-  // Datos reales del negocio (no genérico): si dejó IG/FB, lo leemos a fondo con
-  // Apify (pasa el muro de login); si no, o si falla, caemos en el texto del sitio.
-  let web = '';
-  if (lead.landing_url) {
-    web = await scrapeSocial(lead.landing_url);
-    if (!web) web = await fetchSiteText(lead.landing_url);
-  }
+  // Datos reales del negocio (no genérico): leemos su web y el IG/FB que linkea a
+  // fondo con Apify. Si no tiene nada, buscamos su IG por nombre y lo verificamos.
+  let web = await readWeb(lead.landing_url);
+  if (!web) web = await findSocial(lead.empresa || lead.nombre, '');
 
   const compact = {
     nombre:   lead.nombre || '',
