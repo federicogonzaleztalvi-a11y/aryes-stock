@@ -93,13 +93,30 @@ async function sessionOk(req) {
   return true;
 }
 
-// ── Lectura del sitio web del prospecto ─────────────────────────────────────
+// ── Lectura del sitio web / redes del prospecto ─────────────────────────────
 // Trae el texto visible de la web de la distribuidora (si dejó una) para que el
 // enriquecimiento sea sobre datos REALES del negocio, no genérico. Best-effort:
 // timeout corto, solo HTML, recorta a lo esencial. Si falla, devuelve ''.
+//
+// Instagram/Facebook bloquean a los bots con un muro de login, así que el <body>
+// no sirve. Pero ambos exponen a los buscadores las etiquetas og: (título +
+// descripción, y en IG a veces seguidores/posts). Para esos hosts usamos SOLO
+// esas etiquetas; para una web normal, og: + el texto de la página.
+
+// Extrae el content de un <meta property="X"> o <meta name="X"> (atributos en
+// cualquier orden). Devuelve '' si no está.
+function metaContent(html, key) {
+  const k = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re1 = new RegExp('<meta[^>]+(?:property|name)=["\']' + k + '["\'][^>]*content=["\']([^"\']*)["\']', 'i');
+  const re2 = new RegExp('<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']' + k + '["\']', 'i');
+  return (html.match(re1) || html.match(re2) || [])[1] || '';
+}
+
 async function fetchSiteText(url) {
   try {
     const u = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+    const host = (() => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+    const social = /(^|\.)(instagram\.com|facebook\.com|fb\.com|m\.facebook\.com)$/i.test(host);
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 4500);
     const r = await fetch(u, {
@@ -111,13 +128,16 @@ async function fetchSiteText(url) {
     if (!r.ok) return '';
     if (!/text\/html|text\/plain/i.test(r.headers.get('content-type') || '')) return '';
     let html = (await r.text()).slice(0, 200000);
-    // Rescatamos la meta description antes de romper el HTML (suele resumir el negocio).
-    const meta = (html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']+)["']/i) || [])[1] || '';
+    // Etiquetas que las redes/sitios exponen a los buscadores (resumen del negocio).
+    const head = [metaContent(html, 'og:title'), metaContent(html, 'og:description'), metaContent(html, 'description')]
+      .filter(Boolean).join(' · ');
+    // En IG/FB el body es un muro de login: nos quedamos solo con las og:.
+    if (social) return head.slice(0, 1200);
     html = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ');
-    const text = (meta + ' ' + html).replace(/\s+/g, ' ').trim();
+    const text = (head + ' ' + html).replace(/\s+/g, ' ').trim();
     return text.slice(0, 3500);
   } catch { return ''; }
 }
@@ -146,7 +166,7 @@ async function enrichLead(lead) {
 
   const system = `Sos un SDR senior (sales development) de Pazque, un SaaS B2B para distribuidoras mayoristas de LATAM. Pazque le da a la distribuidora un portal donde sus clientes hacen pedidos solos (en vez de por WhatsApp uno por uno), catálogo con fotos y precios, y toma de pedidos por voz/foto.
 
-Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio (nombre/rubro/zona/rating). Además, si la distribuidora tiene sitio web, te paso su contenido real en el campo "web" — usalo como tu mejor fuente para entender QUÉ distribuye, a quién y qué tamaño tiene. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
+Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio (nombre/rubro/zona/rating). Además, si la distribuidora tiene sitio web o redes (Instagram/Facebook), te paso su contenido real en el campo "web" — puede ser el texto del sitio o el resumen de su perfil de redes (descripción, seguidores). Usalo como tu mejor fuente para entender QUÉ distribuye, a quién y qué tamaño tiene. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
 
 Reglas:
 - Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
