@@ -93,45 +93,79 @@ async function sessionOk(req) {
   return true;
 }
 
+// ── Lectura del sitio web del prospecto ─────────────────────────────────────
+// Trae el texto visible de la web de la distribuidora (si dejó una) para que el
+// enriquecimiento sea sobre datos REALES del negocio, no genérico. Best-effort:
+// timeout corto, solo HTML, recorta a lo esencial. Si falla, devuelve ''.
+async function fetchSiteText(url) {
+  try {
+    const u = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4500);
+    const r = await fetch(u, {
+      signal: ctrl.signal,
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PazqueBot/1.0)' },
+    });
+    clearTimeout(t);
+    if (!r.ok) return '';
+    if (!/text\/html|text\/plain/i.test(r.headers.get('content-type') || '')) return '';
+    let html = (await r.text()).slice(0, 200000);
+    // Rescatamos la meta description antes de romper el HTML (suele resumir el negocio).
+    const meta = (html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']+)["']/i) || [])[1] || '';
+    html = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ');
+    const text = (meta + ' ' + html).replace(/\s+/g, ' ').trim();
+    return text.slice(0, 3500);
+  } catch { return ''; }
+}
+
 // ── Enriquecimiento: Claude infiere rubro/tamaño/prioridad/ángulo ───────────
-// SOLO usa lo que el prospecto ya dejó (nombre, empresa, rubro, mensaje). No
-// navega la web: si no hay señal, marca "sin datos" en vez de inventar.
+// Usa lo que el prospecto dejó (nombre, empresa, rubro, mensaje) MÁS el contenido
+// real de su sitio web cuando tiene uno. Si no hay señal, marca "sin datos".
 const TAMANOS  = ['chico', 'mediano', 'grande', 'sin datos'];
 const PRIORIDS = ['alta', 'media', 'baja'];
 
 async function enrichLead(lead) {
   if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
 
+  // Si dejó web, la leemos para tener datos reales del negocio (no genérico).
+  const web = lead.landing_url ? await fetchSiteText(lead.landing_url) : '';
+
   const compact = {
     nombre:   lead.nombre || '',
     empresa:  lead.empresa || '',
     rubro_declarado: lead.rubro || '',
     mensaje:  lead.mensaje || '',
+    sitio:    lead.landing_url || '',
+    web:      web || '',
     llegó_por: [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' / ') || 'directo',
   };
 
   const system = `Sos un SDR senior (sales development) de Pazque, un SaaS B2B para distribuidoras mayoristas de LATAM. Pazque le da a la distribuidora un portal donde sus clientes hacen pedidos solos (en vez de por WhatsApp uno por uno), catálogo con fotos y precios, y toma de pedidos por voz/foto.
 
-Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio y solo tenemos nombre/rubro/zona. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
+Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio (nombre/rubro/zona/rating). Además, si la distribuidora tiene sitio web, te paso su contenido real en el campo "web" — usalo como tu mejor fuente para entender QUÉ distribuye, a quién y qué tamaño tiene. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
 
 Reglas:
 - Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
 - Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...], "mensaje_wa": "string" }
-- "rubro": qué distribuye, inferido y normalizado (ej: "Panadería y repostería"). Si no hay pista, poné "sin datos".
-- "tamano": estimá el tamaño por las señales (cantidad de clientes, vendedores, volumen). Si no hay ninguna señal, poné "sin datos" — NO adivines.
+- "rubro": qué distribuye, inferido del sitio web y del rubro declarado, normalizado (ej: "Distribuidora de bebidas y bebidas alcohólicas"). Priorizá lo que diga la web por sobre el rubro genérico de Google. Si no hay pista real, poné "sin datos".
+- "tamano": estimá el tamaño por las señales (líneas de producto, cantidad de reseñas, menciones de sucursales/flota/vendedores en la web). Si no hay ninguna señal, poné "sin datos" — NO adivines.
 - "prioridad": qué tan buen fit es para Pazque. Alta = tiene el dolor exacto que Pazque resuelve (muchos pedidos por WhatsApp, muchos clientes/revendedores, varios vendedores). Baja = poca señal o mal fit.
-- "angulo": 1-2 frases en español rioplatense (voseo), concretas, sobre POR QUÉ Pazque le sirve A ESTA distribuidora puntual. Nada genérico.
-- "senales": lista corta (máx 4) de los datos que usaste para decidir. Si no hay, dejala vacía.
+- "angulo": 1-2 frases en español rioplatense (voseo), concretas, sobre POR QUÉ Pazque le sirve A ESTA distribuidora puntual, apoyándote en lo que viste de su negocio. Nada genérico.
+- "senales": lista corta (máx 4) de los datos REALES que usaste para decidir (ej: "La web lista 200+ productos de almacén", "128 reseñas en Google"). Si no hay, dejala vacía. No inventes señales.
 - "mensaje_wa": un PRIMER mensaje de WhatsApp para que Federico (dueño de Pazque) le escriba a esta distribuidora. TONO: cercano pero profesional, del registro de founders top-tech (Sophia Amoruso, Amazon) — seguro, directo, sin adornos, respetando el tiempo del otro. Reglas duras:
     · Español rioplatense voseo.
     · MÁXIMO 3 líneas cortas. Menos es más.
     · CERO emojis. CERO signos de exclamación. CERO MAYÚSCULAS de énfasis.
     · Se presenta seco y claro: "Hola Diego, soy Federico, fundador de Pazque."
-    · Una sola observación puntual del negocio de ellos (lo que distribuyen / su operación), como quien entiende el rubro, no como quien adula.
+    · Una sola observación puntual y VERDADERA del negocio de ellos, sacada de la web o del rubro (ej: "vi que distribuís bebidas a comercios en Montevideo"), como quien entiende el rubro, no como quien adula. Si NO tenés dato real del negocio (sin web y rubro genérico), no inventes una observación: hacé un mensaje más neutro pero honesto.
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
     · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
-- Usá SOLO lo que te paso. No inventes datos que no están (no navegás la web).`;
+- Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -175,6 +209,7 @@ const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText';
 const PLACES_FIELDS = [
   'places.id', 'places.displayName', 'places.formattedAddress',
   'places.internationalPhoneNumber', 'places.websiteUri', 'places.primaryTypeDisplayName',
+  'places.rating', 'places.userRatingCount', 'places.businessStatus',
   'nextPageToken',
 ].join(',');
 
@@ -225,15 +260,20 @@ async function sourceDistributors(query) {
   for (const p of places) {
     const pid = p.id;
     if (!pid || known.has(pid)) continue;
+    if (p.businessStatus && p.businessStatus !== 'OPERATIONAL') continue; // saltamos cerrados / temporalmente cerrados
     known.add(pid); // evita duplicados dentro del mismo lote
     const nombre = clean(p.displayName?.text, 200);
     if (!nombre) continue;
+    // Guardamos dirección + señal de tamaño (rating y reseñas) como contexto del lead.
+    const rating = typeof p.rating === 'number'
+      ? `${p.rating}★ (${p.userRatingCount || 0} reseñas)` : '';
+    const contexto = [clean(p.formattedAddress, 220), rating].filter(Boolean).join(' · ');
     rows.push({
       nombre,                                   // en sourcing el "nombre" es la distribuidora
       empresa: nombre,
       tel: clean(p.internationalPhoneNumber, 40) || null,
       rubro: clean(p.primaryTypeDisplayName?.text, 120) || null,
-      mensaje: clean(p.formattedAddress, 300) || null, // guardamos la dirección como contexto
+      mensaje: clean(contexto, 300) || null,   // dirección + rating como contexto
       landing_url: clean(p.websiteUri, 300) || null,
       place_id: pid,
       origen: 'sourcing',
