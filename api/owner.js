@@ -40,6 +40,11 @@ const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY;
+const APIFY_TOKEN = process.env.APIFY_TOKEN;   // opcional: lee IG/FB reales pasando el muro de login
+
+// Los scrapers de redes (Apify) tardan; le damos aire a la función serverless.
+// Solo sube el techo — las demás acciones siguen respondiendo en <2s.
+export const config = { maxDuration: 60 };
 
 // Único mail autorizado a entrar. Default: la casilla de Federico. Se puede
 // sobreescribir con OWNER_EMAIL (por si algún día cambia), pero no hace falta.
@@ -142,17 +147,86 @@ async function fetchSiteText(url) {
   } catch { return ''; }
 }
 
+// ── Lectura profunda de redes vía Apify (opcional) ──────────────────────────
+// Apify tiene scrapers que SÍ entran a Instagram/Facebook pasando el muro de
+// login. Lo usamos on-demand, un perfil por vez, para que el enriquecimiento
+// tenga la bio + posts reales del negocio. Si no hay token, no es red social o
+// el actor falla/tarda, devuelve '' y el enriquecimiento cae en fetchSiteText.
+async function apifyRun(actorId, input, timeoutSec = 40) {
+  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items`
+    + `?token=${encodeURIComponent(APIFY_TOKEN)}&timeout=${timeoutSec}&maxItems=1`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), (timeoutSec + 8) * 1000);
+  try {
+    const r = await fetch(url, {
+      method: 'POST', signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    clearTimeout(t);
+    if (!r.ok) { console.warn('[owner] apify error:', actorId, r.status); return []; }
+    const items = await r.json();
+    return Array.isArray(items) ? items : [];
+  } catch (e) { clearTimeout(t); console.warn('[owner] apify fail:', actorId, e.message); return []; }
+}
+
+async function scrapeSocial(url) {
+  if (!APIFY_TOKEN || !url) return '';
+  let host = '';
+  try { host = new URL(/^https?:\/\//i.test(url) ? url : 'https://' + url).hostname.replace(/^www\./, ''); }
+  catch { return ''; }
+
+  // Instagram: username del path → profile scraper.
+  if (/(^|\.)instagram\.com$/i.test(host)) {
+    const user = (String(url).match(/instagram\.com\/([A-Za-z0-9._]+)/i) || [])[1];
+    const skip = ['p', 'reel', 'reels', 'explore', 'stories', 'tv'];
+    if (!user || skip.includes(user.toLowerCase())) return '';
+    const p = (await apifyRun('apify~instagram-profile-scraper', { usernames: [user] }))[0];
+    if (!p) return '';
+    const posts = Array.isArray(p.latestPosts)
+      ? p.latestPosts.slice(0, 6).map(x => x?.caption).filter(Boolean).join(' | ') : '';
+    return [
+      p.fullName && `Nombre: ${p.fullName}`,
+      p.biography && `Bio: ${p.biography}`,
+      p.followersCount != null && `Seguidores: ${p.followersCount}`,
+      p.postsCount != null && `Posts: ${p.postsCount}`,
+      p.businessCategoryName && `Categoría: ${p.businessCategoryName}`,
+      posts && `Últimos posts: ${posts}`,
+    ].filter(Boolean).join(' · ').slice(0, 2500);
+  }
+
+  // Facebook: page scraper por URL.
+  if (/(^|\.)(facebook\.com|fb\.com)$/i.test(host)) {
+    const p = (await apifyRun('apify~facebook-pages-scraper', { startUrls: [{ url }], maxPosts: 0 }))[0];
+    if (!p) return '';
+    return [
+      p.title && `Nombre: ${p.title}`,
+      p.intro && `Intro: ${p.intro}`,
+      p.categories && `Categorías: ${[].concat(p.categories).join(', ')}`,
+      p.likes != null && `Likes: ${p.likes}`,
+      p.info && `Info: ${[].concat(p.info).join(' ')}`,
+    ].filter(Boolean).join(' · ').slice(0, 2500);
+  }
+
+  return ''; // no es red social → lo maneja fetchSiteText
+}
+
 // ── Enriquecimiento: Claude infiere rubro/tamaño/prioridad/ángulo ───────────
 // Usa lo que el prospecto dejó (nombre, empresa, rubro, mensaje) MÁS el contenido
-// real de su sitio web cuando tiene uno. Si no hay señal, marca "sin datos".
+// real de su sitio web o red social cuando tiene uno. Si no hay señal, "sin datos".
 const TAMANOS  = ['chico', 'mediano', 'grande', 'sin datos'];
 const PRIORIDS = ['alta', 'media', 'baja'];
 
 async function enrichLead(lead) {
   if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
 
-  // Si dejó web, la leemos para tener datos reales del negocio (no genérico).
-  const web = lead.landing_url ? await fetchSiteText(lead.landing_url) : '';
+  // Datos reales del negocio (no genérico): si dejó IG/FB, lo leemos a fondo con
+  // Apify (pasa el muro de login); si no, o si falla, caemos en el texto del sitio.
+  let web = '';
+  if (lead.landing_url) {
+    web = await scrapeSocial(lead.landing_url);
+    if (!web) web = await fetchSiteText(lead.landing_url);
+  }
 
   const compact = {
     nombre:   lead.nombre || '',
