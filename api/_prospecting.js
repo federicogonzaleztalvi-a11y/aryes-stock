@@ -34,9 +34,25 @@ function metaContent(html, key) {
   return (html.match(re1) || html.match(re2) || [])[1] || '';
 }
 
-// Texto visible del sitio del comercio. IG/FB tienen muro de login: nos quedamos
-// solo con las etiquetas og: (título/descripción). Best-effort: timeout corto.
-async function fetchSiteText(url) {
+// Descubre el Instagram/Facebook del comercio LINKEADO EN SU PROPIO SITIO (dato
+// verdadero: es la red que ellos mismos publican, no una adivinada por nombre).
+// Salta links que no son de perfil (posts, login, sharer, etc.).
+function firstSocialLink(html, network) {
+  if (network === 'instagram') {
+    const skip = ['p', 'reel', 'reels', 'explore', 'stories', 'tv', 'accounts', 'about', 'legal', 'privacy', 'developer'];
+    const re = /instagram\.com\/([A-Za-z0-9._]{2,30})/ig; let m;
+    while ((m = re.exec(html))) { const u = m[1]; if (!skip.includes(u.toLowerCase())) return `https://instagram.com/${u}`; }
+    return '';
+  }
+  const skip = ['sharer', 'sharer.php', 'plugins', 'login', 'dialog', 'tr', 'profile.php', 'people'];
+  const re = /facebook\.com\/([A-Za-z0-9.-]{2,60})/ig; let m;
+  while ((m = re.exec(html))) { const u = m[1]; if (!skip.includes(u.toLowerCase())) return `https://facebook.com/${u}`; }
+  return '';
+}
+
+// Lee un sitio y devuelve { text, ig, fb }. En IG/FB el body es muro de login →
+// solo og:. En una web normal: og: + texto + los links de redes que publica.
+async function fetchSite(url) {
   try {
     const u = /^https?:\/\//i.test(url) ? url : 'https://' + url;
     const host = (() => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } })();
@@ -49,18 +65,21 @@ async function fetchSiteText(url) {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PazqueBot/1.0)' },
     });
     clearTimeout(t);
-    if (!r.ok) return '';
-    if (!/text\/html|text\/plain/i.test(r.headers.get('content-type') || '')) return '';
+    if (!r.ok) return { text: '', ig: '', fb: '' };
+    if (!/text\/html|text\/plain/i.test(r.headers.get('content-type') || '')) return { text: '', ig: '', fb: '' };
     let html = (await r.text()).slice(0, 200000);
     const head = [metaContent(html, 'og:title'), metaContent(html, 'og:description'), metaContent(html, 'description')]
       .filter(Boolean).join(' · ');
-    if (social) return head.slice(0, 1200);
+    if (social) return { text: head.slice(0, 1200), ig: '', fb: '' };
+    // Redes que el propio sitio linkea (fuente confiable de su IG/FB).
+    const ig = firstSocialLink(html, 'instagram');
+    const fb = firstSocialLink(html, 'facebook');
     html = html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ');
-    return (head + ' ' + html).replace(/\s+/g, ' ').trim().slice(0, 3500);
-  } catch { return ''; }
+    return { text: (head + ' ' + html).replace(/\s+/g, ' ').trim().slice(0, 3500), ig, fb };
+  } catch { return { text: '', ig: '', fb: '' }; }
 }
 
 // Corre un actor de Apify de forma síncrona (un item). Si no hay token / falla /
@@ -128,9 +147,16 @@ async function scrapeSocial(url) {
 // en el texto del sitio. '' si no hay URL o no se pudo leer nada.
 export async function readWeb(url) {
   if (!url) return '';
-  let web = await scrapeSocial(url);
-  if (!web) web = await fetchSiteText(url);
-  return web;
+  // 1) Si la URL YA es un IG/FB, lo leemos a fondo directo.
+  const direct = await scrapeSocial(url);
+  if (direct) return direct;
+  // 2) Web normal: leemos su texto y descubrimos el IG/FB que ELLOS linkean.
+  const site = await fetchSite(url);
+  let social = '';
+  if (site.ig) social = await scrapeSocial(site.ig);
+  if (!social && site.fb) social = await scrapeSocial(site.fb);
+  return [site.text, social && `Redes del comercio: ${social}`]
+    .filter(Boolean).join('\n').slice(0, 4000);
 }
 
 // ── Google Places (New) ─────────────────────────────────────────────────────
