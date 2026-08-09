@@ -17,6 +17,11 @@
 //   POST { action:'verify-code',  email, code }  → { ok:true, token, expiresAt }
 //   POST { action:'list' }                        → { ok:true, leads:[...] }
 //   POST { action:'update', id, estado?, notas? } → { ok:true }
+//   POST { action:'enrich', id }                  → { ok:true, enriquecimiento:{...} }
+//
+// Peldaño 1b (enrich): un agente que LEE lo que el prospecto ya dejó y sugiere
+// rubro, tamaño, prioridad y un ángulo de venta. Solo lee y propone; no manda
+// nada. El resultado queda cacheado en la fila (no re-consulta cada vez).
 //
 // El embudo del PRODUCTO (portal_leads / api/lead.js) NO se toca acá.
 
@@ -28,6 +33,7 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
+const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 
 // Único mail autorizado a entrar. Default: la casilla de Federico. Se puede
 // sobreescribir con OWNER_EMAIL (por si algún día cambia), pero no hace falta.
@@ -78,6 +84,70 @@ async function sessionOk(req) {
     body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
   }).catch(() => {});
   return true;
+}
+
+// ── Enriquecimiento: Claude infiere rubro/tamaño/prioridad/ángulo ───────────
+// SOLO usa lo que el prospecto ya dejó (nombre, empresa, rubro, mensaje). No
+// navega la web: si no hay señal, marca "sin datos" en vez de inventar.
+const TAMANOS  = ['chico', 'mediano', 'grande', 'sin datos'];
+const PRIORIDS = ['alta', 'media', 'baja'];
+
+async function enrichLead(lead) {
+  if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
+
+  const compact = {
+    nombre:   lead.nombre || '',
+    empresa:  lead.empresa || '',
+    rubro_declarado: lead.rubro || '',
+    mensaje:  lead.mensaje || '',
+    llegó_por: [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' / ') || 'directo',
+  };
+
+  const system = `Sos un SDR senior (sales development) de Pazque, un SaaS B2B para distribuidoras mayoristas de LATAM. Pazque le da a la distribuidora un portal donde sus clientes hacen pedidos solos (en vez de por WhatsApp uno por uno), catálogo con fotos y precios, y toma de pedidos por voz/foto.
+
+Te paso los datos que un prospecto (una distribuidora interesada) dejó al pedir una demo. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo.
+
+Reglas:
+- Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
+- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...] }
+- "rubro": qué distribuye, inferido y normalizado (ej: "Panadería y repostería"). Si no hay pista, poné "sin datos".
+- "tamano": estimá el tamaño por las señales del mensaje (cantidad de clientes, vendedores, volumen). Si no hay ninguna señal, poné "sin datos" — NO adivines.
+- "prioridad": qué tan buen fit es para Pazque. Alta = tiene el dolor exacto que Pazque resuelve (muchos pedidos por WhatsApp, muchos clientes/revendedores, varios vendedores). Baja = poca señal o mal fit.
+- "angulo": 1-2 frases en español rioplatense (voseo), concretas, sobre POR QUÉ Pazque le sirve A ESTA distribuidora puntual, citando la señal de su mensaje. Nada genérico.
+- "senales": lista corta (máx 4) de los datos textuales del mensaje que usaste para decidir. Si el mensaje está vacío, dejala vacía.
+- Usá SOLO lo que te paso. No inventes datos que no están (no navegás la web).`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 600,
+        system,
+        messages: [{ role: 'user', content: 'Prospecto:\n' + JSON.stringify(compact, null, 2) }],
+      }),
+    });
+    if (!r.ok) { console.warn('[owner] enrich anthropic error:', r.status); return { error: 'anthropic_error' }; }
+    const d = await r.json();
+    let text = (d?.content?.[0]?.text || '').trim().replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+    const start = text.indexOf('{'); const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) text = text.slice(start, end + 1);
+    const parsed = JSON.parse(text);
+
+    // Normalizamos a valores conocidos (no confiamos ciegamente en el modelo).
+    const out = {
+      rubro:     clean(parsed.rubro, 120) || 'sin datos',
+      tamano:    TAMANOS.includes(parsed.tamano) ? parsed.tamano : 'sin datos',
+      prioridad: PRIORIDS.includes(parsed.prioridad) ? parsed.prioridad : 'media',
+      angulo:    clean(parsed.angulo, 400),
+      senales:   Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
+    };
+    return { enriquecimiento: out };
+  } catch (e) {
+    console.warn('[owner] enrich parse error:', e.message);
+    return { error: 'enrich_failed' };
+  }
 }
 
 export default async function handler(req, res) {
@@ -183,6 +253,37 @@ export default async function handler(req, res) {
     }
     const leads = await r.json();
     return res.status(200).json({ ok: true, leads });
+  }
+
+  if (action === 'enrich') {
+    if (!(await checkRateLimit('owner-enrich:' + ip, 60, 10, { failClosed: true })))
+      return res.status(429).json({ error: 'Esperá un momento antes de enriquecer otro prospecto.' });
+
+    const id = clean(req.body?.id, 60);
+    if (!id) return res.status(400).json({ error: 'Falta el id del prospecto' });
+
+    const q = await fetch(
+      `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+      { headers: svcHeaders() }
+    );
+    const lead = q.ok ? (await q.json())[0] : null;
+    if (!lead) return res.status(404).json({ error: 'Prospecto no encontrado' });
+
+    const { enriquecimiento, error } = await enrichLead(lead);
+    if (error) {
+      const msg = error === 'anthropic_not_configured'
+        ? 'El análisis con IA no está configurado.'
+        : 'No pudimos analizar este prospecto. Probá de nuevo.';
+      return res.status(error === 'anthropic_not_configured' ? 503 : 502).json({ error: msg });
+    }
+
+    const patch = { enriquecimiento, enriquecido_at: new Date().toISOString() };
+    const upd = await fetch(
+      `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', headers: svcHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(patch) }
+    );
+    if (!upd.ok) console.warn('[owner] enrich save error:', await upd.text()); // no bloquea: igual devolvemos
+    return res.status(200).json({ ok: true, enriquecimiento, enriquecido_at: patch.enriquecido_at });
   }
 
   if (action === 'update') {

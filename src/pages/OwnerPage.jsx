@@ -49,6 +49,13 @@ const ESTADO = {
 };
 const FLUJO = ['nuevo', 'contactado', 'demo', 'convertido', 'descartado'];
 
+// Prioridad que sugiere el enriquecimiento (qué tan buen fit es para Pazque).
+const PRIORIDAD = {
+  alta:  { label: 'Fit alto',  bg: C.greenBg, fg: C.green },
+  media: { label: 'Fit medio', bg: C.amberBg, fg: C.amber },
+  baja:  { label: 'Fit bajo',  bg: '#f3f4f6', fg: C.faint },
+};
+
 function fuenteOf(l) {
   if (l.utm_source || l.utm_campaign) return [l.utm_source, l.utm_campaign].filter(Boolean).join(' · ');
   if (l.fbclid) return 'Meta Ads';
@@ -184,8 +191,33 @@ function Gate({ onEnter }) {
   );
 }
 
+// Panel con lo que el agente infirió del prospecto (peldaño 1b, solo lectura).
+function EnrichPanel({ e }) {
+  if (!e) return null;
+  const prio = PRIORIDAD[e.prioridad] || PRIORIDAD.media;
+  const bits = [e.rubro && e.rubro !== 'sin datos' ? e.rubro : null,
+                e.tamano && e.tamano !== 'sin datos' ? `Tamaño ${e.tamano}` : null].filter(Boolean);
+  return (
+    <div style={{ background: C.greenSoft, border: `1px solid ${C.green}22`, borderRadius: 10, padding: '10px 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: e.angulo ? 6 : 0 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: C.green, letterSpacing: .3 }}>✨ ANÁLISIS</span>
+        <span style={{ background: prio.bg, color: prio.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{prio.label}</span>
+        {bits.length > 0 && <span style={{ fontSize: 12.5, color: C.sub }}>{bits.join(' · ')}</span>}
+      </div>
+      {e.angulo && <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{e.angulo}</div>}
+      {Array.isArray(e.senales) && e.senales.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+          {e.senales.map((s, i) => (
+            <span key={i} style={{ fontSize: 11.5, color: C.sub, background: C.card, border: `1px solid ${C.line}`, borderRadius: 50, padding: '2px 9px' }}>{s}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tarjeta de prospecto ─────────────────────────────────────────────
-function LeadCard({ l, onUpdate, busy }) {
+function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   const [notas, setNotas]   = React.useState(l.notas || '');
   const [editing, setEditing] = React.useState(false);
   const est = ESTADO[l.estado] || ESTADO.nuevo;
@@ -236,8 +268,17 @@ function LeadCard({ l, onUpdate, busy }) {
         </div>
       </div>
 
+      {/* Análisis del agente (peldaño 1b) */}
+      {l.enriquecimiento && <EnrichPanel e={l.enriquecimiento} />}
+
       {/* Acciones de estado + notas */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
+        <button onClick={() => onEnrich(l.id)} disabled={enriching} title="El agente lee el prospecto y sugiere rubro, tamaño y ángulo de venta" style={{
+          fontSize: 13, fontWeight: 600, color: C.green, background: C.greenSoft,
+          border: `1px solid ${C.green}33`, borderRadius: 50, padding: '8px 14px',
+          cursor: enriching ? 'default' : 'pointer', fontFamily: C.sans, opacity: enriching ? .6 : 1 }}>
+          {enriching ? 'Analizando…' : (l.enriquecimiento ? '↻ Re-analizar' : '✨ Enriquecer')}
+        </button>
         {next && (
           <button onClick={() => onUpdate(l.id, { estado: next })} disabled={busy} style={{
             fontSize: 13, fontWeight: 600, color: '#fff', background: busy ? '#b0b0a8' : C.ink,
@@ -284,6 +325,7 @@ function Inbox({ token, onLogout }) {
   const [loading, setLoading] = React.useState(true);
   const [error,   setError]   = React.useState('');
   const [busy,    setBusy]    = React.useState('');
+  const [enriching, setEnriching] = React.useState('');
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
 
   const load = React.useCallback(async () => {
@@ -305,6 +347,19 @@ function Inbox({ token, onLogout }) {
     if (status === 401) { onLogout(); return; }
     if (!ok) await load(); // si falló, recargamos la verdad del server
     setBusy('');
+  };
+
+  const enrich = async (id) => {
+    setEnriching(id);
+    const { ok, status, data } = await ownerFetch({ action: 'enrich', id }, token);
+    if (status === 401) { onLogout(); return; }
+    if (ok && data?.enriquecimiento) {
+      setLeads(prev => prev.map(l => l.id === id
+        ? { ...l, enriquecimiento: data.enriquecimiento, enriquecido_at: data.enriquecido_at } : l));
+    } else {
+      setError(data?.error || 'No pudimos analizar ese prospecto.');
+    }
+    setEnriching('');
   };
 
   const activos = leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado' || l.estado === 'demo');
@@ -358,7 +413,8 @@ function Inbox({ token, onLogout }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {visibles.map(l => (
-              <LeadCard key={l.id} l={l} onUpdate={update} busy={busy === l.id} />
+              <LeadCard key={l.id} l={l} onUpdate={update} onEnrich={enrich}
+                busy={busy === l.id} enriching={enriching === l.id} />
             ))}
           </div>
         )}
