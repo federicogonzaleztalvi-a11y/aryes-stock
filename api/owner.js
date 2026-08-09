@@ -18,10 +18,15 @@
 //   POST { action:'list' }                        → { ok:true, leads:[...] }
 //   POST { action:'update', id, estado?, notas? } → { ok:true }
 //   POST { action:'enrich', id }                  → { ok:true, enriquecimiento:{...} }
+//   POST { action:'source', query? }              → { ok:true, added, found }
 //
 // Peldaño 1b (enrich): un agente que LEE lo que el prospecto ya dejó y sugiere
-// rubro, tamaño, prioridad y un ángulo de venta. Solo lee y propone; no manda
-// nada. El resultado queda cacheado en la fila (no re-consulta cada vez).
+// rubro, tamaño, prioridad, ángulo de venta y un mensaje de WhatsApp listo. Solo
+// lee y propone; no manda nada. El resultado queda cacheado en la fila.
+//
+// Fase B (source): busca distribuidoras uruguayas reales en Google Places y las
+// mete en pazque_leads (origen='sourcing', dedupe por place_id). No contacta a
+// nadie: Federico abre el WhatsApp con el texto precargado y envía a mano.
 //
 // El embudo del PRODUCTO (portal_leads / api/lead.js) NO se toca acá.
 
@@ -34,6 +39,7 @@ const SB_URL  = process.env.SUPABASE_URL;
 const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
+const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY;
 
 // Único mail autorizado a entrar. Default: la casilla de Federico. Se puede
 // sobreescribir con OWNER_EMAIL (por si algún día cambia), pero no hace falta.
@@ -105,16 +111,17 @@ async function enrichLead(lead) {
 
   const system = `Sos un SDR senior (sales development) de Pazque, un SaaS B2B para distribuidoras mayoristas de LATAM. Pazque le da a la distribuidora un portal donde sus clientes hacen pedidos solos (en vez de por WhatsApp uno por uno), catálogo con fotos y precios, y toma de pedidos por voz/foto.
 
-Te paso los datos que un prospecto (una distribuidora interesada) dejó al pedir una demo. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo.
+Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio y solo tenemos nombre/rubro/zona. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
 
 Reglas:
 - Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
-- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...] }
+- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...], "mensaje_wa": "string" }
 - "rubro": qué distribuye, inferido y normalizado (ej: "Panadería y repostería"). Si no hay pista, poné "sin datos".
-- "tamano": estimá el tamaño por las señales del mensaje (cantidad de clientes, vendedores, volumen). Si no hay ninguna señal, poné "sin datos" — NO adivines.
+- "tamano": estimá el tamaño por las señales (cantidad de clientes, vendedores, volumen). Si no hay ninguna señal, poné "sin datos" — NO adivines.
 - "prioridad": qué tan buen fit es para Pazque. Alta = tiene el dolor exacto que Pazque resuelve (muchos pedidos por WhatsApp, muchos clientes/revendedores, varios vendedores). Baja = poca señal o mal fit.
-- "angulo": 1-2 frases en español rioplatense (voseo), concretas, sobre POR QUÉ Pazque le sirve A ESTA distribuidora puntual, citando la señal de su mensaje. Nada genérico.
-- "senales": lista corta (máx 4) de los datos textuales del mensaje que usaste para decidir. Si el mensaje está vacío, dejala vacía.
+- "angulo": 1-2 frases en español rioplatense (voseo), concretas, sobre POR QUÉ Pazque le sirve A ESTA distribuidora puntual. Nada genérico.
+- "senales": lista corta (máx 4) de los datos que usaste para decidir. Si no hay, dejala vacía.
+- "mensaje_wa": un PRIMER mensaje de WhatsApp para que Federico (dueño de Pazque) le escriba a esta distribuidora. Reglas del mensaje: español rioplatense voseo, cálido y directo, MÁXIMO 4 líneas cortas, se presenta ("Hola, soy Federico de Pazque"), menciona algo puntual del rubro/negocio de ellos, explica en 1 frase el valor (que sus clientes le pidan solos por un portal en vez de por WhatsApp uno por uno), y cierra con una pregunta suave (si le interesa que le muestre cómo funciona). NADA de spam, nada de MAYÚSCULAS, sin emojis excesivos (máximo 1). Que suene a persona, no a folleto.
 - Usá SOLO lo que te paso. No inventes datos que no están (no navegás la web).`;
 
   try {
@@ -137,17 +144,101 @@ Reglas:
 
     // Normalizamos a valores conocidos (no confiamos ciegamente en el modelo).
     const out = {
-      rubro:     clean(parsed.rubro, 120) || 'sin datos',
-      tamano:    TAMANOS.includes(parsed.tamano) ? parsed.tamano : 'sin datos',
-      prioridad: PRIORIDS.includes(parsed.prioridad) ? parsed.prioridad : 'media',
-      angulo:    clean(parsed.angulo, 400),
-      senales:   Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
+      rubro:      clean(parsed.rubro, 120) || 'sin datos',
+      tamano:     TAMANOS.includes(parsed.tamano) ? parsed.tamano : 'sin datos',
+      prioridad:  PRIORIDS.includes(parsed.prioridad) ? parsed.prioridad : 'media',
+      angulo:     clean(parsed.angulo, 400),
+      senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
+      mensaje_wa: clean(parsed.mensaje_wa, 700),
     };
     return { enriquecimiento: out };
   } catch (e) {
     console.warn('[owner] enrich parse error:', e.message);
     return { error: 'enrich_failed' };
   }
+}
+
+// ── Sourcing outbound: buscar distribuidoras reales en Google Places ────────
+// SOLO lee de Google e inserta en NUESTRA tabla (pazque_leads). No contacta a
+// nadie. Federico decide a quién escribirle y lo hace a mano por WhatsApp.
+const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText';
+// Pedimos solo los campos que usamos (el field mask define el costo del SKU).
+const PLACES_FIELDS = [
+  'places.id', 'places.displayName', 'places.formattedAddress',
+  'places.internationalPhoneNumber', 'places.websiteUri', 'places.primaryTypeDisplayName',
+  'nextPageToken',
+].join(',');
+
+// Trae hasta ~2 páginas (40 resultados) para una búsqueda. Google pagina de a 20.
+async function placesSearch(query) {
+  const results = [];
+  let pageToken = null;
+  for (let page = 0; page < 2; page++) {
+    const body = { textQuery: query, regionCode: 'UY', languageCode: 'es' };
+    if (pageToken) body.pageToken = pageToken;
+    const r = await fetch(PLACES_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_PLACES_KEY,
+        'X-Goog-FieldMask': PLACES_FIELDS,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) { console.warn('[owner] places error:', r.status, await r.text().catch(() => '')); break; }
+    const d = await r.json();
+    for (const p of (d.places || [])) results.push(p);
+    pageToken = d.nextPageToken || null;
+    if (!pageToken) break;
+    // Google exige una pausa corta antes de usar el nextPageToken.
+    await new Promise(res => setTimeout(res, 1600));
+  }
+  return results;
+}
+
+// Busca distribuidoras, descarta las que ya tenemos (por place_id) y las inserta.
+// Devuelve cuántas nuevas entraron.
+async function sourceDistributors(query) {
+  if (!GOOGLE_PLACES_KEY) return { error: 'places_not_configured' };
+  const q = clean(query, 160) || 'distribuidoras mayoristas en Uruguay';
+
+  const places = await placesSearch(q);
+  if (places.length === 0) return { added: 0, found: 0 };
+
+  // Traemos los place_id que ya tenemos para no duplicar.
+  const existing = await fetch(
+    `${SB_URL}/rest/v1/pazque_leads?select=place_id&place_id=not.is.null`,
+    { headers: svcHeaders() }
+  );
+  const known = new Set((existing.ok ? await existing.json() : []).map(r => r.place_id));
+
+  const rows = [];
+  for (const p of places) {
+    const pid = p.id;
+    if (!pid || known.has(pid)) continue;
+    known.add(pid); // evita duplicados dentro del mismo lote
+    const nombre = clean(p.displayName?.text, 200);
+    if (!nombre) continue;
+    rows.push({
+      nombre,                                   // en sourcing el "nombre" es la distribuidora
+      empresa: nombre,
+      tel: clean(p.internationalPhoneNumber, 40) || null,
+      rubro: clean(p.primaryTypeDisplayName?.text, 120) || null,
+      mensaje: clean(p.formattedAddress, 300) || null, // guardamos la dirección como contexto
+      landing_url: clean(p.websiteUri, 300) || null,
+      place_id: pid,
+      origen: 'sourcing',
+      utm_source: 'sourcing-google',
+      estado: 'nuevo',
+    });
+  }
+  if (rows.length === 0) return { added: 0, found: places.length };
+
+  const ins = await fetch(`${SB_URL}/rest/v1/pazque_leads`, {
+    method: 'POST', headers: svcHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(rows),
+  });
+  if (!ins.ok) { console.error('[owner] sourcing insert error:', await ins.text()); return { error: 'insert_failed' }; }
+  return { added: rows.length, found: places.length };
 }
 
 export default async function handler(req, res) {
@@ -253,6 +344,21 @@ export default async function handler(req, res) {
     }
     const leads = await r.json();
     return res.status(200).json({ ok: true, leads });
+  }
+
+  if (action === 'source') {
+    // Sourcing pega a Google (con costo) — lo limitamos fuerte.
+    if (!(await checkRateLimit('owner-source:' + ip, 60, 5, { failClosed: true })))
+      return res.status(429).json({ error: 'Esperá un momento antes de buscar de nuevo.' });
+
+    const { added, found, error } = await sourceDistributors(req.body?.query);
+    if (error) {
+      const msg = error === 'places_not_configured'
+        ? 'La búsqueda de distribuidoras no está configurada todavía.'
+        : 'No pudimos completar la búsqueda. Probá de nuevo.';
+      return res.status(error === 'places_not_configured' ? 503 : 502).json({ error: msg });
+    }
+    return res.status(200).json({ ok: true, added, found });
   }
 
   if (action === 'enrich') {

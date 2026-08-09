@@ -64,6 +64,14 @@ function fuenteOf(l) {
   return 'Directo';
 }
 
+// Link de WhatsApp con el mensaje ya cargado. Federico solo revisa y da enviar.
+function waLink(tel, mensaje) {
+  const num = String(tel || '').replace(/\D/g, '');
+  if (num.length < 8) return null;
+  const base = `https://wa.me/${num}`;
+  return mensaje ? `${base}?text=${encodeURIComponent(mensaje)}` : base;
+}
+
 function fmtDate(s) {
   if (!s) return '';
   try {
@@ -212,6 +220,12 @@ function EnrichPanel({ e }) {
           ))}
         </div>
       )}
+      {e.mensaje_wa && (
+        <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>MENSAJE DE WHATSAPP LISTO</div>
+          <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.mensaje_wa}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -223,7 +237,8 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   const est = ESTADO[l.estado] || ESTADO.nuevo;
   const idx = FLUJO.indexOf(l.estado);
   const next = idx >= 0 && idx < 3 ? FLUJO[idx + 1] : null; // avanza hasta "convertido"
-  const wa = String(l.tel || '').replace(/\D/g, '');
+  const msgWa = l.enriquecimiento?.mensaje_wa || '';
+  const whref = waLink(l.tel, msgWa);
 
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
@@ -251,11 +266,13 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {wa.length >= 8 && (
-            <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 13, fontWeight: 600, color: C.green, textDecoration: 'none',
-                border: `1px solid ${C.green}55`, borderRadius: 50, padding: '7px 14px' }}>
-              WhatsApp
+          {whref && (
+            <a href={whref} target="_blank" rel="noopener noreferrer"
+              title={msgWa ? 'Abre WhatsApp con el mensaje ya escrito. Revisalo y dale enviar.' : 'Abre el chat de WhatsApp'}
+              style={{ fontSize: 13, fontWeight: 600, color: msgWa ? '#fff' : C.green,
+                background: msgWa ? C.green : 'transparent', textDecoration: 'none',
+                border: `1px solid ${msgWa ? C.green : C.green + '55'}`, borderRadius: 50, padding: '7px 14px' }}>
+              {msgWa ? 'Abrir en WhatsApp' : 'WhatsApp'}
             </a>
           )}
           {l.email && (
@@ -327,6 +344,8 @@ function Inbox({ token, onLogout }) {
   const [busy,    setBusy]    = React.useState('');
   const [enriching, setEnriching] = React.useState('');
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
+  const [sourcing, setSourcing] = React.useState(false);
+  const [srcMsg,   setSrcMsg]   = React.useState('');
 
   const load = React.useCallback(async () => {
     setLoading(true); setError('');
@@ -362,6 +381,21 @@ function Inbox({ token, onLogout }) {
     setEnriching('');
   };
 
+  const source = async (query) => {
+    setSourcing(true); setSrcMsg('');
+    const { ok, status, data } = await ownerFetch({ action: 'source', query }, token);
+    if (status === 401) { onLogout(); return; }
+    if (ok) {
+      setSrcMsg(data.added > 0
+        ? `Agregué ${data.added} distribuidora${data.added === 1 ? '' : 's'} nueva${data.added === 1 ? '' : 's'}. Enriquecé cada una para tener el mensaje listo.`
+        : 'No encontré distribuidoras nuevas con esa búsqueda (las que salieron ya estaban en tu lista).');
+      await load();
+    } else {
+      setSrcMsg(data?.error || 'No pudimos completar la búsqueda.');
+    }
+    setSourcing(false);
+  };
+
   const activos = leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado' || l.estado === 'demo');
   const visibles = filtro === 'todos' ? leads : activos;
   const nuevos = leads.filter(l => l.estado === 'nuevo').length;
@@ -383,6 +417,35 @@ function Inbox({ token, onLogout }) {
             borderRadius: 50, padding: '6px 12px', cursor: 'pointer', fontFamily: C.sans }}>
             Cerrar sesión
           </button>
+        </div>
+
+        {/* Sourcing: el agente busca distribuidoras reales en Google */}
+        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Buscar distribuidoras</span>
+            <span style={{ fontSize: 12.5, color: C.sub }}>El agente busca en Google y las suma a tu lista. Vos elegís a quién escribirle.</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              ['Mayoristas', 'distribuidoras mayoristas en Uruguay'],
+              ['Alimentos', 'distribuidoras de alimentos en Uruguay'],
+              ['Bebidas', 'distribuidoras de bebidas en Uruguay'],
+              ['Limpieza', 'distribuidoras de productos de limpieza en Uruguay'],
+              ['Cosmética', 'distribuidoras de cosmética y perfumería en Uruguay'],
+            ].map(([lbl, q]) => (
+              <button key={lbl} onClick={() => source(q)} disabled={sourcing} style={{
+                fontSize: 13, fontWeight: 500, color: sourcing ? C.faint : C.ink, background: C.bg,
+                border: `1px solid ${C.line}`, borderRadius: 50, padding: '7px 14px',
+                cursor: sourcing ? 'default' : 'pointer', fontFamily: C.sans }}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+          {(sourcing || srcMsg) && (
+            <div style={{ fontSize: 12.5, color: sourcing ? C.faint : C.green, marginTop: 10 }}>
+              {sourcing ? 'Buscando distribuidoras…' : srcMsg}
+            </div>
+          )}
         </div>
 
         {/* Filtro */}
