@@ -222,8 +222,14 @@ function EnrichPanel({ e }) {
       )}
       {e.mensaje_wa && (
         <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>MENSAJE DE WHATSAPP LISTO</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>1 · MENSAJE DE APERTURA</div>
           <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.mensaje_wa}</div>
+        </div>
+      )}
+      {e.mensaje_seguimiento && (
+        <div style={{ marginTop: 8, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>2 · SEGUIMIENTO (CON LINK, SI ENGANCHA)</div>
+          <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.mensaje_seguimiento}</div>
         </div>
       )}
     </div>
@@ -239,6 +245,8 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   const next = idx >= 0 && idx < 3 ? FLUJO[idx + 1] : null; // avanza hasta "convertido"
   const msgWa = l.enriquecimiento?.mensaje_wa || '';
   const whref = waLink(l.tel, msgWa);
+  const msgSeg = l.enriquecimiento?.mensaje_seguimiento || '';
+  const segHref = waLink(l.tel, msgSeg);
 
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
@@ -268,11 +276,19 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {whref && (
             <a href={whref} target="_blank" rel="noopener noreferrer"
-              title={msgWa ? 'Abre WhatsApp con el mensaje ya escrito. Revisalo y dale enviar.' : 'Abre el chat de WhatsApp'}
+              title={msgWa ? 'Abre WhatsApp con el mensaje de apertura ya escrito. Revisalo y dale enviar.' : 'Abre el chat de WhatsApp'}
               style={{ fontSize: 13, fontWeight: 600, color: msgWa ? '#fff' : C.green,
                 background: msgWa ? C.green : 'transparent', textDecoration: 'none',
                 border: `1px solid ${msgWa ? C.green : C.green + '55'}`, borderRadius: 50, padding: '7px 14px' }}>
               {msgWa ? 'Abrir en WhatsApp' : 'WhatsApp'}
+            </a>
+          )}
+          {segHref && (
+            <a href={segHref} target="_blank" rel="noopener noreferrer"
+              title="Segundo mensaje, con el link a pazque.com. Mandalo cuando ya mostró interés."
+              style={{ fontSize: 13, fontWeight: 600, color: C.green, background: 'transparent',
+                textDecoration: 'none', border: `1px solid ${C.green}55`, borderRadius: 50, padding: '7px 14px' }}>
+              Enviar presentación
             </a>
           )}
           {l.email && (

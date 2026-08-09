@@ -115,7 +115,7 @@ Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas
 
 Reglas:
 - Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
-- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...], "mensaje_wa": "string" }
+- Formato exacto: { "rubro": "string", "tamano": "chico"|"mediano"|"grande"|"sin datos", "prioridad": "alta"|"media"|"baja", "angulo": "string", "senales": ["string", ...], "mensaje_wa": "string", "mensaje_seguimiento": "string" }
 - "rubro": qué distribuye, inferido y normalizado (ej: "Panadería y repostería"). Si no hay pista, poné "sin datos".
 - "tamano": estimá el tamaño por las señales (cantidad de clientes, vendedores, volumen). Si no hay ninguna señal, poné "sin datos" — NO adivines.
 - "prioridad": qué tan buen fit es para Pazque. Alta = tiene el dolor exacto que Pazque resuelve (muchos pedidos por WhatsApp, muchos clientes/revendedores, varios vendedores). Baja = poca señal o mal fit.
@@ -130,6 +130,7 @@ Reglas:
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
     · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
+- "mensaje_seguimiento": un SEGUNDO mensaje breve, para mandar DESPUÉS del opener cuando la distribuidora muestra interés. Objetivo: pasarle la web para que la mire con calma. Reglas: mismo tono (personal pero profesional, voseo, sin emojis ni exclamaciones), MÁXIMO 2 líneas, incluí el link literal https://pazque.com, invitá a mirarla sin presión. Ej: "Te dejo la web así lo ves con calma: https://pazque.com — cualquier cosa me escribís y lo vemos juntos." No repitas lo que ya dijiste en el opener.
 - Usá SOLO lo que te paso. No inventes datos que no están (no navegás la web).`;
 
   try {
@@ -158,6 +159,7 @@ Reglas:
       angulo:     clean(parsed.angulo, 400),
       senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
       mensaje_wa: clean(parsed.mensaje_wa, 700),
+      mensaje_seguimiento: clean(parsed.mensaje_seguimiento, 400),
     };
     return { enriquecimiento: out };
   } catch (e) {
