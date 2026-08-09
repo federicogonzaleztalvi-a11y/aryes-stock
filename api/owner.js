@@ -121,7 +121,15 @@ Reglas:
 - "prioridad": qué tan buen fit es para Pazque. Alta = tiene el dolor exacto que Pazque resuelve (muchos pedidos por WhatsApp, muchos clientes/revendedores, varios vendedores). Baja = poca señal o mal fit.
 - "angulo": 1-2 frases en español rioplatense (voseo), concretas, sobre POR QUÉ Pazque le sirve A ESTA distribuidora puntual. Nada genérico.
 - "senales": lista corta (máx 4) de los datos que usaste para decidir. Si no hay, dejala vacía.
-- "mensaje_wa": un PRIMER mensaje de WhatsApp para que Federico (dueño de Pazque) le escriba a esta distribuidora. Reglas del mensaje: español rioplatense voseo, cálido y directo, MÁXIMO 4 líneas cortas, se presenta ("Hola, soy Federico de Pazque"), menciona algo puntual del rubro/negocio de ellos, explica en 1 frase el valor (que sus clientes le pidan solos por un portal en vez de por WhatsApp uno por uno), y cierra con una pregunta suave (si le interesa que le muestre cómo funciona). NADA de spam, nada de MAYÚSCULAS, sin emojis excesivos (máximo 1). Que suene a persona, no a folleto.
+- "mensaje_wa": un PRIMER mensaje de WhatsApp para que Federico (dueño de Pazque) le escriba a esta distribuidora. TONO: cercano pero profesional, del registro de founders top-tech (Sophia Amoruso, Amazon) — seguro, directo, sin adornos, respetando el tiempo del otro. Reglas duras:
+    · Español rioplatense voseo.
+    · MÁXIMO 3 líneas cortas. Menos es más.
+    · CERO emojis. CERO signos de exclamación. CERO MAYÚSCULAS de énfasis.
+    · Se presenta seco y claro: "Hola Diego, soy Federico, fundador de Pazque."
+    · Una sola observación puntual del negocio de ellos (lo que distribuyen / su operación), como quien entiende el rubro, no como quien adula.
+    · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
+    · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
+    · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
 - Usá SOLO lo que te paso. No inventes datos que no están (no navegás la web).`;
 
   try {
