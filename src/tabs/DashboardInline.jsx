@@ -117,7 +117,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
   React.useEffect(() => {
     if (!getSession()?.access_token) return; // demo mode — sin sesión, no se consulta Supabase
     const SB = import.meta.env.VITE_SUPABASE_URL;
-    fetch(`${SB}/rest/v1/purchase_invoices?org_id=eq.${getOrgId()}&status=eq.pendiente&select=id,supplier_id,expected_arrival,total,created_at&order=expected_arrival.asc&limit=50`,
+    fetch(`${SB}/rest/v1/purchase_invoices?org_id=eq.${getOrgId()}&status=eq.pendiente&select=id,proveedor_id,expected_arrival,total,creado_en&order=expected_arrival.asc&limit=50`,
       {headers:getAuthHeaders()})
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setPurchaseOrders(d); }).catch(()=>{});
   }, []);
@@ -1169,7 +1169,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
                         Lead {totalLead(sup)}d
                       </div>
                       {(()=>{
-                        const po=purchaseOrders.find(o=>o.supplier_id===sup.id);
+                        const po=purchaseOrders.find(o=>o.proveedor_id===sup.id);
                         if(!po?.expected_arrival) return null;
                         const dias=Math.ceil((new Date(po.expected_arrival)-new Date())/86400000);
                         const color=dias<=0?'#dc2626':dias<=3?'#d97706':'#059669';
