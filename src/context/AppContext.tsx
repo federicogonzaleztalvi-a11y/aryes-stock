@@ -89,12 +89,18 @@ export function AppProvider({ session, onLogout, onSessionUpdate, children, demo
   const [syncStatus,     setSyncStatus]     = useState<string>('');
   const [hasPendingSync, setHasPendingSync] = useState<boolean>(false);
 
-  // Global sync error listener — shows toast when db.upsert/patch fails
+  // Global sync error listener — shows toast when db.upsert/patch fails.
+  // Mostramos el MOTIVO real que devolvió Supabase (RLS, columna faltante,
+  // constraint…) en vez de un genérico "verificá tu conexión": así el error
+  // queda visible en pantalla sin abrir la consola.
   useEffect(() => {
     const handler = (e) => {
-      setSyncToast({ msg: 'Error al guardar en servidor. Verificá tu conexión.', type: 'error' });
+      const detail = (e as CustomEvent)?.detail || {};
+      const reason = detail.error ? `: ${detail.error}` : '';
+      const where = detail.table ? ` (${detail.table})` : '';
+      setSyncToast({ msg: `Error al guardar en el servidor${where}${reason}`, type: 'error' });
       setHasPendingSync(true);
-      setTimeout(() => setSyncToast(null), 5000);
+      setTimeout(() => setSyncToast(null), 9000);
     };
     window.addEventListener('aryes-sync-error', handler);
     return () => window.removeEventListener('aryes-sync-error', handler);
@@ -757,14 +763,27 @@ const describeAction = (action: string, detail: string): string => {
     else setProducts(ps => [...ps, { ...(f as unknown as Product), id }]);
     // Persist to Supabase
     try {
-      await db.upsert('products', productData, 'uuid');
-      setSyncToast({ msg: `${isEdit ? 'Producto actualizado' : 'Producto agregado'}: ${productData.name}`, type: 'success' });
-      setTimeout(() => setSyncToast(null), 4000);
+      // db.upsert NO lanza excepción cuando Supabase rechaza el write (RLS,
+      // columna faltante, constraint…): devuelve null y dispara 'aryes-sync-error'
+      // con el motivo real, que el listener global ya muestra en pantalla. Antes
+      // mostrábamos "éxito" igual → el producto no se guardaba, el cartel decía que
+      // sí, y al refrescar desaparecía sin ninguna alerta. Ahora solo confirmamos
+      // éxito si Supabase devolvió el registro guardado.
+      const saved = await db.upsert('products', productData, 'uuid');
+      if (saved) {
+        setSyncToast({ msg: `${isEdit ? 'Producto actualizado' : 'Producto agregado'}: ${productData.name}`, type: 'success' });
+        setTimeout(() => setSyncToast(null), 4000);
+      } else {
+        // El motivo exacto ya lo mostró el listener global (aryes-sync-error).
+        // No pisamos ese cartel; solo marcamos que hay algo sin sincronizar.
+        setHasPendingSync(true);
+      }
     } catch(e: unknown) {
+      // Solo llega acá si hubo una excepción real (red caída), sin evento global.
       const msg = e instanceof Error ? e.message : String(e);
       console.warn('[saveProduct] SB failed:', msg);
-      setSyncToast({ msg: 'Error al guardar producto. Guardado localmente — se sincronizará al reconectar.', type: 'error' });
-      setTimeout(() => setSyncToast(null), 6000);
+      setSyncToast({ msg: 'No se pudo guardar el producto: sin conexión con el servidor.', type: 'error' });
+      setTimeout(() => setSyncToast(null), 7000);
       setHasPendingSync(true);
     }
     // Audit log (non-critical)
