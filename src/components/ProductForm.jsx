@@ -156,8 +156,13 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
   };
   const onHandleUp=(e)=>{setDragIdx(null);try{e.target.releasePointerCapture(e.pointerId);}catch{/* noop */}};
   const cleanVariants=(v)=>{const cur=normVariants(v);const seen=new Set();const options=cur.options
-    .map(o=>{const label=String(o.label||"").trim();if(!label)return null;const id=String(o.id||label).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||label;return{id,label,sku:String(o.sku||"").trim(),color_hex:/^#[0-9a-fA-F]{6}$/.test(String(o.color_hex||""))?o.color_hex:""};})
-    .filter(o=>o&&!seen.has(o.id)&&seen.add(o.id));
+    .map(o=>{const label=String(o.label||"").trim();if(!label)return null;let base=String(o.id||label).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||label;
+      // Si el slug ya existe (dos labels que colapsan al mismo id, ej "Frutilla"
+      // y "Frutilla "), lo desambiguamos con un sufijo en vez de DESCARTAR la
+      // variante — antes se perdían silenciosamente y solo se guardaba una.
+      let id=base,n=2;while(seen.has(id)){id=`${base}-${n++}`;}seen.add(id);
+      return{id,label,sku:String(o.sku||"").trim(),color_hex:/^#[0-9a-fA-F]{6}$/.test(String(o.color_hex||""))?o.color_hex:""};})
+    .filter(Boolean);
     return options.length?{label:String(cur.label||"Variante").trim()||"Variante",options}:{};};
 
   const sup=suppliers.find(s=>s.id===f.supplierId);

@@ -351,21 +351,43 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   const catRows = catRes && catRes.ok ? await catRes.json().catch(() => []) : [];
   let categorias, categoriasArbol;
   if (Array.isArray(catRows) && catRows.length > 0) {
-    const madres = catRows.filter(c => !c.parent_id);
+    // Normalizamos (trim+minúsculas) para colapsar duplicados por espacios o
+    // mayúsculas (" Sosa" / "Sosa" / "sosa" = la MISMA categoría). El filtro del
+    // portal ya normaliza igual, así que el match producto↔menú no se rompe.
+    const norm = s => String(s || '').trim().toLowerCase();
+    // Categorías madre deduplicadas por nombre normalizado (evita mostrar "Sosa"
+    // dos veces si la taxonomía tiene dos filas casi iguales).
+    const madres = [];
+    const vistas = new Set();
+    for (const c of catRows) {
+      if (c.parent_id) continue;
+      const k = norm(c.nombre);
+      if (!k || vistas.has(k)) continue;
+      vistas.add(k);
+      madres.push(c);
+    }
     categoriasArbol = madres.map(m => {
       // Subcategorías: las de la taxonomía + las que los productos usan bajo esta
       // madre aunque no tengan fila (no ocultar nada que exista en los datos).
       const declaradas = catRows.filter(c => c.parent_id === m.id).map(s => s.nombre);
-      const usadas = [...new Set(items.filter(i => i.categoria === m.nombre && i.subcategoria).map(i => i.subcategoria))];
+      const usadas = [...new Set(items.filter(i => norm(i.categoria) === norm(m.nombre) && i.subcategoria).map(i => i.subcategoria))];
       const subcategorias = [...new Set([...declaradas, ...usadas])];
       return { nombre: m.nombre, subcategorias };
     });
     // Categorías que los productos usan pero que no están en la taxonomía → se
     // agregan al final, para que nada desaparezca del portal por falta de fila.
-    const declaradas = new Set(categoriasArbol.map(m => m.nombre.toLowerCase()));
-    const huerfanas = [...new Set(items.map(i => i.categoria).filter(c => c && !declaradas.has(c.toLowerCase())))].sort();
-    for (const nombre of huerfanas) {
-      const usadas = [...new Set(items.filter(i => i.categoria === nombre && i.subcategoria).map(i => i.subcategoria))];
+    // Comparamos normalizado para no re-agregar una madre que solo difiere en
+    // espacios/mayúsculas (esa era la causa del "Sosa" duplicado).
+    const declaradas = new Set(categoriasArbol.map(m => norm(m.nombre)));
+    const huerfanas = new Map(); // norm → nombre a mostrar (trimmeado)
+    for (const i of items) {
+      const c = String(i.categoria || '').trim();
+      const k = norm(c);
+      if (!k || declaradas.has(k) || huerfanas.has(k)) continue;
+      huerfanas.set(k, c);
+    }
+    for (const nombre of [...huerfanas.values()].sort()) {
+      const usadas = [...new Set(items.filter(i => norm(i.categoria) === norm(nombre) && i.subcategoria).map(i => i.subcategoria))];
       categoriasArbol.push({ nombre, subcategorias: usadas });
     }
     categorias = categoriasArbol.map(m => m.nombre);
