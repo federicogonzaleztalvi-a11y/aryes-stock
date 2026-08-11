@@ -157,6 +157,21 @@ export default function ProspectosTab() {
     finally { setBusy(''); }
   };
 
+  // Marcar contactado AUTOMÁTICO: se dispara al abrir WhatsApp para escribirle
+  // (no hay botón aparte). Solo aplica si estaba 'nuevo' — nunca degrada un
+  // convertido/descartado. Update optimista: la tarjeta pasa a ámbar al toque;
+  // el link de WhatsApp abre igual (no lo bloqueamos ni esperamos la respuesta).
+  const markContacted = (l) => {
+    if (l.estado !== 'nuevo') return;
+    setLeads(prev => prev.map(x => x.id === l.id ? { ...x, estado: 'contactado' } : x));
+    try {
+      fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'contacted', id: l.id }),
+      }).catch(() => {});
+    } catch { /* noop */ }
+  };
+
   const dismiss = async (l) => {
     setBusy(l.id);
     try {
@@ -415,7 +430,7 @@ export default function ProspectosTab() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   {wa && (
-                    <a href={wa} target="_blank" rel="noopener noreferrer"
+                    <a href={wa} target="_blank" rel="noopener noreferrer" onClick={() => markContacted(l)}
                       style={{ fontSize: 13, fontWeight: 600, color: C.green, textDecoration: 'none',
                         border: `1px solid ${C.green}55`, borderRadius: 50, padding: '7px 14px' }}>
                       WhatsApp
@@ -470,7 +485,7 @@ export default function ProspectosTab() {
                         <div style={{ fontSize: 13.5, color: C.ink, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{enr.mensaje_wa}</div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                           {wa
-                            ? <a href={wa} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600,
+                            ? <a href={wa} target="_blank" rel="noopener noreferrer" onClick={() => markContacted(l)} style={{ fontSize: 13, fontWeight: 600,
                                 color: '#fff', background: C.green, textDecoration: 'none', borderRadius: 50, padding: '8px 16px' }}>
                                 Abrir en WhatsApp
                               </a>

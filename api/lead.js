@@ -366,7 +366,7 @@ export default async function handler(req, res) {
 
   // ── Rutas de admin (requieren JWT) ───────────────────────────────────────
   const isAdminAction =
-    action === 'list' || action === 'approve' || action === 'dismiss' || action === 'config';
+    action === 'list' || action === 'approve' || action === 'dismiss' || action === 'config' || action === 'contacted';
 
   if (isAdminAction) {
     const admin = await resolveAdmin(req);
@@ -406,6 +406,20 @@ export default async function handler(req, res) {
         method: 'PATCH',
         headers: { ...svcHeaders(), Prefer: 'return=minimal' },
         body: JSON.stringify({ estado: 'descartado', updated_at: new Date().toISOString() }),
+      });
+      return res.status(200).json({ ok: true });
+    }
+
+    // Marcar como contactado. Se dispara solo cuando el admin abre WhatsApp para
+    // escribirle (no hay botón aparte). Filtramos por estado=nuevo para NO pisar
+    // un 'convertido' o 'descartado' si vuelve a tocar WhatsApp desde el historial.
+    if (req.method === 'POST' && action === 'contacted') {
+      const id = clean(req.body?.id, 40);
+      if (!id) return res.status(400).json({ error: 'Falta id' });
+      await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}&estado=eq.nuevo`, {
+        method: 'PATCH',
+        headers: { ...svcHeaders(), Prefer: 'return=minimal' },
+        body: JSON.stringify({ estado: 'contactado', updated_at: new Date().toISOString() }),
       });
       return res.status(200).json({ ok: true });
     }
