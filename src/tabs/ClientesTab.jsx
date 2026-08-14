@@ -511,7 +511,7 @@ function ClientesTab(){
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:true,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
+  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
