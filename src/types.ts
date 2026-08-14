@@ -303,6 +303,8 @@ export interface Cliente {
   telefono:         string;
   email:            string;
   emailFacturacion: string;
+  telefonoCobranza?: string;
+  emailCobranza?:   string;
   contacto:         string;
   direccion:        string;
   direccionFiscal?: string;

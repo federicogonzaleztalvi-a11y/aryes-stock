@@ -279,6 +279,7 @@ const describeAction = (action: string, detail: string): string => {
             id: r.id, nombre: r.nombre||r.name||'', tipo: r.tipo||r.type||'',
             rut: r.rut||'', telefono: r.telefono||r.phone||'',
             email: r.email||'', emailFacturacion: r.email_facturacion||'',
+            telefonoCobranza: r.telefono_cobranza||'', emailCobranza: r.email_cobranza||'',
             contacto: r.contacto||r.contact||'', direccion: r.direccion||r.address||'',
             direccionFiscal: r.direccion_fiscal||'',
             ciudad: r.ciudad||'', condPago: r.cond_pago||'credito_30',

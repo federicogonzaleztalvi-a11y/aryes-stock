@@ -511,7 +511,7 @@ function ClientesTab(){
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
+  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:true,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
@@ -540,6 +540,8 @@ function ClientesTab(){
       phone:             client.telefono          || '',
       email:             client.email             || '',
       email_facturacion: client.emailFacturacion  || '',
+      telefono_cobranza: client.telefonoCobranza  || '',
+      email_cobranza:    client.emailCobranza     || '',
       contact:           client.contacto          || '',
       contacto:          client.contacto          || '',
       address:           client.direccion         || '',
@@ -576,6 +578,7 @@ function ClientesTab(){
     const record = isNew
       ? {...form, id: newId, creado: new Date().toISOString(), lat: null, lng: null, geocodedAt: null, horarioDesde: null, horarioHasta: null}
       : {...items.find(x=>x.id===editId), ...form};
+    if (form.fiscalIgualEntrega) record.direccionFiscal = record.direccion || '';
     // Si lo crea un vendedor, queda auto-asignado a él (su email) para que
     // aparezca en su lista. El admin asigna manualmente con el selector.
     if (isNew && isVendedor) record.vendedorId = session?.email || session?.username || '';
@@ -602,7 +605,7 @@ function ClientesTab(){
     setVista('lista');
   };
 
-  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||''});setEditId(x.id);setVista('form');};
+  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||''});setEditId(x.id);setVista('form');};
   const filtered=items.filter(x=>
     (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase()))
     &&(filtro==='Todos'||x.tipo===filtro)
@@ -652,7 +655,9 @@ function ClientesTab(){
         </div>
       )}
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'Nombre *',k:'nombre',full:true},{l:'Código',k:'codigo'},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección de entrega',k:'direccion',full:true},{l:'Dirección fiscal',k:'direccionFiscal',full:true},{l:'Ciudad',k:'ciudad'},{l:'Zona de entrega',k:'zonaEntrega'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito ('+(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+')',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>(
+        {[{l:'Nombre *',k:'nombre',full:true},{l:'Código',k:'codigo'},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección de entrega',k:'direccion',full:true},{l:'Dirección fiscal',k:'direccionFiscal',full:true},{l:'Ciudad',k:'ciudad'},{l:'Zona de entrega',k:'zonaEntrega'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito ('+(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+')',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Tel. cobranza / administración',k:'telefonoCobranza'},{l:'Email cobranza / administración',k:'emailCobranza'},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>{
+          if(fld.k==='direccionFiscal' && form.fiscalIgualEntrega) return null;
+          return (
           <div key={fld.k} style={{gridColumn:fld.full?'1/-1':'auto'}}>
             <label style={{fontSize:11,fontWeight:600,color:'#666',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:4}}>{fld.l}</label>
             {fld.sel?<select value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={{...inp,background:'#fff'}}>{TIPOS.map(t=><option key={t}>{t}</option>)}</select>
@@ -661,8 +666,15 @@ function ClientesTab(){
             :fld.type==='time'?<select value={form[fld.k]||''} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value||null}))} style={{...inp,background:'#fff'}}><option value=''>--:--</option>{HORAS_DIA.map(h=><option key={h} value={h}>{h}</option>)}</select>
             :fld.ta?<textarea value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} rows={3} style={{...inp,resize:'vertical'}} />
             :<input value={form[fld.k]} onChange={e=>setForm(p=>({...p,[fld.k]:e.target.value}))} style={inp} />}
+            {fld.k==='direccion' && (
+              <label style={{display:'flex',alignItems:'center',gap:8,marginTop:8,fontSize:13,color:'#374151',cursor:'pointer',userSelect:'none'}}>
+                <input type="checkbox" checked={!!form.fiscalIgualEntrega} onChange={e=>setForm(p=>({...p,fiscalIgualEntrega:e.target.checked}))} style={{width:16,height:16,cursor:'pointer',accentColor:G}} />
+                La dirección fiscal es la misma que la de entrega
+              </label>
+            )}
           </div>
-        ))}
+          );
+        })}
         {/* Vendedor asignado (solo visible para admin) — campo del form, fila completa */}
         {session?.role==='admin' && <div style={{gridColumn:'1/-1'}}>
           <label style={{fontSize:11,fontWeight:600,color:'#888',display:'block',marginBottom:4}}>VENDEDOR ASIGNADO</label>
