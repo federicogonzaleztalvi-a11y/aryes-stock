@@ -3105,14 +3105,22 @@ function catEmoji(name){
 // acción opcional "Ver todo →" en verde apagado.
 function SectionHead({ title, subtitle, actionLabel, onAction, extra }) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const hasActions = extra || (actionLabel && onAction);
+  // En mobile con acciones (ej. "Agregar todo" + "Ver todo") la fila única apretaba
+  // el subtítulo contra los botones. Apilamos: título/subtítulo arriba (ancho completo),
+  // acciones abajo en su propia fila. En desktop se mantiene la fila con space-between.
+  const stack = isMobile && hasActions;
   return (
-    <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:12, marginBottom:16 }}>
+    <div style={{ display:'flex', flexDirection: stack ? 'column' : 'row',
+      alignItems: stack ? 'stretch' : 'flex-end', justifyContent:'space-between',
+      gap: stack ? 10 : 12, marginBottom:16 }}>
       <div style={{ minWidth:0 }}>
         <h2 style={{ fontFamily:SANS, fontSize:isMobile?16.5:19, fontWeight:700, color:INK, margin:0, letterSpacing:-.1, lineHeight:1.2 }}>{title}</h2>
         {subtitle && <p style={{ fontSize:isMobile?12.5:13, color:GRAY, margin:'3px 0 0' }}>{subtitle}</p>}
       </div>
-      {(extra || (actionLabel && onAction)) && (
-        <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:isMobile?8:12 }}>
+      {hasActions && (
+        <div style={{ flexShrink:0, display:'flex', alignItems:'center',
+          justifyContent: stack ? 'space-between' : 'flex-end', gap:isMobile?8:12 }}>
           {extra}
           {actionLabel && onAction && (
             <button onClick={onAction} style={{ background:'none', border:'none', cursor:'pointer',
@@ -3223,8 +3231,10 @@ function CategoryTile({ cat, imgs, featured, isMobile, onClick }) {
             fontFamily:DISPLAY, fontSize:featured?68:42, color:'#c8bda3' }}>{String(cat.nombre).trim().charAt(0).toUpperCase()}</div>
         )}
       </div>
-      {/* etiqueta debajo, sobre crema */}
-      <div style={{ padding: isMobile ? '10px 12px' : (featured ? '16px 18px' : '11px 14px'), background:CREAM_TILE }}>
+      {/* etiqueta debajo, sobre crema. flexShrink:0 = la etiqueta SIEMPRE reserva su
+          alto; sin esto la foto (flex:1) se comía el espacio y, con overflow:hidden,
+          el nombre de la categoría quedaba tapado/recortado. */}
+      <div style={{ flexShrink:0, padding: isMobile ? '10px 12px' : (featured ? '16px 18px' : '11px 14px'), background:CREAM_TILE }}>
         <div style={{ fontFamily: featured ? DISPLAY : SANS, fontSize:nameSize, fontWeight:600, color:INK, lineHeight:1.15, letterSpacing:featured?-.2:-.1 }}>{cat.nombre}</div>
         <div style={{ fontSize:12, color:GRAY, marginTop:featured?5:2, fontWeight:500 }}>{cat.count} producto{cat.count!==1?'s':''}</div>
       </div>
