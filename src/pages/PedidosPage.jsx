@@ -22,7 +22,11 @@ const DEMO_DATASETS = {
 };
 
 
-const G    = '#059669';
+// Color de marca por-org (Shopify-style): el portal se pinta con --brand, que cada
+// distribuidora elige en Configuración. Si no hay color configurado, cae al verde
+// default de Pazque (#059669) → el portal de Eric y cualquier org nuevo quedan igual
+// salvo que activen su propio color. Se inyecta en :root desde brandCfg.color (ver useEffect).
+const G    = 'var(--brand, #059669)';
 const SANS = "'DM Sans','Inter',system-ui,sans-serif";
 // Escala de z-index definida — evita colisiones y números mágicos (200 vs 999)
 const Z = { dropdown: 20, header: 30, fab: 40, overlay: 50 };
@@ -260,7 +264,7 @@ function PhoneInput({ value, onChange, placeholder = '9X XXX XXX', style = {} })
 
   return (
     <div style={{ display: 'flex', border: `1px solid ${focused ? G : '#e0e0d8'}`,
-      boxShadow: focused ? `0 0 0 3px ${G}22` : 'none', borderRadius: 8,
+      boxShadow: focused ? `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)` : 'none', borderRadius: 8,
       overflow: 'hidden', background: '#fafaf7', transition: 'border-color .15s, box-shadow .15s', ...style }}>
       <select value={pais} onChange={e => handlePais(e.target.value)}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} aria-label="Código de país"
@@ -541,7 +545,7 @@ function LoginStep({ onLogin }) {
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={e => e.key === 'Enter' && verifyOTP()} autoFocus
-                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)`; }}
                 onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                 style={{ width: '100%', padding: '12px', border: '1px solid #e0e0d8',
                   borderRadius: 10, fontSize: 28, fontFamily: 'monospace', fontWeight: 700,
@@ -1167,8 +1171,8 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
           const q = carrito[`${item.id}::${o.id}`] || 0;
           return (
             <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 6,
-              padding: '3px 4px', borderRadius: 7, background: q > 0 ? G + '12' : '#fafaf7',
-              border: `1px solid ${q > 0 ? G + '55' : '#eeeee8'}` }}>
+              padding: '3px 4px', borderRadius: 7, background: q > 0 ? `color-mix(in srgb, ${G} 7%, transparent)` : '#fafaf7',
+              border: `1px solid ${q > 0 ? `color-mix(in srgb, ${G} 33%, transparent)` : '#eeeee8'}` }}>
               {o.color_hex && <span style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
                 background: o.color_hex, border: '1px solid rgba(0,0,0,.12)' }} />}
               <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 600, color: '#1a1a18',
@@ -2339,7 +2343,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               ) : (
                 <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
                   aria-label="Sucursal de entrega"
-                  onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                  onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)`; }}
                   onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
                     fontSize: 16, fontFamily: SANS, color: '#1a1a18', background: '#fff', outline: 'none' }}>
@@ -2388,7 +2392,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
               <select value={fechaElegida} onChange={e => setFechaElegida(e.target.value)}
                 aria-label="Día de entrega"
-                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)`; }}
                 onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
                   fontSize: 16, fontFamily: SANS, color: '#1a1a18', background: '#fff', outline: 'none' }}>
@@ -2476,7 +2480,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 6 }}>NOTA DEL PEDIDO</div>
             <textarea value={notas} onChange={e => setNotas(e.target.value)}
               placeholder="Ej: entregar antes del mediodía, coordinar por WhatsApp…" aria-label="Nota del pedido"
-              onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+              onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)`; }}
               onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
               rows={2} style={{ width: '100%', padding: '9px 12px', border: '1px solid #e0e0d8',
                 borderRadius: 8, fontSize: 16, fontFamily: SANS, resize: 'none',
@@ -2688,7 +2692,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                     onChange={e => setEmailAddr(e.target.value)} placeholder="tucorreo@ejemplo.com"
                     aria-label="Email para enviar el comprobante"
                     onKeyDown={e => { if (e.key === 'Enter') enviarPorMail(); }}
-                    onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                    onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)`; }}
                     onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                     style={{ flex: 1, padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 10,
                       fontSize: 16, fontFamily: SANS, outline: 'none', background: '#fafaf7' }} />
@@ -2939,7 +2943,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                   <input value={listaNombre} onChange={e => setListaNombre(e.target.value)} maxLength={40}
                     placeholder="Ej: Pedido semanal" aria-label="Nombre de la lista" autoFocus
                     onKeyDown={e => { if (e.key === 'Enter' && onGuardarLista(listaNombre)) { setGuardarOpen(false); setListaNombre(''); setListaOk('✓ Lista guardada'); } }}
-                    onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                    onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${G} 13%, transparent)`; }}
                     onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
                     style={{ flex: 1, padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 10,
                       fontSize: 16, fontFamily: SANS, outline: 'none', background: '#fafaf7' }} />
@@ -3615,6 +3619,16 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [subFil,   setSubFil]   = useState(''); // subcategoría activa dentro de la categoría madre
   const [brandNombre, setBrandNombre] = useState('');
   const [brandCfg, setBrandCfg] = useState(null);
+  // Color de marca por-org: pinta --brand en :root. Todo el portal usa var(--brand,#059669),
+  // así que con esto la distribuidora ve su color. Sin color configurado → se limpia la
+  // variable y cae al verde default (Eric y orgs nuevos quedan igual salvo que elijan color).
+  useEffect(() => {
+    const el = document.documentElement;
+    const c = brandCfg?.color;
+    if (c && /^#[0-9a-fA-F]{6}$/.test(c)) el.style.setProperty('--brand', c);
+    else el.style.removeProperty('--brand');
+    return () => { el.style.removeProperty('--brand'); };
+  }, [brandCfg?.color]);
   const [portalBloqueado, setPortalBloqueado] = useState(null); // mensaje si el portal está deshabilitado
   const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');

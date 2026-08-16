@@ -251,12 +251,60 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
   const [portadaQ, setPortadaQ] = React.useState(''); // buscador dentro del modal
   const cerrarPortada = () => { setPortadaAbierta(null); setPortadaQ(''); };
 
+  // ── Color de marca ───────────────────────────────────────────────────
+  // El distribuidor elige el color con el que Pazque pinta su portal (header,
+  // botones, etiquetas). Sin elegir nada → verde default de Pazque (#059669).
+  const DEFAULT_BRAND = '#059669';
+  const brandColor = (typeof brandCfg?.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(brandCfg.color)) ? brandCfg.color : DEFAULT_BRAND;
+  const PALETA = [
+    { c: '#059669', n: 'Verde (default)' },
+    { c: '#1e4fa3', n: 'Azul' },
+    { c: '#b02a37', n: 'Rojo' },
+    { c: '#7c3aed', n: 'Violeta' },
+    { c: '#c2681a', n: 'Naranja' },
+    { c: '#0f172a', n: 'Negro' },
+  ];
+  const esPreset = PALETA.some(p => p.c.toLowerCase() === brandColor.toLowerCase());
+
   const G = '#059669';
   return (
     <div style={{ background:'#fff', border:'1px solid #e8e4de', borderRadius:10, padding:'16px 20px', minWidth:0 }}>
       <div style={{ fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, color:'#1a1a18' }}>Vidriera / Portada</div>
       <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:16, maxWidth:520 }}>
         Vos elegís <b>qué</b> mostrar; Pazque lo presenta con el diseño de la casa. Ideal para anunciar una novedad o destacar productos en la portada del portal.
+      </div>
+
+      {/* Color de marca */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14, marginBottom:2 }}>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>Color de marca</div>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:12, maxWidth:440 }}>
+          Con este color Pazque pinta el header, los botones y las etiquetas del portal. Elegí uno o poné el tuyo exacto.
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+          {PALETA.map(p => {
+            const on = brandColor.toLowerCase() === p.c.toLowerCase();
+            return (
+              <button key={p.c} title={p.n} onClick={() => persist({ color: p.c })}
+                style={{ width:30, height:30, borderRadius:'50%', background:p.c, cursor:'pointer',
+                  border:'2px solid #fff', boxShadow: on ? '0 0 0 2px #1a1a18' : '0 0 0 1px #ddd', padding:0 }} />
+            );
+          })}
+          {/* Color personalizado (nativo del navegador) */}
+          <label title="Color personalizado"
+            style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:30, height:30, borderRadius:'50%',
+              cursor:'pointer', border:'2px solid #fff', overflow:'hidden', position:'relative',
+              background: esPreset ? 'conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' : brandColor,
+              boxShadow: esPreset ? '0 0 0 1px #ddd' : '0 0 0 2px #1a1a18' }}>
+            <input type="color" value={brandColor} onChange={e => persist({ color: e.target.value })}
+              style={{ position:'absolute', inset:0, opacity:0, width:'100%', height:'100%', cursor:'pointer', border:'none' }} />
+          </label>
+          {brandColor.toLowerCase() !== DEFAULT_BRAND.toLowerCase() && (
+            <button onClick={() => persist({ color: DEFAULT_BRAND })}
+              style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', background:'none', border:'none', cursor:'pointer', textDecoration:'underline', padding:'0 2px' }}>
+              Volver al verde
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Portada nueva (master switch). Cuando está apagada, el cliente entra
