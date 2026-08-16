@@ -227,6 +227,25 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
     () => Array.from(new Set((prods || []).map(p => p.category).filter(Boolean))).sort(),
     [prods]);
 
+  // ── Portada por categoría ────────────────────────────────────────────
+  // Mapa { categoria: imagen_url } elegido por el distribuidor. Vacío/ausente =
+  // portada automática (primera foto del rubro, como hasta ahora).
+  const catPortadas = (brandCfg?.catPortadas && typeof brandCfg.catPortadas === 'object') ? brandCfg.catPortadas : {};
+  const setCatPortada = (cat, url) => {
+    const next = { ...catPortadas };
+    if (url) next[cat] = url; else delete next[cat]; // null = volver a automática
+    persist({ catPortadas: next });
+  };
+  // Candidatos por rubro: sólo productos CON foto (no hay nada que elegir sin foto).
+  const prodsByCat = React.useMemo(() => {
+    const m = {};
+    (prods || []).forEach(p => {
+      if (!p.category || !p.imagen_url) return;
+      (m[p.category] = m[p.category] || []).push(p);
+    });
+    return m;
+  }, [prods]);
+
   const G = '#059669';
   return (
     <div style={{ background:'#fff', border:'1px solid #e8e4de', borderRadius:10, padding:'16px 20px' }}>
@@ -370,6 +389,53 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
                     ? <img src={p.imagen_url} alt="" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', flexShrink:0 }} />
                     : <span style={{ width:30, height:30, borderRadius:6, background:'#f0efe9', flexShrink:0 }} />}
                   <span style={{ fontFamily:'Inter,sans-serif', fontSize:13, color:'#1a1a18', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Foto de portada por categoría */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14, marginTop:16 }}>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>
+          Foto de portada por categoría
+        </div>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:12, maxWidth:460 }}>
+          Elegí qué foto representa cada rubro en “Comprá por categoría”. Con <b>Auto</b> se usa la del primer producto del rubro.
+        </div>
+
+        {prods === null ? (
+          <div style={{ fontSize:12, color:'#9a9a98' }}>Cargando productos…</div>
+        ) : Object.keys(prodsByCat).length === 0 ? (
+          <div style={{ fontSize:12, color:'#9a9a98' }}>Cargá productos con foto para poder elegir portadas.</div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {Object.keys(prodsByCat).sort((a, b) => a.localeCompare(b, 'es')).map(cat => {
+              const candidatos = prodsByCat[cat];
+              const sel = catPortadas[cat] || null; // null = auto
+              return (
+                <div key={cat}>
+                  <div style={{ fontFamily:'Inter,sans-serif', fontSize:12.5, fontWeight:600, color:'#1a1a18', marginBottom:6 }}>{cat}</div>
+                  <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4 }}>
+                    <button onClick={() => setCatPortada(cat, null)} title="Portada automática"
+                      style={{ flexShrink:0, width:56, height:56, borderRadius:8, cursor:'pointer',
+                        border: sel === null ? `2px solid ${G}` : '1px solid #e8e4de',
+                        background:'#f6f5f1', display:'flex', alignItems:'center', justifyContent:'center',
+                        fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:600, color: sel === null ? '#166534' : '#6a6a68' }}>
+                      Auto
+                    </button>
+                    {candidatos.map(p => {
+                      const on = sel === p.imagen_url;
+                      return (
+                        <button key={p.uuid} onClick={() => setCatPortada(cat, p.imagen_url)} title={p.name}
+                          style={{ flexShrink:0, width:56, height:56, borderRadius:8, cursor:'pointer', padding:0, overflow:'hidden',
+                            border: on ? `2px solid ${G}` : '1px solid #e8e4de', background:'#fff' }}>
+                          <img src={p.imagen_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', boxSizing:'border-box', padding:4 }} />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}

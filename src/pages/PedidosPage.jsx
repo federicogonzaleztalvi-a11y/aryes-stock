@@ -3211,8 +3211,10 @@ function HeroCarousel({ banners, isMobile }) {
 // limpio sobre blanco) y el nombre DEBAJO, sobre crema — sin scrim oscuro ni
 // emojis. La categoría destacada (featured) ocupa 2x2 → jerarquía y usa serif.
 // Si no hay fotos, la inicial de la categoría en serif sobre crema (elegante).
-function CategoryTile({ cat, imgs, featured, isMobile, onClick }) {
-  const cover = (imgs || []).filter(Boolean)[0] || null;
+function CategoryTile({ cat, imgs, coverOverride, featured, isMobile, onClick }) {
+  // Portada elegida por el distribuidor (brandCfg.catPortadas) tiene prioridad; si no
+  // eligió ninguna, cae a la primera foto del rubro (comportamiento automático).
+  const cover = coverOverride || (imgs || []).filter(Boolean)[0] || null;
   const nameSize = featured ? (isMobile ? 18 : 24) : (isMobile ? 13.5 : 15.5);
   return (
     <button onClick={onClick} className="pz-cattile" style={{
@@ -3254,12 +3256,17 @@ function PortalHome({ items, buyAgain, recommended, onRepetirTodo, catArbol, cat
     const base = (catArbol && catArbol.length) ? catArbol.map(m => m.nombre)
       : (cats || []).filter(c => c && c !== 'Todos');
     const norm = (s) => String(s||'').trim().toLowerCase();
+    // Portadas elegidas por el distribuidor, indexadas por nombre normalizado para
+    // tolerar diferencias de mayúsculas/acentos entre config y catálogo.
+    const portadas = (brandCfg?.catPortadas && typeof brandCfg.catPortadas === 'object') ? brandCfg.catPortadas : {};
+    const portadaByNorm = {};
+    Object.keys(portadas).forEach(k => { if (portadas[k]) portadaByNorm[norm(k)] = portadas[k]; });
     return base.map(c => {
       const prods = items.filter(p => norm(p.categoria) === norm(c));
       const imgs = prods.map(p => p.imagen_url).filter(Boolean);
-      return { nombre: c, count: prods.length, imgs };
+      return { nombre: c, count: prods.length, imgs, cover: portadaByNorm[norm(c)] || null };
     }).filter(c => c.count > 0);
-  }, [catArbol, cats, items]);
+  }, [catArbol, cats, items, brandCfg]);
 
   const habituales = (buyAgain || []).map(b => byId(b.id)).filter(Boolean);
 
@@ -3479,7 +3486,7 @@ function PortalHome({ items, buyAgain, recommended, onRepetirTodo, catArbol, cat
             gridTemplateColumns:isMobile?'1fr 1fr':'repeat(4, 1fr)',
             gridAutoRows:isMobile?152:198 }}>
             {catList.map((c, idx) => (
-              <CategoryTile key={c.nombre} cat={c} imgs={c.imgs} featured={idx === 0} isMobile={isMobile} onClick={() => onSelectCat(c.nombre)} />
+              <CategoryTile key={c.nombre} cat={c} imgs={c.imgs} coverOverride={c.cover} featured={idx === 0} isMobile={isMobile} onClick={() => onSelectCat(c.nombre)} />
             ))}
           </div>
         </section>
