@@ -245,6 +245,11 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
     });
     return m;
   }, [prods]);
+  // Categoría cuyo selector de foto está abierto en el modal (null = cerrado).
+  // Patrón Amazon/Shopify: la lista queda compacta y el picker se abre bajo demanda.
+  const [portadaAbierta, setPortadaAbierta] = React.useState(null);
+  const [portadaQ, setPortadaQ] = React.useState(''); // buscador dentro del modal
+  const cerrarPortada = () => { setPortadaAbierta(null); setPortadaQ(''); };
 
   const G = '#059669';
   return (
@@ -410,40 +415,96 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
         ) : Object.keys(prodsByCat).length === 0 ? (
           <div style={{ fontSize:12, color:'#9a9a98' }}>Cargá productos con foto para poder elegir portadas.</div>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {Object.keys(prodsByCat).sort((a, b) => a.localeCompare(b, 'es')).map(cat => {
               const candidatos = prodsByCat[cat];
               const sel = catPortadas[cat] || null; // null = auto
+              // Miniatura de la portada actual para la fila colapsada.
+              const preview = sel || (candidatos[0] && candidatos[0].imagen_url) || null;
               return (
-                <div key={cat}>
-                  <div style={{ fontFamily:'Inter,sans-serif', fontSize:12.5, fontWeight:600, color:'#1a1a18', marginBottom:6 }}>{cat}</div>
-                  {/* flexWrap (no scroll horizontal): las miniaturas bajan de línea y NUNCA
-                      fuerzan el ancho del contenedor. Con overflowX:auto una tira larga
-                      ensanchaba toda la grilla del tab y empujaba los toggles fuera de vista. */}
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                    <button onClick={() => setCatPortada(cat, null)} title="Portada automática"
-                      style={{ flexShrink:0, width:56, height:56, borderRadius:8, cursor:'pointer',
-                        border: sel === null ? `2px solid ${G}` : '1px solid #e8e4de',
-                        background:'#f6f5f1', display:'flex', alignItems:'center', justifyContent:'center',
-                        fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:600, color: sel === null ? '#166534' : '#6a6a68' }}>
-                      Auto
-                    </button>
-                    {candidatos.map(p => {
-                      const on = sel === p.imagen_url;
-                      return (
-                        <button key={p.uuid} onClick={() => setCatPortada(cat, p.imagen_url)} title={p.name}
-                          style={{ flexShrink:0, width:56, height:56, borderRadius:8, cursor:'pointer', padding:0, overflow:'hidden',
-                            border: on ? `2px solid ${G}` : '1px solid #e8e4de', background:'#fff' }}>
-                          <img src={p.imagen_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', boxSizing:'border-box', padding:4 }} />
-                        </button>
-                      );
-                    })}
+                <div key={cat} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', minWidth:0,
+                  border:'1px solid #f0f0ec', borderRadius:8 }}>
+                  <div style={{ flexShrink:0, width:40, height:40, borderRadius:6, border:'1px solid #e8e4de',
+                    background:'#f6f5f1', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                    {preview
+                      ? <img src={preview} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', boxSizing:'border-box', padding:3 }} />
+                      : <span style={{ fontFamily:'Inter,sans-serif', fontSize:10, color:'#9a9a98' }}>—</span>}
                   </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:'Inter,sans-serif', fontSize:12.5, fontWeight:600, color:'#1a1a18',
+                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cat}</div>
+                    <div style={{ fontFamily:'Inter,sans-serif', fontSize:11, color: sel ? '#166534' : '#9a9a98' }}>
+                      {sel ? 'Foto elegida' : 'Automática'}
+                    </div>
+                  </div>
+                  <button onClick={() => { setPortadaAbierta(cat); setPortadaQ(''); }}
+                    style={{ flexShrink:0, border:'1px solid #e8e4de', background:'#fff', borderRadius:6, cursor:'pointer',
+                      fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:600, color:'#1a1a18', padding:'6px 12px' }}>
+                    Cambiar
+                  </button>
                 </div>
               );
             })}
           </div>
         )}
+
+        {/* Modal picker (patrón Amazon/Shopify): buscador + grilla de fotos del rubro.
+            Sólo se monta cuando hay una categoría abierta, así la lista de arriba
+            queda siempre compacta por más rubros/fotos que haya. */}
+        {portadaAbierta && prodsByCat[portadaAbierta] && (() => {
+          const cat = portadaAbierta;
+          const sel = catPortadas[cat] || null;
+          const filtrados = prodsByCat[cat].filter(p =>
+            !portadaQ.trim() || String(p.name || '').toLowerCase().includes(portadaQ.trim().toLowerCase()));
+          return (
+            <div onClick={cerrarPortada}
+              style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(20,20,18,0.45)',
+                display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+              <div onClick={e => e.stopPropagation()}
+                style={{ background:'#fff', borderRadius:12, width:'min(560px,100%)', maxHeight:'82vh',
+                  display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 12px 40px rgba(0,0,0,0.25)' }}>
+                <div style={{ padding:'14px 16px 10px', borderBottom:'1px solid #f0f0ec' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                    <div style={{ fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, color:'#1a1a18',
+                      whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>Portada de “{cat}”</div>
+                    <button onClick={cerrarPortada}
+                      style={{ flexShrink:0, border:'none', background:'none', cursor:'pointer', fontSize:20, lineHeight:1, color:'#9a9a98', padding:0 }}>×</button>
+                  </div>
+                  <input autoFocus value={portadaQ} onChange={e => setPortadaQ(e.target.value)}
+                    placeholder="Buscar producto por nombre…"
+                    style={{ width:'100%', boxSizing:'border-box', marginTop:10, padding:'8px 10px', borderRadius:8,
+                      border:'1px solid #e8e4de', fontSize:13, background:'#fff', color:'#1a1a18' }} />
+                </div>
+                <div style={{ overflowY:'auto', padding:14 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(72px, 1fr))', gap:10 }}>
+                    <button onClick={() => { setCatPortada(cat, null); cerrarPortada(); }} title="Portada automática"
+                      style={{ aspectRatio:'1', borderRadius:8, cursor:'pointer',
+                        border: sel === null ? `2px solid ${G}` : '1px solid #e8e4de',
+                        background:'#f6f5f1', display:'flex', alignItems:'center', justifyContent:'center',
+                        fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:600, color: sel === null ? '#166534' : '#6a6a68' }}>
+                      Auto
+                    </button>
+                    {filtrados.map(p => {
+                      const on = sel === p.imagen_url;
+                      return (
+                        <button key={p.uuid} onClick={() => { setCatPortada(cat, p.imagen_url); cerrarPortada(); }} title={p.name}
+                          style={{ aspectRatio:'1', borderRadius:8, cursor:'pointer', padding:0, overflow:'hidden',
+                            border: on ? `2px solid ${G}` : '1px solid #e8e4de', background:'#fff' }}>
+                          <img src={p.imagen_url} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', boxSizing:'border-box', padding:5 }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {filtrados.length === 0 && (
+                    <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#9a9a98', textAlign:'center', padding:'16px 0' }}>
+                      Ningún producto coincide con “{portadaQ}”.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Banners de la portada */}
