@@ -3222,10 +3222,10 @@ function CategoryTile({ cat, imgs, featured, isMobile, onClick }) {
       borderRadius: isMobile ? 14 : 16, background:CREAM_TILE, fontFamily:SANS, overflow:'hidden', textAlign:'left' }}>
       {/* foto: UNA sola imagen del producto, centrada sobre blanco con aire (estética
           Faire) — sin mosaicos apretados ni recortes. Si no hay foto, la inicial en serif. */}
-      <div style={{ position:'relative', flex:1, minHeight:0, background: cover ? '#fff' : '#efe9dd' }}>
+      <div style={{ position:'relative', flex:1, minHeight:0, overflow:'hidden', background: cover ? '#fff' : '#efe9dd' }}>
         {cover ? (
           <img src={cover} alt="" loading="lazy" style={{ position:'absolute', inset:0, width:'100%', height:'100%',
-            objectFit:'contain', padding: featured ? (isMobile?20:30) : (isMobile?14:20), display:'block' }} />
+            boxSizing:'border-box', objectFit:'contain', padding: featured ? (isMobile?20:30) : (isMobile?14:20), display:'block' }} />
         ) : (
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
             fontFamily:DISPLAY, fontSize:featured?68:42, color:'#c8bda3' }}>{String(cat.nombre).trim().charAt(0).toUpperCase()}</div>
