@@ -13,6 +13,17 @@ import { setCorsHeaders } from './_cors.js';
 import { generarOrdenPDF } from './_pedido-pdf.js';
 import { buildLineas, sumLineas, mapClienteFiscal } from './_pedido-data.js';
 import { sendEmail, templates } from './_email.js';
+// Formateo de la fecha de entrega para el comprobante (misma lógica pura que el
+// portal → el cliente ve la MISMA fecha en el checkout y en el PDF).
+import { formatFechaLargaCap } from '../src/lib/delivery.js';
+
+// "YYYY-MM-DD" → texto "Jueves 21 de agosto". Construimos el Date con partes
+// LOCALES (no new Date(iso), que interpreta UTC y puede correr un día según el TZ).
+function fechaEntregaLabel(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!m) return '';
+  return formatFechaLargaCap(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+}
 // Núcleo compartido de creación de pedido (mismo cierre para portal y bot WhatsApp).
 import { createB2BOrder } from './_create-order.js';
 // SECURITY (A3): usar la validación compartida que además exige revoked=false.
@@ -76,6 +87,7 @@ async function buildComprobantePdf(session, orderId) {
     fecha: pedido.creado_en || new Date().toISOString(),
     empresa, currencySymbol: '$',
     cliente: mapClienteFiscal(cli),
+    entregaEstimada: fechaEntregaLabel(pedido.fecha_entrega_estimada),
     lineas, subtotal, descuentoTotal, iva, total,
     notas: pedido.notas || '',
   });
@@ -338,6 +350,12 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'El pedido no tiene productos' });
   }
 
+  // Fecha de entrega estimada/elegida (opcional). El front la manda como ISO
+  // "YYYY-MM-DD"; validamos el formato acá y descartamos cualquier otra cosa para
+  // no persistir basura. Si no viene o es inválida → null (pedido sin fecha).
+  const _fe = String(req.body?.fecha_entrega_estimada || '').trim();
+  const fechaEntrega = /^\d{4}-\d{2}-\d{2}$/.test(_fe) ? _fe : null;
+
   // Identity from validated server-side session — never trust the body
   const org           = portalSession.org_id;
   const clienteId     = portalSession.cliente_id;
@@ -363,7 +381,7 @@ async function handler(req, res) {
   // la MISMA función y mapeará el resultado a un mensaje.
   const result = await createB2BOrder({
     org, clienteId, clienteNombre, clienteTel,
-    items, total, notas, idempotencyKey,
+    items, total, notas, idempotencyKey, fechaEntrega,
   });
 
   if (!result.ok) {

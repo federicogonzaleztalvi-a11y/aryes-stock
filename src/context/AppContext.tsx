@@ -545,6 +545,7 @@ const describeAction = (action: string, detail: string): string => {
             descuento_posible:Number(row.descuento_posible)||0,
             unidades_por_caja:Number(row.unidades_por_caja)||0, descuento_caja:Number(row.descuento_caja)||0,
             variants:(row.variants&&typeof row.variants==='object'&&!Array.isArray(row.variants))?row.variants:{},
+            atributos:Array.isArray(row.atributos)?row.atributos:[],
             dailyUsage:Number(row.daily_usage)||0, updatedAt:row.updated_at||'' };
           return [p, ...ps];
         }
@@ -560,6 +561,7 @@ const describeAction = (action: string, detail: string): string => {
                 unidades_por_caja: row.unidades_por_caja != null ? Number(row.unidades_por_caja) : p.unidades_por_caja,
                 descuento_caja: row.descuento_caja != null ? Number(row.descuento_caja) : p.descuento_caja,
                 variants: (row.variants && typeof row.variants === 'object' && !Array.isArray(row.variants)) ? row.variants : p.variants,
+                atributos: Array.isArray(row.atributos) ? row.atributos : p.atributos,
                 updatedAt: row.updated_at||'' }
             : p);
         }
@@ -757,6 +759,10 @@ const describeAction = (action: string, detail: string): string => {
       unidades_por_caja: Math.max(0, Math.floor(Number(f.unidades_por_caja) || 0)),
       descuento_caja: Math.max(0, Math.min(100, Number(f.descuento_caja) || 0)),
       variants: (f.variants && typeof f.variants === 'object' && !Array.isArray(f.variants) ? f.variants : {}) as Record<string, unknown>,
+      // Atributos flexibles (ficha técnica multi-rubro): lista clave/valor saneada.
+      atributos: (Array.isArray(f.atributos) ? f.atributos : [])
+        .map((a: { k?: unknown; v?: unknown }) => ({ k: String(a?.k ?? '').trim(), v: String(a?.v ?? '').trim() }))
+        .filter((a: { k: string; v: string }) => a.k && a.v) as unknown[],
       updated_at: now,
     };
     // Optimistic update

@@ -31,7 +31,7 @@ function samePhone(a, b) {
 
 export async function findClientByPhone({ SB_URL, key, org, telClean }) {
   const H = { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' };
-  const SEL = 'id,name,lista_id';
+  const SEL = 'id,name,lista_id,rut,contacto,zona_entrega';
 
   // 1. Camino rápido (match exacto o LIKE por últimos 8 dígitos).
   let r = await fetch(
@@ -50,7 +50,7 @@ export async function findClientByPhone({ SB_URL, key, org, telClean }) {
   );
   rows = r.ok ? await r.json() : [];
   const hit = (Array.isArray(rows) ? rows : []).find((c) => samePhone(c.phone, telClean));
-  if (hit) return { id: hit.id, name: hit.name, lista_id: hit.lista_id };
+  if (hit) return { id: hit.id, name: hit.name, lista_id: hit.lista_id, rut: hit.rut, contacto: hit.contacto, zona_entrega: hit.zona_entrega };
 
   // 3. Teléfonos adicionales (client_phones), match exacto + revalidar org.
   r = await fetch(

@@ -110,6 +110,7 @@ export default async function handler(req, res) {
     let recommended = [];
     let buyAgain = [];
     let coBuy = {};
+    let social = {};  // id -> { c: nº clientes distintos, best: bool } (prueba social real)
     if (clienteId) {
       let allOrders = [];
       try {
@@ -283,6 +284,44 @@ export default async function handler(req, res) {
             .map(function(e) { return e[0]; });
           if (ranked.length) coBuy[a] = ranked;
         });
+
+        // ── Prueba social (badges "Más pedido" / "N clientes lo piden") ──────
+        // TODO real, cero humo: se cuenta sobre los MISMOS pedidos ya traídos
+        // (propios + del resto de la org), así no agrega ni una query a Supabase.
+        //   socClients[id] = clientes DISTINTOS que lo pidieron (prueba social real)
+        //   socOrders[id]  = en cuántos pedidos aparece (para el bestseller)
+        // Los pedidos propios (myOrders) no traían cliente_id porque todos son de
+        // este cliente; los etiquetamos con clienteId para contarlos como 1 comprador.
+        const socialOrders = otherOrders.concat(
+          myOrders.map(function(o) { return { cliente_id: clienteId, items: o.items }; })
+        );
+        const socClients = {};  // id -> Set(clienteId)
+        const socOrders  = {};  // id -> nº de pedidos
+        socialOrders.forEach(function(v) {
+          const ids = Array.from(new Set((v.items || [])
+            .map(function(it) { return it.productoId; })
+            .filter(function(id) { return id && catalogIds.has(id); })));
+          ids.forEach(function(id) {
+            (socClients[id] || (socClients[id] = new Set())).add(v.cliente_id);
+            socOrders[id] = (socOrders[id] || 0) + 1;
+          });
+        });
+        // Bestsellers: los más pedidos de la org (mínimo 2 pedidos para que sea
+        // señal y no un caso aislado). Top 10 → badge "Más pedido".
+        const bestSet = new Set(
+          Object.entries(socOrders)
+            .filter(function(e) { return e[1] >= 2; })
+            .sort(function(a, b) { return b[1] - a[1]; })
+            .slice(0, 10)
+            .map(function(e) { return e[0]; })
+        );
+        // Sólo emitimos badge cuando hay señal real: es bestseller, o lo piden ≥3
+        // clientes distintos. Debajo de eso NO es prueba social (sería ruido).
+        Object.keys(socClients).forEach(function(id) {
+          const c = socClients[id].size;
+          const isBest = bestSet.has(id);
+          if (isBest || c >= 3) social[id] = { c: c, best: isBest };
+        });
       } catch (recErr) {
         console.error('[catalogo] Recommendation error (non-fatal):', recErr.message);
         // Non-fatal — continue without recommendations
@@ -298,6 +337,7 @@ export default async function handler(req, res) {
       recommended,
       buyAgain,
       coBuy,
+      social,
       hasLista,
       descGlobal,
       horarioDesde,

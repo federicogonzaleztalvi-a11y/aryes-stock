@@ -143,6 +143,484 @@ function StockControlCard() {
   );
 }
 
+// ── Vidriera / Portada (Palanca 2: Destacar + Anunciar en 1 clic) ─────────
+// El distribuidor NO diseña nada: solo dice QUÉ promocionar. La plataforma
+// arma el look (crema/serif de la casa).
+//   • Anuncio  → brandCfg.anuncio    = { activo, texto }
+//   • Destacar → brandCfg.destacados = [ productId, ... ]
+// Persiste con el patrón seguro de merge (nunca pisa el resto del brandcfg).
+function VidrieraPanel({ brandCfg, setBrandCfg }) {
+  const SB = import.meta.env.VITE_SUPABASE_URL;
+  const persist = (patch) => {
+    const updated = { ...(brandCfg || {}), ...patch };
+    setBrandCfg(updated);
+    db.upsert('app_config', { key: 'brandcfg', value: updated, org_id: getOrgId() }, 'key,org_id');
+  };
+
+  // ── Anuncio ──────────────────────────────────────────────────────────
+  const anuncio = brandCfg?.anuncio || { activo: false, texto: '' };
+  const [txt, setTxt] = React.useState(anuncio.texto || '');
+  React.useEffect(() => { setTxt(brandCfg?.anuncio?.texto || ''); }, [brandCfg?.anuncio?.texto]);
+
+  // ── Destacados (picker de productos) ─────────────────────────────────
+  const destacados = Array.isArray(brandCfg?.destacados) ? brandCfg.destacados : [];
+  const [prods, setProds] = React.useState(null); // null = cargando
+  const [q, setQ] = React.useState('');
+
+  // ── Banners (carteles grandes de la portada) ─────────────────────────
+  // El distribuidor sólo escribe el texto y elige a dónde llevan; Pazque los
+  // presenta con el look de la casa (crema/serif) y los rota solos. Editamos
+  // sobre una copia local (draft) y persistimos el array completo en cada
+  // blur / acción, para no escribir a la DB en cada tecla.
+  const [draftBanners, setDraftBanners] = React.useState(
+    () => (Array.isArray(brandCfg?.banners) ? brandCfg.banners : []));
+  React.useEffect(() => {
+    setDraftBanners(Array.isArray(brandCfg?.banners) ? brandCfg.banners : []);
+  }, [brandCfg?.banners]);
+  const editDraftBanner = (idx, field, val) =>
+    setDraftBanners(bs => bs.map((b, i) => i === idx ? { ...b, [field]: val } : b));
+  const commitBanners = () => persist({ banners: draftBanners });
+  const addBanner = () => {
+    const next = [...draftBanners, { badge: '', titulo: '', subtitulo: '', cta: '', verTodo: true }];
+    setDraftBanners(next); persist({ banners: next });
+  };
+  const removeBanner = (idx) => {
+    const next = draftBanners.filter((_, i) => i !== idx);
+    setDraftBanners(next); persist({ banners: next });
+  };
+  const setBannerDestino = (idx, val) => {
+    const next = draftBanners.map((b, i) => {
+      if (i !== idx) return b;
+      if (val === '__verTodo') return { ...b, verTodo: true, categoria: undefined };
+      return { ...b, verTodo: undefined, categoria: val };
+    });
+    setDraftBanners(next); persist({ banners: next });
+  };
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const org = getOrgId();
+        const r = await fetch(
+          `${SB}/rest/v1/products?org_id=eq.${encodeURIComponent(org)}&select=uuid,name,imagen_url,category&order=name.asc&limit=1000`,
+          { headers: getAuthHeaders() });
+        const d = r.ok ? await r.json() : [];
+        if (alive) setProds(Array.isArray(d) ? d : []);
+      } catch { if (alive) setProds([]); }
+    })();
+    return () => { alive = false; };
+  }, [SB]);
+
+  const toggleDest = (id) => {
+    const on = destacados.includes(id);
+    const next = on ? destacados.filter(x => x !== id) : [...destacados, id];
+    persist({ destacados: next });
+  };
+
+  const byId = (id) => (prods || []).find(p => String(p.uuid) === String(id));
+  const filtered = (prods || []).filter(p =>
+    !q.trim() || String(p.name || '').toLowerCase().includes(q.trim().toLowerCase())
+  ).slice(0, 60);
+  // Categorías reales del catálogo, para el destino "Ir a una categoría".
+  const cats = React.useMemo(
+    () => Array.from(new Set((prods || []).map(p => p.category).filter(Boolean))).sort(),
+    [prods]);
+
+  const G = '#059669';
+  return (
+    <div style={{ background:'#fff', border:'1px solid #e8e4de', borderRadius:10, padding:'16px 20px' }}>
+      <div style={{ fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, color:'#1a1a18' }}>Vidriera / Portada</div>
+      <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:16, maxWidth:520 }}>
+        Vos elegís <b>qué</b> mostrar; Pazque lo presenta con el diseño de la casa. Ideal para anunciar una novedad o destacar productos en la portada del portal.
+      </div>
+
+      {/* Portada nueva (master switch). Cuando está apagada, el cliente entra
+          directo al catálogo (comportamiento actual). Cuando la prendés, ve una
+          portada con banners y destacados. Se puede configurar todo abajo aunque
+          esté apagada, y prenderla recién cuando esté lista. */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+          <div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>Portada nueva</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, maxWidth:440 }}>
+              Reemplaza la entrada directa al catálogo por una portada con banners y destacados (estilo tienda). Podés dejar todo configurado abajo y recién prenderla cuando esté lista.
+            </div>
+          </div>
+          <label style={{ position:'relative', display:'inline-block', width:44, height:24, cursor:'pointer', flexShrink:0 }}>
+            <input type="checkbox" checked={brandCfg?.homeVidriera === true} onChange={e =>
+              persist({ homeVidriera: e.target.checked })
+            } style={{ opacity:0, width:0, height:0 }} />
+            <span style={{ position:'absolute', inset:0, background: brandCfg?.homeVidriera ? G : '#ccc', borderRadius:12, transition:'.2s' }} />
+            <span style={{ position:'absolute', top:2, left: brandCfg?.homeVidriera ? 22 : 2, width:20, height:20, background:'#fff', borderRadius:10, transition:'.2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)' }} />
+          </label>
+        </div>
+      </div>
+
+      {/* Anuncio */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+          <div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>Anuncio en la portada</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2 }}>Una línea arriba de todo. Ej: “Envío gratis esta semana en pedidos +$5.000”.</div>
+          </div>
+          <label style={{ position:'relative', display:'inline-block', width:44, height:24, cursor:'pointer', flexShrink:0 }}>
+            <input type="checkbox" checked={anuncio.activo === true} onChange={e =>
+              persist({ anuncio: { activo: e.target.checked, texto: txt } })
+            } style={{ opacity:0, width:0, height:0 }} />
+            <span style={{ position:'absolute', inset:0, background: anuncio.activo ? G : '#ccc', borderRadius:12, transition:'.2s' }} />
+            <span style={{ position:'absolute', top:2, left: anuncio.activo ? 22 : 2, width:20, height:20, background:'#fff', borderRadius:10, transition:'.2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)' }} />
+          </label>
+        </div>
+        <div style={{ display:'flex', gap:8, alignItems:'center', marginTop:10 }}>
+          <input
+            value={txt}
+            onChange={e => setTxt(e.target.value)}
+            onBlur={() => { if ((brandCfg?.anuncio?.texto || '') !== txt) persist({ anuncio: { activo: anuncio.activo, texto: txt } }); }}
+            maxLength={90}
+            placeholder="Escribí tu anuncio…"
+            style={{ flex:1, padding:'8px 11px', borderRadius:6, border:'1px solid #e8e4de', fontSize:14, background:'#fafaf7', color:'#1a1a18' }} />
+          <span style={{ fontFamily:'Inter,sans-serif', fontSize:11, color:'#9a9a98', width:44, textAlign:'right' }}>{txt.length}/90</span>
+        </div>
+      </div>
+
+      {/* Prueba social */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14, marginTop:16 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+          <div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>Prueba social en las tarjetas</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, maxWidth:440 }}>
+              Muestra sellos “Más pedido” y “X clientes lo piden” en los productos, calculados con los pedidos reales de tu cartera. Genera confianza sin pedirle nada al comprador.
+            </div>
+          </div>
+          <label style={{ position:'relative', display:'inline-block', width:44, height:24, cursor:'pointer', flexShrink:0 }}>
+            <input type="checkbox" checked={brandCfg?.socialProof === true} onChange={e =>
+              persist({ socialProof: e.target.checked })
+            } style={{ opacity:0, width:0, height:0 }} />
+            <span style={{ position:'absolute', inset:0, background: brandCfg?.socialProof ? G : '#ccc', borderRadius:12, transition:'.2s' }} />
+            <span style={{ position:'absolute', top:2, left: brandCfg?.socialProof ? 22 : 2, width:20, height:20, background:'#fff', borderRadius:10, transition:'.2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)' }} />
+          </label>
+        </div>
+      </div>
+
+      {/* Señal de stock */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14, marginTop:16 }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+          <div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>Señal de stock en la ficha</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, maxWidth:440 }}>
+              Muestra “En stock”, “¡Pocas unidades!” o “Sin stock” en la ficha del producto, según tu inventario real. Activalo sólo si llevás el stock al día — si no, mejor dejarlo apagado.
+            </div>
+          </div>
+          <label style={{ position:'relative', display:'inline-block', width:44, height:24, cursor:'pointer', flexShrink:0 }}>
+            <input type="checkbox" checked={brandCfg?.stockSignals === true} onChange={e =>
+              persist({ stockSignals: e.target.checked })
+            } style={{ opacity:0, width:0, height:0 }} />
+            <span style={{ position:'absolute', inset:0, background: brandCfg?.stockSignals ? G : '#ccc', borderRadius:12, transition:'.2s' }} />
+            <span style={{ position:'absolute', top:2, left: brandCfg?.stockSignals ? 22 : 2, width:20, height:20, background:'#fff', borderRadius:10, transition:'.2s', boxShadow:'0 1px 3px rgba(0,0,0,.2)' }} />
+          </label>
+        </div>
+      </div>
+
+      {/* Destacados */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14, marginTop:16 }}>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>
+          Destacados en la portada {destacados.length > 0 && <span style={{ color:G }}>· {destacados.length}</span>}
+        </div>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:10 }}>
+          Marcá con ★ los productos que querés mostrar primero. Aparecen en un carrusel “Destacados”.
+        </div>
+
+        {/* Chips de seleccionados */}
+        {destacados.length > 0 && (
+          <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:10 }}>
+            {destacados.map(id => {
+              const p = byId(id);
+              return (
+                <span key={id} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#f0fdf4', color:'#166534',
+                  fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:600, padding:'4px 6px 4px 10px', borderRadius:20, border:'1px solid #bbf7d0' }}>
+                  {p ? p.name : id}
+                  <button onClick={() => toggleDest(id)} style={{ border:'none', background:'none', color:'#166534', cursor:'pointer', fontSize:14, lineHeight:1, padding:0 }}>×</button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Buscar producto…"
+          style={{ width:'100%', boxSizing:'border-box', padding:'8px 11px', borderRadius:6, border:'1px solid #e8e4de', fontSize:14, background:'#fafaf7', color:'#1a1a18', marginBottom:8 }} />
+
+        {prods === null ? (
+          <div style={{ fontSize:12, color:'#9a9a98' }}>Cargando productos…</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ fontSize:12, color:'#9a9a98' }}>{q.trim() ? 'Sin resultados.' : 'No hay productos cargados todavía.'}</div>
+        ) : (
+          <div style={{ maxHeight:260, overflowY:'auto', border:'1px solid #f0f0ec', borderRadius:8 }}>
+            {filtered.map(p => {
+              const on = destacados.includes(p.uuid);
+              return (
+                <div key={p.uuid} onClick={() => toggleDest(p.uuid)}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', cursor:'pointer',
+                    borderBottom:'1px solid #f5f5f1', background: on ? '#f6fdf9' : '#fff' }}>
+                  <span style={{ fontSize:16, color: on ? '#f59e0b' : '#d4d4cf', width:18, textAlign:'center', flexShrink:0 }}>{on ? '★' : '☆'}</span>
+                  {p.imagen_url
+                    ? <img src={p.imagen_url} alt="" style={{ width:30, height:30, borderRadius:6, objectFit:'cover', flexShrink:0 }} />
+                    : <span style={{ width:30, height:30, borderRadius:6, background:'#f0efe9', flexShrink:0 }} />}
+                  <span style={{ fontFamily:'Inter,sans-serif', fontSize:13, color:'#1a1a18', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Banners de la portada */}
+      <div style={{ borderTop:'1px solid #f0f0ec', paddingTop:14, marginTop:16 }}>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:13.5, fontWeight:600, color:'#1a1a18' }}>
+          Banners de la portada {draftBanners.length > 0 && <span style={{ color:G }}>· {draftBanners.length}</span>}
+        </div>
+        <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:10, maxWidth:460 }}>
+          Los carteles grandes de arriba de la portada. Rotan solos. Escribí el texto y elegí a dónde llevan; si no cargás ninguno, Pazque arma uno de bienvenida automático.
+        </div>
+
+        {draftBanners.map((b, idx) => (
+          <div key={idx} style={{ border:'1px solid #eee7d8', borderRadius:8, padding:'12px 12px 14px', marginBottom:10, background:'#fdfcf8' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <span style={{ fontFamily:'Inter,sans-serif', fontSize:11, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'#9a9a98' }}>Banner {idx + 1}</span>
+              <button onClick={() => removeBanner(idx)} style={{ border:'none', background:'none', color:'#b91c1c', cursor:'pointer', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:600, padding:0 }}>Quitar</button>
+            </div>
+            <input
+              value={b.badge || ''} onChange={e => editDraftBanner(idx, 'badge', e.target.value)} onBlur={commitBanners}
+              maxLength={28} placeholder="Etiqueta (ej: Novedad)"
+              style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:6, border:'1px solid #e8e4de', fontSize:13, background:'#fff', color:'#1a1a18', marginBottom:7 }} />
+            <input
+              value={b.titulo || ''} onChange={e => editDraftBanner(idx, 'titulo', e.target.value)} onBlur={commitBanners}
+              maxLength={70} placeholder="Título (ej: Envío gratis esta semana)"
+              style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:6, border:'1px solid #e8e4de', fontSize:14, fontWeight:600, background:'#fff', color:'#1a1a18', marginBottom:7 }} />
+            <input
+              value={b.subtitulo || ''} onChange={e => editDraftBanner(idx, 'subtitulo', e.target.value)} onBlur={commitBanners}
+              maxLength={120} placeholder="Subtítulo (opcional)"
+              style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:6, border:'1px solid #e8e4de', fontSize:13, background:'#fff', color:'#1a1a18', marginBottom:7 }} />
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              <input
+                value={b.cta || ''} onChange={e => editDraftBanner(idx, 'cta', e.target.value)} onBlur={commitBanners}
+                maxLength={28} placeholder="Texto del botón (ej: Ver ofertas)"
+                style={{ flex:'1 1 160px', minWidth:0, boxSizing:'border-box', padding:'7px 10px', borderRadius:6, border:'1px solid #e8e4de', fontSize:13, background:'#fff', color:'#1a1a18' }} />
+              <select
+                value={b.categoria ? b.categoria : '__verTodo'}
+                onChange={e => setBannerDestino(idx, e.target.value)}
+                style={{ flex:'1 1 160px', minWidth:0, boxSizing:'border-box', padding:'7px 10px', borderRadius:6, border:'1px solid #e8e4de', fontSize:13, background:'#fff', color:'#1a1a18' }}>
+                <option value="__verTodo">Lleva a: Ver todo el catálogo</option>
+                {cats.map(c => <option key={c} value={c}>Lleva a: {c}</option>)}
+              </select>
+            </div>
+          </div>
+        ))}
+
+        <button onClick={addBanner} style={{ border:'1px dashed #cfc7b4', background:'#fff', color:'#166534', cursor:'pointer',
+          fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, padding:'9px 14px', borderRadius:8, width:'100%' }}>
+          + Agregar banner
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Reparto / Días de entrega (self-service, genérico multi-tenant) ───────
+// Cada distribuidora define CÓMO calcula la fecha de entrega que ve el cliente
+// en el checkout. Tres modos (ver src/lib/delivery.js):
+//   'off'     → no se muestra fecha (default, cero cambios para quien no lo usa).
+//   'zona'    → el día lo manda la RUTA/ZONA del cliente; el cliente NO elige
+//               (caso Eric: reparto por zona en días fijos).
+//   'cliente' → el cliente ELIGE el día entre los hábiles, con anticipación mín.
+// La hora de corte es genérica a ambos modos: pasada esa hora, el reparto de hoy
+// ya cerró y el cálculo salta al siguiente día válido.
+const DIAS_UI = [
+  { k: 'lun', label: 'Lun' }, { k: 'mar', label: 'Mar' }, { k: 'mie', label: 'Mié' },
+  { k: 'jue', label: 'Jue' }, { k: 'vie', label: 'Vie' }, { k: 'sab', label: 'Sáb' },
+  { k: 'dom', label: 'Dom' },
+];
+
+// Selector de días (chips lun..dom). value = ['lun','mie'], onChange devuelve nuevo array.
+function DiasPicker({ value, onChange }) {
+  const sel = Array.isArray(value) ? value : [];
+  const G = '#059669';
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {DIAS_UI.map(d => {
+        const on = sel.includes(d.k);
+        return (
+          <button key={d.k} type="button" onClick={() => {
+            onChange(on ? sel.filter(x => x !== d.k) : [...sel, d.k]);
+          }} style={{
+            padding: '6px 11px', borderRadius: 20, fontFamily: 'Inter,sans-serif', fontSize: 12.5,
+            fontWeight: 600, cursor: 'pointer', transition: '.15s',
+            border: on ? `1px solid ${G}` : '1px solid #e0ddd6',
+            background: on ? '#f0fdf4' : '#fff', color: on ? '#166534' : '#8a8a86',
+          }}>{d.label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RepartoPanel({ brandCfg, setBrandCfg }) {
+  const G = '#059669';
+  const reparto = brandCfg?.reparto || {};
+  const modo = reparto.modo || 'off';
+
+  const persist = (patchReparto) => {
+    const nextReparto = { ...reparto, ...patchReparto };
+    const updated = { ...(brandCfg || {}), reparto: nextReparto };
+    setBrandCfg(updated);
+    db.upsert('app_config', { key: 'brandcfg', value: updated, org_id: getOrgId() }, 'key,org_id');
+  };
+
+  // Zonas como array editable [{nombre, dias}] derivado del objeto guardado.
+  const zonasObj = reparto.zonas || {};
+  const zonasArr = Object.keys(zonasObj).map(nombre => ({ nombre, dias: zonasObj[nombre] || [] }));
+
+  const guardarZonas = (arr) => {
+    const obj = {};
+    arr.forEach(z => { if (String(z.nombre || '').trim()) obj[z.nombre.trim()] = z.dias || []; });
+    persist({ zonas: obj });
+  };
+
+  const modos = [
+    { k: 'off', titulo: 'No mostrar fecha', desc: 'El checkout no muestra fecha de entrega estimada.' },
+    { k: 'zona', titulo: 'Por zona / ruta', desc: 'La fecha la define la zona del cliente. El cliente no elige el día (ideal si repartís por ruta en días fijos).' },
+    { k: 'cliente', titulo: 'El cliente elige', desc: 'El cliente elige el día de entrega entre los hábiles, con una anticipación mínima.' },
+  ];
+
+  const card = { background: '#fff', border: '1px solid #e8e4de', borderRadius: 10, padding: '16px 20px' };
+  const inputStyle = { padding: '8px 11px', borderRadius: 6, border: '1px solid #e8e4de', fontSize: 14, background: '#fafaf7', color: '#1a1a18' };
+
+  return (
+    <div style={card}>
+      <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Días de entrega / Reparto</div>
+      <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, marginBottom: 16, maxWidth: 520 }}>
+        Definí cómo se calcula la fecha de entrega que ve el cliente al confirmar el pedido. Podés repartir por zona en días fijos, o dejar que el cliente elija el día.
+      </div>
+
+      {/* Selector de modo */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {modos.map(m => {
+          const on = modo === m.k;
+          return (
+            <label key={m.k} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 13px', borderRadius: 8, cursor: 'pointer',
+              border: on ? `1px solid ${G}` : '1px solid #e8e4de', background: on ? '#f6fdf9' : '#fff',
+            }}>
+              <input type="radio" name="reparto-modo" checked={on} onChange={() => persist({ modo: m.k })}
+                style={{ marginTop: 2, accentColor: G, cursor: 'pointer' }} />
+              <div>
+                <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13.5, fontWeight: 600, color: '#1a1a18' }}>{m.titulo}</div>
+                <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2 }}>{m.desc}</div>
+              </div>
+            </label>
+          );
+        })}
+      </div>
+
+      {/* Hora de corte (aplica a zona y cliente) */}
+      {modo !== 'off' && (
+        <div style={{ borderTop: '1px solid #f0f0ec', paddingTop: 14, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13.5, fontWeight: 600, color: '#1a1a18' }}>Hora de corte</div>
+            <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, maxWidth: 400 }}>
+              Pedidos que entran después de esta hora se agendan para el siguiente día de reparto. Dejala vacía si no tenés corte.
+            </div>
+          </div>
+          <input
+            key={'corte' + (reparto.corte || '')}
+            type="time"
+            defaultValue={reparto.corte || ''}
+            onBlur={e => { const v = e.target.value || ''; if (v !== (reparto.corte || '')) persist({ corte: v }); }}
+            style={{ ...inputStyle, width: 120, flexShrink: 0 }} />
+        </div>
+      )}
+
+      {/* Modo ZONA: lista de zonas → días */}
+      {modo === 'zona' && (
+        <div style={{ borderTop: '1px solid #f0f0ec', paddingTop: 14, marginTop: 16 }}>
+          <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13.5, fontWeight: 600, color: '#1a1a18' }}>Zonas y sus días de reparto</div>
+          <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, marginBottom: 12, maxWidth: 460 }}>
+            Cada zona reparte en días fijos. Matcheamos la zona del cliente (campo “zona de entrega” en su ficha) contra esta lista. Si no coincide con ninguna, usa los días por defecto de abajo.
+          </div>
+
+          {zonasArr.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 12 }}>
+              {zonasArr.map((z, i) => (
+                <div key={i} style={{ border: '1px solid #f0f0ec', borderRadius: 8, padding: '10px 12px', background: '#fafaf7' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <input
+                      key={'zn' + i + z.nombre}
+                      defaultValue={z.nombre}
+                      placeholder="Nombre de la zona (ej: Centro)"
+                      onBlur={e => {
+                        const nombre = e.target.value.trim();
+                        const arr = [...zonasArr]; arr[i] = { ...arr[i], nombre };
+                        guardarZonas(arr);
+                      }}
+                      style={{ ...inputStyle, flex: 1 }} />
+                    <button type="button" onClick={() => guardarZonas(zonasArr.filter((_, j) => j !== i))}
+                      style={{ border: 'none', background: 'none', color: '#c0392b', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}>×</button>
+                  </div>
+                  <DiasPicker value={z.dias} onChange={dias => { const arr = [...zonasArr]; arr[i] = { ...arr[i], dias }; guardarZonas(arr); }} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button type="button" onClick={() => guardarZonas([...zonasArr, { nombre: '', dias: [] }])}
+            style={{ padding: '8px 14px', background: '#fff', color: G, border: `1px solid ${G}`, borderRadius: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            + Agregar zona
+          </button>
+        </div>
+      )}
+
+      {/* Días por defecto (zona: fallback; cliente: días que operás) */}
+      {modo !== 'off' && (
+        <div style={{ borderTop: '1px solid #f0f0ec', paddingTop: 14, marginTop: 16 }}>
+          <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13.5, fontWeight: 600, color: '#1a1a18' }}>
+            {modo === 'zona' ? 'Días por defecto' : 'Días que hacés entregas'}
+          </div>
+          <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, marginBottom: 10, maxWidth: 460 }}>
+            {modo === 'zona'
+              ? 'Se usan cuando la zona del cliente no coincide con ninguna de arriba. Si dejás todo vacío, asumimos lunes a viernes.'
+              : 'El cliente sólo podrá elegir entre estos días. Si dejás todo vacío, asumimos lunes a viernes.'}
+          </div>
+          <DiasPicker value={reparto.diasDefault || []} onChange={dias => persist({ diasDefault: dias })} />
+        </div>
+      )}
+
+      {/* Modo CLIENTE: anticipación mínima */}
+      {modo === 'cliente' && (
+        <div style={{ borderTop: '1px solid #f0f0ec', paddingTop: 14, marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div>
+            <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13.5, fontWeight: 600, color: '#1a1a18' }}>Anticipación mínima</div>
+            <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, maxWidth: 400 }}>
+              Cuántos días de anticipación necesitás para preparar un pedido. 0 = puede elegir hoy mismo; 1 = desde mañana.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <input
+              key={'antic' + (reparto.anticipacionDias ?? 1)}
+              type="number" min={0} max={30} step={1}
+              defaultValue={reparto.anticipacionDias ?? 1}
+              onBlur={e => { const v = Math.max(0, Math.min(30, Number(e.target.value) || 0)); if (v !== (reparto.anticipacionDias ?? 1)) persist({ anticipacionDias: v }); }}
+              style={{ ...inputStyle, width: 80, textAlign: 'right' }} />
+            <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#6a6a68' }}>días</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tarjeta de integración con SimpliRoute (self-service) ─────────────────
 // El distribuidor pega su API token de SimpliRoute. Pazque lo valida, lo guarda
 // server-side (api/simpliroute) y registra el webhook de entregas. Una vez
@@ -1203,11 +1681,39 @@ export default function ConfigInline({
                   </div>
                 </div>
 
+                {/* Envío sin cargo (barra de progreso en el carrito) */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Envío sin cargo desde</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Umbral (sin IVA) para envío gratis. El carrito muestra una barra “te faltan $X”. 0 = desactivado.</div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:6,flexShrink:0}}>
+                    <span style={{fontFamily:'Inter,sans-serif',fontSize:14,color:'#6a6a68'}}>$</span>
+                    <input
+                      key={'ship'+(brandCfg?.freeShipThreshold||0)}
+                      type="number" min={0} step={1}
+                      defaultValue={brandCfg?.freeShipThreshold||0}
+                      onBlur={e=>{
+                        const v=Math.max(0,Number(e.target.value)||0);
+                        const updated={...(brandCfg||{}),freeShipThreshold:v};
+                        setBrandCfg(updated);
+                        db.upsert('app_config',{key:'brandcfg',value:updated,org_id:getOrgId()},'key,org_id');
+                      }}
+                      style={{width:120,padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,textAlign:'right',background:'#fafaf7',color:'#1a1a18'}}/>
+                  </div>
+                </div>
+
                 {/* Email de notificación de pedidos */}
                 <OrderNotifyEmailField orgId={brandCfg?.orgId||getOrgId()} />
 
                 {/* Control de inventario (flag no_controla_stock, self-service) */}
                 <StockControlCard />
+
+                {/* Vidriera / Portada (Anuncio + Destacados, Palanca 2) */}
+                <VidrieraPanel brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
+
+                {/* Días de entrega / Reparto (fecha estimada en el checkout) */}
+                <RepartoPanel brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
 
                 {/* Toggle: Recordatorio de carrito abandonado */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>

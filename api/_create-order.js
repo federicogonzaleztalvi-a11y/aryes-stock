@@ -55,6 +55,7 @@ export async function createB2BOrder({
   total = 0,
   notas = '',
   idempotencyKey = null,
+  fechaEntrega = null,
 }) {
   // El RPC tipa p_cliente_id como UUID. Un cliente con id no-UUID (filas legacy o
   // de test cuyo clients.id es string) hace que Postgres tire 22P02, que antes
@@ -299,6 +300,21 @@ export async function createB2BOrder({
   log.info('create-order', 'order created with reservations', {
     orderId: finalOrderId, org, clienteId, items: items.length, total,
   });
+
+  // ── Fecha de entrega estimada/elegida (best-effort, no fatal) ──────────────
+  // El RPC no la conoce; la guardamos con un PATCH aparte. Si falla, el pedido ya
+  // está creado y no lo invalidamos — sólo quedaría sin fecha en el comprobante.
+  if (fechaEntrega) {
+    try {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + finalOrderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ fecha_entrega_estimada: fechaEntrega }),
+      });
+    } catch (feErr) {
+      log.warn('create-order', 'fecha_entrega patch failed (non-fatal)', { error: feErr.message });
+    }
+  }
 
   // ── Notificaciones (no fatales) — se hace best-effort, no afecta el ok ─────
   await notifyOrder({

@@ -73,9 +73,9 @@ const Combobox=({value,onChange,options=[],placeholder,disabled,createLabel="Cre
 
 const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subcatsByCat={}})=>{
   const taxCfg=getTaxConfig(brandCfg?.tax_country||"UY");
-  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]}};
+  const blank={name:"",codigo:"",barcode:"",supplierId:"",unit:"kg",stock:0,unitCost:0,precioVenta:0,iva_rate:taxCfg.defaultRate,imagen_url:"",descripcion:"",history:[],volume_tiers:[],variants:{label:"Color",options:[]},atributos:[]};
   const normVariants=(v)=>{const o=v&&typeof v==="object"&&!Array.isArray(v)?v:{};return{label:o.label??"Color",options:Array.isArray(o.options)?o.options:[]};};
-  const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[],variants:normVariants(product.variants)}:blank);
+  const [f,setF]=useState(product?{...product,volume_tiers:Array.isArray(product.volume_tiers)?product.volume_tiers:[],variants:normVariants(product.variants),atributos:Array.isArray(product.atributos)?product.atributos:[]}:blank);
 
   // Filas de la taxonomía: [{id,nombre,parent_id}]. Se cargan una vez al abrir el
   // form. Si falla (sesión, red), quedamos con lo derivado de productos (props).
@@ -164,6 +164,15 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
       return{id,label,sku:String(o.sku||"").trim(),color_hex:/^#[0-9a-fA-F]{6}$/.test(String(o.color_hex||""))?o.color_hex:""};})
     .filter(Boolean);
     return options.length?{label:String(cur.label||"Variante").trim()||"Variante",options}:{};};
+
+  // Atributos flexibles (ficha técnica multi-rubro): lista libre clave/valor propia
+  // del rubro del distribuidor. Ej. vino → "Graduación: 12%"; ferretería → "Material:
+  // Acero". Se rinden en la ficha del portal. Genérico: sin esquema fijo por vertical.
+  const atributos=Array.isArray(f.atributos)?f.atributos:[];
+  const addAttr=()=>setF(p=>({...p,atributos:[...(Array.isArray(p.atributos)?p.atributos:[]),{k:"",v:""}]}));
+  const updAttr=(i,key,val)=>setF(p=>{const a=[...(Array.isArray(p.atributos)?p.atributos:[])];a[i]={...a[i],[key]:val};return{...p,atributos:a};});
+  const rmAttr=(i)=>setF(p=>({...p,atributos:(Array.isArray(p.atributos)?p.atributos:[]).filter((_,j)=>j!==i)}));
+  const cleanAttrs=(arr)=>(Array.isArray(arr)?arr:[]).map(a=>({k:String(a.k||"").trim(),v:String(a.v||"").trim()})).filter(a=>a.k&&a.v);
 
   const sup=suppliers.find(s=>s.id===f.supplierId);
   const lead=sup?totalLead(sup):0;
@@ -259,6 +268,22 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
           <Btn onClick={addVar} variant="ghost" small>+ Agregar variante</Btn>
         </div>
       </Field>
+      <Field label="Especificaciones (ficha técnica)" hint="Opcional — datos propios de tu rubro que se muestran como tabla en la ficha del producto (ej: Graduación → 12%, Material → Acero inox, Rendimiento → 40 m²). Una fila por dato.">
+        <div style={{display:"grid",gap:8}}>
+          {atributos.length===0&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,margin:0}}>Sin especificaciones. Agregá filas clave/valor propias de tu rubro (vino, ferretería, cosmética...).</p>}
+          {atributos.map((a,i)=>(
+            <div key={i} style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input value={a.k||""} onChange={e=>updAttr(i,"k",e.target.value)} placeholder="Dato (ej: Graduación)"
+                style={{flex:1,minWidth:0,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <span style={{fontFamily:T.sans,fontSize:13,color:T.textSm,flexShrink:0}}>→</span>
+              <input value={a.v||""} onChange={e=>updAttr(i,"v",e.target.value)} placeholder="Valor (ej: 12%)"
+                style={{flex:1,minWidth:0,padding:"7px 9px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:13,background:T.muted,color:T.text}}/>
+              <button onClick={()=>rmAttr(i)} title="Quitar especificación" style={{border:`1px solid ${T.border}`,background:T.muted,color:T.red,borderRadius:6,width:30,height:30,cursor:"pointer",fontSize:16,lineHeight:1,flexShrink:0}}>×</button>
+            </div>
+          ))}
+          <Btn onClick={addAttr} variant="ghost" small>+ Agregar especificación</Btn>
+        </div>
+      </Field>
       <Field label="Stock actual"><Inp type="number" min="0" placeholder="0" value={f.stock||""} onChange={e=>set("stock",e.target.value===""?0:+e.target.value)}/></Field>
       {r!==null&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:T.border,borderRadius:6,overflow:"hidden"}}>
@@ -296,7 +321,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
         </Field>
       </div>
       <div style={{display:"flex",gap:10,paddingTop:4}}>
-        <Btn onClick={()=>onSave({...f,volume_tiers:cleanTiers(f.volume_tiers),variants:cleanVariants(f.variants)})} full>{product?"Guardar cambios":"Agregar producto"}</Btn>
+        <Btn onClick={()=>onSave({...f,volume_tiers:cleanTiers(f.volume_tiers),variants:cleanVariants(f.variants),atributos:cleanAttrs(f.atributos)})} full>{product?"Guardar cambios":"Agregar producto"}</Btn>
         <Btn onClick={onClose} variant="ghost">Cancelar</Btn>
       </div>
     </div>

@@ -1,7 +1,9 @@
 // ── PedidosPage — Portal B2B clientes con OTP ────────────────────────────────
 import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { fmt, getOrgId } from '../lib/constants.js';
 import { calcLinea, calcTotales } from '../lib/pricing.js';
+import { calcularEntrega, formatFechaLargaCap, formatFechaCorta, minutosHastaCorte, formatCuentaRegresiva } from '../lib/delivery.js';
 import useSwipeBack from '../hooks/useSwipeBack.js';
 import EstadoCuentaPDF from '../components/EstadoCuentaPDF.jsx';
 import EstadoCuentaPortal from '../components/EstadoCuentaPortal.jsx';
@@ -26,6 +28,13 @@ const SANS = "'DM Sans','Inter',system-ui,sans-serif";
 const Z = { dropdown: 20, header: 30, fab: 40, overlay: 50 };
 // Gris secundario accesible (≈4.6:1 sobre blanco) — reemplaza #a0a098/#b0b0a8 (fallan WCAG)
 const GRAY = '#6b6b66';
+// Vidriera editorial (lenguaje Faire): crema cálida + serif de display + verde apagado.
+// Se usa SÓLO en la vidriera (PortalHome), no en el resto del portal.
+const CREAM      = '#f4efe6';                                            // lienzo cálido de la vidriera
+const CREAM_TILE = '#fbf8f1';                                            // tiles/cards sobre la crema
+const INK        = '#28271f';                                            // texto principal cálido (no negro puro)
+const DISPLAY    = "'Playfair Display',Georgia,'Times New Roman',serif"; // titulares editoriales
+const FOREST     = '#3f5344';                                            // verde apagado/bosque (acentos + botones)
 const API  = import.meta.env.VITE_API_BASE || '';
 // Detectar org desde hostname (CNAME por cliente) o query param
 const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -113,6 +122,23 @@ function loadCart(clienteId) {
     const c = JSON.parse(localStorage.getItem(cartStorageKey(clienteId)) || '{}');
     return c && typeof c === 'object' && !Array.isArray(c) ? c : {};
   } catch { return {}; }
+}
+
+// ── "Mis listas" — plantillas de recompra por cliente ────────────────────────
+// El cliente guarda su carrito armado como una lista con nombre ("Pedido semanal")
+// y la vuelve a cargar en un toque. Patrón "Subscribe & Save" / listas de Amazon:
+// convierte al portal en la herramienta de reposición del comprador, no un catálogo
+// más. Se guarda en localStorage por org+cliente (sólo cantidades por producto; los
+// precios se recalculan siempre del catálogo fresco). Genérico para toda distribuidora.
+function listasStorageKey(clienteId) { return `aryes-pedidos-listas::${ORG}::${clienteId || 'anon'}`; }
+function loadListas(clienteId) {
+  try {
+    const l = JSON.parse(localStorage.getItem(listasStorageKey(clienteId)) || '[]');
+    return Array.isArray(l) ? l.filter(x => x && x.id && x.items && typeof x.items === 'object') : [];
+  } catch { return []; }
+}
+function saveListas(clienteId, listas) {
+  try { localStorage.setItem(listasStorageKey(clienteId), JSON.stringify(listas || [])); } catch { /* storage lleno / bloqueado */ }
 }
 
 // ── Sync del carrito con el servidor (cross-device) ──────────────────────────
@@ -659,10 +685,15 @@ function LeadForm({ brandName, onClose }) {
 // pero "Pazque" va en verde de marca (señal de link clickeable) + subrayado al hover,
 // para que se entienda que lleva a pazque.com. Marketing pasivo: cada cliente que ve
 // el portal de Eric descubre la plataforma. Genérico, no depende del org.
+// SIEMPRE encendido con el plan actual (es publicidad de Pazque); el "quitar el badge"
+// queda como upsell white-label a futuro, no como opción configurable hoy.
+// El link lleva UTM con el org como campaña → cada visita queda ATRIBUIDA al portal
+// que la originó (Federico mide qué distribuidor trae interesados en la plataforma).
 function PoweredByPazque({ style }) {
+  const href = `https://pazque.com/?utm_source=portal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(ORG || 'portal')}`;
   return (
     <div style={{ textAlign: 'center', padding: '20px 0 24px', ...style }}>
-      <a href="https://pazque.com" target="_blank" rel="noopener noreferrer"
+      <a href={href} target="_blank" rel="noopener noreferrer"
         onMouseEnter={e => { const s = e.currentTarget.querySelector('span'); if (s) s.style.textDecoration = 'underline'; }}
         onMouseLeave={e => { const s = e.currentTarget.querySelector('span'); if (s) s.style.textDecoration = 'none'; }}
         style={{ fontSize: 11, color: '#a0a098', textDecoration: 'none',
@@ -772,8 +803,57 @@ function PrecioMixto({ calc, item, variant = 'card' }) {
   );
 }
 
+// ── Aviso de entrega (PDP) ────────────────────────────────────────────────────
+// Criterio Amazon: la fecha estimada de entrega ("Llega el jueves 21") va debajo
+// del precio, ANTES del checkout — no sólo en la confirmación. Suma la cuenta
+// regresiva de corte ("Pedí en 3h 20m para el reparto de hoy"), palanca de urgencia.
+// Genérico por-org: sale del motor `calcularEntrega` con brandCfg.reparto; si la org
+// no usa reparto (modo 'off') no renderiza nada → cero cambios para quien no lo usa.
+// Tickea cada 30s para mantener vivo el countdown sin recalcular todo el árbol.
+function EntregaHint({ reparto, zona }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  const entrega = calcularEntrega(reparto, zona, now);
+  if (entrega.modo === 'off' || !entrega.fecha) return null;
+
+  const esCliente = entrega.modo === 'cliente';
+  const restanMin = minutosHastaCorte(reparto?.corte, now);
+  const corteVigente = restanMin != null && restanMin > 0;    // el corte de hoy sigue abierto
+  const urgente = corteVigente && restanMin <= 180;            // últimas 3h → tono de urgencia
+
+  return (
+    <div style={{ marginBottom: 16, maxWidth: 420 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9,
+        padding: '10px 13px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+        <div style={{ fontSize: 13.5, color: '#166534', fontFamily: SANS, lineHeight: 1.35 }}>
+          {esCliente ? 'Entregas desde el ' : 'Llega el '}
+          <span style={{ fontWeight: 800, color: '#14532d' }}>{entrega.label}</span>
+          {esCliente && <span style={{ color: '#3f6b4e' }}> {'\u00b7'} elegí el día en el checkout</span>}
+        </div>
+      </div>
+      {corteVigente && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, paddingLeft: 2,
+          fontSize: 12.5, fontWeight: 700, fontFamily: SANS, color: urgente ? '#b45309' : GRAY }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+            strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+          </svg>
+          Pedí en las próximas <span style={{ color: urgente ? '#b45309' : INK }}>{formatCuentaRegresiva(restanMin)}</span> para el próximo reparto
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants }) {
+function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants, social, entregaCorta }) {
   const [imgErr, setImgErr] = useState(false);
   const [hov, setHov] = useState(false);
   const [pressed, setPressed] = useState(false); // feedback táctil (equiv. a hover en touch)
@@ -803,34 +883,63 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
   const box = boxRule(item);                                   // regla de caja cerrada (si hay)
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14,
-      border: `1px solid ${hov ? '#c8c8c0' : '#efefeb'}`,
+    <div style={{ background: '#fff', borderRadius: 16,
+      border: `1px solid ${hov ? '#e6e6e0' : '#f0f0ec'}`,
+      // height:100% → en un riel (flex) o grilla que estira las celdas a la card
+      // más alta, todas las cards quedan de igual altura y el botón "+ Agregar"
+      // se alinea abajo (lo empuja el spacer flex:1 de adentro). Si el contenedor
+      // no estira (altura auto), 100% resuelve a auto: no afecta esos casos.
+      height: '100%',
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
       // Señales de "tocable" en mobile (no hay hover): (1) sombra de reposo →
       // la card se lee como superficie elevada; (2) press → se hunde al tocar.
       transform: open && pressed ? 'scale(.97)' : (hov && open ? 'translateY(-3px)' : 'none'),
-      boxShadow: hov && open ? '0 8px 24px rgba(0,0,0,.10)' : '0 1px 3px rgba(0,0,0,.07)',
-      transition: 'transform .14s, box-shadow .18s, border-color .15s' }}
+      boxShadow: hov && open ? '0 12px 30px rgba(0,0,0,.12)' : '0 1px 3px rgba(0,0,0,.05)',
+      transition: 'transform .16s, box-shadow .22s, border-color .18s' }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       onPointerDown={() => open && setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerCancel={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}>
-      <div onClick={open} style={{ height: imgH, background: hasImg ? '#fff' : '#f4f4f0', padding: '12px 0',
+      <div onClick={open} style={{ position: 'relative', height: imgH, background: hasImg ? '#fff' : CREAM_TILE, padding: hasImg ? '14px 16px' : '12px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
         cursor: open ? 'pointer' : 'default' }}>
+        {/* Prueba social (badge sobre la imagen). Sale de pedidos REALES: "Más
+            pedido" (bestseller de la org) o "N clientes lo piden" (compradores
+            distintos ≥3). Una sola señal por card, bestseller manda. */}
+        {social && (social.best || social.c >= 3) && (
+          <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 8px', borderRadius: 50, fontSize: 10, fontWeight: 700, fontFamily: SANS,
+            letterSpacing: .2, boxShadow: '0 1px 4px rgba(0,0,0,.12)',
+            ...(social.best
+              ? { background: FOREST, color: '#fff' }
+              : { background: '#fff', color: INK, border: '1px solid #e3e0d6' }) }}>
+            {social.best ? (
+              <>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 0.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67z"/></svg>
+                Más pedido
+              </>
+            ) : (
+              `${social.c} clientes lo piden`
+            )}
+          </div>
+        )}
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
-              style={{ maxHeight: imgH - 1, maxWidth: '100%', objectFit: 'contain',
+              loading="lazy" decoding="async"
+              style={{ maxHeight: imgH - 28, maxWidth: '100%', objectFit: 'contain',
                 transform: hov && open ? 'scale(1.06)' : 'none', transition: 'transform .25s' }} />
-          : <div style={{ textAlign: 'center' }}>
-              <div style={{ width: 40, height: 40, borderRadius: 8, background: G + '18',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 6px', fontSize: 13, fontWeight: 700, color: G }}>
-                {(item.marca || item.categoria || '?').slice(0, 2).toUpperCase()}
+          : <div style={{ textAlign: 'center', padding: '0 10px' }}>
+              <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#fff',
+                border: `1.5px solid ${FOREST}2e`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 8px', fontSize: 15, fontWeight: 700, color: FOREST, fontFamily: SANS, letterSpacing: .3 }}>
+                {(item.marca || item.categoria || item.nombre || '?').slice(0, 2).toUpperCase()}
               </div>
-              {item.marca && <div style={{ fontSize: 10, color: GRAY, fontWeight: 600, letterSpacing: .4 }}>{item.marca.toUpperCase()}</div>}
+              <div style={{ fontSize: 10, color: GRAY, fontWeight: 700, letterSpacing: .5, textTransform: 'uppercase' }}>
+                {item.marca || item.categoria || 'Producto'}
+              </div>
             </div>
         }
       </div>
@@ -866,6 +975,19 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
             </div>
             {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
           </>
+        )}
+        {/* Entrega estimada compacta (criterio Amazon: "Llega mañana" en la card).
+            Genérica por-org: sólo aparece si la org usa reparto (entregaCorta viene
+            vacío en modo 'off'). Estática, sin countdown — ese vive en la PDP. */}
+        {item.precio > 0 && entregaCorta && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2,
+            fontSize: 11, fontWeight: 700, color: '#166534', fontFamily: SANS }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+              strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            Llega {entregaCorta}
+          </div>
         )}
         {/* Etiquetas de reglas disponibles (caja / por cantidad): cada una muestra el
             PRECIO concreto de esa regla, no un % suelto. Se muestran sólo cuando su
@@ -968,7 +1090,7 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
         borderRadius: isMobile ? '16px 16px 0 0' : 16, boxShadow: '0 -4px 30px rgba(0,0,0,.18)', overflow: 'hidden' }}>
         {/* Encabezado: producto + precio + cerrar */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0ec' }}>
-          {item.imagen_url && <img src={item.imagen_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
+          {item.imagen_url && <img src={item.imagen_url} alt="" decoding="async" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.25 }}>{item.nombre}</div>
             {item.precio > 0 && (
@@ -1077,6 +1199,139 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
   );
 }
 
+// ── Galería del PDP (multi-imagen + zoom) ──────────────────────────────────────
+// Criterio Amazon: imagen grande con ZOOM (en desktop la lupa sigue al cursor;
+// en celular se abre a pantalla completa con el pinch nativo). Si el producto tiene
+// varias fotos, aparece una tira de miniaturas; con una sola, la tira no se muestra
+// (nada de "galería de 1"). Acepta item.imagenes (array) y cae a [imagen_url].
+function ProductGallery({ item, isMobile }) {
+  const imgs = (Array.isArray(item.imagenes) && item.imagenes.length
+    ? item.imagenes
+    : [item.imagen_url]).filter(Boolean);
+  const [active, setActive] = useState(0);
+  const [imgErr, setImgErr] = useState({});
+  const [zoom, setZoom] = useState(false);            // hover-zoom desktop
+  const [pos, setPos] = useState({ x: 50, y: 50 });   // origen del zoom en %
+  const [light, setLight] = useState(false);          // lightbox fullscreen
+  useEffect(() => { setActive(0); }, [item.id]);
+
+  const cur = imgs[active];
+  const broken = imgErr[active];
+  const hasImg = cur && !broken;
+
+  const onMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    setPos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+  };
+
+  const placeholder = (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ width: 84, height: 84, borderRadius: '50%', background: '#fff',
+        border: `2px solid ${FOREST}2e`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 12px', fontSize: 26, fontWeight: 700, color: FOREST, fontFamily: SANS, letterSpacing: .5 }}>
+        {(item.marca || item.categoria || item.nombre || '?').slice(0, 2).toUpperCase()}
+      </div>
+      <div style={{ fontSize: 12, color: GRAY, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase' }}>
+        {item.marca || item.categoria || 'Producto'}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Imagen principal */}
+      <div
+        onMouseEnter={() => { if (!isMobile && hasImg) setZoom(true); }}
+        onMouseLeave={() => setZoom(false)}
+        onMouseMove={(!isMobile && hasImg) ? onMove : undefined}
+        onClick={() => { if (hasImg) setLight(true); }}
+        style={{ position: 'relative', background: '#fff', border: '1px solid #efefeb', borderRadius: 16,
+          minHeight: isMobile ? 260 : 460, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24, overflow: 'hidden', cursor: hasImg ? 'zoom-in' : 'default' }}>
+        {hasImg
+          ? <img src={cur} alt={item.nombre} onError={() => setImgErr(m => ({ ...m, [active]: true }))}
+              decoding="async"
+              style={{ maxWidth: '100%', maxHeight: isMobile ? 240 : 420, objectFit: 'contain' }} />
+          : placeholder}
+        {/* Pista de zoom (sólo si hay imagen) */}
+        {hasImg && !zoom && (
+          <div style={{ position: 'absolute', bottom: 10, right: 10, display: 'inline-flex', alignItems: 'center',
+            gap: 4, background: 'rgba(20,20,15,.62)', color: '#fff', fontSize: 11, fontWeight: 600,
+            fontFamily: SANS, padding: '4px 8px', borderRadius: 50, pointerEvents: 'none' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/>
+            </svg>
+            {isMobile ? 'Tocá para ampliar' : 'Pasá para hacer zoom'}
+          </div>
+        )}
+      </div>
+
+      {/* Zoom lateral estilo Amazon (sólo desktop): proyecta la zona ampliada en un
+          panel al costado, sobre la columna de info — nunca agranda encima de sí misma. */}
+      {!isMobile && zoom && hasImg && (
+        <div style={{ position: 'absolute', top: 0, left: 'calc(100% + 48px)', width: '100%', height: 460,
+          background: `#fff url(${cur}) no-repeat`, backgroundSize: '210%',
+          backgroundPosition: `${pos.x}% ${pos.y}%`, border: '1px solid #efefeb', borderRadius: 16,
+          boxShadow: '0 12px 44px rgba(0,0,0,.16)', zIndex: 5, pointerEvents: 'none' }} />
+      )}
+
+      {/* Miniaturas — sólo con más de una imagen */}
+      {imgs.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {imgs.map((src, i) => (
+            <button key={i} onClick={() => setActive(i)} aria-label={`Ver imagen ${i + 1}`}
+              style={{ width: 60, height: 60, borderRadius: 10, padding: 4, cursor: 'pointer', background: '#fff',
+                border: i === active ? `2px solid ${G}` : '1px solid #e3e0d6',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {imgErr[i]
+                ? <span style={{ fontSize: 10, color: GRAY }}>{i + 1}</span>
+                : <img src={src} alt="" onError={() => setImgErr(m => ({ ...m, [i]: true }))}
+                    loading="lazy" decoding="async"
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox fullscreen (desktop + mobile): tap/click para cerrar; pinch nativo.
+          Fondo CLARO estilo Amazon (nunca negro) + miniaturas para cambiar de foto.
+          Se renderiza vía portal a <body> para escapar del wrapper .pz-fade (transform),
+          que de lo contrario atrapa el position:fixed y descentra la imagen en mobile. */}
+      {light && hasImg && createPortal((
+        <div onClick={() => setLight(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: (typeof Z !== 'undefined' && Z.modal) || 9999,
+            background: 'rgba(250,250,248,.98)', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: isMobile ? 12 : 16,
+            padding: isMobile ? 16 : 40, cursor: 'zoom-out', animation: 'pzFade .15s ease both' }}>
+          <img src={cur} alt={item.nombre} onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: imgs.length > 1 ? '80%' : '100%', objectFit: 'contain',
+              touchAction: 'pinch-zoom', cursor: 'default' }} />
+          {imgs.length > 1 && (
+            <div onClick={(e) => e.stopPropagation()}
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%' }}>
+              {imgs.map((src, i) => imgErr[i] ? null : (
+                <button key={i} onClick={() => setActive(i)} aria-label={`Ver imagen ${i + 1}`}
+                  style={{ width: 56, height: 56, borderRadius: 10, padding: 4, cursor: 'pointer', background: '#fff',
+                    border: i === active ? `2px solid ${G}` : '1px solid #e3e0d6',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <img src={src} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </button>
+              ))}
+            </div>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); setLight(false); }} aria-label="Cerrar"
+            style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: '50%',
+              border: '1px solid #e3e0d6', background: '#fff', color: '#28271f', fontSize: 22, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              boxShadow: '0 2px 10px rgba(0,0,0,.12)' }}>×</button>
+        </div>
+      ), document.body)}
+    </div>
+  );
+}
+
 // ── Product Detail (PDP) ───────────────────────────────────────────────────────
 // Página de detalle estilo Amazon/Shopify: el cliente hace clic en una card y entra
 // a la ficha completa (imagen grande, descripción, ficha técnica y acción de compra).
@@ -1094,9 +1349,8 @@ function FichaRow({ label, value, last }) {
     </div>
   );
 }
-function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isMobile, onBack }) {
-  const [imgErr, setImgErr] = useState(false);
-  const hasImg = item.imagen_url && !imgErr;
+function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isMobile, onBack,
+                         items, coBuy, social, socialOn, onOpen, onPickVariants, demo, zona, entregaCorta }) {
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
   const qty = carrito[item.id] || 0;
   // Precio grande CONSCIENTE de la cantidad ya en el carrito (igual que la card):
@@ -1122,6 +1376,18 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   const [editingQty, setEditingQty] = useState(false);
   const [qtyInput, setQtyInput] = useState('');
   useEffect(() => { if (!editingQty) setQtyInput(qty > 0 ? String(qty) : ''); }, [qty, editingQty]);
+  // Unidad de medida flexible (patrón "case pack" de Amazon Business / Faire): si el
+  // producto tiene caja cerrada real (unidades_por_caja > 1), el cliente elige comprar
+  // por Unidad o por Caja. El carrito SIEMPRE guarda unidades base (así el precio, el
+  // descuento por caja y el checkout siguen igual); "Caja" sólo cambia el paso del
+  // stepper a la unidad de bulto. Cero humo: no inventamos un nivel (pallet) que el
+  // distribuidor no cargó — el bulto es el que él configuró.
+  const uxcD = Number(item.unidades_por_caja) || 0;
+  const canBox = !variantOpts && item.precio > 0 && uxcD > 1;
+  const [unitMode, setUnitMode] = useState('unidad'); // 'unidad' | 'caja'
+  useEffect(() => { setUnitMode('unidad'); }, [item.id]);
+  const byBox = canBox && unitMode === 'caja';
+  const stepQty = byBox ? uxcD : 1;
   // Unidades reales de venta (un/caja) — NO sufijos kg/lt (ver nota en ProductCard).
   const showUnidad = item.precio > 0 && item.unidad && !/^\/?\s*(kg|kgs|kilo|kilos|lt|lts|litro|litros|gr|grs|gramo|gramos|ml)\.?$/i.test(String(item.unidad).trim());
   const tel = (brandCfg?.ownerPhone || '').replace(/[^0-9]/g, '');
@@ -1155,24 +1421,6 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
     return () => obs.disconnect();
   }, [isMobile, item.id]);
 
-  const imgBox = (
-    <div style={{ background: '#fff', border: '1px solid #efefeb', borderRadius: 16,
-      minHeight: isMobile ? 260 : 460, display: 'flex', alignItems: 'center',
-      justifyContent: 'center', padding: 24 }}>
-      {hasImg
-        ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
-            style={{ maxWidth: '100%', maxHeight: isMobile ? 240 : 420, objectFit: 'contain' }} />
-        : <div style={{ textAlign: 'center' }}>
-            <div style={{ width: 72, height: 72, borderRadius: 14, background: G + '18',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 10px', fontSize: 22, fontWeight: 700, color: G }}>
-              {(item.marca || item.categoria || '?').slice(0, 2).toUpperCase()}
-            </div>
-            {item.marca && <div style={{ fontSize: 12, color: GRAY, fontWeight: 600, letterSpacing: .5 }}>{item.marca.toUpperCase()}</div>}
-          </div>}
-    </div>
-  );
-
   return (
     <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '16px 18px 100px' : '24px 24px 80px' }}>
       {/* Botón de volver — affordance clara para regresar al catálogo (patrón mobile Amazon/Shopify) */}
@@ -1196,10 +1444,32 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 20 : 48, alignItems: 'start' }}>
-        {imgBox}
+        <ProductGallery item={item} isMobile={isMobile} />
 
         <div>
           {item.marca && <div style={{ fontSize: 12, fontWeight: 700, color: GRAY, letterSpacing: 1.2, marginBottom: 10 }}>{item.marca.toUpperCase()}</div>}
+          {/* Prueba social en el PDP (criterio Amazon: el "#1 más pedido" también va en la
+              ficha, no sólo en la card). Mismo dato real y mismo gate que la grilla.
+              `social` es el mapa completo (el rail "se compra junto con" necesita otras
+              entradas); acá indexamos por el id de este producto. */}
+          {(() => {
+            const sB = socialOn ? (social && social[item.id]) : null;
+            if (!sB || !(sB.best || sB.c >= 3)) return null;
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 12,
+                padding: '5px 11px', borderRadius: 50, fontSize: 12.5, fontWeight: 700, fontFamily: SANS,
+                ...(sB.best
+                  ? { background: FOREST, color: '#fff' }
+                  : { background: '#fff', color: INK, border: '1px solid #e3e0d6' }) }}>
+                {sB.best ? (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21.4 8 14 2 9.4h7.6L12 2z"/></svg>
+                    Más pedido{sB.c >= 3 ? ` · ${sB.c} clientes lo piden` : ''}
+                  </>
+                ) : `${sB.c} clientes lo piden`}
+              </div>
+            );
+          })()}
           <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 26 : 34, fontWeight: 600, color: '#1a1a18', margin: '0 0 18px', lineHeight: 1.15 }}>
             {item.nombre}
           </h1>
@@ -1207,13 +1477,41 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
             <p style={{ fontSize: 15, color: '#4a4a46', lineHeight: 1.6, margin: '0 0 28px' }}>{item.descripcion}</p>
           )}
 
-          {/* Ficha técnica — sólo filas con datos */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18', letterSpacing: 1, marginBottom: 4 }}>FICHA TÉCNICA</div>
-          <div style={{ marginBottom: 28 }}>
-            <FichaRow label="Formato" value={showUnidad ? item.unidad : (item.unidad && item.unidad !== 'un' ? item.unidad : null)} />
-            <FichaRow label="Marca" value={item.marca || null} />
-            <FichaRow label="Categoría" value={item.categoria || null} last />
-          </div>
+          {/* Ficha técnica — sólo filas con datos reales (nada inventado).
+              Se arma como lista y se marca la ÚLTIMA fila visible para el borde,
+              así el separador nunca queda colgando cuando faltan campos. */}
+          {(() => {
+            const specs = [
+              ['Formato',            showUnidad ? item.unidad : (item.unidad && item.unidad !== 'un' ? item.unidad : null)],
+              ['Marca',              item.marca || null],
+              ['Categoría',          item.categoria || null],
+              ['Subcategoría',       item.subcategoria || null],
+              ['Unidades por caja',  Number(item.unidades_por_caja) > 1 ? `${item.unidades_por_caja} un.` : null],
+              ['Compra mínima',      Number(item.min_order_qty) > 1 ? `${item.min_order_qty} un.` : null],
+              ['Código',             item.codigo || null],
+            ].filter(r => r[1] != null && r[1] !== '');
+            // Atributos flexibles por rubro (multi-rubro): el distribuidor los cargó a
+            // mano (vino → "Graduación 12%", ferretería → "Material acero"). Se anexan a
+            // la ficha; se descartan los que chocan con un campo fijo ya mostrado.
+            const usados = new Set(specs.map(r => String(r[0]).trim().toLowerCase()));
+            for (const a of (Array.isArray(item.atributos) ? item.atributos : [])) {
+              const k = String(a?.k ?? '').trim(), v = String(a?.v ?? '').trim();
+              if (!k || !v) continue;
+              const kk = k.toLowerCase();
+              if (usados.has(kk)) continue;
+              usados.add(kk);
+              specs.push([k, v]);
+            }
+            if (!specs.length) return null;
+            return (
+              <>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18', letterSpacing: 1, marginBottom: 4 }}>FICHA TÉCNICA</div>
+                <div style={{ marginBottom: 28 }}>
+                  {specs.map((r, i) => <FichaRow key={r[0]} label={r[0]} value={r[1]} last={i === specs.length - 1} />)}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Acción de compra — el ref envuelve TODO el bloque (precio + botón) para que
               la barra fija (mobile) sepa cuándo salió de pantalla (criterio Amazon).
@@ -1260,46 +1558,122 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
             </div>
           )}
 
+          {/* Señal de stock (criterio Amazon: estado de disponibilidad debajo del precio).
+              Genérica y OPT-IN: sólo si el distribuidor la activa (brandCfg.stockSignals) o en
+              demo — así una org que no lleva inventario no muestra datos engañosos. La escasez
+              usa el punto de reorden REAL del distribuidor (min_stock); nada inventado.
+              Sentinel: available_stock ≥ 9999 = "En stock" sin número (workaround de setup). */}
+          {(() => {
+            const stockOn = demo || brandCfg?.stockSignals === true;
+            if (!stockOn || !(item.precio > 0)) return null;
+            const av = Number(item.available_stock);
+            if (!Number.isFinite(av)) return null;
+            const min = Number(item.min_stock) || 0;
+            let label, dot, color, bg, border;
+            if (av <= 0) {
+              label = 'Sin stock — consultá reposición'; dot = '#b45309'; color = '#92400e'; bg = '#fffbeb'; border = '#fde68a';
+            } else if (min > 0 && av <= min) {
+              label = `¡Pocas unidades! Quedan ${av}`; dot = '#d97706'; color = '#b45309'; bg = '#fff7ed'; border = '#fed7aa';
+            } else {
+              label = 'En stock'; dot = '#059669'; color = '#047857'; bg = '#f0fdf4'; border = '#bbf7d0';
+            }
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 16,
+                padding: '6px 12px', borderRadius: 50, background: bg, border: `1px solid ${border}`,
+                fontSize: 13, fontWeight: 700, fontFamily: SANS, color }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+                {label}
+              </div>
+            );
+          })()}
+
+          {/* Aviso de entrega + countdown de corte (criterio Amazon: fecha estimada
+              antes del checkout). Sólo renderiza si la org usa reparto (modo ≠ off). */}
+          {item.precio > 0 && <EntregaHint reparto={brandCfg?.reparto} zona={zona} />}
+
+          {/* Unidad de medida flexible: selector Unidad / Caja de X (sólo si hay bulto real). */}
+          {canBox && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a18', marginBottom: 6, fontFamily: SANS }}>Comprar por</div>
+              <div style={{ display: 'inline-flex', background: '#f0f0ec', borderRadius: 10, padding: 3, gap: 3 }}>
+                {[['unidad', item.unidad && esUnidadVenta(item.unidad) ? item.unidad.replace(/^\//, '').trim() || 'Unidad' : 'Unidad'], ['caja', `Caja de ${uxcD}`]].map(([mode, lbl]) => {
+                  const on = unitMode === mode;
+                  return (
+                    <button key={mode} onClick={() => setUnitMode(mode)} aria-pressed={on} style={{
+                      padding: '7px 16px', border: 'none', borderRadius: 8, cursor: 'pointer',
+                      fontSize: 13, fontWeight: 700, fontFamily: SANS, textTransform: 'capitalize',
+                      background: on ? '#fff' : 'transparent', color: on ? INK : GRAY,
+                      boxShadow: on ? '0 1px 3px rgba(0,0,0,.08)' : 'none' }}>{lbl}</button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {variantOpts ? (
             <div style={{ maxWidth: 420 }}>
               <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH={300} />
             </div>
           ) : item.precio > 0 ? (
             qty > 0 ? (
+              <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 280 }}>
-                <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
+                <button onClick={() => onSetQty(item, undefined, Math.max(0, qty - stepQty))} aria-label={byBox ? `Quitar una caja de ${item.nombre}` : `Quitar una unidad de ${item.nombre}`} style={{
                   width: 48, height: 48, border: `1.5px solid ${G}`, borderRadius: 10, background: '#fff',
                   color: G, fontSize: 20, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{'\u2212'}</button>
-                <input type="text" inputMode="numeric" value={qtyInput}
-                  aria-label={`Cantidad de ${item.nombre}`}
-                  onFocus={() => setEditingQty(true)}
-                  onChange={e => {
-                    const v = e.target.value.replace(/[^0-9]/g, '');
-                    setQtyInput(v);
-                    if (v !== '') onSetQty(item, undefined, parseInt(v, 10));
-                  }}
-                  onBlur={() => {
-                    setEditingQty(false);
-                    const n = parseInt(qtyInput, 10);
-                    const min = item.min_order_qty || 1;
-                    if (!n || n <= 0) onSetQty(item, undefined, 0);
-                    else if (n < min) onSetQty(item, undefined, min);
-                  }}
-                  style={{ flex: 1, width: '100%', height: 48, textAlign: 'center', boxSizing: 'border-box',
+                {byBox ? (
+                  <div aria-label={`Cantidad de cajas de ${item.nombre}`} style={{
+                    flex: 1, width: '100%', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 18, fontWeight: 700, color: '#1a1a18', border: '1px solid #e0e0d8', borderRadius: 10,
-                    background: '#fff', outline: 'none', fontFamily: SANS }} />
-                <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
+                    background: '#fff', fontFamily: SANS }}>
+                    {Math.round(qty / uxcD)} {Math.round(qty / uxcD) === 1 ? 'caja' : 'cajas'}
+                  </div>
+                ) : (
+                  <input type="text" inputMode="numeric" value={qtyInput}
+                    aria-label={`Cantidad de ${item.nombre}`}
+                    onFocus={() => setEditingQty(true)}
+                    onChange={e => {
+                      const v = e.target.value.replace(/[^0-9]/g, '');
+                      setQtyInput(v);
+                      if (v !== '') onSetQty(item, undefined, parseInt(v, 10));
+                    }}
+                    onBlur={() => {
+                      setEditingQty(false);
+                      const n = parseInt(qtyInput, 10);
+                      const min = item.min_order_qty || 1;
+                      if (!n || n <= 0) onSetQty(item, undefined, 0);
+                      else if (n < min) onSetQty(item, undefined, min);
+                    }}
+                    style={{ flex: 1, width: '100%', height: 48, textAlign: 'center', boxSizing: 'border-box',
+                      fontSize: 18, fontWeight: 700, color: '#1a1a18', border: '1px solid #e0e0d8', borderRadius: 10,
+                      background: '#fff', outline: 'none', fontFamily: SANS }} />
+                )}
+                <button onClick={() => onSetQty(item, undefined, qty + stepQty)} aria-label={byBox ? `Agregar una caja de ${item.nombre}` : `Agregar una unidad de ${item.nombre}`} style={{
                   width: 48, height: 48, background: G, border: 'none', borderRadius: 10, color: '#fff',
                   fontSize: 20, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
               </div>
+              {byBox && (
+                <div style={{ fontSize: 12, color: GRAY, marginTop: 8, fontFamily: SANS }}>
+                  = {qty} {item.unidad && esUnidadVenta(item.unidad) ? item.unidad.replace(/^\//, '').trim() : 'unidades'}
+                  {boxD && boxD.pct > 0 && <> {'\u00b7'} <span style={{ color: G, fontWeight: 700 }}>{fmt.currency(precioTier(item, { dto: boxD.pct }))} c/u ({'\u2212'}{boxD.pct}%)</span></>}
+                </div>
+              )}
+              </>
             ) : (
-              <button onClick={() => onAdd(item)} style={{
+              <>
+              <button onClick={() => onSetQty(item, undefined, byBox ? uxcD : (item.min_order_qty > 1 ? item.min_order_qty : 1))} style={{
                 width: '100%', maxWidth: 420, padding: '15px 0', background: G, color: '#fff', border: 'none',
                 borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: SANS }}>
-                {item.min_order_qty > 1 ? `Agregar (mín. ${item.min_order_qty})` : 'Agregar al carrito'}
+                {byBox ? `Agregar caja de ${uxcD}` : (item.min_order_qty > 1 ? `Agregar (mín. ${item.min_order_qty})` : 'Agregar al carrito')}
               </button>
+              {byBox && boxD && boxD.pct > 0 && (
+                <div style={{ fontSize: 12, color: GRAY, marginTop: 8, fontFamily: SANS }}>
+                  {uxcD} {item.unidad && esUnidadVenta(item.unidad) ? item.unidad.replace(/^\//, '').trim() : 'unidades'} {'\u00b7'} <span style={{ color: G, fontWeight: 700 }}>{fmt.currency(precioTier(item, { dto: boxD.pct }))} c/u ({'\u2212'}{boxD.pct}%)</span>
+                </div>
+              )}
+              </>
             )
           ) : (
             <div style={{ maxWidth: 420 }}>
@@ -1320,6 +1694,38 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
           </div>
         </div>
       </div>
+
+      {/* "Se compra junto con" — cross-sell REAL: productos que aparecen en los mismos
+          pedidos que éste (co-ocurrencia calculada server-side sobre pedidos reales de
+          la cartera). Cero humo: si no hay co-ocurrencia suficiente, no se muestra nada.
+          Es el patrón "Frequently bought together" de Amazon. */}
+      {(() => {
+        const ids = (coBuy && coBuy[item.id]) || [];
+        if (!ids.length || !Array.isArray(items)) return null;
+        const juntos = ids
+          .map(id => items.find(p => p.id === id))
+          .filter(p => p && p.id !== item.id)
+          .slice(0, 8);
+        if (!juntos.length) return null;
+        return (
+          <div style={{ marginTop: isMobile ? 32 : 48, borderTop: '1px solid #efefeb', paddingTop: isMobile ? 24 : 32 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: isMobile ? 20 : 24, fontWeight: 600, color: '#1a1a18', margin: '0 0 4px' }}>
+              Se compra junto con
+            </h2>
+            <p style={{ fontSize: 13, color: GRAY, margin: '0 0 18px' }}>
+              Otros clientes suelen pedir esto en el mismo pedido.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
+              {juntos.map(p => (
+                <ProductCard key={p.id} item={p} brandCfg={brandCfg} carrito={carrito}
+                  qty={carrito[p.id] || 0} onAdd={onAdd} onRemove={onRemove}
+                  onOpen={onOpen} onPickVariants={onPickVariants}
+                  social={socialOn ? social?.[p.id] : null} entregaCorta={entregaCorta} />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Barra de compra fija (sólo celular): precio + Agregar quedan SIEMPRE visibles
           aunque el cliente baje a leer la descripción/ficha. Patrón mobile de ML/Amazon/
@@ -1357,21 +1763,21 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               </div>
               {qty > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-                  <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
+                  <button onClick={() => onSetQty(item, undefined, Math.max(0, qty - stepQty))} aria-label={byBox ? `Quitar una caja de ${item.nombre}` : `Quitar una unidad de ${item.nombre}`} style={{
                     width: 44, height: 44, border: `1.5px solid ${G}`, borderRadius: 10, background: '#fff',
                     color: G, fontSize: 20, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{'\u2212'}</button>
-                  <div style={{ minWidth: 38, textAlign: 'center', fontSize: 17, fontWeight: 700, color: '#1a1a18' }}>{qty}</div>
-                  <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
+                  <div style={{ minWidth: 38, textAlign: 'center', fontSize: 17, fontWeight: 700, color: '#1a1a18' }}>{byBox ? `${Math.round(qty / uxcD)}\u00d7` : qty}</div>
+                  <button onClick={() => onSetQty(item, undefined, qty + stepQty)} aria-label={byBox ? `Agregar una caja de ${item.nombre}` : `Agregar una unidad de ${item.nombre}`} style={{
                     width: 44, height: 44, background: G, border: 'none', borderRadius: 10, color: '#fff',
                     fontSize: 20, fontWeight: 700, cursor: 'pointer', flexShrink: 0,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
                 </div>
               ) : (
-                <button onClick={() => onAdd(item)} style={{
+                <button onClick={() => onSetQty(item, undefined, byBox ? uxcD : (item.min_order_qty > 1 ? item.min_order_qty : 1))} style={{
                   marginLeft: 'auto', flex: 1, maxWidth: 240, padding: '14px 0', background: G, color: '#fff',
                   border: 'none', borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: SANS }}>
-                  {item.min_order_qty > 1 ? `Agregar (mín. ${item.min_order_qty})` : 'Agregar'}
+                  {byBox ? `Agregar caja de ${uxcD}` : (item.min_order_qty > 1 ? `Agregar (mín. ${item.min_order_qty})` : 'Agregar')}
                 </button>
               )}
             </>
@@ -1448,16 +1854,31 @@ function HistorialPedidos({ session, onReordenar }) {
       .finally(() => setLoading(false));
   }, [session]);
 
+  // Skeleton que CALCA la fila de pedido real (fecha + Nº OC + total + badge de
+  // estado). Al llegar los pedidos encajan en el mismo molde → sin "salto" de
+  // layout, mismo criterio que la grilla del catálogo.
   if (loading) return (
-    <div style={{ textAlign: 'center', padding: 48, color: '#6a6a68', fontSize: 14 }}>
-      Cargando historial...
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {[...Array(3)].map((_, i) => (
+        <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div className="sk-shimmer" style={{ height: 12, width: 110, borderRadius: 4 }} />
+            <div className="sk-shimmer" style={{ height: 9,  width: 70,  borderRadius: 4 }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 7 }}>
+            <div className="sk-shimmer" style={{ height: 15, width: 80, borderRadius: 4 }} />
+            <div className="sk-shimmer" style={{ height: 14, width: 64, borderRadius: 20 }} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 
   if (!pedidos.length) return (
     <div style={{ textAlign: 'center', padding: 60 }}>
-      <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>Sin pedidos aun</div>
-      <div style={{ fontSize: 13, color: '#6a6a68' }}>Tus pedidos confirmados apareceran aca</div>
+      <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>Sin pedidos aún</div>
+      <div style={{ fontSize: 13, color: '#6a6a68' }}>Tus pedidos confirmados aparecerán acá</div>
     </div>
   );
 
@@ -1474,7 +1895,13 @@ function HistorialPedidos({ session, onReordenar }) {
             style={{ background: '#fff', borderRadius: 14, border: '1px solid #efefeb',
               overflow: 'hidden', cursor: 'pointer' }}>
             <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Nº de orden = mismo OC del comprobante PDF. Le da al cliente una
+                    referencia para nombrar el pedido al distribuidor (WhatsApp/tel). */}
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#9a9a94', letterSpacing: .4,
+                  fontFamily: SANS, marginBottom: 2 }}>
+                  OC-{String(p.id).slice(0, 8).toUpperCase()}
+                </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18', marginBottom: 3 }}>{fecha}</div>
                 <div style={{ fontSize: 11, color: '#6a6a68' }}>
                   {Array.isArray(p.items) ? p.items.length : 0} producto{p.items?.length !== 1 ? 's' : ''}
@@ -1565,8 +1992,12 @@ function HistorialPedidos({ session, onReordenar }) {
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddSugerido, onRemove, onRemoveLine, brandCfg, brandNombre, coBuy, recommended }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddSugerido, onRemove, onRemoveLine, onGuardarLista, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
+  // "Guardar como lista": el cliente nombra el carrito armado para repetirlo luego.
+  const [guardarOpen, setGuardarOpen] = useState(false);
+  const [listaNombre, setListaNombre] = useState('');
+  const [listaOk,     setListaOk]     = useState('');
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
@@ -1658,6 +2089,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
   const faltaParaMinimo = minOrderAmount > 0 ? Math.max(0, minOrderAmount - subtotalNeto) : 0;
   const cumpleMinimo = faltaParaMinimo <= 0;
 
+  // Envío sin cargo con barra de progreso (patrón Amazon "Add $X to qualify for FREE
+  // shipping"): incentiva subir el ticket. Genérico por-org (brandCfg.freeShipThreshold),
+  // 0 = desactivado. Se mide sobre el subtotal neto (mismo criterio que el mínimo).
+  const freeShipThreshold = Number(brandCfg?.freeShipThreshold) || 0;
+  const faltaEnvioGratis = freeShipThreshold > 0 ? Math.max(0, freeShipThreshold - subtotalNeto) : 0;
+  const tieneEnvioGratis = freeShipThreshold > 0 && faltaEnvioGratis <= 0;
+  const pctEnvioGratis = freeShipThreshold > 0 ? Math.min(100, Math.round((subtotalNeto / freeShipThreshold) * 100)) : 0;
+
   // A7: idempotencyKey ESTABLE por carrito. Antes se generaba con Date.now()+random
   // en cada click → un doble-tap o un retry de red creaba pedidos duplicados. Atada
   // a la identidad del carrito: mismo carrito = misma key (el server deduplica),
@@ -1670,6 +2109,38 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
   // Direcciones de entrega del cliente
   const [addresses, setAddresses] = React.useState([]);
   const [selectedAddress, setSelectedAddress] = React.useState(null);
+
+  // ── Fecha de entrega ────────────────────────────────────────────────────────
+  // El motor decide según la config POR-ORG (brandCfg.reparto):
+  //   off     → no se muestra nada (default; cero cambios para quien no lo use).
+  //   zona    → estimada read-only según la zona/ruta del cliente (caso Eric).
+  //   cliente → el cliente elige entre los días hábiles (distri que entrega a pedido).
+  const entrega = React.useMemo(
+    () => calcularEntrega(brandCfg?.reparto, session?.zona, new Date()),
+    [brandCfg?.reparto, session?.zona]
+  );
+  // En modo 'cliente' el cliente elige; guardamos el ISO (YYYY-MM-DD) elegido.
+  // Arranca en la primera opción para que nunca viaje vacío.
+  const isoDia = (d) => d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+  const [fechaElegida, setFechaElegida] = React.useState('');
+  React.useEffect(() => {
+    if (entrega.modo === 'cliente' && entrega.opciones.length && !fechaElegida) {
+      setFechaElegida(isoDia(entrega.opciones[0]));
+    }
+  }, [entrega.modo, entrega.opciones, fechaElegida]);
+  // Fecha efectiva que viaja en el pedido: la elegida (cliente) o la estimada (zona).
+  const fechaEntregaISO = entrega.modo === 'cliente'
+    ? fechaElegida
+    : (entrega.fecha ? isoDia(entrega.fecha) : '');
+  // Etiqueta linda ("Jueves 21 de agosto") de la fecha efectiva, para la pantalla
+  // de confirmación. Parseamos el ISO con partes LOCALES (no new Date(iso), que es UTC).
+  const entregaLabel = fechaEntregaISO
+    ? formatFechaLargaCap(new Date(
+        Number(fechaEntregaISO.slice(0, 4)),
+        Number(fechaEntregaISO.slice(5, 7)) - 1,
+        Number(fechaEntregaISO.slice(8, 10))
+      ))
+    : '';
 
   React.useEffect(() => {
     if (!session?.token) return;
@@ -1716,6 +2187,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
           })),
           total, notas,
           direccion_entrega: addresses.find(a => a.id === selectedAddress)?.direccion || null,
+          fecha_entrega_estimada: fechaEntregaISO || null,
           idempotencyKey,
         }),
       });
@@ -1883,6 +2355,47 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                   {direccionSel.referencia}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Fecha de entrega — patrón Amazon "Arriving Thursday". En B2B el día lo
+              suele mandar la ruta/zona (read-only), pero algunas distribuidoras
+              dejan elegir. El motor (lib/delivery) resuelve ambos casos por-org;
+              si el modo es 'off' no se renderiza nada. */}
+          {entrega.modo === 'zona' && entrega.fecha && (
+            <div style={{ padding: '12px 24px 4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                <span style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5 }}>ENTREGA ESTIMADA</span>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>
+                {entrega.label}
+              </div>
+              {entrega.sub && (
+                <div style={{ fontSize: 11.5, color: '#6a6a68', marginTop: 2 }}>{entrega.sub}</div>
+              )}
+            </div>
+          )}
+          {entrega.modo === 'cliente' && entrega.opciones.length > 0 && (
+            <div style={{ padding: '12px 24px 4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+                <span style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5 }}>¿CUÁNDO LO RECIBÍS?</span>
+              </div>
+              <select value={fechaElegida} onChange={e => setFechaElegida(e.target.value)}
+                aria-label="Día de entrega"
+                onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                  fontSize: 16, fontFamily: SANS, color: '#1a1a18', background: '#fff', outline: 'none' }}>
+                {entrega.opciones.map(d => (
+                  <option key={isoDia(d)} value={isoDia(d)}>{formatFechaLargaCap(d)}</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -2058,6 +2571,26 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             <span>{fechaHoy}</span>
           </div>
         </div>
+
+        {/* Fecha de entrega (si la org usa reparto) — banda tipo "Arriving Thursday" */}
+        {entregaLabel && (
+          <div style={{ padding: '14px 24px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4',
+              border: '1px solid #bbf7d0', borderRadius: 10, padding: '11px 14px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#166534', letterSpacing: .4 }}>
+                  {entrega.modo === 'cliente' ? 'FECHA DE ENTREGA' : 'ENTREGA ESTIMADA'}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#14532d', marginTop: 1 }}>{entregaLabel}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Detalle de productos */}
         <div style={{ padding: '16px 24px' }}>
@@ -2332,6 +2865,28 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               productos + total y lleva a la pantalla de confirmación. La sucursal
               y la nota se eligen ALLÍ, no acá — así el footer no queda recargado
               mezclando "revisar carrito" con "confirmar pedido". */}
+          {/* Barra de envío sin cargo (patrón Amazon): mensaje + progreso hacia el umbral.
+              Verde lleno cuando ya calificó. Sólo si el distribuidor cargó un umbral y hay
+              mercadería en el carrito. */}
+          {freeShipThreshold > 0 && lineas.length > 0 && (
+            <div style={{ marginBottom: 14, background: tieneEnvioGratis ? '#f0fdf4' : '#fafaf7',
+              border: `1px solid ${tieneEnvioGratis ? '#bbf7d0' : '#ececE4'}`, borderRadius: 10, padding: '10px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={tieneEnvioGratis ? '#059669' : GRAY} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+                </svg>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: tieneEnvioGratis ? '#047857' : '#3a3a32', lineHeight: 1.35 }}>
+                  {tieneEnvioGratis
+                    ? '¡Tenés envío sin cargo! 🎉'
+                    : <>Te faltan <span style={{ fontWeight: 700, color: '#1a1a18' }}>{fmt.currency(faltaEnvioGratis)}</span> para el envío sin cargo</>}
+                </span>
+              </div>
+              <div style={{ height: 6, borderRadius: 50, background: '#e8e8e0', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pctEnvioGratis}%`, borderRadius: 50,
+                  background: G, transition: 'width .35s ease' }} />
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
@@ -2362,6 +2917,40 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             <div role="alert" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
               padding: '9px 12px', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
               Pedido mínimo de {fmt.currency(minOrderAmount)}. Te faltan {fmt.currency(faltaParaMinimo)} para confirmar.
+            </div>
+          )}
+          {/* Guardar el carrito como lista de recompra (patrón "Subscribe & Save").
+              Acción secundaria: no compite con "Continuar", pero deja al cliente
+              armar su pedido habitual una vez y repetirlo en un toque. */}
+          {onGuardarLista && lineas.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              {!guardarOpen ? (
+                <button onClick={() => { setGuardarOpen(true); setListaOk(''); }} style={{
+                  width: '100%', padding: '10px 0', background: '#fff', color: '#3a3a32',
+                  border: '1px solid #e0e0d8', borderRadius: 50, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+                  </svg>
+                  Guardar como lista
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={listaNombre} onChange={e => setListaNombre(e.target.value)} maxLength={40}
+                    placeholder="Ej: Pedido semanal" aria-label="Nombre de la lista" autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter' && onGuardarLista(listaNombre)) { setGuardarOpen(false); setListaNombre(''); setListaOk('✓ Lista guardada'); } }}
+                    onFocus={e => { e.target.style.borderColor = G; e.target.style.boxShadow = `0 0 0 3px ${G}22`; }}
+                    onBlur={e => { e.target.style.borderColor = '#e0e0d8'; e.target.style.boxShadow = 'none'; }}
+                    style={{ flex: 1, padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 10,
+                      fontSize: 16, fontFamily: SANS, outline: 'none', background: '#fafaf7' }} />
+                  <button onClick={() => { if (onGuardarLista(listaNombre)) { setGuardarOpen(false); setListaNombre(''); setListaOk('✓ Lista guardada'); } }} style={{
+                    padding: '10px 16px', background: G, color: '#fff', border: 'none', borderRadius: 10,
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, whiteSpace: 'nowrap' }}>
+                    Guardar
+                  </button>
+                </div>
+              )}
+              {listaOk && <div style={{ marginTop: 8, fontSize: 12, textAlign: 'center', color: G }}>{listaOk}</div>}
             </div>
           )}
           {/* CTA único: lleva a la pantalla de confirmación (donde se elige sucursal
@@ -2487,6 +3076,497 @@ function InstallAppBanner({ brandNombre }) {
   );
 }
 
+// ── Vidriera / Home del portal ────────────────────────────────────────────────
+// Pantalla de inicio ANTES del listado plano (patrón Amazon/Faire/PedidosYa): el
+// cliente entra a una vidriera con secciones — hero promocionable, categorías,
+// "volver a comprar", "recomendado" con prueba social y tiles por categoría. El
+// grid completo queda debajo como "Todo el catálogo". Genérica por-org: los
+// banners salen de brandCfg.banners si el distribuidor los configuró; si no, se
+// arman defaults inteligentes a partir de su propio catálogo (nunca hardcodea Eric).
+
+const CAT_EMOJI = {
+  panaderia:'🥖', pan:'🥖', bebida:'🥤', bebidas:'🥤', gaseosa:'🥤', agua:'💧', vino:'🍷', cerveza:'🍺',
+  lacteo:'🧀', lacteos:'🧀', queso:'🧀', leche:'🥛', carne:'🥩', carnes:'🥩', pollo:'🍗', pescado:'🐟',
+  fruta:'🍎', frutas:'🍎', verdura:'🥬', verduras:'🥬', fiambre:'🥓', fiambres:'🥓', embutido:'🌭',
+  limpieza:'🧴', higiene:'🧼', papel:'🧻', descartable:'🥡', descartables:'🥡', aceite:'🫒', aceites:'🫒',
+  conserva:'🥫', conservas:'🥫', pasta:'🍝', pastas:'🍝', arroz:'🍚', harina:'🌾', harinas:'🌾',
+  dulce:'🍬', dulces:'🍬', snack:'🍪', snacks:'🍪', cafe:'☕', te:'🍵', condimento:'🧂', condimentos:'🧂',
+  congelado:'🧊', congelados:'🧊', construccion:'🏗️', ferreteria:'🔧', pintura:'🎨', electrico:'💡',
+  cosmetica:'💄', cosmeticos:'💄', perfumeria:'🧴',
+};
+function catEmoji(name){
+  const k = String(name||'').trim().toLowerCase();
+  if (CAT_EMOJI[k]) return CAT_EMOJI[k];
+  for (const key in CAT_EMOJI){ if (k.includes(key)) return CAT_EMOJI[key]; }
+  return '🛒';
+}
+
+// Encabezado de sección editorial: titular serif (Playfair) en tinta cálida,
+// acción opcional "Ver todo →" en verde apagado.
+function SectionHead({ title, subtitle, actionLabel, onAction, extra }) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  return (
+    <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:12, marginBottom:16 }}>
+      <div style={{ minWidth:0 }}>
+        <h2 style={{ fontFamily:SANS, fontSize:isMobile?16.5:19, fontWeight:700, color:INK, margin:0, letterSpacing:-.1, lineHeight:1.2 }}>{title}</h2>
+        {subtitle && <p style={{ fontSize:isMobile?12.5:13, color:GRAY, margin:'3px 0 0' }}>{subtitle}</p>}
+      </div>
+      {(extra || (actionLabel && onAction)) && (
+        <div style={{ flexShrink:0, display:'flex', alignItems:'center', gap:isMobile?8:12 }}>
+          {extra}
+          {actionLabel && onAction && (
+            <button onClick={onAction} style={{ background:'none', border:'none', cursor:'pointer',
+              color:FOREST, fontWeight:600, fontSize:13.5, fontFamily:SANS, display:'flex', alignItems:'center', gap:4, padding:'4px 0', letterSpacing:.2 }}>
+              {actionLabel}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Fila con scroll horizontal + snap. En desktop, chevrons flotantes que corren la fila.
+function HScroll({ children, gap = 14 }) {
+  const ref = useRef(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const nudge = (dir) => { const el = ref.current; if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior:'smooth' }); };
+  return (
+    <div style={{ position:'relative' }}>
+      <div ref={ref} className="pz-hscroll" style={{ display:'flex', gap, overflowX:'auto', scrollSnapType:'x mandatory',
+        paddingBottom:4, scrollbarWidth:'none', WebkitOverflowScrolling:'touch' }}>
+        {children}
+      </div>
+      {!isMobile && (
+        <>
+          <button aria-label="Anterior" onClick={() => nudge(-1)} style={hscrollBtn('left')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a18" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button aria-label="Siguiente" onClick={() => nudge(1)} style={hscrollBtn('right')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a18" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+function hscrollBtn(side){
+  return { position:'absolute', top:'42%', [side]:-6, transform:'translateY(-50%)', zIndex:5,
+    width:36, height:36, borderRadius:'50%', border:'1px solid #ececE6', background:'rgba(255,255,255,.96)',
+    boxShadow:'0 4px 14px rgba(0,0,0,.14)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' };
+}
+
+// Hero editorial (lenguaje Faire): lienzo crema, titular serif, acento verde
+// apagado. Sin degradados neón, sin scrims, sin sombras duras. Auto-rota 7s.
+function HeroCarousel({ banners, isMobile }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const t = setInterval(() => setI(p => (p + 1) % banners.length), 7000);
+    return () => clearInterval(t);
+  }, [banners.length]);
+  if (!banners.length) return null;
+  const b = banners[i];
+  return (
+    <div style={{ position:'relative', borderRadius:isMobile?18:22, overflow:'hidden',
+      background:CREAM_TILE, border:'1px solid #ece3d3', minHeight:isMobile?190:252 }}>
+      {/* filete superior en verde bosque — sello editorial, sin ruido */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:FOREST }} />
+      <div style={{ position:'relative', padding:isMobile?'32px 24px 44px':'48px 52px', maxWidth:660 }}>
+        {b.badge && <span style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:1.4,
+          textTransform:'uppercase', color:FOREST, marginBottom:14 }}>{b.badge}</span>}
+        <div style={{ fontFamily:DISPLAY, fontSize:isMobile?27:41, fontWeight:600, color:INK, lineHeight:1.08, letterSpacing:-.4 }}>{b.titulo}</div>
+        {b.subtitulo && <div style={{ fontSize:isMobile?14:16, color:GRAY, marginTop:12, lineHeight:1.5, maxWidth:470 }}>{b.subtitulo}</div>}
+        {b.cta && b.onClick && (
+          <button onClick={b.onClick} style={{ marginTop:22, padding:'12px 26px', border:'none', borderRadius:50,
+            background:FOREST, color:'#f7f3ea', fontWeight:600, fontSize:14, cursor:'pointer', fontFamily:SANS,
+            display:'inline-flex', alignItems:'center', gap:8, letterSpacing:.2 }}>
+            {b.cta}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        )}
+      </div>
+      {banners.length > 1 && (
+        <div style={{ position:'absolute', bottom:18, left:isMobile?24:52, display:'flex', gap:7 }}>
+          {banners.map((_, k) => (
+            <button key={k} aria-label={`Banner ${k+1}`} onClick={() => setI(k)} style={{ width:k===i?22:8, height:8, borderRadius:50,
+              border:'none', cursor:'pointer', background:k===i?FOREST:'#d9cfba', transition:'width .25s, background .2s' }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Tile de categoría estilo editorial (Faire): la foto arriba (portada o mosaico
+// limpio sobre blanco) y el nombre DEBAJO, sobre crema — sin scrim oscuro ni
+// emojis. La categoría destacada (featured) ocupa 2x2 → jerarquía y usa serif.
+// Si no hay fotos, la inicial de la categoría en serif sobre crema (elegante).
+function CategoryTile({ cat, imgs, featured, isMobile, onClick }) {
+  const cover = (imgs || []).filter(Boolean)[0] || null;
+  const nameSize = featured ? (isMobile ? 18 : 24) : (isMobile ? 13.5 : 15.5);
+  return (
+    <button onClick={onClick} className="pz-cattile" style={{
+      gridColumn: featured ? 'span 2' : 'span 1',
+      gridRow: (featured && !isMobile) ? 'span 2' : 'span 1',
+      display:'flex', flexDirection:'column', cursor:'pointer', padding:0, border:'1px solid #e7dcc9',
+      borderRadius: isMobile ? 14 : 16, background:CREAM_TILE, fontFamily:SANS, overflow:'hidden', textAlign:'left' }}>
+      {/* foto: UNA sola imagen del producto, centrada sobre blanco con aire (estética
+          Faire) — sin mosaicos apretados ni recortes. Si no hay foto, la inicial en serif. */}
+      <div style={{ position:'relative', flex:1, minHeight:0, background: cover ? '#fff' : '#efe9dd' }}>
+        {cover ? (
+          <img src={cover} alt="" loading="lazy" style={{ position:'absolute', inset:0, width:'100%', height:'100%',
+            objectFit:'contain', padding: featured ? (isMobile?20:30) : (isMobile?14:20), display:'block' }} />
+        ) : (
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
+            fontFamily:DISPLAY, fontSize:featured?68:42, color:'#c8bda3' }}>{String(cat.nombre).trim().charAt(0).toUpperCase()}</div>
+        )}
+      </div>
+      {/* etiqueta debajo, sobre crema */}
+      <div style={{ padding: isMobile ? '10px 12px' : (featured ? '16px 18px' : '11px 14px'), background:CREAM_TILE }}>
+        <div style={{ fontFamily: featured ? DISPLAY : SANS, fontSize:nameSize, fontWeight:600, color:INK, lineHeight:1.15, letterSpacing:featured?-.2:-.1 }}>{cat.nombre}</div>
+        <div style={{ fontSize:12, color:GRAY, marginTop:featured?5:2, fontWeight:500 }}>{cat.count} producto{cat.count!==1?'s':''}</div>
+      </div>
+    </button>
+  );
+}
+
+function PortalHome({ items, buyAgain, recommended, onRepetirTodo, catArbol, cats, brandCfg, brandNombre, clienteNombre,
+                      clienteRut, clienteContacto,
+                      isMobile, carrito, addItem, removeItem, onOpen, onPickVariants, onSelectCat, onVerTodo,
+                      social, socialOn, entregaCorta }) {
+  const byId = (id) => items.find(p => p.id === id);
+  const cardW = isMobile ? 158 : 196;
+
+  // Categorías (madre) con conteo real + fotos reales para el collage.
+  const catList = useMemo(() => {
+    const base = (catArbol && catArbol.length) ? catArbol.map(m => m.nombre)
+      : (cats || []).filter(c => c && c !== 'Todos');
+    const norm = (s) => String(s||'').trim().toLowerCase();
+    return base.map(c => {
+      const prods = items.filter(p => norm(p.categoria) === norm(c));
+      const imgs = prods.map(p => p.imagen_url).filter(Boolean);
+      return { nombre: c, count: prods.length, imgs };
+    }).filter(c => c.count > 0);
+  }, [catArbol, cats, items]);
+
+  const habituales = (buyAgain || []).map(b => byId(b.id)).filter(Boolean);
+
+  // Saludo sobrio del home (reemplaza el hero-slogan). Empresa con RUT → razón social;
+  // persona sin RUT → nombre de pila. Ver detalle en la lógica de `banners`.
+  const saludo = (() => {
+    const esEmpresa = clienteRut && String(clienteRut).trim();
+    if (esEmpresa) return String(clienteNombre || '').trim();
+    const persona = String(clienteContacto || clienteNombre || '').trim();
+    return persona.split(' ')[0];
+  })();
+  // Sólo mostramos el carrusel-hero cuando el distribuidor cargó banners promocionales
+  // a propósito (contenido editorial legítimo). En el caso por defecto no auto-generamos
+  // un slogan de bienvenida: el comprador logueado quiere pedir, no leer un pitch.
+  const customBanners = Array.isArray(brandCfg?.banners) && brandCfg.banners.length > 0;
+
+  // Palanca 1 — OFERTAS automáticas: productos con descuento "siempre" en su lista
+  // de precios (dtoSiempre). Cero configuración: sale solo de los precios que el
+  // distribuidor ya carga. Es el "Ofertas" de PedidosYa, pero automático.
+  const ofertas = useMemo(() => items.filter(p => dtoSiempre(p)).slice(0, 16), [items]);
+
+  // Palanca 2 — DESTACADOS: sólo lo que el distribuidor marcó desde el panel
+  // (brandCfg.destacados). Si no marcó nada, no inventamos una fila artificial.
+  const destIds = Array.isArray(brandCfg?.destacados) ? brandCfg.destacados : [];
+  const destacados = destIds.map(byId).filter(Boolean);
+
+  // Palanca 2 — ANUNCIO de portada: una línea que el distribuidor escribe; la
+  // plataforma la maqueta en el estilo de la casa (él no diseña nada). Sólo si
+  // está activo y tiene texto.
+  const anuncio = (brandCfg?.anuncio && brandCfg.anuncio.activo && String(brandCfg.anuncio.texto || '').trim())
+    ? String(brandCfg.anuncio.texto).trim() : null;
+
+  // Fallback: si no hay habituales NI ofertas NI destacados marcados, la portada
+  // quedaría sin ninguna fila de productos → mostramos una selección del catálogo.
+  const fallbackSel = useMemo(() =>
+    [...items].sort((a,b) => (b.imagen_url?1:0) - (a.imagen_url?1:0)).slice(0, 12), [items]);
+  const sinRieles = !habituales.length && !ofertas.length && !destacados.length;
+
+  // #3 — "Quizás no sabías que también vendemos": expansión de cartera fundada en el
+  // historial. Tomamos las categorías que el cliente YA compra (de sus habituales) y
+  // ofrecemos productos de las categorías que NUNCA tocó → descubrimiento real, no ML
+  // al azar. Máx 2 por categoría nueva para dar variedad. Sin historial no aplica
+  // (no podríamos afirmar "nueva"). Priorizamos con foto.
+  const nuevasCategorias = useMemo(() => {
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const compradas = new Set(habituales.map(p => norm(p.categoria)).filter(Boolean));
+    if (!compradas.size) return [];
+    const porCat = {};
+    const out = [];
+    const orden = [...items].sort((a, b) => (b.imagen_url ? 1 : 0) - (a.imagen_url ? 1 : 0));
+    for (const p of orden) {
+      const c = norm(p.categoria);
+      if (!c || compradas.has(c)) continue;
+      porCat[c] = (porCat[c] || 0) + 1;
+      if (porCat[c] > 2) continue;
+      out.push(p);
+      if (out.length >= 12) break;
+    }
+    return out;
+  }, [habituales, items]);
+
+  // #4 — "Locales como el tuyo también piden": prueba social por segmento. Tomamos
+  // los productos con más COMPRADORES distintos (social[id].c) — pedidos reales, no
+  // ML — y excluimos lo que este cliente ya compra (sus habituales) para que sea
+  // descubrimiento y no repetición. Ordenado por popularidad. Priorizamos con foto.
+  const popularEntreLocales = useMemo(() => {
+    const yaCompra = new Set(habituales.map(p => p.id));
+    return items
+      .filter(p => !yaCompra.has(p.id) && social && social[p.id] && (social[p.id].c || 0) >= 3)
+      .sort((a, b) => {
+        const ca = social[a.id].c || 0, cb = social[b.id].c || 0;
+        if (cb !== ca) return cb - ca;
+        return (b.imagen_url ? 1 : 0) - (a.imagen_url ? 1 : 0);
+      })
+      .slice(0, 12);
+  }, [items, habituales, social]);
+
+  const scrollToId = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior:'smooth', block:'start' }); };
+
+  // Riel reutilizable de productos (horizontal). `ribbon` pinta el badge "−X%"
+  // sobre las cards en oferta (sólo en la fila de Ofertas, para no recargar).
+  // Es una función que devuelve JSX (no un componente) para no re-montar el riel.
+  const railSection = ({ id, title, sub, list, origin, ribbon, bulk }) => (
+    <section id={id}>
+      <SectionHead title={title} subtitle={sub} actionLabel="Ver todo" onAction={onVerTodo}
+        extra={bulk ? (
+          /* Recompra 1-toque: carga toda la canasta habitual al carrito. Verde =
+             acción de agregar (coherente con +Agregar/precios). */
+          <button onClick={bulk.onClick} style={{ display:'inline-flex', alignItems:'center', gap:6,
+            background:G, color:'#fff', border:'none', borderRadius:50, cursor:'pointer',
+            fontWeight:700, fontSize:isMobile?12:12.5, fontFamily:SANS, padding:isMobile?'7px 12px':'7px 14px',
+            letterSpacing:.2, whiteSpace:'nowrap', boxShadow:'0 1px 3px rgba(5,150,105,.3)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            {bulk.label}
+          </button>
+        ) : null} />
+      <HScroll>
+        {list.map(item => {
+          const d = ribbon ? dtoSiempre(item) : null;
+          return (
+            <div key={item.id} style={{ scrollSnapAlign:'start', flex:'0 0 auto', width:cardW, position:'relative' }}>
+              {d && (
+                <span style={{ position:'absolute', top:8, left:8, zIndex:2, background:'#b23a2e', color:'#fff',
+                  fontSize:11, fontWeight:800, letterSpacing:.3, padding:'3px 8px', borderRadius:6, fontFamily:SANS,
+                  boxShadow:'0 2px 6px rgba(178,58,46,.35)' }}>−{d.pct}%</span>
+              )}
+              <ProductCard {...cardProps(item)} onAdd={(it,v)=>addItem(it,v,origin)} />
+            </div>
+          );
+        })}
+      </HScroll>
+    </section>
+  );
+
+  // Banners: si el distribuidor los configuró se respetan; si no, un default limpio.
+  const banners = useMemo(() => {
+    if (Array.isArray(brandCfg?.banners) && brandCfg.banners.length) {
+      return brandCfg.banners.map(bn => ({
+        ...bn,
+        onClick: bn.categoria ? () => onSelectCat(bn.categoria) : (bn.scrollTo ? () => scrollToId(bn.scrollTo) : (bn.verTodo ? onVerTodo : undefined)),
+      }));
+    }
+    // Saludo del hero: si el cliente tiene RUT (razón social) es una empresa →
+    // saludamos por el nombre de la empresa (la razón social, sin recortar). Si no
+    // tiene RUT es una persona física → saludamos por su nombre de pila (el contacto
+    // asociado, o el nombre a secas). Motivo: en una empresa el contacto cargado no
+    // necesariamente es quien está haciendo la compra, así que el nombre neutro es
+    // el de la empresa.
+    const saludo = (() => {
+      const esEmpresa = clienteRut && String(clienteRut).trim();
+      if (esEmpresa) return String(clienteNombre || '').trim();
+      const persona = String(clienteContacto || clienteNombre || '').trim();
+      return persona.split(' ')[0];
+    })();
+    const out = [];
+    out.push({
+      badge: brandNombre || 'Catálogo',
+      titulo: saludo ? `Hola ${saludo}, hacé tu pedido` : 'Hacé tu pedido en minutos',
+      subtitulo: 'Todo tu catálogo mayorista en un solo lugar. Elegí, sumá al carrito y confirmá.',
+      cta: 'Ver todo el catálogo', onClick: onVerTodo,
+    });
+    if (habituales.length) out.push({
+      badge: 'Tus habituales', titulo: 'Volvé a pedir lo de siempre',
+      subtitulo: 'Tus productos más pedidos, listos para repetir en un toque.',
+      cta: 'Volver a comprar', onClick: () => scrollToId('pz-riel'),
+    });
+    return out;
+  }, [brandCfg, brandNombre, clienteNombre, clienteRut, clienteContacto, habituales.length]);
+
+  const cardProps = (item) => ({ item, brandCfg, carrito, qty: carrito[item.id] || 0,
+    onAdd: addItem, onRemove: removeItem, onOpen, onPickVariants,
+    social: socialOn ? social?.[item.id] : null, entregaCorta });
+
+  return (
+    <div style={{ background:'transparent',
+      padding:isMobile?'16px 0 24px':'32px 0 48px',
+      display:'flex', flexDirection:'column', gap:isMobile?28:40 }}>
+
+      {/* Palanca 2 — ANUNCIO: tira que el distribuidor escribe; Pazque la maqueta.
+          Estilo Faire (disciplina de color): fondo cálido muy claro + hairline, el
+          verde queda solo como acento en el ícono. No es un bloque de color pleno. */}
+      {anuncio && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+          color:GRAY, borderBottom:'1px solid #ececE6',
+          padding:isMobile?'0 0 12px':'0 0 14px', marginBottom:isMobile?-16:-26 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={FOREST} strokeWidth="2" style={{ flexShrink:0 }}>
+            <path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          <span style={{ fontSize:isMobile?12:13, fontWeight:500, lineHeight:1.35, letterSpacing:.1 }}>{anuncio}</span>
+        </div>
+      )}
+
+      {/* Hero: sólo carrusel si el distribuidor cargó banners promocionales a propósito.
+          En el default, un saludo sobrio en vez del slogan de bienvenida a pantalla. */}
+      {customBanners
+        ? <HeroCarousel banners={banners} isMobile={isMobile} />
+        : (
+          <div>
+            <div style={{ fontFamily:DISPLAY, fontSize:isMobile?23:27, fontWeight:500, color:INK, lineHeight:1.1, letterSpacing:-.3 }}>
+              {saludo ? `Hola ${saludo}` : 'Armá tu pedido'}
+            </div>
+          </div>
+        )}
+
+      {/* Volver a comprar — PRIMERO: es la espina dorsal de la recompra mayorista.
+          "Agregar todo" (bulk) = recompra 1-toque de toda la canasta habitual. */}
+      {habituales.length > 0 && railSection({ id:'pz-riel', title:'Volver a comprar', origin:'volver_a_pedir',
+        sub:'Tus productos habituales, listos para repetir.', list:habituales,
+        bulk: onRepetirTodo ? { label:'Agregar todo', onClick:onRepetirTodo } : null })}
+
+      {/* #3 — Expansión de cartera: rubros que este cliente todavía no te compra. */}
+      {nuevasCategorias.length > 0 && railSection({ id:'pz-nuevas', title:'Quizás no sabías que también vendemos', origin:'nueva_categoria',
+        sub:'Rubros que todavía no pediste, listos para sumar a tu pedido.', list:nuevasCategorias })}
+
+      {/* #4 — Prueba social por segmento: lo que más piden otros locales, fundado en
+          pedidos reales. Excluye lo que este cliente ya compra (es descubrimiento). */}
+      {popularEntreLocales.length > 0 && railSection({ id:'pz-social', title:'Locales como el tuyo también piden', origin:'popular_segmento',
+        sub:'Los productos más elegidos por otros negocios como el tuyo.', list:popularEntreLocales })}
+
+      {/* Palanca 1 — OFERTAS (automático): productos con descuento, badge "−X%". */}
+      {ofertas.length > 0 && railSection({ id:'pz-ofertas', title:'Ofertas', origin:'oferta', ribbon:true,
+        sub:'Aprovechá los descuentos vigentes de esta semana.', list:ofertas })}
+
+      {/* Palanca 2 — DESTACADOS: lo que el distribuidor eligió promocionar. */}
+      {destacados.length > 0 && railSection({ id:'pz-destacados', title:'Destacados', origin:'destacado',
+        sub:'Una selección elegida para vos.', list:destacados })}
+
+      {/* Fallback: sin habituales/ofertas/destacados, mostramos algo para arrancar. */}
+      {sinRieles && fallbackSel.length > 0 && railSection({ id:'pz-riel', title:'Para arrancar',
+        origin:'destacado', sub:'Una selección del catálogo para empezar tu pedido.', list:fallbackSel })}
+
+      {/* Explorar por categoría — hacia el final: para el que quiere navegar, no el
+          camino rápido de recompra. Fotos reales sobre blanco, caption debajo. */}
+      {catList.length > 0 && (
+        <section>
+          <SectionHead title="Comprá por categoría" subtitle="Elegí un rubro y armá tu pedido." />
+          <div style={{ display:'grid', gap:isMobile?12:16, gridAutoFlow:'dense',
+            gridTemplateColumns:isMobile?'1fr 1fr':'repeat(4, 1fr)',
+            gridAutoRows:isMobile?152:198 }}>
+            {catList.map((c, idx) => (
+              <CategoryTile key={c.nombre} cat={c} imgs={c.imgs} featured={idx === 0} isMobile={isMobile} onClick={() => onSelectCat(c.nombre)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Banda "ver todo": tarjeta blanca sobre el canvas, titular serif, CTA verde apagado */}
+      <button onClick={onVerTodo} style={{ cursor:'pointer', textAlign:'left', width:'100%',
+        borderRadius:isMobile?16:20, padding:isMobile?'24px 22px':'34px 38px', fontFamily:SANS,
+        display:'flex', alignItems:'center', justifyContent:'space-between', gap:16,
+        background:'#fff', border:'1px solid #f0f0ec', boxShadow:'0 1px 3px rgba(0,0,0,.05)' }}>
+        <div>
+          <div style={{ fontSize:isMobile?11:12, fontWeight:700, letterSpacing:1.2, textTransform:'uppercase', color:FOREST }}>Catálogo completo</div>
+          <div style={{ fontFamily:DISPLAY, fontSize:isMobile?21:28, fontWeight:600, color:INK, marginTop:7, lineHeight:1.12 }}>Explorá los {items.length} productos</div>
+          <div style={{ fontSize:isMobile?13:14.5, color:GRAY, marginTop:6 }}>Buscá, filtrá y sumá todo lo que necesites al carrito.</div>
+        </div>
+        <span style={{ flex:'0 0 auto', display:'flex', alignItems:'center', gap:8, background:FOREST,
+          padding:isMobile?'11px 18px':'13px 24px', borderRadius:50, fontWeight:600, fontSize:isMobile?13:15, color:'#f7f3ea' }}>
+          Ver todo
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f7f3ea" strokeWidth="2.2"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </button>
+    </div>
+  );
+}
+
+// ── Motor de búsqueda (helpers puros, nivel módulo) ───────────────────────────
+// Objetivo: que el buscador se sienta "serio" (Amazon/ML) sin backend de búsqueda.
+//   1) Tolerancia a errores de tipeo (Levenshtein acotado) → "conaprole" mal escrito
+//      igual encuentra el producto, en vez de "0 resultados".
+//   2) Plural/singular a nivel lenguaje (genérico, no atado a un rubro).
+//   3) Ranking por relevancia: coincidir en el NOMBRE pesa más que en la descripción,
+//      y un match al principio del nombre más que uno en el medio.
+// NO hay diccionario de sinónimos por-dominio hardcodeado: rompería el modelo genérico
+// multi-tenant y metería falsos positivos en rubros no-comida. Un thesaurus por-org es
+// el camino turnkey correcto (config futura), no una lista fija en el código.
+
+// Distancia de edición acotada: si supera `max`, corta temprano (barato). Suficiente
+// para typos comunes (una letra cambiada/faltante/sobrante).
+function editDistanceLE(a, b, max) {
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > max) return false;
+  let prev = new Array(lb + 1);
+  let curr = new Array(lb + 1);
+  for (let j = 0; j <= lb; j++) prev[j] = j;
+  for (let i = 1; i <= la; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    const ca = a.charCodeAt(i - 1);
+    for (let j = 1; j <= lb; j++) {
+      const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+      if (curr[j] < rowMin) rowMin = curr[j];
+    }
+    if (rowMin > max) return false; // ninguna celda de la fila puede bajar de `max`
+    const tmp = prev; prev = curr; curr = tmp;
+  }
+  return prev[lb] <= max;
+}
+
+// Umbral de typos según largo: palabras cortas exigen más precisión (evita ruido).
+function fuzzyBudget(len) { return len <= 4 ? (len <= 3 ? 0 : 1) : 2; }
+
+// ¿Este token de la consulta matchea el documento? Exacto → plural/singular → fuzzy.
+function tokenMatchesDoc(token, hay, words) {
+  if (hay.includes(token)) return true;
+  if (token.length > 3) {
+    const alt = token.endsWith('s') ? token.slice(0, -1) : token + 's';
+    if (hay.includes(alt)) return true;
+  }
+  const budget = fuzzyBudget(token.length);
+  if (budget === 0) return false;
+  for (let k = 0; k < words.length; k++) {
+    const w = words[k];
+    if (Math.abs(w.length - token.length) > budget) continue;
+    if (editDistanceLE(token, w, budget)) return true;
+  }
+  return false;
+}
+
+// Puntaje de relevancia de un doc para los tokens (mayor = más arriba).
+function scoreDoc(doc, tokens) {
+  let score = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (doc.name.startsWith(t)) score += 100;
+    else if (doc.nameWordStart.indexOf('\u0001' + t) !== -1) score += 60; // arranque de palabra en el nombre
+    else if (doc.name.includes(t)) score += 40;
+    else if (doc.marca.includes(t)) score += 30;
+    else if (doc.cat.includes(t)) score += 16;
+    else if (doc.desc.includes(t)) score += 8;
+    else score += 2; // matcheó sólo por plural/typo: cuenta, pero pesa poco
+  }
+  if (doc.hasImg) score += 6;      // con foto: mejor percepción, leve empujón
+  if (doc.inStock) score += 3;
+  return score;
+}
+
 // ── Pagina principal ──────────────────────────────────────────────────────────
 export default function PedidosPage({ vendorSession = null, onVendorExit = null, vendorName = '' }) {
   // Modo vendedor: el vendedor ya eligió un cliente y entramos con una sesión de
@@ -2501,6 +3581,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
   const [session,  setSession]  = useState(() => vendorSession || loadSession());
   const [vista,    setVista]    = useState('catalogo');
+  const [verTodoCatalogo, setVerTodoCatalogo] = useState(false); // vidriera: true = mostrar la grilla completa
   const [detalle,  setDetalle]  = useState(null); // producto abierto en la PDP (null = grilla)
   const [pickSheet, setPickSheet] = useState(null); // producto con variantes abierto en el quick-add sheet
   const [showEstadoCuenta, setShowEstadoCuenta] = useState(false);
@@ -2510,6 +3591,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [recommended, setRecommended] = useState([]);
   const [buyAgain, setBuyAgain] = useState([]);
   const [coBuy, setCoBuy] = useState({}); // productoId -> [ids que suele pedirse junto]
+  const [social, setSocial] = useState({}); // productoId -> { c: nº clientes, best: bool } (prueba social real)
   const [items,    setItems]    = useState([]);
   const [cats,     setCats]     = useState([]);
   const [catArbol, setCatArbol] = useState([]); // [{nombre, subcategorias:[]}] — orden del admin
@@ -2520,7 +3602,21 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [horarioInfo, setHorarioInfo] = useState(null);
   const [catFil,   setCatFil]   = useState('Todos');
   const [busq,     setBusq]     = useState('');
+  // Autocompletar del buscador (patrón Amazon: sugerencias mientras tipeás).
+  // `sugOpen` = dropdown visible; `sugIdx` = opción resaltada (nav con flechas, -1 = ninguna).
+  const [sugOpen,  setSugOpen]  = useState(false);
+  const [sugIdx,   setSugIdx]   = useState(-1);
+  // Orden + filtros facetados (patrón Amazon: barra de "Ordenar/Filtrar" sobre los
+  // resultados). Genéricos por-rubro: las marcas y el rango de precio se derivan del
+  // catálogo, no se hardcodean. Todo vive en el cliente (no toca API).
+  const [orden,     setOrden]     = useState('relevancia'); // relevancia | precio_asc | precio_desc | nombre
+  const [fMarcas,   setFMarcas]   = useState([]);           // marcas seleccionadas (multi)
+  const [fOfertas,  setFOfertas]  = useState(false);        // sólo productos con descuento
+  const [fStock,    setFStock]    = useState(false);        // sólo con stock disponible
+  const [fPrecioMax, setFPrecioMax] = useState(null);       // techo de precio (null = sin tope)
+  const [filtrosOpen, setFiltrosOpen] = useState(false);    // hoja de filtros (mobile)
   const [carrito,  setCarrito]  = useState(() => loadCart((vendorSession || loadSession())?.clienteId));
+  const [listas,   setListas]   = useState(() => loadListas((vendorSession || loadSession())?.clienteId));
   const [showCart, setShowCart] = useState(false);
   const [vozOpen,  setVozOpen]  = useState(false); // modal "Pedí por voz"
   const [loading,  setLoading]  = useState(false);
@@ -2645,6 +3741,68 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     if (skipPersistRef.current) { skipPersistRef.current = false; return; }
     try { localStorage.setItem(cartStorageKey(cartCli), JSON.stringify(carrito)); } catch { /* storage lleno / bloqueado */ }
   }, [carrito, cartCli]);
+
+  // "Mis listas": recargar las del cliente al cambiar de identidad y persistir al editar.
+  const listasCliRef = useRef(cartCli);
+  useEffect(() => {
+    if (listasCliRef.current === cartCli) return;
+    listasCliRef.current = cartCli;
+    setListas(loadListas(cartCli));
+  }, [cartCli]);
+  const guardarLista = (nombre) => {
+    const items = Object.fromEntries(Object.entries(carrito).filter(([, q]) => q > 0));
+    if (Object.keys(items).length === 0) return null;
+    const nueva = { id: Math.random().toString(36).slice(2) + Date.now().toString(36),
+      nombre: (nombre || '').trim() || `Lista ${new Date().toLocaleDateString('es-UY')}`,
+      items, createdAt: new Date().toISOString() };
+    const next = [nueva, ...listas];
+    setListas(next); saveListas(cartCli, next);
+    return nueva;
+  };
+  const eliminarLista = (id) => {
+    const next = listas.filter(l => l.id !== id);
+    setListas(next); saveListas(cartCli, next);
+  };
+  // Recompra 1-toque: carga TODA la canasta habitual (rail "Volver a comprar") al
+  // carrito de una sola vez. Patrón "Add all to cart" (Faire) / "Buy it again"
+  // (Amazon) para la reposición mayorista, que es repetir lo de siempre. Sólo mete
+  // productos directamente agregables (con precio, sin variantes, en stock), respeta
+  // el mínimo de compra y NO pisa cantidades ya elegidas por el cliente.
+  const repetirHabituales = useCallback(() => {
+    const nc = { ...carrito };
+    let added = 0;
+    (buyAgain || []).forEach(b => {
+      const prod = items.find(p => p.id === b.id);
+      if (!prod) return;
+      if (!(prod.precio > 0) || (prod.variants?.options?.length)) return;  // sin precio o con variantes → requiere elegir
+      if (!(prod.stock == null || Number(prod.stock) > 0)) return;          // sin stock
+      if (nc[prod.id]) return;                                              // ya en el carrito: no lo tocamos
+      nc[prod.id] = prod.min_order_qty || 1;
+      added++;
+    });
+    if (added === 0) { setReorderMsg('Ya tenés tus habituales en el carrito.'); return; }
+    setCarrito(nc);
+    setVista('catalogo');   // salir del home al catálogo (igual que reorder/cargar lista) para que el drawer quede visible sobre la grilla
+    setReorderMsg(`${added} producto${added !== 1 ? 's' : ''} agregado${added !== 1 ? 's' : ''} a tu carrito.`);
+    setTimeout(() => setShowCart(true), 250);
+  }, [carrito, buyAgain, items]);
+  // Cargar una lista al carrito: validamos contra el catálogo ACTUAL (productos
+  // discontinuados o sin stock se omiten y se avisa), igual que el reorder de un
+  // pedido viejo. Reemplaza el carrito (patrón "reposición": esta lista ES el pedido).
+  const cargarLista = (lista) => {
+    const nc = {}; let omitidos = 0;
+    Object.entries(lista.items || {}).forEach(([key, qty]) => {
+      const baseId = key.indexOf('::') === -1 ? key : key.slice(0, key.indexOf('::'));
+      const prod = baseId && items.find(p => p.id === baseId);
+      if (prod && (prod.stock == null || Number(prod.stock) > 0)) nc[key] = qty;
+      else omitidos++;
+    });
+    if (Object.keys(nc).length === 0) { setReorderMsg('Ninguno de esos productos está disponible ahora.'); return; }
+    setCarrito(nc);
+    setVista('catalogo');
+    if (omitidos > 0) setReorderMsg(`${omitidos} producto${omitidos !== 1 ? 's' : ''} ya no está${omitidos !== 1 ? 'n' : ''} disponible${omitidos !== 1 ? 's' : ''} y no se agregó${omitidos !== 1 ? 'aron' : ''}.`);
+    setTimeout(() => setShowCart(true), 200);
+  };
 
   // ── Sync cross-device: traer el carrito del servidor al loguearse ─────────
   // Caso de uso: armás el pedido en la compu y lo seguís en el cel. El server
@@ -2807,16 +3965,105 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     if (!isPortalDemo) return;
     const ds = DEMO_DATASETS[portalDemo];
     if (!ds) return;
-    const prods = ds.data.products.map((p, __i) => ({
-      id: p.id, nombre: p.name, precio: p.price, categoria: p.category,
-      unidad: p.unit || 'un', marca: p.brand || p.category,
-      imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22,
-      stock: p.stock || 100,
-    })); // precio 0 = consultar precio, se muestra igual
+    const prods = ds.data.products.map((p, __i) => {
+      const base = {
+        id: p.id, nombre: p.name, precio: p.price, categoria: p.category,
+        unidad: p.unit || 'un', marca: p.brand || p.category,
+        imagen_url: p.imagen_url || null, iva_rate: p.iva_rate || 22,
+        stock: p.stock || 100,
+      };
+      // Demo Palanca 1 (Ofertas automáticas): sembramos un dto "siempre" en algunos
+      // productos (v2: precioBase > precio + descGlobal) para que se vean el badge
+      // −X% y el riel "Ofertas" sin tocar nada. Sólo demo — el cliente real refleja
+      // los descuentos que ya cargó en su lista de precios.
+      const promo = { 1: 15, 4: 20, 7: 10, 10: 25 }[__i];
+      if (promo && base.precio > 0) {
+        base.reglasV2   = true;
+        base.descGlobal = promo;
+        base.precioBase = Math.round(base.precio / (1 - promo / 100));
+      }
+      return base;
+    }); // precio 0 = consultar precio, se muestra igual
+    // Enriquecido SÓLO demo para mostrar Punto 2 (galería + señal de stock).
+    // En cliente real estos campos salen de la DB (imagen única / stock propio).
+    const conFoto = prods.map(p => p.imagen_url).filter(Boolean);
+    // Punto 5 (multi-rubro) — atributos flexibles de ejemplo por vertical. En un org
+    // real los carga el distribuidor (ProductForm → Especificaciones). Acá los sembramos
+    // según el rubro elegido para mostrar cómo la MISMA ficha se adapta a cada negocio.
+    const attrPools = {
+      horeca:       [['Origen', 'Uruguay'], ['Presentación', 'Caja cerrada'], ['Vida útil', '12 meses']],
+      bebidas:      [['Origen', 'Importado'], ['Presentación', 'Retornable'], ['Servir', 'Bien frío']],
+      limpieza:     [['Rendimiento', 'Alto'], ['Biodegradable', 'Sí'], ['Aroma', 'Neutro']],
+      construccion: [['Procedencia', 'Nacional'], ['Norma', 'UNIT'], ['Uso', 'Estructural']],
+    };
+    const pool = attrPools[portalDemo] || attrPools.horeca;
+    prods.forEach((p, i) => {
+      // Galería: a los primeros con foto les damos varias imágenes (distintas, de otros
+      // productos demo) para que se vea la tira de miniaturas + el zoom por foto.
+      if (p.imagen_url && i < 3 && conFoto.length >= 3) {
+        const extra = conFoto.filter(u => u !== p.imagen_url).slice(0, 2);
+        p.imagenes = [p.imagen_url, ...extra];
+      }
+      // Stock: variamos para ver los 3 estados (en stock / pocas unidades / sin stock).
+      if (i % 9 === 4)      { p.available_stock = 0;   p.min_stock = 5;  }   // sin stock
+      else if (i % 4 === 0) { p.available_stock = 2 + (i % 4); p.min_stock = 10; } // pocas
+      else                  { p.available_stock = 9999; p.min_stock = 0; }   // en stock
+      // Slice A (unidad de medida flexible): a una parte del catálogo le damos bulto real
+      // (caja cerrada) con su descuento, para que aparezca el selector "Comprar por".
+      if (p.precio > 0 && i % 3 === 0) {
+        const n = (i / 3) % 3;             // 0,1,2 cíclico
+        p.unidades_por_caja = [6, 12, 24][n];
+        p.descuento_caja = [8, 10, 12][n]; // 8–12 %
+      }
+      // Slice B (atributos por vertical): las primeras cards muestran 2–3 specs del rubro.
+      if (i < 6) p.atributos = pool.slice(0, 2 + (i % 2)).map(([k, v]) => ({ k, v }));
+    });
     setItems(prods);
     const categories = ['Todos', ...new Set(prods.map(p => p.categoria).filter(Boolean))];
     setCats(categories);
     setBrandNombre(ds.data.org.name);
+    // Demo Palanca 2 (Destacar + Anunciar): sembramos brandCfg con un anuncio y unos
+    // destacados para que ambas palancas se vean en la demo. En un org real esto lo
+    // configura el distribuidor desde Configuración → Portal → Vidriera / Portada.
+    // #7 (envío sin cargo): umbral demo derivado del catálogo (≈ un pedido de varios
+    // ítems) redondeado a una cifra "linda", así la barra se ve parcial y creíble en
+    // cualquier dataset. En un org real lo fija el distribuidor en Configuración.
+    const preciosDemo = prods.map(p => p.precio).filter(x => x > 0).sort((a, b) => a - b);
+    const medianaDemo = preciosDemo.length ? preciosDemo[Math.floor(preciosDemo.length / 2)] : 0;
+    const freeShipDemo = medianaDemo > 0 ? Math.max(1000, Math.round((medianaDemo * 6) / 500) * 500) : 0;
+    setBrandCfg({
+      homeVidriera: true,
+      anuncio: { activo: true, texto: `Envío sin cargo en pedidos desde ${fmt.currency(freeShipDemo)}.` },
+      destacados: prods.slice(2, 6).map(p => p.id),
+      freeShipThreshold: freeShipDemo,
+      // Reparto de muestra (modo por zona/ruta): en la maqueta muestra la "Entrega
+      // estimada" en el checkout. En un org real lo fija el distribuidor en Config.
+      reparto: { modo: 'zona', diasDefault: ['lun', 'mar', 'mie', 'jue', 'vie'], corte: '14:00' },
+    });
+    // Sembramos las señales del "vendedor digital" para que en la demo se vean todos
+    // los rieles como en un org con historial real: recompra (buyAgain), prueba social
+    // por segmento (social) y co-compra para cross-sell (coBuy). En un org real esto
+    // sale del historial de pedidos; acá lo derivamos del catálogo para la maqueta.
+    const conFotoDemo = prods.filter(p => p.imagen_url);
+    // "Volver a comprar" toma los primeros 4 con foto; el resto de los productos con
+    // foto quedan libres para el riel "Locales como el tuyo también piden" (#4, que
+    // EXCLUYE los habituales) → ambos rieles se ven con foto y no se solapan.
+    setBuyAgain(conFotoDemo.slice(0, 4).map(p => ({ id: p.id })));
+    const habitualesDemo = new Set(conFotoDemo.slice(0, 4).map(p => p.id));
+    // Prueba social sobre TODO el catálogo (en un org real sale del historial de
+    // pedidos). Los productos con foto reciben un conteo más alto y algún "Más pedido"
+    // para que floten al frente del riel #4; los demás rellenan el resto.
+    const socialSeed = {};
+    prods.forEach((p, i) => {
+      const foto = !!p.imagen_url;
+      socialSeed[p.id] = { c: (foto ? 9 : 3) + ((i * 4) % 6), best: foto && !habitualesDemo.has(p.id) && i % 5 === 0 };
+    });
+    setSocial(socialSeed);
+    const coBuySeed = {};
+    conFotoDemo.slice(0, 8).forEach((p, i) => {
+      coBuySeed[p.id] = conFotoDemo.slice(20).concat(conFotoDemo).filter(q => q.id !== p.id).slice(i, i + 4).map(q => q.id);
+    });
+    setCoBuy(coBuySeed);
   }, [portalDemo, isPortalDemo]);
 
   const loadCatalogo = useCallback(async (ses) => {
@@ -2882,28 +4129,21 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         if (Array.isArray(d.recommended)) setRecommended(d.recommended);
         if (Array.isArray(d.buyAgain)) setBuyAgain(d.buyAgain);
         if (d.coBuy && typeof d.coBuy === 'object') setCoBuy(d.coBuy);
+        if (d.social && typeof d.social === 'object') setSocial(d.social);
       }
     } catch {}
     finally { setLoading(false); }
   }, []);
 
-  // Demo mode: inject fake buyAgain and recommended when demo products load
+  // Demo mode: sólo sembramos `recommended` acá. buyAgain / social / coBuy se siembran
+  // (foto-aware) en el effect de carga del dataset; NO los pisamos desde este effect
+  // o volvería a solaparse "Volver a comprar" con "Locales como el tuyo también piden".
   useEffect(() => {
     if (!isPortalDemo || items.length === 0) return;
-    var baItems = items.slice(0, 6).map(function(p) {
-      return { id: p.id, nombre: p.nombre, precio: p.precio || 100, unidad: p.unidad || 'u.', categoria: p.categoria };
-    });
-    setBuyAgain(baItems);
     var recItems = items.slice(8, 12).map(function(p) {
       return { id: p.id, nombre: p.nombre, precio: p.precio || 100, unit: p.unidad || 'u.', reason: Math.ceil(2 + ((p.nombre||'').length % 3)) + ' clientes lo compran' };
     });
     setRecommended(recItems);
-    // Demo: co-ocurrencia ficticia para que el cross-sell del carrito se vea
-    var co = {};
-    items.slice(0, 16).forEach(function(p, idx) {
-      co[p.id] = items.slice(idx + 1, idx + 5).map(function(q) { return q.id; }).filter(Boolean);
-    });
-    setCoBuy(co);
   }, [isPortalDemo, items]);
 
     useEffect(() => { if (orgReady && session) loadCatalogo(session); }, [orgReady, session, loadCatalogo]);
@@ -2930,13 +4170,118 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // taxonomía (admin) y el valor del producto viene de su ficha, y pueden diferir
   // en casing/espacios aunque sean "la misma" categoría.
   const norm = (s) => String(s || '').trim().toLowerCase();
-  const filtered = useMemo(() => items.filter(i => {
-    const mCat = catFil === 'Todos' || norm(i.categoria) === norm(catFil);
-    const mSub = !subFil || norm(i.subcategoria) === norm(subFil);
-    const mQ   = !busq || i.nombre.toLowerCase().includes(busq.toLowerCase())
-      || (i.marca || '').toLowerCase().includes(busq.toLowerCase());
-    return mCat && mSub && mQ;
-  }), [items, catFil, subFil, busq]);
+  // Normalización tolerante a acentos/ñ para búsqueda (Amazon indexa así): "cafe"
+  // encuentra "café", "jamon" encuentra "jamón". Evita el 0-resultados por tilde.
+  const deburr = (s) => String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // Índice de búsqueda: precalcula por producto los campos deburr + el set de palabras
+  // (para el fuzzy). Se recalcula sólo cuando cambia el catálogo, no en cada tecla.
+  const searchDocs = useMemo(() => {
+    const m = new Map();
+    for (const i of items) {
+      const name  = deburr(i.nombre);
+      const marca = deburr(i.marca || '');
+      const cat   = deburr(`${i.categoria || ''} ${i.subcategoria || ''}`);
+      const desc  = deburr(i.descripcion || '');
+      const nameWordStart = '\u0001' + name.split(/\s+/).filter(Boolean).join('\u0001');
+      // Palabras candidatas para el fuzzy: nombre+marca+categoría (no descripción, para
+      // acotar ruido y costo). Sólo palabras de >2 letras.
+      const wordSet = new Set();
+      (name + ' ' + marca + ' ' + cat).split(/\s+/).forEach(w => { if (w.length > 2) wordSet.add(w); });
+      m.set(i.id, { name, nameWordStart, marca, cat, desc, words: [...wordSet], hasImg: !!i.imagen_url, inStock: Number(i.stock) > 0 });
+    }
+    return m;
+  }, [items]);
+
+  // Etapa 1 — filtro por categoría/subcategoría/facetas + match de texto (exacto,
+  // plural/singular o typo). Etapa 2 — orden: si hay búsqueda, por RELEVANCIA (el
+  // match en el nombre pesa más que en la descripción); si no, orden natural o el
+  // criterio elegido. "queso conaprole" encuentra el queso de esa marca aunque el
+  // orden no coincida, y "conaprol" (mal tipeado) igual lo encuentra.
+  const filtered = useMemo(() => {
+    const tokens = deburr(busq).split(/\s+/).filter(Boolean);
+    const scored = [];
+    for (const i of items) {
+      if (!(catFil === 'Todos' || norm(i.categoria) === norm(catFil))) continue;
+      if (!(!subFil || norm(i.subcategoria) === norm(subFil))) continue;
+      if (!(fMarcas.length === 0 || fMarcas.some(m => norm(m) === norm(i.marca)))) continue;
+      if (!(!fOfertas || !!dtoSiempre(i))) continue;
+      if (!(!fStock || Number(i.stock) > 0)) continue;
+      if (!(fPrecioMax == null || (Number(i.precio) > 0 && Number(i.precio) <= fPrecioMax))) continue;
+
+      let relevance = 0;
+      if (tokens.length) {
+        const doc = searchDocs.get(i.id);
+        if (!doc) continue;
+        const hay = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc}`;
+        let all = true;
+        for (let t = 0; t < tokens.length; t++) {
+          if (!tokenMatchesDoc(tokens[t], hay, doc.words)) { all = false; break; }
+        }
+        if (!all) continue;
+        relevance = scoreDoc(doc, tokens);
+      }
+      scored.push({ i, relevance });
+    }
+
+    if (orden === 'precio_asc')       scored.sort((a, b) => (Number(a.i.precio) || 0) - (Number(b.i.precio) || 0));
+    else if (orden === 'precio_desc') scored.sort((a, b) => (Number(b.i.precio) || 0) - (Number(a.i.precio) || 0));
+    else if (orden === 'nombre')      scored.sort((a, b) => String(a.i.nombre).localeCompare(String(b.i.nombre), 'es'));
+    else if (tokens.length)           scored.sort((a, b) => b.relevance - a.relevance); // relevancia sólo con búsqueda
+    // sin búsqueda y orden por defecto → se mantiene el orden natural del catálogo (sort estable)
+    return scored.map(s => s.i);
+  }, [items, catFil, subFil, busq, fMarcas, fOfertas, fStock, fPrecioMax, orden, searchDocs]);
+
+  // Sugerencias del autocompletar (patrón Amazon: dropdown mientras tipeás). Busca en
+  // TODO el catálogo (ignora la categoría/facetas activas, como Amazon) usando el mismo
+  // índice y scoring que la grilla. Top 6, sólo con 2+ caracteres. Prioriza los que
+  // tienen foto (se ven mejor en el dropdown) sin romper el orden por relevancia.
+  const sugerencias = useMemo(() => {
+    const tokens = deburr(busq).split(/\s+/).filter(Boolean);
+    if (!tokens.length || busq.trim().length < 2) return [];
+    const scored = [];
+    for (const i of items) {
+      const doc = searchDocs.get(i.id);
+      if (!doc) continue;
+      const hay = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc}`;
+      let all = true;
+      for (let t = 0; t < tokens.length; t++) {
+        if (!tokenMatchesDoc(tokens[t], hay, doc.words)) { all = false; break; }
+      }
+      if (!all) continue;
+      scored.push({ i, r: scoreDoc(doc, tokens) + (doc.hasImg ? 0.5 : 0) });
+    }
+    scored.sort((a, b) => b.r - a.r);
+    return scored.slice(0, 6).map(s => s.i);
+  }, [items, busq, searchDocs]);
+
+  // Datos derivados para los facetas (genéricos, salen del catálogo del org):
+  //  • marcas disponibles (ordenadas, sin vacías)
+  //  • si tiene sentido el toggle "En stock" (hay productos agotados)
+  //  • si hay al menos una oferta (para mostrar el toggle "Ofertas")
+  const marcasDisponibles = useMemo(() => {
+    const set = new Set();
+    items.forEach(i => { const m = String(i.marca || '').trim(); if (m) set.add(m); });
+    return [...set].sort((a, b) => a.localeCompare(b, 'es'));
+  }, [items]);
+  const hayAgotados = useMemo(() => items.some(i => Number(i.stock) <= 0), [items]);
+  const hayOfertas  = useMemo(() => items.some(i => !!dtoSiempre(i)), [items]);
+  const nFiltros = fMarcas.length + (fOfertas ? 1 : 0) + (fStock ? 1 : 0) + (fPrecioMax != null ? 1 : 0);
+  // Prueba social ON: en la demo siempre; en real, sólo si el distribuidor la
+  // prende (brandCfg.socialProof). Así no aparece en portales reales sin querer.
+  const socialOn = isPortalDemo || brandCfg?.socialProof === true;
+  const limpiarFiltros = () => { setFMarcas([]); setFOfertas(false); setFStock(false); setFPrecioMax(null); };
+  const toggleMarca = (m) => setFMarcas(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
+  // Umbrales de precio "lindos" derivados de la distribución del catálogo (cuartiles
+  // redondeados hacia arriba). Genérico: se adapta a cualquier rubro/moneda.
+  const precioBuckets = useMemo(() => {
+    const ps = items.map(i => Number(i.precio) || 0).filter(p => p > 0).sort((a, b) => a - b);
+    if (ps.length < 4) return [];
+    const niceCeil = (n) => { const mag = Math.pow(10, Math.floor(Math.log10(n))); return Math.ceil(n / mag) * mag; };
+    const raw = [0.25, 0.5, 0.75].map(q => niceCeil(ps[Math.floor(q * (ps.length - 1))]));
+    return [...new Set(raw)].filter(v => v > 0);
+  }, [items]);
 
   // Analytics — PedidosPage scope
   const track = (event, props = {}) => { trackWeb(event, props); try { window.posthog?.capture(event, { org: ORG, ...props }); } catch {} };
@@ -3017,6 +4362,16 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     setSession(null); setItems([]); setCarrito({});
   };
 
+  // Entrega estimada a nivel de portal, para la línea compacta en las cards
+  // (criterio Amazon: fecha visible antes del checkout). El motor decide por org
+  // (brandCfg.reparto); modo 'off' → fecha null → la card no muestra nada.
+  // IMPORTANTE: este hook va ANTES de cualquier return condicional (selecting /
+  // !orgReady) para no romper el orden de hooks entre renders.
+  const entregaPortal = useMemo(
+    () => calcularEntrega(brandCfg?.reparto, isPortalDemo ? undefined : session?.zona, new Date()),
+    [brandCfg?.reparto, isPortalDemo, session?.zona]
+  );
+
   if (portalDemo === 'selecting') return <PortalDemoSelector onSelect={key => setPortalDemo(key)} />;
 
   // Dominio custom: mientras resolvemos el org no mostramos login ni catálogo
@@ -3031,18 +4386,24 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // Demo mode: create a fake session so the catalog renders without null errors
   const effectiveSession = isPortalDemo ? {
     nombre: 'Cliente Demo',
+    rut: '210000000015',
+    contacto: 'Juan Pérez',
     clienteId: 'demo-client',
     token: 'demo-token',
     tel: '099000000',
     org: 'demo',
   } : session;
+  // Línea compacta en las cards (card estática, sin countdown; el countdown vivo
+  // vive sólo en la PDP vía EntregaHint). entregaPortal ya se calculó arriba.
+  const entregaCortaCard = entregaPortal.modo !== 'off' && entregaPortal.fecha
+    ? formatFechaCorta(entregaPortal.fecha, new Date()) : '';
   if (!session && !isPortalDemo) return <LoginStep onLogin={ses => setSession(ses)} />;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f7f7f4', fontFamily: SANS }}>
+    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: SANS }}>
       {/* Transición sutil al cambiar de pantalla (catálogo ↔ ficha): leve fade +
           subida, como las apps nativas. Suave, no "salta". */}
-      <style>{'@keyframes pzFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.pz-fade{animation:pzFade .22s ease both}'}</style>
+      <style>{'@keyframes pzFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.pz-fade{animation:pzFade .22s ease both}.pz-hscroll::-webkit-scrollbar{display:none}.pz-cattile{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.pz-cattile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(63,83,68,.14);border-color:#d8ccb2}.pz-cattile img{transition:transform .4s ease}.pz-cattile:hover img{transform:scale(1.04)}'}</style>
 
       {vendorMode && (
         <div style={{ background: '#0f3d2e', color: '#fff', padding: '8px 16px',
@@ -3084,9 +4445,9 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         <div style={{ maxWidth: 1300, margin: '0 auto', padding: isMobile ? '6px 12px' : '0 24px',
           minHeight: 56, display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 16,
           borderBottom: '0.5px solid #f0f0ec', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-          <div onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); setDetalle(null); }}
+          <div onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); setDetalle(null); setVerTodoCatalogo(false); }}
             role="button" tabIndex={0} aria-label="Volver al catálogo"
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setVista('catalogo'); setCatFil('Todos'); setBusq(''); setDetalle(null); } }}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { setVista('catalogo'); setCatFil('Todos'); setBusq(''); setDetalle(null); setVerTodoCatalogo(false); } }}
             style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, cursor: 'pointer' }}>
             {brandCfg?.logoUrl ? (
               <img src={brandCfg.logoUrl} alt={brandNombre || 'Logo'}
@@ -3107,14 +4468,62 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isMobile ? '4px 0' : '0 16px', ...(isMobile ? { order: 10, flex: '1 1 100%' } : {}) }}>
               <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: GRAY }}>{Icon.search}</div>
-                <input value={busq} onChange={e => { setBusq(e.target.value); if (detalle) setDetalle(null); }}
+                <input value={busq}
+                  onChange={e => { setBusq(e.target.value); if (detalle) setDetalle(null); setSugOpen(true); setSugIdx(-1); }}
                   placeholder="Buscar producto o marca..." aria-label="Buscar producto o marca"
+                  role="combobox" aria-expanded={sugOpen && sugerencias.length > 0} aria-autocomplete="list"
+                  onKeyDown={e => {
+                    if (!sugOpen || sugerencias.length === 0) return;
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setSugIdx(i => Math.min(i + 1, sugerencias.length - 1)); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); setSugIdx(i => Math.max(i - 1, -1)); }
+                    else if (e.key === 'Enter' && sugIdx >= 0) {
+                      e.preventDefault();
+                      const it = sugerencias[sugIdx];
+                      if (it) { setVista('catalogo'); setDetalle(it); setSugOpen(false); setSugIdx(-1); }
+                    } else if (e.key === 'Escape') { setSugOpen(false); setSugIdx(-1); }
+                  }}
                   style={{ width: '100%', padding: `9px ${brandCfg?.portalVoz === false ? 16 : 46}px 9px 36px`,
                     border: '1.5px solid #e0e0d8', borderRadius: 28, fontSize: 16,
                     fontFamily: SANS, boxSizing: 'border-box', outline: 'none',
                     background: '#f7f7f4', color: '#1a1a18' }}
-                  onFocus={e => e.target.style.borderColor = G}
-                  onBlur={e => e.target.style.borderColor = '#e0e0d8'} />
+                  onFocus={e => { e.target.style.borderColor = G; if (busq.trim().length >= 2) setSugOpen(true); }}
+                  onBlur={e => { e.target.style.borderColor = '#e0e0d8'; setSugOpen(false); setSugIdx(-1); }} />
+                {/* Dropdown de autocompletar (criterio Amazon). onMouseDown+preventDefault
+                    evita que el blur del input cierre el panel antes del click. */}
+                {sugOpen && sugerencias.length > 0 && (
+                  <div role="listbox" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 50,
+                    background: '#fff', border: '1px solid #ececE6', borderRadius: 14, overflow: 'hidden',
+                    boxShadow: '0 12px 34px rgba(0,0,0,.14)' }}>
+                    {sugerencias.map((s, i) => {
+                      const on = i === sugIdx;
+                      return (
+                        <div key={s.id} role="option" aria-selected={on}
+                          onMouseDown={e => { e.preventDefault(); setVista('catalogo'); setDetalle(s); setSugOpen(false); setSugIdx(-1); }}
+                          onMouseEnter={() => setSugIdx(i)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', cursor: 'pointer',
+                            background: on ? '#f4f7f5' : '#fff', borderBottom: i < sugerencias.length - 1 ? '1px solid #f4f4f0' : 'none' }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 8, flexShrink: 0, background: '#f7f7f4',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {s.imagen_url
+                              ? <img src={s.imagen_url} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                              : <span style={{ color: GRAY }}>{Icon.search}</span>}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: INK, fontFamily: SANS,
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nombre}</div>
+                            {(s.marca || s.categoria) && (
+                              <div style={{ fontSize: 11.5, color: GRAY, fontFamily: SANS,
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.marca || s.categoria}</div>
+                            )}
+                          </div>
+                          {s.precio > 0 && (
+                            <div style={{ fontSize: 13, fontWeight: 700, color: G, flexShrink: 0 }}>{fmt.currency(s.precio)}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 {brandCfg?.portalVoz !== false && (
                   <button type="button" onClick={() => setVozOpen(true)}
                     aria-label="Pedir por voz" title="Pedí por voz"
@@ -3172,6 +4581,17 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 onMouseEnter={e => e.currentTarget.style.background='#f7f7f4'}
                 onMouseLeave={e => e.currentTarget.style.background='transparent'}>
                 {Icon.history} Mis pedidos
+              </button>
+              <button onClick={() => { setUdOpen(false); setVista('listas'); setDetalle(null); }} style={{
+                display: 'flex', alignItems: 'center', gap: 9, width: '100%',
+                padding: '9px 16px', border: 'none', background: 'transparent',
+                fontSize: 13, color: '#3a3a32', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}
+                onMouseEnter={e => e.currentTarget.style.background='#f7f7f4'}
+                onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+                </svg>
+                Mis listas{listas.length > 0 ? ` (${listas.length})` : ''}
               </button>
               <button onClick={() => { if (!isPortalDemo) { setUdOpen(false); setShowEstadoCuenta(true); } }} style={{ ...(isPortalDemo ? {opacity:0.4,pointerEvents:'none'} : {}),
                 display: 'flex', alignItems: 'center', gap: 9, width: '100%',
@@ -3407,7 +4827,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       {vista === 'catalogo' && detalle && (
         <div key={detalle.id} className="pz-fade">
           <ProductDetail item={detalle} carrito={carrito} onAdd={(it, v) => addItem(it, v, 'ficha')} onRemove={removeItem} onSetQty={setItemQty}
-            brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)} />
+            brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)}
+            items={items} coBuy={coBuy} social={social} socialOn={socialOn}
+            onOpen={setDetalle} onPickVariants={setPickSheet} demo={isPortalDemo}
+            zona={effectiveSession?.zona} entregaCorta={entregaCortaCard} />
         </div>
       )}
       {vista === 'catalogo' && !detalle && (
@@ -3422,9 +4845,22 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               <p style={{ fontSize: 13, color: '#6a6a68', margin: 0, lineHeight: 1.5 }}>{portalBloqueado}</p>
             </div>
           ) : loading ? (
+            /* Skeleton que CALCA la forma de la card real (foto + categoría + 2
+               líneas de nombre + precio + botón). Al llegar los productos encajan
+               en el mismo molde → sin "salto" de layout. Las medidas espejan
+               ProductCard: imagen imgH (120/160), cuerpo padding 10/12/12. */
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
               {[...Array(8)].map((_, i) => (
-                <div key={i} className="sk-shimmer" style={{ borderRadius: 14, height: 240, border: '1px solid #efefeb' }} />
+                <div key={i} style={{ background: '#fff', borderRadius: 16, border: '1px solid #f0f0ec', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  <div className="sk-shimmer" style={{ height: isMobile ? 120 : 160 }} />
+                  <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="sk-shimmer" style={{ height: 9,  width: '40%', borderRadius: 4 }} />
+                    <div className="sk-shimmer" style={{ height: 11, width: '92%', borderRadius: 4 }} />
+                    <div className="sk-shimmer" style={{ height: 11, width: '64%', borderRadius: 4 }} />
+                    <div className="sk-shimmer" style={{ height: 15, width: '46%', borderRadius: 4, marginTop: 6 }} />
+                    <div className="sk-shimmer" style={{ height: 38, width: '100%', borderRadius: 8, marginTop: 4 }} />
+                  </div>
+                </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -3439,8 +4875,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               <p style={{ fontSize: 13, color: GRAY, margin: 0, lineHeight: 1.5 }}>
                 {items.length === 0 ? 'Volvé a intentar más tarde.' : `No encontramos nada para "${busq}".`}
               </p>
-              {(busq || catFil !== 'Todos') && items.length > 0 && (
-                <button onClick={() => { setBusq(''); setCatFil('Todos'); }} style={{
+              {(busq || catFil !== 'Todos' || nFiltros > 0) && items.length > 0 && (
+                <button onClick={() => { setBusq(''); setCatFil('Todos'); limpiarFiltros(); }} style={{
                   marginTop: 18, padding: '10px 20px', background: G, color: '#fff', border: 'none',
                   borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>
                   Limpiar búsqueda
@@ -3449,16 +4885,150 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
             </div>
           ) : (
             <>
-              <div style={{ fontSize: 12, color: GRAY, marginBottom: 14 }}>
-                {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
+              {/* Vidriera (home): sólo cuando no hay búsqueda ni filtro activo. Al
+                  buscar o filtrar, esto se colapsa y el grid pasa a ser "resultados"
+                  (patrón Amazon: home vs. página de resultados).
+                  FLAG: por ahora la vidriera se muestra sólo en el catálogo de PRUEBA
+                  (demo) o si el org la habilita con brandCfg.homeVidriera=true. Así
+                  queda ARMADA sin aplicarla a clientes reales hasta prender el flag. */}
+              {(() => {
+                const vidrieraEnabled = isPortalDemo || brandCfg?.homeVidriera === true;
+                const homeContext = catFil === 'Todos' && !subFil && !busq;
+                // Home puro (sólo vidriera, sin grilla). El catálogo completo aparece
+                // cuando el cliente toca "Ver todo", elige categoría o busca.
+                const showVidriera = vidrieraEnabled && homeContext && !verTodoCatalogo;
+                const showBackToHome = vidrieraEnabled && homeContext && verTodoCatalogo;
+                if (showVidriera) return (
+                  <PortalHome
+                    items={items} buyAgain={buyAgain} recommended={recommended}
+                    onRepetirTodo={repetirHabituales}
+                    catArbol={catArbol} cats={cats} brandCfg={brandCfg} brandNombre={brandNombre}
+                    clienteNombre={effectiveSession?.nombre}
+                    clienteRut={effectiveSession?.rut}
+                    clienteContacto={effectiveSession?.contacto}
+                    isMobile={isMobile} carrito={carrito}
+                    addItem={addItem} removeItem={removeItem}
+                    onOpen={setDetalle} onPickVariants={setPickSheet}
+                    social={social} socialOn={socialOn} entregaCorta={entregaCortaCard}
+                    onSelectCat={(cat) => { setVista('catalogo'); setCatFil(cat); setSubFil(''); setDetalle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    onVerTodo={() => { setVerTodoCatalogo(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  />
+                );
+                return (<>
+              {showBackToHome && (
+                <button onClick={() => { setVerTodoCatalogo(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer',
+                    color: G, fontWeight:700, fontSize:13.5, fontFamily: SANS, padding:'2px 0', marginBottom:12 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                  Volver al inicio
+                </button>
+              )}
+              <div id="pz-todo-catalogo" style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+                {showBackToHome && (
+                  <h2 style={{ fontSize: 19, fontWeight: 800, color: '#12120f', margin: 0, letterSpacing: -.3 }}>Todo el catálogo</h2>
+                )}
+                <span style={{ fontSize: 12, color: GRAY }}>
+                  {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
+                </span>
               </div>
+              {/* Barra de orden + filtros facetados (contexto "resultados", estilo casa).
+                  Genérico por-org: marcas y tramos de precio salen del catálogo, no se
+                  hardcodean. En mobile los filtros van a un sheet; el orden queda inline. */}
+              {(() => {
+                const chip = (active) => ({
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 50,
+                  border: `1px solid ${active ? G : '#e3e0d6'}`, background: active ? G : '#fff',
+                  color: active ? '#fff' : INK, fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: SANS, whiteSpace: 'nowrap' });
+                const money = (n) => '$' + Number(n).toLocaleString('es-UY');
+                const OrdenSelect = (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ fontSize: 12, color: GRAY, fontWeight: 600 }}>Ordenar</span>
+                    <select value={orden} onChange={e => setOrden(e.target.value)} style={{
+                      padding: '7px 30px 7px 12px', borderRadius: 50, border: '1px solid #e3e0d6', background: '#fff',
+                      color: INK, fontSize: 12.5, fontWeight: 600, fontFamily: SANS, cursor: 'pointer',
+                      appearance: 'none', WebkitAppearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b66' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                      backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}>
+                      <option value="relevancia">Relevancia</option>
+                      <option value="precio_asc">Precio: menor a mayor</option>
+                      <option value="precio_desc">Precio: mayor a menor</option>
+                      <option value="nombre">Nombre (A–Z)</option>
+                    </select>
+                  </div>
+                );
+                const facetChips = (
+                  <>
+                    {hayOfertas && (
+                      <button onClick={() => setFOfertas(v => !v)} style={chip(fOfertas)}>Ofertas</button>
+                    )}
+                    {hayAgotados && (
+                      <button onClick={() => setFStock(v => !v)} style={chip(fStock)}>En stock</button>
+                    )}
+                    {precioBuckets.map(v => (
+                      <button key={v} onClick={() => setFPrecioMax(fPrecioMax === v ? null : v)} style={chip(fPrecioMax === v)}>Hasta {money(v)}</button>
+                    ))}
+                    {marcasDisponibles.slice(0, 12).map(m => (
+                      <button key={m} onClick={() => toggleMarca(m)} style={chip(fMarcas.includes(m))}>{m}</button>
+                    ))}
+                  </>
+                );
+                const hayFacetas = hayOfertas || hayAgotados || precioBuckets.length > 0 || marcasDisponibles.length > 0;
+                if (isMobile) {
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      {hayFacetas && (
+                        <button onClick={() => setFiltrosOpen(true)} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 50,
+                          border: `1px solid ${nFiltros ? G : '#e3e0d6'}`, background: nFiltros ? G : '#fff',
+                          color: nFiltros ? '#fff' : INK, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                          Filtros{nFiltros ? ` · ${nFiltros}` : ''}
+                        </button>
+                      )}
+                      <div style={{ marginLeft: 'auto' }}>{OrdenSelect}</div>
+                      {filtrosOpen && (
+                        <div onClick={() => setFiltrosOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(20,18,12,.4)', zIndex: 9000, display: 'flex', alignItems: 'flex-end' }}>
+                          <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: '#fff', borderRadius: '18px 18px 0 0', padding: '18px 18px 24px', maxHeight: '70vh', overflowY: 'auto' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                              <span style={{ fontFamily: DISPLAY, fontSize: 19, color: INK }}>Filtros</span>
+                              <button onClick={() => setFiltrosOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{facetChips}</div>
+                            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                              <button onClick={limpiarFiltros} disabled={!nFiltros} style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 50, border: '1px solid #e3e0d6', background: '#fff', color: nFiltros ? INK : '#bbb', fontSize: 13, fontWeight: 600, cursor: nFiltros ? 'pointer' : 'default', fontFamily: SANS }}>Limpiar</button>
+                              <button onClick={() => setFiltrosOpen(false)} style={{ flex: 1, padding: '11px 16px', borderRadius: 50, border: 'none', background: G, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Ver {filtered.length} producto{filtered.length !== 1 ? 's' : ''}</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                      {facetChips}
+                      {nFiltros > 0 && (
+                        <button onClick={limpiarFiltros} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: GRAY, fontSize: 12.5, fontWeight: 600, fontFamily: SANS, textDecoration: 'underline', padding: '7px 4px' }}>Limpiar ({nFiltros})</button>
+                      )}
+                    </div>
+                    {OrdenSelect}
+                  </div>
+                );
+              })()}
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
                 {filtered.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
                     qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} onOpen={setDetalle}
-                    onPickVariants={setPickSheet} />
+                    onPickVariants={setPickSheet} social={socialOn ? social[item.id] : null}
+                    entregaCorta={entregaCortaCard} />
                 ))}
               </div>
+                </>);
+              })()}
             </>
           )}
         </main>
@@ -3493,7 +5063,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 {habituales.map(item => (
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
                     qty={carrito[item.id] || 0} onAdd={(it, v) => addItem(it, v, 'volver_a_pedir')} onRemove={removeItem}
-                    onPickVariants={setPickSheet}
+                    onPickVariants={setPickSheet} social={socialOn ? social[item.id] : null}
+                    entregaCorta={entregaCortaCard}
                     onOpen={(it) => { setVista('catalogo'); setDetalle(it); }} />
                 ))}
               </div>
@@ -3535,6 +5106,90 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
             if (omitidos > 0) setReorderMsg(`${omitidos} producto${omitidos !== 1 ? 's' : ''} ya no está${omitidos !== 1 ? 'n' : ''} disponible${omitidos !== 1 ? 's' : ''} y no se agregó${omitidos !== 1 ? 'aron' : ''}.`);
             setTimeout(() => setShowCart(true), 200);
           }} />
+        </main>
+      )}
+
+      {vista === 'listas' && (
+        <main style={{ maxWidth: 700, margin: '0 auto', padding: '20px 24px 60px' }}>
+          <button onClick={() => { setVista('catalogo'); setCatFil('Todos'); setBusq(''); }} style={{
+            display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
+            color: G, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+            padding: 0, marginBottom: 14 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Volver al catálogo
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>Mis listas</h1>
+          <p style={{ fontSize: 13, color: GRAY, margin: '0 0 18px', lineHeight: 1.5 }}>
+            Guardá tu pedido habitual una vez y repetilo en un toque. Armás el carrito y tocás "Guardar como lista".
+          </p>
+          {listas.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '50px 24px', maxWidth: 440, margin: '0 auto' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f4f4f0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: GRAY }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+                </svg>
+              </div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', margin: '0 0 6px' }}>Todavía no tenés listas guardadas</p>
+              <p style={{ fontSize: 13, color: GRAY, margin: '0 0 18px', lineHeight: 1.5 }}>
+                Agregá productos al carrito y guardalos como lista para repetir tu pedido cuando quieras.
+              </p>
+              <button onClick={() => { setVista('catalogo'); setCatFil('Todos'); }} style={{
+                padding: '10px 20px', background: G, color: '#fff', border: 'none',
+                borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>
+                Ir al catálogo
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {listas.map(l => {
+                const keys = Object.keys(l.items || {});
+                const nombres = keys.map(k => {
+                  const baseId = k.indexOf('::') === -1 ? k : k.slice(0, k.indexOf('::'));
+                  return items.find(p => p.id === baseId)?.nombre;
+                }).filter(Boolean);
+                const totalUnid = Object.values(l.items || {}).reduce((s, q) => s + (Number(q) || 0), 0);
+                return (
+                  <div key={l.id} style={{ border: '1px solid #ececec', borderRadius: 14, padding: '14px 16px', background: '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18' }}>{l.nombre}</div>
+                        <div style={{ fontSize: 12, color: GRAY, marginTop: 2 }}>
+                          {keys.length} producto{keys.length !== 1 ? 's' : ''} · {totalUnid} unidad{totalUnid !== 1 ? 'es' : ''}
+                        </div>
+                        {nombres.length > 0 && (
+                          <div style={{ fontSize: 12, color: '#8a8a82', marginTop: 6, lineHeight: 1.4,
+                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {nombres.slice(0, 6).join(' · ')}{nombres.length > 6 ? ` +${nombres.length - 6} más` : ''}
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={() => eliminarLista(l.id)} aria-label={`Eliminar lista ${l.nombre}`} style={{
+                        background: 'none', border: 'none', color: '#b0b0a8', cursor: 'pointer', padding: 4, flexShrink: 0 }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#dc2626'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#b0b0a8'}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <button onClick={() => cargarLista(l)} style={{
+                      marginTop: 12, width: '100%', padding: '10px 0', background: G, color: '#fff',
+                      border: 'none', borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>
+                      </svg>
+                      Cargar al carrito
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </main>
       )}
 
@@ -3596,6 +5251,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           coBuy={coBuy} recommended={recommended}
           onAdd={(it, v) => addItem(it, v, 'carrito_mas')} onAddSugerido={(it) => addItem(it, undefined, 'carrito_sugerido')} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
+          onGuardarLista={guardarLista}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />
       )}
     </div>

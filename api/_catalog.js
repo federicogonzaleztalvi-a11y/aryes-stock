@@ -104,6 +104,31 @@ export function sanitizeVariants(raw) {
   return { label, options };
 }
 
+// Normaliza los atributos flexibles (multi-rubro) del producto: lista libre de
+// clave/valor que el distribuidor carga según su vertical (vino, ferretería, etc.).
+// Forma esperada: [{ k, v }, ...]. Devuelve [] si no hay filas válidas. Recorta
+// espacios, descarta filas sin clave o sin valor, deduplica por clave y limita el
+// tamaño (defensa: nadie ve una ficha con 200 filas ni strings gigantes).
+export function sanitizeAtributos(raw) {
+  let arr = raw;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch { return []; } }
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const row of arr) {
+    if (!row || typeof row !== 'object') continue;
+    const k = String(row.k ?? '').trim().slice(0, 60);
+    const v = String(row.v ?? '').trim().slice(0, 200);
+    if (!k || !v) continue;
+    const key = k.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ k, v });
+    if (out.length >= 30) break;
+  }
+  return out;
+}
+
 /**
  * Devuelve el catálogo de una org con los precios resueltos para un cliente.
  * Sin clienteId → catálogo público (precio_venta base).
@@ -123,7 +148,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
 
   // ── 1. Productos + reservas activas (ATP) + overrides del cliente ──────────
   const prodQuery = [
-    'select=uuid,name,unit,category,subcategoria,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja',
+    'select=uuid,name,unit,category,subcategoria,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja,atributos',
     `org_id=eq.${org}`,
     'order=category.asc,name.asc',
     'limit=500',
@@ -154,8 +179,19 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
   if (ovQuery) promises.push(fetch(`${SB_URL}/rest/v1/client_product_overrides?${ovQuery}`, { headers }));
 
   const [prodRes, resRes, catRes, ovRes] = await Promise.all(promises);
-  if (!prodRes.ok) throw new Error('products fetch failed: ' + prodRes.status);
-  const products = await prodRes.json();
+  let products;
+  if (prodRes.ok) {
+    products = await prodRes.json();
+  } else {
+    // Reintento sin `atributos`: la columna es opt-in (multi-rubro) y puede no existir
+    // todavía si el distribuidor no corrió la migración. En ese caso PostgREST devuelve
+    // 400 por columna desconocida; caemos al select sin ese campo para no romper el
+    // catálogo. sanitizeAtributos(undefined) → [] y el portal sigue igual.
+    const fbQuery = prodQuery.replace(',atributos', '');
+    const fbRes = await fetch(`${SB_URL}/rest/v1/products?${fbQuery}`, { headers });
+    if (!fbRes.ok) throw new Error('products fetch failed: ' + prodRes.status);
+    products = await fbRes.json();
+  }
 
   const reservedMap = {};
   if (resRes.ok) {
@@ -328,12 +364,17 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       stock: physicalStock,
       available_stock: availableStock,
       reserved_stock: reservedStock,
+      // Punto de reorden del distribuidor: umbral REAL para la señal de "pocas
+      // unidades" en el portal (no un número inventado). 0/ausente = no marca escasez.
+      min_stock: p.min_stock != null ? Number(p.min_stock) : 0,
       iva_rate: p.iva_rate != null ? Number(p.iva_rate) : null,
       imagen_url: p.imagen_url || null,
       min_order_qty: p.min_order_qty != null ? Number(p.min_order_qty) : 1,
       descripcion: p.descripcion || '',
       volume_tiers: volTiers,
       variants: sanitizeVariants(p.variants),
+      // Atributos flexibles por vertical (ficha técnica multi-rubro). [] si no hay.
+      atributos: sanitizeAtributos(p.atributos),
       // Caja cerrada: en el camino viejo solo si la lista lo habilita; en v2 la
       // habilita la regla 'caja'. Si va en 0, el carrito no aplica descuento por caja.
       unidades_por_caja: cajaUnidItem,

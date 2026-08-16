@@ -43,6 +43,7 @@ export interface Product {
   category?: string;
   brand?: string;
   history: HistoryEntry[];  // monthly consumption history
+  atributos?: { k: string; v: string }[];  // ficha técnica flexible por rubro (clave/valor)
   updatedAt?:      string;   // ISO 8601
   costSource?:     string;   // 'factura F-001 · proveedor' — where unitCost came from
   costUpdatedAt?:  string;   // ISO 8601 — when unitCost was last auto-updated

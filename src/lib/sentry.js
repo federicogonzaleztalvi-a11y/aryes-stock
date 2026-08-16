@@ -3,6 +3,11 @@ import * as Sentry from '@sentry/react';
 Sentry.init({
   dsn: "https://d2e269337ba2248a447ef14c2c8fe3ca@o4511125463105536.ingest.us.sentry.io/4511125475819520",
   environment: import.meta.env.MODE || 'production',
+  // Sólo reportar desde el build de producción. En `npm run dev` los errores ya se
+  // ven en consola, y Fast Refresh/HMR genera transitorios (ej. "Cannot read
+  // properties of null (reading 'useRef')") que NO son bugs reales → si Sentry los
+  // manda, las alertas por mail gritan cuando no hay incendio y pierden valor.
+  enabled: import.meta.env.PROD,
   tracesSampleRate: 0.1,
   integrations: [
     Sentry.browserTracingIntegration(),

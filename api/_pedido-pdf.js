@@ -57,6 +57,7 @@ export function generarOrdenPDF(data) {
       const hor = (c.horarioDesde && c.horarioHasta) ? (c.horarioDesde + ' a ' + c.horarioHasta) : '';
       fila('Horario de entrega', hor);
       fila('Zona', c.zonaEntrega);
+      fila('Entrega estimada', data.entregaEstimada);
       fila('Condicion de pago', condPagoLabel(c.condPago));
 
       y += 8;
