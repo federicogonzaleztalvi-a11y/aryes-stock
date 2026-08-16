@@ -248,7 +248,7 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
 
   const G = '#059669';
   return (
-    <div style={{ background:'#fff', border:'1px solid #e8e4de', borderRadius:10, padding:'16px 20px' }}>
+    <div style={{ background:'#fff', border:'1px solid #e8e4de', borderRadius:10, padding:'16px 20px', minWidth:0 }}>
       <div style={{ fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, color:'#1a1a18' }}>Vidriera / Portada</div>
       <div style={{ fontFamily:'Inter,sans-serif', fontSize:12, color:'#6a6a68', marginTop:2, marginBottom:16, maxWidth:520 }}>
         Vos elegís <b>qué</b> mostrar; Pazque lo presenta con el diseño de la casa. Ideal para anunciar una novedad o destacar productos en la portada del portal.
@@ -417,7 +417,10 @@ function VidrieraPanel({ brandCfg, setBrandCfg }) {
               return (
                 <div key={cat}>
                   <div style={{ fontFamily:'Inter,sans-serif', fontSize:12.5, fontWeight:600, color:'#1a1a18', marginBottom:6 }}>{cat}</div>
-                  <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4 }}>
+                  {/* flexWrap (no scroll horizontal): las miniaturas bajan de línea y NUNCA
+                      fuerzan el ancho del contenedor. Con overflowX:auto una tira larga
+                      ensanchaba toda la grilla del tab y empujaba los toggles fuera de vista. */}
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                     <button onClick={() => setCatPortada(cat, null)} title="Portada automática"
                       style={{ flexShrink:0, width:56, height:56, borderRadius:8, cursor:'pointer',
                         border: sel === null ? `2px solid ${G}` : '1px solid #e8e4de',
