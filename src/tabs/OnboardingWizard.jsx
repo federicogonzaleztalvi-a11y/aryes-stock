@@ -143,7 +143,7 @@ function StepBrand({ data, setData, onBack, onNext, onSkip }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <input type="color" value={data.color} onChange={e => setData(d => ({ ...d, color: e.target.value }))} style={{ width: 44, height: 44, border: 'none', borderRadius: 8, cursor: 'pointer', padding: 0 }} />
           <input style={{ ...inp, width: 120 }} value={data.color} onChange={e => setData(d => ({ ...d, color: e.target.value }))} placeholder="#059669" />
-          <span style={{ fontSize: 12, color: T.textSm }}>← Se aplica al sidebar</span>
+          <span style={{ fontSize: 12, color: T.textSm }}>← Pinta el portal de tus clientes y el sidebar</span>
         </div>
       </Field>
       <BtnRow onBack={onBack} onSkip={onSkip} onNext={onNext} />

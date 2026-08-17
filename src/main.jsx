@@ -94,10 +94,15 @@ function LoginScreen({ onLogin, onExplore }) {
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + data.access_token }
       });
       const users = await userR.json();
-      const role = users?.[0]?.role || 'operador';
-      const name = users?.[0]?.name || email.split('@')[0];
+      // Fallback al user_metadata del JWT: en el alta self-service, register.js graba
+      // org_id + role:'admin' en el metadata del auth. Si la fila public.users no está
+      // (insert "non-fatal" que pudo fallar), no degradamos a operador/__no_org__ —
+      // leemos el metadata para entrar como admin en la org correcta y ver el onboarding.
+      const meta = data.user?.user_metadata || {};
+      const role = users?.[0]?.role || meta.role || 'operador';
+      const name = users?.[0]?.name || meta.nombre || email.split('@')[0];
       const username = users?.[0]?.username || email.split('@')[0];
-      const orgId = users?.[0]?.org_id || getOrgId();
+      const orgId = users?.[0]?.org_id || meta.org_id || getOrgId();
       const expiresIn = (data.expires_in || 3600) * 1000;
       const session = { ...data, email, role, name, username, orgId, expiresAt: Date.now() + expiresIn };
       localStorage.setItem('aryes-session', JSON.stringify(session));

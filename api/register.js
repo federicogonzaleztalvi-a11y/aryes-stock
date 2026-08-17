@@ -157,8 +157,12 @@ async function handler(req, res) {
   });
 
   if (!userRes.ok) {
-    // Non-fatal — auth user and org exist, user table row is secondary
-    log.warn('register', 'public.users insert failed (non-fatal)', { orgId, email });
+    // Non-fatal para el usuario: auth + org existen y el login cae al user_metadata
+    // del JWT (org_id + role) para entrar bien igual. Pero lo logueamos como ERROR
+    // (no warn) para que dispare la alerta de la Torre de Control: si esto falla seguido,
+    // hay un problema de RLS/schema que hay que atacar en origen.
+    const uerr = await userRes.text().catch(() => '');
+    log.error('register', 'public.users insert failed (login usa metadata fallback)', { orgId, email, status: userRes.status, uerr: uerr.slice(0, 300) });
   }
 
   log.info('register', 'new org registered', { orgId, empresa: empresa.trim(), email });
