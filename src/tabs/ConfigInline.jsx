@@ -1837,6 +1837,23 @@ export default function ConfigInline({
                   </label>
                 </div>
 
+                {/* Toggle: Catálogo abierto a visitantes (sin precios) */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Catálogo abierto a visitantes</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Cualquier persona ve tus productos sin precios y sin iniciar sesión. Para ver precios y comprar debe ingresar o pedir acceso.</div>
+                  </div>
+                  <label style={{position:'relative',display:'inline-block',width:44,height:24,cursor:'pointer',flexShrink:0}}>
+                    <input type="checkbox" checked={brandCfg?.catalogoPublico===true} onChange={e=>{
+                      const updated = {...(brandCfg||{}), catalogoPublico: e.target.checked};
+                      setBrandCfg(updated);
+                      db.upsert('app_config', {key:'brandcfg',value:updated,org_id:getOrgId()}, 'key,org_id');
+                    }} style={{opacity:0,width:0,height:0}} />
+                    <span style={{position:'absolute',inset:0,background:brandCfg?.catalogoPublico===true?'#059669':'#ccc',borderRadius:12,transition:'.2s'}} />
+                    <span style={{position:'absolute',top:2,left:brandCfg?.catalogoPublico===true?22:2,width:20,height:20,background:'#fff',borderRadius:10,transition:'.2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
+                  </label>
+                </div>
+
                 {/* Pedido mínimo */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
                   <div>

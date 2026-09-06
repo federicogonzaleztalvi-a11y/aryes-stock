@@ -106,6 +106,34 @@ export default async function handler(req, res) {
       });
     }
 
+    // ── Modo público (visitante sin sesión) ────────────────────────────────────
+    // Sin clienteId = nadie logueado. Solo mostramos el catálogo abierto si la org
+    // habilitó `catalogoPublico`. Si está apagado (default), el front debe pedir
+    // login/acceso: devolvemos vacío con requiereLogin. Server-authoritative: la
+    // decisión NO depende del navegador. Si está encendido, entregamos el catálogo
+    // pero SIN precios ni descuentos (se ganan al iniciar sesión).
+    if (!clienteId) {
+      if (portalCfg.catalogoPublico !== true) {
+        setHeaders(res);
+        return res.status(200).json({
+          items: [], categorias: [], org,
+          requiereLogin: true,
+          portalCfg,
+        });
+      }
+      const itemsPublicos = items.map(p => {
+        const q = { ...p, precio: 0, precioBase: 0, volume_tiers: [], descuento_caja: 0 };
+        delete q.descGlobal; delete q.reglasV2;
+        return q;
+      });
+      setHeaders(res);
+      return res.status(200).json({
+        items: itemsPublicos, categorias, categoriasArbol, org,
+        publico: true,
+        portalCfg,
+      });
+    }
+
     // ── Cross-sell recommendations (only when clienteId is provided) ──────────
     let recommended = [];
     let buyAgain = [];

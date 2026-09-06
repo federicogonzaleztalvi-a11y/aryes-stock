@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Catálogo abierto a visitantes (sin precios)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#28271f; --gray:#7a7a74; --green:#059669; --green-d:#047857;
+    --line:#ececec; --tile:#f4f2ec; --bg:#e7e2d8;
+    --sans:'DM Sans',system-ui,sans-serif; --display:'Playfair Display',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:var(--sans);color:var(--ink);
+    padding:30px 16px 70px;display:flex;flex-direction:column;align-items:center}
+  .note{max-width:760px;text-align:center;color:#6b6b66;font-size:13px;line-height:1.55;margin:0 0 6px}
+  .note b{color:var(--ink)}
+  h1.title{font-family:var(--display);font-size:24px;margin:0 0 6px;text-align:center}
+  .flagpill{display:inline-flex;align-items:center;gap:7px;background:#e7f6ef;color:var(--green-d);
+    font-size:12px;font-weight:600;padding:6px 12px;border-radius:99px;margin:4px 0 26px}
+  .flagpill .dot{width:8px;height:8px;border-radius:99px;background:var(--green)}
+
+  /* ===== browser frame (storefront desktop) ===== */
+  .browser{width:900px;max-width:100%;background:#fff;border-radius:14px;overflow:hidden;
+    box-shadow:0 22px 60px rgba(40,39,31,.22);border:1px solid #d8d3c8}
+  .chrome{height:38px;background:#f3f1ec;display:flex;align-items:center;gap:7px;padding:0 14px;border-bottom:1px solid var(--line)}
+  .chrome i{width:11px;height:11px;border-radius:99px;background:#d9d5cc;display:inline-block}
+  .chrome .url{flex:1;margin-left:10px;background:#fff;border:1px solid #e3e0d8;border-radius:7px;
+    height:22px;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#8a897f}
+  .chrome .url b{color:#3a3a34;font-weight:600}
+
+  /* portal header */
+  .phead{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .mk{width:32px;height:32px;border-radius:9px;background:var(--green);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+  .brand .nm{font-family:var(--display);font-size:18px;font-weight:700}
+  .brand .nm span{display:block;font-family:var(--sans);font-size:10.5px;color:var(--gray);font-weight:500;letter-spacing:.3px}
+  .cta{display:flex;gap:10px;align-items:center}
+  .btn{border:none;border-radius:9px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;padding:9px 16px}
+  .btn.ghost{background:#fff;border:1.5px solid var(--green);color:var(--green-d)}
+  .btn.solid{background:var(--green);color:#fff}
+
+  /* banner aviso precios */
+  .infobar{background:#f0faf5;border-bottom:1px solid #dceee4;padding:9px 22px;font-size:12.5px;color:var(--green-d);
+    display:flex;align-items:center;gap:8px;justify-content:center}
+  .infobar b{font-weight:700}
+
+  /* search + chips */
+  .tools{padding:16px 22px 6px}
+  .search{width:100%;height:40px;border:1px solid #e3e0d8;border-radius:10px;background:#faf9f6;
+    display:flex;align-items:center;padding:0 14px;gap:9px;font-size:13px;color:#9a988f}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .chip{font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px;border:1px solid #e3e0d8;background:#fff;color:#55554e;cursor:pointer}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  /* grid */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:16px 22px 24px}
+  .card{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+  .ph{aspect-ratio:1/1;background:var(--tile);display:flex;align-items:center;justify-content:center;font-size:46px;position:relative}
+  .ph .tag{position:absolute;top:8px;left:8px;background:#fff;border:1px solid var(--line);border-radius:99px;font-size:9.5px;font-weight:700;color:#6a6a63;padding:3px 8px}
+  .cbody{padding:11px 12px 13px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .cname{font-size:13px;font-weight:600;line-height:1.3;min-height:34px}
+  .cmeta{font-size:11px;color:var(--gray)}
+  /* precio oculto → pill */
+  .pricepill{display:inline-flex;align-items:center;gap:6px;background:#eef7f2;color:var(--green-d);
+    font-size:11px;font-weight:600;padding:5px 9px;border-radius:8px;align-self:flex-start}
+  .pricepill .lk{font-size:11px}
+  .addbtn{margin-top:auto;background:var(--green);color:#fff;border:none;border-radius:9px;
+    font-family:var(--sans);font-size:12.5px;font-weight:600;padding:10px;cursor:pointer}
+
+  /* ===== insets: los dos caminos ===== */
+  .paths{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-top:34px;width:900px;max-width:100%}
+  .modal{flex:1;min-width:300px;background:#fff;border-radius:14px;border:1px solid #d8d3c8;
+    box-shadow:0 14px 40px rgba(40,39,31,.14);overflow:hidden}
+  .mtop{padding:16px 20px 4px}
+  .mtop .step{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:6px}
+  .mtop h3{margin:0 0 4px;font-size:17px}
+  .mtop p{margin:0;font-size:12.5px;color:var(--gray);line-height:1.5}
+  .mbody{padding:14px 20px 20px;display:flex;flex-direction:column;gap:11px}
+  .field label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);display:block;margin-bottom:5px}
+  .field .inp{height:40px;border:1px solid #e3e0d8;border-radius:8px;background:#faf9f6;display:flex;align-items:center;padding:0 12px;font-size:13px;color:#3a3a34}
+  .field .inp.ph{color:#a7a59c}
+  .row2{display:flex;gap:10px}
+  .row2 .field{flex:1}
+  .mbtn{background:var(--green);color:#fff;border:none;border-radius:9px;padding:12px;font-family:var(--sans);font-size:13.5px;font-weight:600;cursor:pointer;margin-top:2px}
+  .mhint{font-size:11.5px;color:var(--gray);text-align:center;line-height:1.5}
+  .mhint a{color:var(--green-d);font-weight:600;text-decoration:none}
+
+  .cap{width:900px;max-width:100%;margin-top:12px;text-align:center;font-size:12px;color:#8a897f}
+  @media(max-width:720px){
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .cta .lbl{display:none}
+  }
+</style>
+</head>
+<body>
+
+  <h1 class="title">Catálogo abierto a visitantes</h1>
+  <div class="flagpill"><span class="dot"></span> Config → Portal B2B → “Catálogo abierto a visitantes” · por-org, apagado por defecto</div>
+  <p class="note">Cualquier persona (sin ser cliente y sin iniciar sesión) ve <b>todo el catálogo, sin precios</b>. Para comprar tiene dos caminos: <b>Ingresá</b> (ya es cliente) o <b>Pedí acceso</b> (deja sus datos).</p>
+
+  <!-- ============ STOREFRONT PÚBLICO ============ -->
+  <div class="browser">
+    <div class="chrome">
+      <i></i><i></i><i></i>
+      <div class="url">🔒 pazque.com<b>/pedidos?org=distribuidora-demo</b></div>
+    </div>
+
+    <div class="phead">
+      <div class="brand">
+        <div class="mk">D</div>
+        <div class="nm">Distribuidora Demo<span>Catálogo mayorista</span></div>
+      </div>
+      <div class="cta">
+        <button class="btn ghost">Pedí acceso</button>
+        <button class="btn solid">Ingresá</button>
+      </div>
+    </div>
+
+    <div class="infobar">🔒 <span><b>Iniciá sesión</b> para ver precios y comprar. Mirá todo el catálogo libremente.</span></div>
+
+    <div class="tools">
+      <div class="search">🔎 Buscar productos…</div>
+      <div class="chips">
+        <div class="chip on">Todo</div>
+        <div class="chip">Almacén</div>
+        <div class="chip">Bebidas</div>
+        <div class="chip">Limpieza</div>
+        <div class="chip">Frescos</div>
+        <div class="chip">Panificados</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="ph">🫒<span class="tag">Almacén</span></div>
+        <div class="cbody">
+          <div class="cname">Aceite de oliva extra virgen 5 L</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">🧀<span class="tag">Frescos</span></div>
+        <div class="cbody">
+          <div class="cname">Queso muzzarella barra 3 kg</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">☕<span class="tag">Almacén</span></div>
+        <div class="cbody">
+          <div class="cname">Café tostado en grano 1 kg</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">🥤<span class="tag">Bebidas</span></div>
+        <div class="cbody">
+          <div class="cname">Gaseosa cola 2,25 L · pack x6</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">🍚<span class="tag">Almacén</span></div>
+        <div class="cbody">
+          <div class="cname">Arroz grano largo 25 kg</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">🧴<span class="tag">Limpieza</span></div>
+        <div class="cbody">
+          <div class="cname">Detergente concentrado 5 L</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">🥖<span class="tag">Panificados</span></div>
+        <div class="cbody">
+          <div class="cname">Pan de hamburguesa x48</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ph">🍅<span class="tag">Almacén</span></div>
+        <div class="cbody">
+          <div class="cname">Tomate triturado 3 kg · caja x6</div>
+          <div class="pricepill">🔒 <span>Precio al iniciar sesión</span></div>
+          <button class="addbtn">Ingresá para comprar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LOS DOS CAMINOS ============ -->
+  <div class="paths">
+    <!-- Camino A: Ingresá -->
+    <div class="modal">
+      <div class="mtop">
+        <div class="step">Camino A · ya sos cliente</div>
+        <h3>Ingresá</h3>
+        <p>Cliente ya cargado. Entra con su WhatsApp por código (OTP), sin contraseña.</p>
+      </div>
+      <div class="mbody">
+        <div class="field">
+          <label>WhatsApp</label>
+          <div class="inp">+598 9_ ___ ___</div>
+        </div>
+        <button class="mbtn">Enviarme el código</button>
+        <div class="mhint">Te mandamos un código de 6 dígitos por WhatsApp.<br><a>← Volver al catálogo</a></div>
+      </div>
+    </div>
+
+    <!-- Camino B: Pedí acceso -->
+    <div class="modal">
+      <div class="mtop">
+        <div class="step">Camino B · todavía no sos cliente</div>
+        <h3>Pedí acceso</h3>
+        <p>Deja sus datos y le llega el pedido al distribuidor para habilitarlo.</p>
+      </div>
+      <div class="mbody">
+        <div class="row2">
+          <div class="field"><label>Nombre</label><div class="inp ph">Tu nombre</div></div>
+          <div class="field"><label>WhatsApp</label><div class="inp ph">+598…</div></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Comercio</label><div class="inp ph">Nombre del local</div></div>
+          <div class="field"><label>Ciudad</label><div class="inp ph">Ciudad</div></div>
+        </div>
+        <button class="mbtn">Pedir acceso</button>
+        <div class="mhint">El distribuidor te contacta para habilitarte como cliente.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap">Mockup estático · datos de ejemplo. La marca, colores y productos salen de cada org. La feature viene <b>apagada</b> hasta que el distribuidor la prenda.</div>
+
+</body>
+</html>

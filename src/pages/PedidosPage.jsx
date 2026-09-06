@@ -352,7 +352,7 @@ function PortalDemoSelector({ onSelect }) {
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
-function LoginStep({ onLogin }) {
+function LoginStep({ onLogin, onBack, startLead }) {
   const [tel,     setTel]     = useState('');
   const [code,    setCode]    = useState('');
   const [step,    setStep]    = useState('tel');
@@ -367,7 +367,7 @@ function LoginStep({ onLogin }) {
   const [brandName, setBrandName] = useState('');
   // Captación de prospectos: ¿esta org tiene prendido el "Pedí acceso"? (flag por-org)
   const [captacion, setCaptacion] = useState(false);
-  const [showLead,  setShowLead]  = useState(false);
+  const [showLead,  setShowLead]  = useState(!!startLead);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -433,6 +433,18 @@ function LoginStep({ onLogin }) {
           así descubre que existe la app antes de ingresar. Se auto-oculta si ya
           está instalada o si la cerró. */}
       <InstallAppBanner brandNombre={brandName} />
+      {onBack && (
+        <div style={{ padding: '14px 20px 0' }}>
+          <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'none', border: 'none', padding: 0, color: '#6a6a68', cursor: 'pointer',
+            fontFamily: SANS, fontSize: 13, fontWeight: 500 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Volver al catálogo
+          </button>
+        </div>
+      )}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -857,7 +869,7 @@ function EntregaHint({ reparto, zona }) {
 }
 
 // ── Product Card ──────────────────────────────────────────────────────────────
-function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants, social, entregaCorta }) {
+function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, onPickVariants, social, entregaCorta, publico }) {
   const [imgErr, setImgErr] = useState(false);
   const [hov, setHov] = useState(false);
   const [pressed, setPressed] = useState(false); // feedback táctil (equiv. a hover en touch)
@@ -969,8 +981,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
             {mostrarDto && <div style={{ marginTop: 4 }}><PrecioAntes base={refBase} pct={pctEff} /></div>}
             <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: mostrarDto ? 0 : 4 }}>
               {item.precio > 0 ? fmt.currency(precioEff) : (
-                <span style={{ fontSize: 11, fontWeight: 600, color: GRAY, background: '#f0f0ec',
-                  padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>Consultar precio</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: publico ? G : GRAY,
+                  background: publico ? '#f0fdf4' : '#f0f0ec', border: publico ? '1px solid #bbf7d0' : 'none',
+                  padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>
+                  {publico ? 'Precios al iniciar sesión' : 'Consultar precio'}
+                </span>
               )}
               {/* El precio mostrado es el del bulto entero (el importador normaliza
                   precios por kilo/litro al tamaño del bulto). Por eso NO mostramos
@@ -1032,6 +1047,14 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>+</button>
           </div>
+        ) : publico ? (
+          <button onClick={() => onAdd(item)} style={{
+            marginTop: 4, padding: '11px 0', background: G, color: '#fff',
+            border: 'none', borderRadius: 8, cursor: 'pointer',
+            fontSize: 12, fontWeight: 600, fontFamily: SANS,
+          }}>
+            Ingresá para comprar
+          </button>
         ) : (
           <button onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
             marginTop: 4, padding: '11px 0',
@@ -1354,7 +1377,7 @@ function FichaRow({ label, value, last }) {
   );
 }
 function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isMobile, onBack,
-                         items, coBuy, social, socialOn, onOpen, onPickVariants, demo, zona, entregaCorta }) {
+                         items, coBuy, social, socialOn, onOpen, onPickVariants, demo, zona, entregaCorta, publico }) {
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
   const qty = carrito[item.id] || 0;
   // Precio grande CONSCIENTE de la cantidad ya en el carrito (igual que la card):
@@ -1679,6 +1702,18 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               )}
               </>
             )
+          ) : publico ? (
+            /* Modo público: sin precios ni WhatsApp. CTA para iniciar sesión y comprar. */
+            <div style={{ maxWidth: 420 }}>
+              <button onClick={() => onAdd(item)} style={{
+                width: '100%', padding: '15px 0', background: G, color: '#fff', border: 'none',
+                borderRadius: 12, cursor: 'pointer', fontSize: 15, fontWeight: 700, fontFamily: SANS }}>
+                Ingresá para ver precios y comprar
+              </button>
+              <div style={{ textAlign: 'center', fontSize: 12, color: GRAY, marginTop: 10 }}>
+                Los precios son visibles para clientes registrados
+              </div>
+            </div>
           ) : (
             <div style={{ maxWidth: 420 }}>
               {waLink ? (
@@ -1785,6 +1820,12 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
                 </button>
               )}
             </>
+          ) : publico ? (
+            <button onClick={() => onAdd(item)} style={{
+              flex: 1, textAlign: 'center', padding: '14px 0', background: G, color: '#fff',
+              border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, fontFamily: SANS, cursor: 'pointer' }}>
+              Ingresá para ver precios
+            </button>
           ) : (
             waLink ? (
               <a href={waLink} target="_blank" rel="noreferrer" style={{
@@ -3251,7 +3292,7 @@ function CategoryTile({ cat, imgs, coverOverride, featured, isMobile, onClick })
 function PortalHome({ items, buyAgain, recommended, onRepetirTodo, catArbol, cats, brandCfg, brandNombre, clienteNombre,
                       clienteRut, clienteContacto,
                       isMobile, carrito, addItem, removeItem, onOpen, onPickVariants, onSelectCat, onVerTodo,
-                      social, socialOn, entregaCorta }) {
+                      social, socialOn, entregaCorta, publico }) {
   const byId = (id) => items.find(p => p.id === id);
   const cardW = isMobile ? 158 : 196;
 
@@ -3422,7 +3463,7 @@ function PortalHome({ items, buyAgain, recommended, onRepetirTodo, catArbol, cat
 
   const cardProps = (item) => ({ item, brandCfg, carrito, qty: carrito[item.id] || 0,
     onAdd: addItem, onRemove: removeItem, onOpen, onPickVariants,
-    social: socialOn ? social?.[item.id] : null, entregaCorta });
+    social: socialOn ? social?.[item.id] : null, entregaCorta, publico });
 
   return (
     <div style={{ background:'transparent',
@@ -3614,6 +3655,16 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [coBuy, setCoBuy] = useState({}); // productoId -> [ids que suele pedirse junto]
   const [social, setSocial] = useState({}); // productoId -> { c: nº clientes, best: bool } (prueba social real)
   const [items,    setItems]    = useState([]);
+  // ── Modo público (visitante sin login viendo el catálogo abierto, sin precios) ──
+  // publicMode: la org habilitó `catalogoPublico` y estamos mostrando el catálogo
+  // a alguien sin sesión. publicChecked: ya consultamos al server si aplica (para
+  // no parpadear login antes de saberlo). showLogin/loginStart: al querer comprar,
+  // mostramos el LoginStep (A: ingresá por OTP / B: pedí acceso).
+  const [publicMode,    setPublicMode]    = useState(false);
+  const [publicChecked, setPublicChecked] = useState(false);
+  const [showLogin,     setShowLogin]     = useState(false);
+  const [loginStart,    setLoginStart]    = useState('login'); // 'login' | 'lead'
+  const [capActiva,     setCapActiva]     = useState(false);   // ¿la org tiene "Pedí acceso" activo?
   const [cats,     setCats]     = useState([]);
   const [catArbol, setCatArbol] = useState([]); // [{nombre, subcategorias:[]}] — orden del admin
   const [subFil,   setSubFil]   = useState(''); // subcategoría activa dentro de la categoría madre
@@ -4179,6 +4230,52 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
 
     useEffect(() => { if (orgReady && session) loadCatalogo(session); }, [orgReady, session, loadCatalogo]);
 
+  // ── Bootstrap de modo público ──────────────────────────────────────────────
+  // Sin sesión (y sin demo): preguntamos al server si esta org tiene el catálogo
+  // abierto a visitantes. Si sí, cargamos productos SIN precios y mostramos el
+  // catálogo directo (nivel Shopify: se navega sin login). Si no, publicChecked
+  // queda en true y cae al LoginStep. El endpoint sin `cliente` está cacheado en
+  // CDN (s-maxage=60), así que para Eric (flag apagado) el chequeo es un round-trip
+  // corto que resuelve a login, sin cambiar su experiencia.
+  useEffect(() => {
+    if (!orgReady || session || isPortalDemo || publicChecked) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}`);
+        const d = await r.json();
+        if (cancelled) return;
+        if (d.portalCfg) {
+          setBrandCfg(d.portalCfg);
+          if (d.portalCfg.name) setBrandNombre(d.portalCfg.name);
+        }
+        if (d.publico && Array.isArray(d.items)) {
+          setItems(d.items);
+          setCats(['Todos', ...(d.categorias || [])]);
+          setCatArbol(Array.isArray(d.categoriasArbol) ? d.categoriasArbol : []);
+          setPublicMode(true);
+          try { trackWeb('catalogo_publico_visto', { productos: d.items.length }, 'catalogo'); } catch {}
+        }
+      } catch { /* sin red → cae a login */ }
+      finally { if (!cancelled) setPublicChecked(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [orgReady, session, isPortalDemo, publicChecked]);
+
+  // En modo público, consultamos si la org tiene "Pedí acceso" activo para mostrar
+  // ese CTA en el header (además de "Ingresá"). Mismo flag por-org que usa el login.
+  useEffect(() => {
+    if (!publicMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const c = await fetch(`${window.location.origin}/api/lead?org=${encodeURIComponent(ORG)}`).then(r => r.json());
+        if (!cancelled) setCapActiva(!!c?.activa);
+      } catch { /* sin flag → CTA oculto */ }
+    })();
+    return () => { cancelled = true; };
+  }, [publicMode]);
+
   // Subcategorías de la categoría madre activa (según la taxonomía del admin).
   const subActuales = useMemo(() => {
     if (catFil === 'Todos') return [];
@@ -4341,7 +4438,11 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // origen: de qué superficie salió el "+". 'catalogo'/'ficha' = el cliente lo
   // buscó; 'carrito_sugerido'/'volver_a_pedir' = lo empujó el vendedor digital.
   // Permite medir en Analítica si las recomendaciones realmente venden (moat).
-  const addItem = (item, variantId, origen = 'catalogo') => { track('producto_agregado', { producto: item.nombre, precio: item.precio, variante: variantId || null, origen }); setCarrito(c => { const k = cartKey(item, variantId); const cur = c[k] || 0; const min = item.min_order_qty || 1; return { ...c, [k]: cur === 0 ? min : cur + 1 }; }); };
+  const addItem = (item, variantId, origen = 'catalogo') => {
+    // Gate de compra en modo público: para agregar al carrito hay que iniciar
+    // sesión (o pedir acceso). Abrimos el LoginStep en vez de agregar.
+    if (publicMode && !session) { setLoginStart('login'); setShowLogin(true); return; }
+    track('producto_agregado', { producto: item.nombre, precio: item.precio, variante: variantId || null, origen }); setCarrito(c => { const k = cartKey(item, variantId); const cur = c[k] || 0; const min = item.min_order_qty || 1; return { ...c, [k]: cur === 0 ? min : cur + 1 }; }); };
   const removeItem = (item, variantId) => setCarrito(c => {
     const k = cartKey(item, variantId);
     const q = (c[k] || 0) - 1;
@@ -4414,6 +4515,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     </div>
   );
 
+  // Modo público: visitante sin sesión viendo el catálogo abierto (sin precios).
+  const isPublic = !session && !isPortalDemo && publicMode;
   // Demo mode: create a fake session so the catalog renders without null errors
   const effectiveSession = isPortalDemo ? {
     nombre: 'Cliente Demo',
@@ -4428,7 +4531,23 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // vive sólo en la PDP vía EntregaHint). entregaPortal ya se calculó arriba.
   const entregaCortaCard = entregaPortal.modo !== 'off' && entregaPortal.fecha
     ? formatFechaCorta(entregaPortal.fecha, new Date()) : '';
-  if (!session && !isPortalDemo) return <LoginStep onLogin={ses => setSession(ses)} />;
+  if (!session && !isPortalDemo) {
+    // Si el visitante quiere ingresar / pedir acceso, mostramos el LoginStep
+    // (A: OTP para clientes ya cargados / B: "Pedí acceso" para prospectos).
+    if (showLogin) return <LoginStep onLogin={ses => setSession(ses)} onBack={() => setShowLogin(false)} startLead={loginStart === 'lead'} />;
+    // Modo público habilitado → cae al render del catálogo (sin precios) más abajo.
+    if (!publicMode) {
+      // Todavía no sabemos si la org tiene catálogo público → spinner breve.
+      if (!publicChecked) return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f7f7f4', fontFamily: SANS }}>
+          <div style={{ width: 32, height: 32, border: `3px solid ${G}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <style>{'@keyframes spin{to{transform:rotate(360deg)}}'}</style>
+        </div>
+      );
+      // Sin catálogo público → login directo (comportamiento de siempre para Eric).
+      return <LoginStep onLogin={ses => setSession(ses)} />;
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: SANS }}>
@@ -4572,6 +4691,27 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               </div>
             </div>
           ) : <div style={{ flex: 1 }} />}
+          {isPublic ? (
+            /* Modo público: sin carrito ni menú de usuario. CTAs de acceso estilo
+               Shopify: "Ingresá" (clientes ya cargados, OTP) y "Pedí acceso"
+               (prospectos, sólo si la org tiene la captación activa). */
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {capActiva && (
+                <button onClick={() => { setLoginStart('lead'); setShowLogin(true); }} style={{
+                  padding: '8px 14px', borderRadius: 24, border: `1px solid ${G}`,
+                  background: '#fff', color: G, cursor: 'pointer',
+                  fontFamily: SANS, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  Pedí acceso
+                </button>
+              )}
+              <button onClick={() => { setLoginStart('login'); setShowLogin(true); }} style={{
+                padding: '8px 16px', borderRadius: 24, border: 'none',
+                background: G, color: '#fff', cursor: 'pointer',
+                fontFamily: SANS, fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                Ingresá
+              </button>
+            </div>
+          ) : (<>
             <button onClick={() => totalItems > 0 && setShowCart(true)} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
             borderRadius: 24, border: 'none', cursor: 'pointer',
@@ -4647,6 +4787,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               </button>
             </div>
           </div>
+          </>)}
         </div>
 
         <nav aria-label="Categorías" style={{ maxWidth: 1300, margin: '0 auto', padding: '0 12px',
@@ -4861,7 +5002,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
             brandCfg={brandCfg} isMobile={isMobile} onBack={() => setDetalle(null)}
             items={items} coBuy={coBuy} social={social} socialOn={socialOn}
             onOpen={setDetalle} onPickVariants={setPickSheet} demo={isPortalDemo}
-            zona={effectiveSession?.zona} entregaCorta={entregaCortaCard} />
+            zona={effectiveSession?.zona} entregaCorta={entregaCortaCard} publico={isPublic} />
         </div>
       )}
       {vista === 'catalogo' && !detalle && (
@@ -4940,7 +5081,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                     isMobile={isMobile} carrito={carrito}
                     addItem={addItem} removeItem={removeItem}
                     onOpen={setDetalle} onPickVariants={setPickSheet}
-                    social={social} socialOn={socialOn} entregaCorta={entregaCortaCard}
+                    social={social} socialOn={socialOn} entregaCorta={entregaCortaCard} publico={isPublic}
                     onSelectCat={(cat) => { setVista('catalogo'); setCatFil(cat); setSubFil(''); setDetalle(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                     onVerTodo={() => { setVerTodoCatalogo(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   />
@@ -5055,7 +5196,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                   <ProductCard key={item.id} item={item} brandCfg={brandCfg} carrito={carrito}
                     qty={carrito[item.id] || 0} onAdd={addItem} onRemove={removeItem} onOpen={setDetalle}
                     onPickVariants={setPickSheet} social={socialOn ? social[item.id] : null}
-                    entregaCorta={entregaCortaCard} />
+                    entregaCorta={entregaCortaCard} publico={isPublic} />
                 ))}
               </div>
                 </>);
