@@ -918,7 +918,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
       onPointerUp={() => setPressed(false)}
       onPointerCancel={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}>
-      <div onClick={open} style={{ position: 'relative', height: imgH, background: hasImg ? '#fff' : CREAM_TILE, padding: hasImg ? '14px 16px' : '12px 16px',
+      <div onClick={open} style={{ position: 'relative', ...(isMobile ? { height: imgH } : { aspectRatio: '1 / 1' }), background: hasImg ? '#fff' : CREAM_TILE, padding: hasImg ? '14px 16px' : '12px 16px',
         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
         cursor: open ? 'pointer' : 'default' }}>
         {/* Prueba social (badge sobre la imagen). Sale de pedidos REALES: "Más
@@ -945,7 +945,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
               loading="lazy" decoding="async"
-              style={{ maxHeight: imgH - 28, maxWidth: isMobile ? '100%' : imgH - 28, objectFit: 'contain',
+              style={{ maxHeight: isMobile ? imgH - 28 : '100%', maxWidth: '100%', objectFit: 'contain',
                 transform: hov && open ? 'scale(1.06)' : 'none', transition: 'transform .25s' }} />
           : <div style={{ textAlign: 'center', padding: '0 10px' }}>
               <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#fff',
