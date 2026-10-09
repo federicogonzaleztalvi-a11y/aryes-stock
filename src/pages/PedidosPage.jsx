@@ -4179,6 +4179,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
 
       // Branding vive en portalCfg (catalogo.js carga app_config key=brandcfg ahí).
       // Antes se leía d.brandCfg (inexistente) con campo .nombre (es .name) → marca nunca cargaba.
+      if (d.currencySymbol) fmt.setCurrency(d.currencySymbol);
       if (d.portalCfg) {
         setBrandCfg(d.portalCfg);
         if (d.portalCfg.name) {
@@ -4253,6 +4254,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}`);
         const d = await r.json();
         if (cancelled) return;
+        if (d.currencySymbol) fmt.setCurrency(d.currencySymbol);
         if (d.portalCfg) {
           setBrandCfg(d.portalCfg);
           if (d.portalCfg.name) setBrandNombre(d.portalCfg.name);
@@ -5044,16 +5046,25 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 24px', maxWidth: 420, margin: '0 auto' }}>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#f4f4f0',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: GRAY }}>
-                {Icon.search}
+            <div style={{ textAlign: 'center', padding: '72px 24px', maxWidth: 440, margin: '0 auto' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%',
+                background: items.length === 0 ? '#f0f7f2' : '#f4f4f0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 18px', color: items.length === 0 ? G : GRAY }}>
+                {items.length === 0 ? (
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                ) : Icon.search}
               </div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', margin: '0 0 6px' }}>
-                {items.length === 0 ? 'No hay productos disponibles' : 'Sin resultados'}
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#1a1a18', margin: '0 0 7px' }}>
+                {items.length === 0 ? 'El catálogo se está preparando' : 'Sin resultados'}
               </p>
-              <p style={{ fontSize: 13, color: GRAY, margin: 0, lineHeight: 1.5 }}>
-                {items.length === 0 ? 'Volvé a intentar más tarde.' : `No encontramos nada para "${busq}".`}
+              <p style={{ fontSize: 13.5, color: GRAY, margin: 0, lineHeight: 1.55 }}>
+                {items.length === 0
+                  ? `${brandNombre || 'Este proveedor'} todavía no publicó productos. Vuelve en un rato: muy pronto vas a poder hacer tu pedido acá.`
+                  : `No encontramos nada para "${busq}".`}
               </p>
               {(busq || catFil !== 'Todos' || nFiltros > 0) && items.length > 0 && (
                 <button onClick={() => { setBusq(''); setCatFil('Todos'); limpiarFiltros(); }} style={{

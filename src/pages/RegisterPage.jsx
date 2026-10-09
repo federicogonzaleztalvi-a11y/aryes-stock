@@ -28,10 +28,10 @@ export default function RegisterPage() {
 
   const handle = async () => {
     setErr('');
-    if (!form.empresa.trim()) return setErr('Ingresá el nombre de tu empresa');
-    if (!form.nombre.trim())  return setErr('Ingresá tu nombre');
-    if (!form.email.trim())   return setErr('Ingresá tu email');
-    if (!form.password)       return setErr('Ingresá una contraseña');
+    if (!form.empresa.trim()) return setErr('Ingresa el nombre de tu empresa');
+    if (!form.nombre.trim())  return setErr('Ingresa tu nombre');
+    if (!form.email.trim())   return setErr('Ingresa tu email');
+    if (!form.password)       return setErr('Ingresa una contraseña');
     if (form.password.length < 8) return setErr('La contraseña debe tener al menos 8 caracteres');
     if (form.password !== form.confirm) return setErr('Las contraseñas no coinciden');
 
@@ -98,7 +98,7 @@ export default function RegisterPage() {
       setOrgId(data.orgId);
       setOk(true);
     } catch {
-      setErr('Error de conexión. Verificá tu internet.');
+      setErr('Error de conexión. Verifica tu internet.');
     }
     setLoading(false);
   };
@@ -126,7 +126,7 @@ export default function RegisterPage() {
         </h2>
         <p style={{ fontFamily: F.sans, fontSize: 14, color: '#6a6a68', marginBottom: 24, lineHeight: 1.6 }}>
           Tu empresa <strong>{form.empresa}</strong> está lista.<br />
-          Podés ingresar ahora con tu email y contraseña.
+          Ya puedes ingresar con tu email y contraseña.
         </p>
         <a href="/app"
           onClick={(e) => {
@@ -139,7 +139,7 @@ export default function RegisterPage() {
           Ingresar a mi cuenta →
         </a>
         <p style={{ marginTop: 20, fontFamily: F.sans, fontSize: 11, color: '#9a9a98' }}>
-          ¿Necesitás ayuda? Escribinos a <a href="mailto:hola@pazque.com" style={{ color: G }}>hola@pazque.com</a>
+          ¿Necesitas ayuda? Escríbenos a <a href="mailto:hola@pazque.com" style={{ color: G }}>hola@pazque.com</a>
         </p>
       </div>
     </div>
@@ -154,7 +154,7 @@ export default function RegisterPage() {
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <img src="/pazque-logo.png" alt="Pazque" style={{ height: 28, objectFit: 'contain', marginBottom: 8 }} onError={e => e.target.style.display = 'none'} />
           <h1 style={{ fontFamily: F.sans, fontSize: 26, fontWeight: 700, color: '#1a1a18', margin: '4px 0 6px', letterSpacing: -0.3 }}>
-            Empezá gratis
+            Empieza gratis
           </h1>
           <p style={{ fontFamily: F.sans, fontSize: 15, color: '#6a6a68' }}>
             14 días de prueba. Sin tarjeta de crédito.
@@ -218,11 +218,11 @@ export default function RegisterPage() {
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 20 }}>
           <p style={{ fontFamily: F.sans, fontSize: 13, color: '#6a6a68' }}>
-            ¿Ya tenés cuenta?{' '}
-            <a href="/app" style={{ color: G, fontWeight: 600, textDecoration: 'none' }}>Iniciá sesión</a>
+            ¿Ya tienes cuenta?{' '}
+            <a href="/app" style={{ color: G, fontWeight: 600, textDecoration: 'none' }}>Inicia sesión</a>
           </p>
           <p style={{ fontFamily: F.sans, fontSize: 11, color: '#9a9a98', marginTop: 12 }}>
-            Al registrarte aceptás los{' '}
+            Al registrarte aceptas los{' '}
             <a href="/terms" style={{ color: '#9a9a98' }}>términos de servicio</a>
             {' '}y la{' '}
             <a href="/privacy" style={{ color: '#9a9a98' }}>política de privacidad</a>.

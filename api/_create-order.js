@@ -35,6 +35,7 @@ import { buildLineas, sumLineas, mapClienteFiscal } from './_pedido-data.js';
 // cliente (getCatalogoCliente) + misma matemática del carrito (_pricing.js).
 import { getCatalogoCliente } from './_catalog.js';
 import { calcLinea, calcTotales } from './_pricing.js';
+import { getTaxConfig } from '../src/lib/taxConfig.js';
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -420,7 +421,20 @@ export async function sendOrderEmail({ org, clienteId, clienteNombre, items, tot
   const dest = (override && EMAIL_RE.test(override)) ? override : notifyEmail;
   if (!dest) return { ok: false, reason: 'no_destination' };
 
-  const currencySymbol = '$';
+  // Símbolo de moneda según el país de la org (brandcfg.tax_country). Así el mail y
+  // el PDF salen en la moneda correcta (S/ Perú, ₲ Paraguay, etc.). Best-effort: si
+  // no hay país configurado cae a '$' (UYU, comportamiento histórico).
+  let currencySymbol = '$';
+  try {
+    const cfgRes = await fetch(
+      SB_URL + '/rest/v1/app_config?key=eq.brandcfg&org_id=eq.' + encodeURIComponent(org) + '&select=value&limit=1',
+      hdr
+    );
+    if (cfgRes.ok) {
+      const cfgRows = await cfgRes.json();
+      currencySymbol = getTaxConfig(cfgRows?.[0]?.value?.tax_country).currencySymbol || '$';
+    }
+  } catch { /* símbolo por defecto */ }
   const tpl = templates.nuevoPedido(clienteNombre || 'Cliente', items, total, empresa, currencySymbol);
 
   // Genera orden de compra en PDF (uso interno) y adjunta. Si falla, el mail va igual.

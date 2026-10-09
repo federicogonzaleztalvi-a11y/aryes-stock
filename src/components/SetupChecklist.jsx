@@ -36,8 +36,12 @@ function SetupChecklist({ products = [], suppliers = [], clientes = [], ventas =
   // La factura electrónica CFE es un trámite SOLO de Uruguay (DGI). Para una org
   // de otro país ese paso no aplica y ensuciaría la checklist. Si no sabemos el
   // país (orgs viejas sin dato, como la de Eric) asumimos Uruguay → se muestra.
+  // El país puede venir como código ISO (tax_country, lo setea el wizard y Config →
+  // Marca) o como nombre libre (pais, orgs viejas). Preferimos el ISO; si no hay
+  // ninguno asumimos Uruguay (Eric y orgs sin dato siguen viendo CFE).
+  const taxCountry = (brand?.tax_country || brandCfg?.tax_country || '').trim().toUpperCase();
   const pais = (brand?.pais || brandCfg?.pais || '').trim();
-  const esUruguay = !pais || /uruguay/i.test(pais);
+  const esUruguay = taxCountry ? taxCountry === 'UY' : (!pais || /uruguay/i.test(pais));
   const VISIBLE_STEPS = esUruguay ? STEPS : STEPS.filter(s => s.id !== 'cfe');
 
   const steps = VISIBLE_STEPS.map(s => {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, LS, SB_URL, getAuthHeaders, getOrgId } from '../lib/constants.js';
+import { getCountryOptions, getTaxConfig } from '../lib/taxConfig.js';
 import ImageUpload from '../components/ImageUpload.jsx';
 
 const G = '#059669';
@@ -110,12 +111,26 @@ function BtnRow({ onBack, onNext, onSkip, nextLabel = 'Siguiente →', loading, 
 function StepCompany({ data, setData, onNext, onSkip }) {
   return (
     <div>
-      <StepHeader step={0} title="Contanos sobre tu empresa" subtitle="Esta información aparecerá en reportes y notificaciones." />
+      <StepHeader step={0} title="Cuéntanos sobre tu empresa" subtitle="Esta información aparecerá en reportes y notificaciones." />
       <Field label="Nombre de la empresa" required>
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Distribuidora Gourmet S.A." />
       </Field>
       <Field label="País">
-        <input style={inp} value={data.country} onChange={e => setData(d => ({ ...d, country: e.target.value }))} placeholder="Ej: México, Colombia, Uruguay..." />
+        <select style={inp} value={data.countryCode || ''} onChange={e => {
+          const code = e.target.value;
+          const cfg = getTaxConfig(code);
+          // Guardamos el código ISO (para moneda/impuesto) y el nombre (para mostrar
+          // y para la checklist, que distingue Uruguay por su trámite de factura DGI).
+          setData(d => ({ ...d, countryCode: code, country: cfg.country || '' }));
+        }}>
+          <option value="">Elige tu país…</option>
+          {getCountryOptions().map(c => (
+            <option key={c.code} value={c.code}>{c.name}</option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: T.textSm, marginTop: 6 }}>
+          Define tu moneda e impuesto (puedes cambiarlo después en Config).
+        </div>
       </Field>
       <Field label="Ciudad">
         <input style={inp} value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))} placeholder="Ej: Ciudad de México, Bogotá..." />
@@ -132,7 +147,7 @@ function StepCompany({ data, setData, onNext, onSkip }) {
 function StepBrand({ data, setData, onBack, onNext, onSkip }) {
   return (
     <div>
-      <StepHeader step={1} title="Personalizá el sistema" subtitle="Podés cambiar esto más adelante en Config → Marca y empresa." />
+      <StepHeader step={1} title="Personaliza el sistema" subtitle="Puedes cambiar esto más adelante en Config → Marca y empresa." />
       <Field label="Nombre visible en el sidebar">
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: GourmetStock" />
       </Field>
@@ -156,11 +171,11 @@ function StepSupplier({ data, setData, onBack, onNext, onSkip }) {
   const FLAGS = ['🇦🇷 AR', '🇧🇷 BR', '🇺🇾 UY', '🇨🇱 CL', '🇵🇾 PY', '🇺🇸 US', '🇩🇪 DE', '🇮🇹 IT', '🇪🇸 ES', '🇫🇷 FR', '🇪🇨 EC', 'EU', '—'];
   return (
     <div>
-      <StepHeader step={2} title="Agregá tu primer proveedor" subtitle="Podés agregar más desde el módulo de Proveedores." />
+      <StepHeader step={2} title="Agrega tu primer proveedor" subtitle="Puedes agregar más desde el módulo de Proveedores." />
       <Field label="Nombre del proveedor" required>
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Argentina" />
       </Field>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="pz-ob-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="País / Bandera">
           <select style={inp} value={data.flag} onChange={e => setData(d => ({ ...d, flag: e.target.value.slice(-2) }))}>
             {FLAGS.map(f => <option key={f} value={f}>{f}</option>)}
@@ -188,11 +203,11 @@ function StepProduct({ data, setData, suppliers, onBack, onNext, onSkip }) {
   const UNITS = ['kg', 'g', 'lt', 'ml', 'u', 'pack', 'caja', 'bolsa', 'frasco', 'lata'];
   return (
     <div>
-      <StepHeader step={3} title="Cargá tu primer producto" subtitle="Este es el que verán tus clientes en tu portal de pedidos. Después podés importar el catálogo completo desde Importar datos." />
+      <StepHeader step={3} title="Carga tu primer producto" subtitle="Este es el que verán tus clientes en tu portal de pedidos. Después puedes importar el catálogo completo desde Importar datos." />
       <Field label="Nombre del producto" required>
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Chocolate amargo 70%" />
       </Field>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="pz-ob-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Precio de venta">
           <input style={inp} type="number" min="0" step="0.01" value={data.precio} onChange={e => setData(d => ({ ...d, precio: e.target.value }))} placeholder="0.00" />
         </Field>
@@ -205,7 +220,7 @@ function StepProduct({ data, setData, suppliers, onBack, onNext, onSkip }) {
       <div style={{ fontSize: 12, color: T.textSm, margin: '-6px 0 14px', lineHeight: 1.5 }}>
         💡 El <strong>precio de venta</strong> es lo que ve tu cliente en el portal. El stock y el costo son internos (opcionales).
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="pz-ob-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="Stock inicial">
           <input style={inp} type="number" min="0" value={data.stock} onChange={e => setData(d => ({ ...d, stock: e.target.value }))} placeholder="0" />
         </Field>
@@ -234,7 +249,7 @@ function StepUser({ data, setData, onBack, onNext, onSkip, loading, error }) {
   ];
   return (
     <div>
-      <StepHeader step={4} title="¿Querés sumar a alguien de tu equipo?" subtitle="Opcional. Vos ya tenés tu cuenta de administrador. Si trabajás solo, apretá “Saltear” — podés sumar gente cuando quieras desde Config → Usuarios." />
+      <StepHeader step={4} title="¿Quieres sumar a alguien de tu equipo?" subtitle="Opcional. Tú ya tienes tu cuenta de administrador. Si trabajas solo, toca “Saltear” — puedes sumar gente cuando quieras desde Config → Usuarios." />
       <Field label="Nombre">
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Nombre completo" />
       </Field>
@@ -250,7 +265,7 @@ function StepUser({ data, setData, onBack, onNext, onSkip, loading, error }) {
         </div>
       </Field>
       <Field label="Rol">
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="pz-ob-roles" style={{ display: 'flex', gap: 10 }}>
           {ROLES.map(r => (
             <button key={r.value} onClick={() => setData(d => ({ ...d, role: r.value }))}
               style={{ flex: 1, padding: '10px 8px', border: `2px solid ${data.role === r.value ? G : T.border}`, borderRadius: 8, background: data.role === r.value ? '#f0f9f0' : '#fff', cursor: 'pointer', textAlign: 'center' }}>
@@ -274,7 +289,7 @@ function StepDone({ onFinish }) {
       <div style={{ fontSize: 56, marginBottom: 16 }}>🚀</div>
       <h2 style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: T.text, margin: '0 0 12px' }}>¡Buen arranque!</h2>
       <p style={{ fontFamily: T.sans, fontSize: 15, color: T.textSm, lineHeight: 1.7, margin: '0 0 28px' }}>
-        Ya tenés lo básico cargado. En el dashboard te espera una <strong>lista de pasos</strong> para dejar tu portal listo para vender: subir tu catálogo, invitar clientes y más.
+        Ya tienes lo básico cargado. En el dashboard te espera una <strong>lista de pasos</strong> para dejar tu portal listo para vender: subir tu catálogo, invitar clientes y más.
       </p>
       <button onClick={onFinish} style={{ padding: '12px 36px', background: G, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 15, fontFamily: T.sans, fontWeight: 700 }}>
         Ir al dashboard →
@@ -290,8 +305,8 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
   const [loading, setLoading] = useState(false);
   const [userError, setUserError] = useState('');
 
-  // Accumulated state per step
-  const [company, setCompany] = useState({ name: '', country: '', city: '', email: '' });
+  // Accumulated state per step. countryCode = ISO ('UY'); country = nombre ('Uruguay').
+  const [company, setCompany] = useState({ name: '', country: '', countryCode: '', city: '', email: '' });
 
   // Pre-fill company name from organization (set during registration)
   useEffect(() => {
@@ -302,6 +317,20 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
       if (orgs?.[0]) setCompany(c => ({ ...c, name: orgs[0].name || c.name, email: orgs[0].email || c.email }));
     }).catch(() => {});
   }, [session?.orgId]);
+
+  // Autodetección de país por IP (header de Vercel). Pre-selecciona el país y con
+  // él la moneda/impuesto, así el distribuidor no tiene que buscarlo. Solo rellena
+  // si todavía no eligió uno — nunca pisa una elección manual.
+  useEffect(() => {
+    fetch('/api/geo').then(r => r.json()).then(g => {
+      const code = (g?.country || '').toUpperCase();
+      if (!code) return;
+      setCompany(c => {
+        if (c.countryCode) return c;
+        return { ...c, countryCode: code, country: getTaxConfig(code).country || '' };
+      });
+    }).catch(() => {});
+  }, []);
   const [brand, setBrand] = useState({ name: '', logoUrl: '', color: '#059669' });
   const [supplier, setSupplier] = useState({ name: '', flag: 'AR', currency: 'USD', company: '', email: '' });
   const [product, setProduct] = useState({ name: '', stock: '0', unit: 'kg', unitCost: '0', precio: '', supplierId: '' });
@@ -321,7 +350,25 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
     // (además de companycfg) porque brandcfg lo cargan TODOS los roles al entrar:
     // así la checklist del dashboard puede decidir si mostrar o no el paso de
     // factura electrónica (CFE/DGI es solo de Uruguay). Sin país → se asume UY.
-    const brandToSave = { ...brand, name: brand.name || company.name, pais: company.country || '' };
+    // Guardamos el país de 3 formas en brandcfg, cada una con su consumidor:
+    //   - pais        → nombre legible; la checklist del dashboard lo usa para
+    //                   mostrar/ocultar el paso de factura electrónica (solo Uruguay).
+    //   - tax_country → código ISO; de ahí sale la MONEDA del portal/mails/PDF
+    //                   (getTaxConfig) y el impuesto en Config → Marca.
+    //   - tax_name / iva_default → impuesto por defecto del país, pre-cargado para
+    //                   que Config no arranque vacío (el admin puede cambiarlo).
+    const code = company.countryCode || '';
+    const taxCfg = code ? getTaxConfig(code) : null;
+    const brandToSave = {
+      ...brand,
+      name: brand.name || company.name,
+      pais: company.country || '',
+      ...(code ? {
+        tax_country: code,
+        tax_name:    taxCfg.taxName,
+        iva_default: taxCfg.defaultRate,
+      } : {}),
+    };
     // Update localStorage for immediate sidebar update
     localStorage.setItem('aryes-brand', JSON.stringify({ ...brandToSave, _org: getOrgId() }));
     try {
@@ -413,7 +460,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
       }
       return true;
     } catch {
-      setUserError('Error de conexión. Podés crear el usuario desde Config → Usuarios.');
+      setUserError('Error de conexión. Puedes crear el usuario desde Config → Usuarios.');
       return false;
     }
   };
@@ -458,12 +505,29 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
   };
 
   return (
-    <div style={{
+    <div className="pz-ob-overlay" style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999, padding: 20,
     }}>
-      <div style={{
+      {/* En celular el wizard pasa a ocupar toda la pantalla (bottom-sheet full),
+          achica paddings/títulos y apila las columnas de 2 en 1. Las reglas usan
+          !important porque pisan estilos inline de React dentro del @media. */}
+      <style>{`
+        @media (max-width: 560px) {
+          .pz-ob-overlay { padding: 0 !important; align-items: stretch !important; }
+          .pz-ob-modal {
+            max-width: 100% !important; border-radius: 0 !important;
+            padding: 24px 18px calc(24px + env(safe-area-inset-bottom)) !important;
+            max-height: 100vh !important; min-height: 100vh !important;
+          }
+          .pz-ob-modal h2 { font-size: 21px !important; }
+          .pz-ob-2col { grid-template-columns: 1fr !important; }
+          .pz-ob-roles { flex-wrap: wrap !important; }
+          .pz-ob-roles > button { flex: 1 1 calc(50% - 5px) !important; }
+        }
+      `}</style>
+      <div className="pz-ob-modal" style={{
         background: T.bg, borderRadius: 16, width: '100%', maxWidth: 520,
         padding: '36px 40px', boxShadow: '0 20px 60px rgba(0,0,0,.25)',
         maxHeight: '90vh', overflowY: 'auto',

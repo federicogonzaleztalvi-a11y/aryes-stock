@@ -289,18 +289,35 @@ export const db = {
 // ─── fmt — formateo de números centralizado ───────────────────────────────────
 // Single source of truth para todos los formatos de números en la UI.
 // Usar siempre estas funciones — nunca toLocaleString/toFixed directo.
+
+// Símbolo de moneda por-org. Arranca en '$' (UYU, comportamiento histórico) y lo
+// setea el portal una sola vez al cargar el catálogo (fmt.setCurrency), así los
+// ~40 llamados a fmt.currency(n) sin argumento muestran la moneda de la org
+// (Perú S/, Paraguay ₲, etc.) sin tocar cada call site. Si alguien pasa un código
+// explícito (fmt.currency(n, 'USD')) ese override manda y no usa este default.
+let _orgCurrencySym = '$';
+function _symFromCode(currency) {
+  return currency === 'UYU' ? '$'
+    : currency === 'USD' ? 'US$'
+    : currency === 'EUR' ? '€'
+    : currency;
+}
+
 export const fmt = {
-  // Moneda con símbolo — $1.234 / US$1.234
-  currency: (n, currency = 'UYU') => {
+  // Define el símbolo de moneda por defecto para toda la sesión del portal.
+  setCurrency: (sym) => { if (sym && typeof sym === 'string') _orgCurrencySym = sym; },
+
+  // Moneda con símbolo — $1.234 / US$1.234. Sin 2º arg usa el símbolo de la org.
+  currency: (n, currency) => {
     const num = Number(n || 0);
-    const sym = currency === 'UYU' ? '$' : currency === 'USD' ? 'US$' : currency === 'EUR' ? '€' : currency;
+    const sym = currency == null ? _orgCurrencySym : _symFromCode(currency);
     return `${sym} ${num.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   },
 
   // Moneda compacta — $1.2k / US$34k
-  currencyCompact: (n, currency = 'UYU') => {
+  currencyCompact: (n, currency) => {
     const num = Number(n || 0);
-    const sym = currency === 'UYU' ? '$' : currency === 'USD' ? 'US$' : '€';
+    const sym = currency == null ? _orgCurrencySym : _symFromCode(currency);
     if (num >= 1_000_000) return `${sym} ${(num / 1_000_000).toFixed(1)}M`;
     if (num >= 1_000)     return `${sym} ${(num / 1_000).toFixed(1)}k`;
     return `${sym} ${num.toFixed(0)}`;

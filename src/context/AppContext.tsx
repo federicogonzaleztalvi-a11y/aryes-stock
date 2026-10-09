@@ -3,7 +3,8 @@ import React, {
   createContext, useContext,
   useState, useEffect, useMemo,
 } from 'react';
-import { LS, db, SB_URL, getOrgId, getSession, getAuthHeaders, refreshSession } from '../lib/constants.js';
+import { LS, db, SB_URL, getOrgId, getSession, getAuthHeaders, refreshSession, fmt } from '../lib/constants.js';
+import { getTaxConfig } from '../lib/taxConfig.js';
 
 // Multi-user filter: vendedor/repartidor only see their own data
 const getUserFilter = (session: any, field: string = 'vendedor_id'): string => {
@@ -229,6 +230,8 @@ const describeAction = (action: string, detail: string): string => {
         if (brandRows?.[0]?.value) {
           const b = brandRows[0].value;
           setBrandCfg(b);
+          // Moneda de la org según su país → todo el admin (precios, totales) la usa.
+          try { fmt.setCurrency(getTaxConfig((b as any).tax_country).currencySymbol); } catch { /* default $ */ }
           localStorage.setItem('aryes-brand', JSON.stringify({ ...b, _org: getOrgId() }));
           if (b.name) document.title = b.name + ' · Stock';
         }

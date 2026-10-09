@@ -32,11 +32,25 @@ import { createB2BOrder } from './_create-order.js';
 import { validatePortalSession } from './_session.js';
 // Gate de acceso por-org (trial vencido pasada la gracia → no se toman pedidos).
 import { checkOrgAccess } from './_access.js';
+import { getTaxConfig } from '../src/lib/taxConfig.js';
 
 
 const SB_URL  = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 const SB_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Símbolo de moneda de la org según su país (brandcfg.tax_country). Para el PDF del
+// comprobante/vista previa. Best-effort: sin país → '$' (UYU, histórico).
+async function orgCurrencySymbol(orgId, hdr) {
+  try {
+    const r = await fetch(
+      SB_URL + '/rest/v1/app_config?key=eq.brandcfg&org_id=eq.' + encodeURIComponent(orgId) + '&select=value&limit=1',
+      hdr
+    );
+    if (r.ok) return getTaxConfig((await r.json())?.[0]?.value?.tax_country).currencySymbol || '$';
+  } catch { /* símbolo por defecto */ }
+  return '$';
+}
 
 const CORS = {
   'Access-Control-Allow-Origin':  process.env.APP_URL || 'https://pazque.com',
@@ -80,12 +94,13 @@ async function buildComprobantePdf(session, orderId) {
   const total = Number(pedido.total) || subtotal;
   const iva = Math.round(total - subtotal);
   const ref = 'OC-' + String(orderId).slice(0, 8).toUpperCase();
+  const currencySymbol = await orgCurrencySymbol(session.org_id, hdr);
   const pdfBuf = await generarOrdenPDF({
     titulo: 'Comprobante de pedido',
     footer: 'Comprobante generado por ' + empresa + ' vía Pazque',
     nroOrden: ref,
     fecha: pedido.creado_en || new Date().toISOString(),
-    empresa, currencySymbol: '$',
+    empresa, currencySymbol,
     cliente: mapClienteFiscal(cli),
     entregaEstimada: fechaEntregaLabel(pedido.fecha_entrega_estimada),
     lineas, subtotal, descuentoTotal, iva, total,
@@ -115,12 +130,13 @@ async function buildPreviewPdf(session, items, notas, total) {
   const { subtotal, descuentoTotal } = sumLineas(lineas);
   const tot = Number(total) || subtotal;
   const iva = Math.round(tot - subtotal);
+  const currencySymbol = await orgCurrencySymbol(session.org_id, hdr);
   const pdfBuf = await generarOrdenPDF({
     titulo: 'Orden de compra (vista previa)',
     footer: 'Vista previa generada por ' + empresa + ' vía Pazque',
     nroOrden: 'VISTA PREVIA',
     fecha: new Date().toISOString(),
-    empresa, currencySymbol: '$',
+    empresa, currencySymbol,
     cliente: mapClienteFiscal(cli),
     lineas, subtotal, descuentoTotal, iva, total: tot,
     notas: notas || '',

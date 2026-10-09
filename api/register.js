@@ -39,7 +39,7 @@ async function handler(req, res) {
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.headers['x-real-ip'] || 'unknown';
   if (!(await checkRateLimit('register:' + clientIp, 3600, 3, { failClosed: true }))) {
     log.warn('register', 'rate limited', { ip: clientIp });
-    return res.status(429).json({ error: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.' });
+    return res.status(429).json({ error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' });
   }
   if (!SB_URL || !SB_SVC)     return res.status(500).json({ error: 'Server misconfigured' });
 
@@ -92,10 +92,10 @@ async function handler(req, res) {
     const err = await authRes.json().catch(() => ({}));
     const msg = err?.message || err?.msg || '';
     if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('duplicate')) {
-      return res.status(400).json({ error: 'Ya existe una cuenta con ese email. Iniciá sesión.' });
+      return res.status(400).json({ error: 'Ya existe una cuenta con ese email. Inicia sesión.' });
     }
     log.error('register', 'auth user creation failed', { msg });
-    return res.status(400).json({ error: 'Error al crear la cuenta. Intentá de nuevo.' });
+    return res.status(400).json({ error: 'Error al crear la cuenta. Inténtalo de nuevo.' });
   }
 
   const authData = await authRes.json();
@@ -121,7 +121,7 @@ async function handler(req, res) {
     // Rollback: delete the auth user
     await fetch(`${SB_URL}/auth/v1/admin/users/${userId}`, { method: 'DELETE', headers }).catch(() => {});
     log.error('register', 'org creation failed', { orgId });
-    return res.status(500).json({ error: 'Error al crear la organización. Intentá de nuevo.' });
+    return res.status(500).json({ error: 'Error al crear la organización. Inténtalo de nuevo.' });
   }
 
   // ── Step 2.5: Initialize app_config with brand defaults ───────────

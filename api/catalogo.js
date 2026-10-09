@@ -5,6 +5,15 @@ import { getBearerToken, validatePortalSession } from './_session.js';
 import { getCatalogoCliente } from './_catalog.js';
 // Gate de acceso por-org (trial vencido pasada la gracia → portal en pausa).
 import { checkOrgAccess } from './_access.js';
+// Config de impuesto/moneda por país (misma fuente que usa Config → Marca).
+import { getTaxConfig } from '../src/lib/taxConfig.js';
+
+// Símbolo de moneda de la org a partir de su país (brandcfg.tax_country, ej 'UY'→$,
+// 'PE'→S/, 'PY'→₲). Si no hay país configurado cae a '$' (comportamiento histórico UYU).
+function currencySymbolFromCfg(portalCfg) {
+  try { return getTaxConfig(portalCfg?.tax_country).currencySymbol || '$'; }
+  catch { return '$'; }
+}
 
 // PRIVATE mode (?cliente=) requires a valid portal session. org_id and cliente_id
 // are derived from the validated session — query params are IGNORED for that path
@@ -131,6 +140,7 @@ export default async function handler(req, res) {
         items: itemsPublicos, categorias, categoriasArbol, org,
         publico: true,
         portalCfg,
+        currencySymbol: currencySymbolFromCfg(portalCfg),
       });
     }
 
@@ -372,6 +382,7 @@ export default async function handler(req, res) {
       horarioHasta,
       portalActivo,
       portalCfg,
+      currencySymbol: currencySymbolFromCfg(portalCfg),
     });
 
   } catch (err) {

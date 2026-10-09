@@ -80,7 +80,7 @@ function LoginScreen({ onLogin, onExplore }) {
 
   const handle = async (e) => {
     e && e.preventDefault && e.preventDefault();
-    if (!email || !pass) { setErr('Ingresá tu email y contraseña'); return; }
+    if (!email || !pass) { setErr('Ingresa tu email y contraseña'); return; }
     setLoading(true); setErr('');
     try {
       const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
@@ -108,7 +108,7 @@ function LoginScreen({ onLogin, onExplore }) {
       localStorage.setItem('aryes-session', JSON.stringify(session));
       onLogin(session);
     } catch {
-      setErr('Error de conexión. Verificá tu internet.');
+      setErr('Error de conexión. Verifica tu internet.');
     }
     setLoading(false);
   };
@@ -143,7 +143,7 @@ function LoginScreen({ onLogin, onExplore }) {
             <a href="/reset-password" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
           </p>
           <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: '#6a6a68', textAlign: 'center', marginTop: 8 }}>
-            ¿No tenés cuenta?{' '}
+            ¿No tienes cuenta?{' '}
             <a href="/register" style={{ color: '#059669', fontWeight: 600, textDecoration: 'none' }}>Registrarse gratis</a>
           </p>
           {onExplore && (

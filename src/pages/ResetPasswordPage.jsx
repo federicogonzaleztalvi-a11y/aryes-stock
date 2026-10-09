@@ -36,7 +36,7 @@ export default function ResetPasswordPage() {
 
   // Step 1: Request password reset email
   const handleRequestReset = async () => {
-    if (!email) { setErr('Ingresá tu email'); return; }
+    if (!email) { setErr('Ingresa tu email'); return; }
     setLoading(true); setErr(''); setMsg('');
     try {
       const r = await fetch(SB_URL + '/auth/v1/recover', {
@@ -48,23 +48,23 @@ export default function ResetPasswordPage() {
         const data = await r.json();
         setErr(data.error_description || data.message || 'Error al enviar el email');
       } else {
-        setMsg('Te enviamos un email con un link para restablecer tu contraseña. Revisá tu bandeja de entrada.');
+        setMsg('Te enviamos un email con un link para restablecer tu contraseña. Revisa tu bandeja de entrada.');
       }
     } catch {
-      setErr('Error de conexión. Verificá tu internet.');
+      setErr('Error de conexión. Verifica tu internet.');
     }
     setLoading(false);
   };
 
   // Step 2: Set new password (after clicking email link)
   const handleUpdatePassword = async () => {
-    if (!password || !confirm) { setErr('Completá ambos campos'); return; }
+    if (!password || !confirm) { setErr('Completa ambos campos'); return; }
     if (password.length < 6) { setErr('La contraseña debe tener al menos 6 caracteres'); return; }
     if (password !== confirm) { setErr('Las contraseñas no coinciden'); return; }
     setLoading(true); setErr(''); setMsg('');
     try {
       const token = getAccessToken();
-      if (!token) { setErr('Link inválido o expirado. Pedí un nuevo link.'); setLoading(false); return; }
+      if (!token) { setErr('Link inválido o expirado. Pide un nuevo link.'); setLoading(false); return; }
       const r = await fetch(SB_URL + '/auth/v1/user', {
         method: 'PUT',
         headers: {
@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
         setTimeout(() => { window.location.href = '/app'; }, 2000);
       }
     } catch {
-      setErr('Error de conexión. Verificá tu internet.');
+      setErr('Error de conexión. Verifica tu internet.');
     }
     setLoading(false);
   };
@@ -100,8 +100,8 @@ export default function ResetPasswordPage() {
           </h2>
           <p style={{ fontFamily: F, fontSize: 13, color: '#6a6a68', margin: 0 }}>
             {mode === 'request'
-              ? 'Ingresá tu email y te enviaremos un link para restablecer tu contraseña.'
-              : 'Elegí tu nueva contraseña.'}
+              ? 'Ingresa tu email y te enviaremos un link para restablecer tu contraseña.'
+              : 'Elige tu nueva contraseña.'}
           </p>
         </div>
 
