@@ -337,7 +337,8 @@ Reglas:
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
     · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
-- Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.`;
+- Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
+- COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.`;
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -376,10 +377,15 @@ Reglas:
 // ── Sourcing outbound: buscar distribuidoras reales en Google Places ────────
 // SOLO lee de Google e inserta en NUESTRA tabla (pazque_leads). No contacta a
 // nadie. Federico decide a quién escribirle y lo hace a mano por WhatsApp.
+//
+// País objetivo del sourcing. Pazque es para toda América, pero el GTM arranca por
+// Uruguay. Para expandir a otro país alcanza con cambiar SOURCING_COUNTRY en Vercel
+// (ej: 'Argentina') — sin tocar código. Vacío = sin filtro de país (toda América).
+const SOURCING_COUNTRY = (process.env.SOURCING_COUNTRY || 'Uruguay').trim();
 const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText';
 // Pedimos solo los campos que usamos (el field mask define el costo del SKU).
 const PLACES_FIELDS = [
-  'places.id', 'places.displayName', 'places.formattedAddress',
+  'places.id', 'places.displayName', 'places.formattedAddress', 'places.addressComponents',
   'places.internationalPhoneNumber', 'places.websiteUri', 'places.primaryTypeDisplayName',
   'places.rating', 'places.userRatingCount', 'places.businessStatus',
   'nextPageToken',
@@ -436,10 +442,23 @@ export async function sourceDistributors(query) {
     known.add(pid); // evita duplicados dentro del mismo lote
     const nombre = clean(p.displayName?.text, 200);
     if (!nombre) continue;
+    const addr = clean(p.formattedAddress, 220);
+    // Guardia geográfica: regionCode de Google es solo un sesgo, no un filtro — puede
+    // colar negocios de otros países. Usamos el componente de país ESTRUCTURADO de Google
+    // (no substring de la dirección), porque hay trampas como "Concepción del Uruguay"
+    // (una ciudad ARGENTINA que lleva "Uruguay" en el nombre): su componente country es
+    // "Argentina", así que queda correctamente descartada. Si no podemos confirmar el país,
+    // descartamos: mejor perder un lead que meter uno equivocado.
+    // SOURCING_COUNTRY vacío desactiva el filtro (toda América).
+    if (SOURCING_COUNTRY) {
+      const countryComp = (p.addressComponents || []).find(c => (c.types || []).includes('country'));
+      const country = (countryComp?.longText || countryComp?.shortText || '').trim().toLowerCase();
+      if (country !== SOURCING_COUNTRY.toLowerCase()) continue;
+    }
     // Guardamos dirección + señal de tamaño (rating y reseñas) como contexto del lead.
     const rating = typeof p.rating === 'number'
       ? `${p.rating}★ (${p.userRatingCount || 0} reseñas)` : '';
-    const contexto = [clean(p.formattedAddress, 220), rating].filter(Boolean).join(' · ');
+    const contexto = [addr, rating].filter(Boolean).join(' · ');
     rows.push({
       nombre,                                   // en sourcing el "nombre" es la distribuidora
       empresa: nombre,
