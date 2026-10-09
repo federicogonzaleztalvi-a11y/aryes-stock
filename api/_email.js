@@ -183,13 +183,13 @@ export const templates = {
         <img src="https://pazque.com/pazque-logo.png" alt="Pazque" style="height:28px;margin-bottom:24px" />
         <h1 style="font-size:22px;font-weight:700;color:#1a1a18;margin:0 0 12px">¡Bienvenido a Pazque!</h1>
         <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 16px">
-          Tu cuenta para <strong>${esc(empresa)}</strong> está lista. Tenés 14 días gratis para probar todas las funcionalidades.
+          Tu cuenta para <strong>${esc(empresa)}</strong> está lista. Tienes 14 días gratis para probar todas las funcionalidades.
         </p>
         <a href="https://pazque.com/app" style="display:inline-block;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
           Empezar ahora →
         </a>
         <p style="font-size:12px;color:#9a9a98;margin-top:32px">
-          ¿Dudas? Escribinos a contacto@pazque.com
+          ¿Dudas? Escríbenos a contacto@pazque.com
         </p>
       </div>`,
   }),

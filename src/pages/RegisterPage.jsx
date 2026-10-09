@@ -16,6 +16,19 @@ function refFromUrl() {
   catch { return ''; }
 }
 
+// ¿El alta está pasando en un celular? La app de gestión (/app) es de escritorio
+// por diseño (cargar catálogo, informes, rutas). Si detectamos mobile NO metemos
+// al dueño recién registrado a /app apretado: le mostramos un cartel para que siga
+// desde la compu (patrón Shopify/Stripe). El portal del cliente sí es mobile-first,
+// pero esto es el panel del distribuidor.
+function isMobileDevice() {
+  try {
+    const narrow = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    const uaMobile = /Mobi|Android|iPhone|iPod|iPad|Windows Phone/i.test(navigator.userAgent || '');
+    return !!(narrow || uaMobile);
+  } catch { return false; }
+}
+
 export default function RegisterPage() {
   const [ref] = useState(refFromUrl);
   const [form, setForm] = useState({ empresa: '', nombre: '', email: '', password: '', confirm: '' });
@@ -23,6 +36,7 @@ export default function RegisterPage() {
   const [ok,   setOk]   = useState(false);
   const [loading, setLoading] = useState(false);
   const [orgId, setOrgId] = useState('');
+  const [fromMobile, setFromMobile] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -65,6 +79,17 @@ export default function RegisterPage() {
         localStorage.removeItem(ONBOARDING_KEY);      // 'stock-onboarding-done'
         localStorage.removeItem('aryes-setup-dismissed');
       } catch (e) { /* non-fatal */ }
+
+      // ── Celular: NO auto-login a /app (panel de escritorio). Mostramos el cartel
+      // "seguí desde la computadora". La cuenta ya quedó creada y el email de
+      // bienvenida lleva el link a /app para cuando abra la compu.
+      if (isMobileDevice()) {
+        setOrgId(data.orgId);
+        setFromMobile(true);
+        setOk(true);
+        setLoading(false);
+        return;
+      }
 
       // ── Auto-login: entramos directo a la app, sin pedir que escriba la contraseña
       // de nuevo. register.js crea el usuario con email_confirm:true, así que el
@@ -116,7 +141,33 @@ export default function RegisterPage() {
     letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6a6a68',
   };
 
-  // ── Success screen ──────────────────────────────────────────────
+  // ── Success screen (CELULAR) ────────────────────────────────────
+  // El dueño se registró desde el teléfono. No lo mandamos al panel de gestión
+  // (es de escritorio). Le decimos que siga desde la compu; el email ya tiene el link.
+  if (ok && fromMobile) return (
+    <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: '#fff', border: '1px solid #e2e2de', borderRadius: 12, padding: '44px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.06)' }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+        <h2 style={{ fontFamily: F.sans, fontSize: 22, fontWeight: 700, color: '#1a1a18', marginBottom: 12 }}>
+          ¡Listo, tu cuenta está creada!
+        </h2>
+        <p style={{ fontFamily: F.sans, fontSize: 14.5, color: '#4b4b48', marginBottom: 16, lineHeight: 1.6 }}>
+          Para cargar tu catálogo y configurar tu tienda, abre Pazque desde una
+          <strong> computadora</strong> — vas a tener todas las herramientas a mano.
+        </p>
+        <div style={{ background: '#f0f7f2', border: '1px solid #d7ebe0', borderRadius: 10, padding: '14px 16px', marginBottom: 8 }}>
+          <p style={{ fontFamily: F.sans, fontSize: 13.5, color: '#2d6a4f', margin: 0, lineHeight: 1.55 }}>
+            📧 Te enviamos el link a <strong>{form.email}</strong> para que lo abras cuando estés en la computadora.
+          </p>
+        </div>
+        <p style={{ marginTop: 20, fontFamily: F.sans, fontSize: 11, color: '#9a9a98' }}>
+          ¿Necesitas ayuda? Escríbenos a <a href="mailto:hola@pazque.com" style={{ color: G }}>hola@pazque.com</a>
+        </p>
+      </div>
+    </div>
+  );
+
+  // ── Success screen (ESCRITORIO / fallback) ──────────────────────
   if (ok) return (
     <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ background: '#fff', border: '1px solid #e2e2de', borderRadius: 12, padding: '48px 44px', maxWidth: 460, width: '100%', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,.06)' }}>
