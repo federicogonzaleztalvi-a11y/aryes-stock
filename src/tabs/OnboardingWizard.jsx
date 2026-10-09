@@ -208,7 +208,7 @@ function StepProduct({ data, setData, suppliers, onBack, onNext, onSkip }) {
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Chocolate amargo 70%" />
       </Field>
       <div className="pz-ob-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Precio de venta">
+        <Field label="Precio de venta" required>
           <input style={inp} type="number" min="0" step="0.01" value={data.precio} onChange={e => setData(d => ({ ...d, precio: e.target.value }))} placeholder="0.00" />
         </Field>
         <Field label="Unidad">
@@ -234,7 +234,7 @@ function StepProduct({ data, setData, suppliers, onBack, onNext, onSkip }) {
           {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </Field>
-      <BtnRow onBack={onBack} onSkip={onSkip} onNext={onNext} canNext={!!data.name.trim()} />
+      <BtnRow onBack={onBack} onSkip={onSkip} onNext={onNext} canNext={!!data.name.trim() && Number(data.precio) > 0} />
     </div>
   );
 }
