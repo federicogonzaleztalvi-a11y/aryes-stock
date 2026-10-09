@@ -25,7 +25,7 @@
 import { sendEmail } from './_email.js';
 // Reusamos el MISMO motor que /owner (una sola fuente de verdad: el mensaje que
 // arma el agente de la mañana es idéntico al del botón "Enriquecer").
-import { sourceDistributors, enrichLead } from './owner.js';
+import { sourceDistributors, enrichLead, draftFollowUp } from './owner.js';
 
 const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC      = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -69,7 +69,7 @@ function esc(s) {
 
 // Email del plan del día: limpio, sobrio, accionable. Solo lista nombres; el
 // detalle y el mensaje redactado se ven (y se envían) en /owner.
-function digestHtml({ query, sourced, enriched, listos, followUps }) {
+function digestHtml({ query, sourced, enriched, seguimientos, listos, followUps }) {
   const row = (label, val) =>
     `<tr><td style="padding:6px 0;color:#555">${esc(label)}</td>
          <td style="padding:6px 0;text-align:right;font-weight:700;color:#1a1a18">${esc(val)}</td></tr>`;
@@ -88,6 +88,7 @@ function digestHtml({ query, sourced, enriched, listos, followUps }) {
       ${row('Rubro explorado hoy', query)}
       ${row('Distribuidoras nuevas encontradas', `${sourced.added} nuevas · ${sourced.found} vistas`)}
       ${row('Prospectos enriquecidos (mensaje listo)', enriched)}
+      ${row('Seguimientos redactados para hoy', seguimientos)}
     </table>
 
     <h3 style="font-size:15px;margin:0 0 2px">Listos para un primer contacto (${listos.length})</h3>
@@ -149,14 +150,33 @@ export default async function handler(req, res) {
   const nowIso = new Date().toISOString();
   const followUps = await sbGet(
     `pazque_leads?estado=in.(contactado,demo)&seguir_desde=lte.${encodeURIComponent(nowIso)}` +
-    `&select=id,nombre,empresa,estado&order=seguir_desde.asc&limit=50`
+    `&select=id,nombre,empresa,estado,rubro,toques,enriquecimiento,mensaje_final,seguimiento_mensaje` +
+    `&order=seguir_desde.asc&limit=50`
   );
   const listos = await sbGet(
     `pazque_leads?estado=eq.nuevo&enriquecimiento=not.is.null` +
     `&select=id,nombre,empresa&order=created_at.desc&limit=50`
   );
 
-  const plan = { query, sourced, enriched, listos: listos.length, followUps: followUps.length,
+  // 3b) PREPARA EL SEGUIMIENTO — para los que tocan hoy y todavía no tienen el
+  // próximo toque redactado, lo deja listo (hasta el mismo tope de gasto). Así
+  // Federico abre /owner y el mensaje de seguimiento ya está, no solo el primero.
+  let seguimientos = 0;
+  const porRedactar = followUps.filter(l => !l.seguimiento_mensaje).slice(0, MAX_ENRICH);
+  for (const lead of porRedactar) {
+    try {
+      const out = await draftFollowUp(lead);
+      if (out?.error) { errores.push(`seguimiento ${lead.id}: ${out.error}`); continue; }
+      const up = await fetch(`${SB_URL}/rest/v1/pazque_leads?id=eq.${lead.id}`, {
+        method: 'PATCH', headers: { ...HJSON, Prefer: 'return=minimal' },
+        body: JSON.stringify({ seguimiento_mensaje: out.mensaje, seguimiento_generado_at: new Date().toISOString() }),
+      });
+      if (up.ok) { seguimientos++; lead.seguimiento_mensaje = out.mensaje; }
+      else errores.push(`guardar seguimiento ${lead.id}: ${up.status}`);
+    } catch (e) { errores.push(`seguimiento ${lead.id}: ${e.message || 'error'}`); }
+  }
+
+  const plan = { query, sourced, enriched, seguimientos, listos: listos.length, followUps: followUps.length,
                  errores, ms: Date.now() - started };
 
   // 4) PROPONE — email del plan (solo si hay algo accionable o hubo errores) + bitácora.
@@ -166,7 +186,7 @@ export default async function handler(req, res) {
       await sendEmail({
         to: OWNER_EMAIL,
         subject: `Plan de ventas · ${listos.length} para contactar · ${followUps.length} para seguir`,
-        html: digestHtml({ query, sourced, enriched, listos, followUps }),
+        html: digestHtml({ query, sourced, enriched, seguimientos, listos, followUps }),
       });
     } catch (e) { errores.push('email: ' + (e.message || 'error')); }
   }

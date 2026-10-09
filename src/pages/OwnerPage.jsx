@@ -243,7 +243,7 @@ function EnrichPanel({ e }) {
 }
 
 // ── Tarjeta de prospecto ─────────────────────────────────────────────
-function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
+function LeadCard({ l, onUpdate, onEnrich, onFollowUp, onReply, busy, enriching, drafting, replying }) {
   const [notas, setNotas]   = React.useState(l.notas || '');
   const [editing, setEditing] = React.useState(false);
   const est = ESTADO[l.estado] || ESTADO.nuevo;
@@ -262,6 +262,21 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   const faltaResultado = yaContactado && (l.respondio === null || l.respondio === undefined);
   const dias = diasDesde(l.ultimo_contacto_at);
   const seguir = tocaSeguir(l);
+
+  // Punto 1 — seguimiento redactado. 'segDraft' arranca en el mensaje que dejó el
+  // agente (si lo hay) y es editable antes de mandar, igual que el primero.
+  const [segDraft, setSegDraft] = React.useState(l.seguimiento_mensaje || '');
+  React.useEffect(() => { setSegDraft(l.seguimiento_mensaje || ''); }, [l.seguimiento_mensaje]);
+  const segHref = waLink(l.tel, segDraft || l.seguimiento_mensaje);
+  const proximoToque = (Number(l.toques) || 1) + 1;
+  // Mostramos el seguimiento cuando toca seguir y ya confirmó que NO contestó.
+  const puedeSeguir = seguir && l.respondio === false;
+
+  // Punto 2 — ayuda para responder cuando el prospecto SÍ contestó. Efímero.
+  const contesto = l.respondio === true;
+  const [replyIn, setReplyIn]   = React.useState('');
+  const [replyOut, setReplyOut] = React.useState('');
+  const replyHref = waLink(l.tel, replyOut);
 
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
@@ -363,6 +378,94 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
               👎 Todavía no
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Punto 1 — seguimiento redactado. La plata está en el toque 2 al 5: no
+          contestó, acá tenés el próximo mensaje listo (otro ángulo, más corto). */}
+      {puedeSeguir && (
+        <div style={{ background: C.amberBg, border: `1px solid ${C.amber}33`, borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: l.seguimiento_mensaje ? 8 : 0 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: C.amber, letterSpacing: .4 }}>⏰ SEGUIMIENTO · TOQUE {proximoToque}</span>
+            <span style={{ fontSize: 11.5, color: C.sub }}>No contestó todavía. Este es el próximo toque, listo para revisar y mandar.</span>
+          </div>
+          {l.seguimiento_mensaje ? (
+            <>
+              <textarea value={segDraft} onChange={e => setSegDraft(e.target.value)} rows={3}
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, color: C.ink, lineHeight: 1.5,
+                  fontFamily: C.sans, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px',
+                  resize: 'vertical', background: C.card }} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {segHref && (
+                  <a href={segHref} target="_blank" rel="noopener noreferrer" style={{
+                    fontSize: 13, fontWeight: 600, color: '#fff', background: C.green, textDecoration: 'none',
+                    border: `1px solid ${C.green}`, borderRadius: 50, padding: '7px 14px' }}>
+                    Abrir en WhatsApp
+                  </a>
+                )}
+                <button onClick={() => onUpdate(l.id, { marcar_contacto: true })} disabled={busy}
+                  title="Registra el toque y agenda el próximo seguimiento." style={{
+                  fontSize: 13, fontWeight: 600, color: C.ink, background: C.card,
+                  border: `1px solid ${C.line}`, borderRadius: 50, padding: '7px 14px',
+                  cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+                  ✓ Ya le seguí
+                </button>
+                <button onClick={() => onFollowUp(l.id)} disabled={drafting} style={{
+                  fontSize: 13, color: C.sub, background: 'transparent', border: 'none',
+                  cursor: drafting ? 'default' : 'pointer', fontFamily: C.sans }}>
+                  {drafting ? 'Redactando…' : '↻ Probar otro'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button onClick={() => onFollowUp(l.id)} disabled={drafting} style={{
+              fontSize: 13, fontWeight: 600, color: C.amber, background: C.card,
+              border: `1px solid ${C.amber}55`, borderRadius: 50, padding: '8px 14px',
+              cursor: drafting ? 'default' : 'pointer', fontFamily: C.sans, marginTop: 8 }}>
+              {drafting ? 'Redactando…' : '✍️ Redactar seguimiento'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Punto 2 — te contestó: ayuda para responder la objeción. Efímero: pegás
+          lo que te dijo y el agente te arma la contrarréplica (no se guarda). */}
+      {contesto && (
+        <div style={{ background: C.greenSoft, border: `1px solid ${C.green}22`, borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: C.green, letterSpacing: .4 }}>💬 TE CONTESTÓ — AYUDA PARA RESPONDER</span>
+          </div>
+          <textarea value={replyIn} onChange={e => setReplyIn(e.target.value)} rows={2}
+            placeholder="Pegá acá lo que te dijo (ej: “ya tengo un sistema”, “¿cuánto sale?”, “mandame info”)."
+            style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, color: C.ink, lineHeight: 1.5,
+              fontFamily: C.sans, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px',
+              resize: 'vertical', background: C.card }} />
+          <div style={{ marginTop: 8 }}>
+            <button onClick={async () => { const r = await onReply(l.id, replyIn); if (r) setReplyOut(r); }}
+              disabled={replying || !replyIn.trim()} style={{
+              fontSize: 13, fontWeight: 600, color: '#fff', background: (replying || !replyIn.trim()) ? '#b0b0a8' : C.green,
+              border: 'none', borderRadius: 50, padding: '8px 14px',
+              cursor: (replying || !replyIn.trim()) ? 'default' : 'pointer', fontFamily: C.sans }}>
+              {replying ? 'Redactando…' : 'Redactar respuesta'}
+            </button>
+          </div>
+          {replyOut && (
+            <div style={{ marginTop: 10 }}>
+              <textarea value={replyOut} onChange={e => setReplyOut(e.target.value)} rows={3}
+                style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, color: C.ink, lineHeight: 1.5,
+                  fontFamily: C.sans, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px',
+                  resize: 'vertical', background: C.card }} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                {replyHref && (
+                  <a href={replyHref} target="_blank" rel="noopener noreferrer" style={{
+                    fontSize: 13, fontWeight: 600, color: '#fff', background: C.green, textDecoration: 'none',
+                    border: `1px solid ${C.green}`, borderRadius: 50, padding: '7px 14px' }}>
+                    Abrir en WhatsApp
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -604,6 +707,61 @@ function MetricsPanel({ leads }) {
   );
 }
 
+// ── Punto 3: Foco de hoy ─────────────────────────────────────────────
+// Lo primero que ve Federico al entrar: qué mover HOY, ordenado por urgencia.
+// No inventa trabajo — resume el que ya existe en la lista y lo lleva de un clic
+// al filtro correcto. Si no hay nada pendiente, lo dice en calma (no ruido).
+function FocoHoy({ contesto, seguir, listos, onVerSeguir, onVerActivos }) {
+  const items = [];
+  if (contesto > 0) items.push({
+    icon: '💬', fg: C.green, bg: C.greenSoft,
+    txt: <><strong>{contesto}</strong> te contest{contesto === 1 ? 'ó' : 'aron'} — respondé la objeción antes de que se enfríe</>,
+    cta: { label: 'Ver', onClick: onVerActivos },
+  });
+  if (seguir > 0) items.push({
+    icon: '⏰', fg: C.amber, bg: C.amberBg,
+    txt: <><strong>{seguir}</strong> para seguir hoy — el próximo toque ya está redactado</>,
+    cta: { label: 'Ver', onClick: onVerSeguir },
+  });
+  if (listos > 0) items.push({
+    icon: '✨', fg: C.green, bg: C.greenSoft,
+    txt: <><strong>{listos}</strong> fit alto sin contactar — los mejores para abrir primero</>,
+    cta: { label: 'Ver', onClick: onVerActivos },
+  });
+
+  const wrap = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 16 };
+
+  if (items.length === 0) {
+    return (
+      <div style={wrap}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Foco de hoy</div>
+        <div style={{ fontSize: 12.5, color: C.sub }}>Estás al día. El agente va a sumar más prospectos y seguimientos mañana.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={wrap}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10 }}>Foco de hoy</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((it, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10,
+            background: it.bg, border: `1px solid ${it.fg}22`, borderRadius: 10, padding: '9px 12px' }}>
+            <span style={{ fontSize: 15 }}>{it.icon}</span>
+            <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{it.txt}</span>
+            <button onClick={it.cta.onClick} style={{
+              marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: it.fg, background: C.card,
+              border: `1px solid ${it.fg}55`, borderRadius: 50, padding: '5px 13px',
+              cursor: 'pointer', fontFamily: C.sans, whiteSpace: 'nowrap' }}>
+              {it.cta.label}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Bandeja ──────────────────────────────────────────────────────────
 function Inbox({ token, onLogout }) {
   const [leads,   setLeads]   = React.useState([]);
@@ -611,6 +769,8 @@ function Inbox({ token, onLogout }) {
   const [error,   setError]   = React.useState('');
   const [busy,    setBusy]    = React.useState('');
   const [enriching, setEnriching] = React.useState('');
+  const [drafting, setDrafting] = React.useState(''); // redactando seguimiento
+  const [replying, setReplying] = React.useState(''); // redactando respuesta a objeción
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
   const [sourcing, setSourcing] = React.useState(false);
   const [srcMsg,   setSrcMsg]   = React.useState('');
@@ -640,11 +800,22 @@ function Inbox({ token, onLogout }) {
       vista.ultimo_contacto_at = new Date(now).toISOString();
       vista.seguir_desde = new Date(now + 3 * 86400000).toISOString();
       vista.estado = patch.estado || 'contactado';
+      // El servidor consume el seguimiento y resetea el resultado en cada toque.
+      vista.seguimiento_mensaje = null;
+      vista.seguimiento_generado_at = null;
+      vista.respondio = null;
+      vista.respondio_at = null;
     }
     if (patch.posponer != null) {
       vista.seguir_desde = new Date(now + (patch.posponer || 3) * 86400000).toISOString();
     }
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, ...vista } : l));
+    setLeads(prev => prev.map(l => {
+      if (l.id !== id) return l;
+      const merged = { ...l, ...vista };
+      // El toque se cuenta al marcar contacto (el server lee+incrementa; acá reflejamos).
+      if (patch.marcar_contacto) merged.toques = (Number(l.toques) || 0) + 1;
+      return merged;
+    }));
     const { ok, status } = await ownerFetch({ action: 'update', id, ...patch }, token);
     if (status === 401) { onLogout(); return; }
     if (!ok) await load(); // si falló, recargamos la verdad del server
@@ -662,6 +833,32 @@ function Inbox({ token, onLogout }) {
       setError(data?.error || 'No pudimos analizar ese prospecto.');
     }
     setEnriching('');
+  };
+
+  // Punto 1 — pide al agente el próximo toque de seguimiento y lo guarda.
+  const followUp = async (id) => {
+    setDrafting(id);
+    const { ok, status, data } = await ownerFetch({ action: 'follow-up', id }, token);
+    setDrafting('');
+    if (status === 401) { onLogout(); return; }
+    if (ok && data?.seguimiento_mensaje) {
+      setLeads(prev => prev.map(l => l.id === id
+        ? { ...l, seguimiento_mensaje: data.seguimiento_mensaje, seguimiento_generado_at: data.seguimiento_generado_at } : l));
+    } else {
+      setError(data?.error || 'No pudimos redactar el seguimiento.');
+    }
+  };
+
+  // Punto 2 — pide una respuesta a la objeción. Efímero: devuelve el texto y no
+  // toca la fila (cada conversación es distinta). La tarjeta lo muestra editable.
+  const reply = async (id, prospectoDijo) => {
+    setReplying(id);
+    const { ok, status, data } = await ownerFetch({ action: 'reply', id, prospecto_dijo: prospectoDijo }, token);
+    setReplying('');
+    if (status === 401) { onLogout(); return ''; }
+    if (ok && data?.respuesta) return data.respuesta;
+    setError(data?.error || 'No pudimos redactar la respuesta.');
+    return '';
   };
 
   const source = async (query) => {
@@ -685,6 +882,10 @@ function Inbox({ token, onLogout }) {
   const visibles = filtro === 'todos' ? leads : filtro === 'seguir' ? paraSeguir : activos;
   const nuevos = leads.filter(l => l.estado === 'nuevo').length;
 
+  // Foco de hoy (punto 3): qué mover primero, calculado en el cliente.
+  const focoContesto = leads.filter(l => l.respondio === true && ACTIVOS_SEGUIBLES.includes(l.estado)).length;
+  const focoListos = leads.filter(l => l.estado === 'nuevo' && l.enriquecimiento?.prioridad === 'alta').length;
+
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: C.sans, color: C.ink }}>
       <Fonts />
@@ -706,6 +907,12 @@ function Inbox({ token, onLogout }) {
             </button>
           </div>
         </div>
+
+        {/* Foco de hoy: lo primero que hay que mover (punto 3) */}
+        {!loading && !error && leads.length > 0 && (
+          <FocoHoy contesto={focoContesto} seguir={paraSeguir.length} listos={focoListos}
+            onVerSeguir={() => setFiltro('seguir')} onVerActivos={() => setFiltro('activos')} />
+        )}
 
         {/* Métricas: ¿está funcionando el agente? (datos reales de Federico) */}
         {!loading && !error && <MetricsPanel leads={leads} />}
@@ -777,7 +984,9 @@ function Inbox({ token, onLogout }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {visibles.map(l => (
               <LeadCard key={l.id} l={l} onUpdate={update} onEnrich={enrich}
-                busy={busy === l.id} enriching={enriching === l.id} />
+                onFollowUp={followUp} onReply={reply}
+                busy={busy === l.id} enriching={enriching === l.id}
+                drafting={drafting === l.id} replying={replying === l.id} />
             ))}
           </div>
         )}

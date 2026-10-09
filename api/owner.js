@@ -338,6 +338,28 @@ async function fetchLearningBlock() {
     partes.join('\n\n');
 }
 
+// ── Helper: una pregunta a Claude que devuelve JSON ─────────────────────────
+// Centraliza el fetch a Anthropic + la extracción tolerante del JSON (saca
+// ```json, recorta a las llaves). Lo usan las funciones NUEVAS de seguimiento y
+// respuesta; enrich/crítico tienen su propio parseo para no tocarlos. Devuelve
+// el objeto parseado o null si no hay key / falla / no parsea (best-effort).
+async function askClaudeJSON(system, userContent, maxTokens = 500) {
+  if (!ANTHROPIC_KEY) return null;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: maxTokens, system, messages: [{ role: 'user', content: userContent }] }),
+    });
+    if (!r.ok) { console.warn('[owner] askClaude anthropic error:', r.status); return null; }
+    const d = await r.json();
+    let text = (d?.content?.[0]?.text || '').trim().replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+    const start = text.indexOf('{'); const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) text = text.slice(start, end + 1);
+    return JSON.parse(text);
+  } catch (e) { console.warn('[owner] askClaude parse error:', e.message); return null; }
+}
+
 // ── Agente crítico: segunda pasada de calidad al mensaje (peldaño d) ─────────
 // Antes de mostrarle a Federico el primer mensaje de WhatsApp, un SEGUNDO agente
 // lo revisa contra las reglas duras (largo, tono founder, sin emojis, UNA sola
@@ -472,6 +494,104 @@ Reglas:
     console.warn('[owner] enrich parse error:', e.message);
     return { error: 'enrich_failed' };
   }
+}
+
+// ── Punto 1: seguimiento redactado (la plata está en el follow-up) ──────────
+// La mayoría de las respuestas llegan del toque 2 al 5, no del primero. Esta
+// función redacta el PRÓXIMO toque usando el número de toque y el mensaje
+// anterior: varía el ángulo, acorta cada vez, y NUNCA reclama la falta de
+// respuesta. En el último toque hace un cierre cortés (breakup) que suele
+// destrabar. NO pasa por el crítico (su prompt re-presenta a Federico, y acá ya
+// se presentó en el toque 1). Devuelve { mensaje } o { error }.
+export async function draftFollowUp(lead) {
+  if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
+
+  const toque = (Number(lead.toques) || 1) + 1; // el que estamos por redactar
+  const enr = lead.enriquecimiento || {};
+  const compact = {
+    nombre:   lead.nombre || '',
+    empresa:  lead.empresa || '',
+    rubro:    enr.rubro || lead.rubro || '',
+    angulo:   enr.angulo || '',
+    primer_mensaje: lead.mensaje_final || enr.mensaje_wa || '',
+    toque_numero: toque,
+  };
+
+  // La guía cambia según el toque: cada uno prueba un ángulo nuevo y más corto.
+  let guia;
+  if (toque <= 2) {
+    guia = 'Es el SEGUNDO toque. Retomá cordial, SIN reclamar que no contestó. Sumá UN ángulo nuevo de valor que no usaste en el primero (ej: ahorro de tiempo del equipo, menos errores de pedido, que el cliente pide fuera de hora). Cerrá con una pregunta distinta a la del primer mensaje.';
+  } else if (toque === 3) {
+    guia = 'Es el TERCER toque. Más corto todavía (1-2 líneas). Ofrecé algo concreto y de bajo compromiso: mostrarle en 1 minuto cómo se vería su catálogo en el portal, o mandarle un ejemplo. Una sola pregunta directa.';
+  } else {
+    guia = 'Es un cierre cortés (breakup). Mensaje muy corto, sin culpa ni reproche: decís que no querés insistir, dejás la puerta abierta para cuando le sirva, y le pedís un simple sí/no para saber si cierro el tema. Este tipo de mensaje suele destrabar respuestas justamente porque libera la presión.';
+  }
+
+  const system = `Sos Federico, fundador de Pazque (SaaS B2B: un portal donde los clientes de una distribuidora hacen los pedidos solos, en vez de por WhatsApp uno por uno). Ya le escribiste a esta distribuidora y no te respondió todavía. Vas a redactar el PRÓXIMO mensaje de seguimiento por WhatsApp.
+
+${guia}
+
+Reglas duras (iguales a tu estilo de siempre):
+- Español rioplatense, voseo.
+- MÁXIMO 2 líneas. Menos es más. Cada toque es más corto que el anterior.
+- CERO emojis. CERO signos de exclamación. CERO mayúsculas de énfasis.
+- NO te vuelvas a presentar (ya sabe quién sos). NO reclames la falta de respuesta ("te escribí y no me contestaste" está PROHIBIDO).
+- NO inventes datos del negocio: usá solo lo que te paso.
+- Tono de fundador seguro escribiéndole a un par. Nada de relleno, nada de folleto, nada de adulación.
+- Variá respecto del primer mensaje: no repitas la misma frase de valor ni la misma pregunta.
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después:
+{ "mensaje": "<el mensaje de seguimiento>" }`;
+
+  const parsed = await askClaudeJSON(system, 'Contexto del prospecto y del toque:\n' + JSON.stringify(compact, null, 2), 400);
+  const mensaje = clean(parsed?.mensaje, 700);
+  if (!mensaje) return { error: 'followup_failed' };
+  return { mensaje };
+}
+
+// ── Punto 2: ayuda para responder cuando el prospecto SÍ contesta ───────────
+// Cuando el prospecto responde (muchas veces con una objeción), el momento de
+// oro es la contrarréplica. Esta función toma lo que dijo el prospecto y redacta
+// una respuesta que maneja la objeción con tono de fundador. Es EFÍMERA: no se
+// guarda en la fila (cada conversación es distinta). Devuelve { respuesta } o { error }.
+export async function replyDraft(lead, prospectoDijo) {
+  if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
+  const dijo = clean(prospectoDijo, 1200);
+  if (!dijo) return { error: 'missing_message' };
+
+  const enr = lead.enriquecimiento || {};
+  const compact = {
+    nombre:  lead.nombre || '',
+    empresa: lead.empresa || '',
+    rubro:   enr.rubro || lead.rubro || '',
+    angulo:  enr.angulo || '',
+    lo_que_dijo_el_prospecto: dijo,
+  };
+
+  const system = `Sos Federico, fundador de Pazque (SaaS B2B: un portal donde los clientes de una distribuidora hacen los pedidos solos, en vez de recibirlos por WhatsApp uno por uno; catálogo con fotos y precios; toma de pedidos por voz/foto). Un prospecto te RESPONDIÓ por WhatsApp. Te paso textual lo que dijo. Redactá tu contrarréplica.
+
+Manejo de objeciones típicas (adaptá, no recites):
+- "Ya tengo un sistema / ERP": no competís con el ERP; Pazque es la cara al cliente (el portal de pedidos), y se puede integrar. Preguntá cómo hacen hoy los pedidos sus clientes.
+- "No tengo tiempo": por eso mismo; el portal justamente saca trabajo manual de tomar pedidos. Ofrecé algo de 1 minuto.
+- "¿Cuánto sale?": no te escapes pero no tires número a ciegas; decí que depende del tamaño y proponé mostrarle primero cómo se vería para su operación.
+- "Mandame info": mejor algo vivo y breve que un PDF; ofrecé mostrarle su propio catálogo en el portal.
+- Si muestra interés real: no sobrevendas, proponé el siguiente paso concreto (mostrarle el portal con sus productos).
+
+Reglas duras:
+- Español rioplatense, voseo.
+- MÁXIMO 3 líneas. Directo, cálido, de igual a igual.
+- CERO emojis. CERO signos de exclamación. CERO mayúsculas de énfasis.
+- NO inventes datos del negocio ni prometas precios o plazos que no te di.
+- Siempre cerrá con UNA pregunta o un próximo paso concreto y de bajo compromiso.
+- Tono de fundador, nada de folleto ni de vendedor desesperado.
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después:
+{ "respuesta": "<tu contrarréplica>" }`;
+
+  const parsed = await askClaudeJSON(system, 'Contexto:\n' + JSON.stringify(compact, null, 2), 400);
+  const respuesta = clean(parsed?.respuesta, 700);
+  if (!respuesta) return { error: 'reply_failed' };
+  return { respuesta };
 }
 
 // ── Sourcing outbound: buscar distribuidoras reales en Google Places ────────
@@ -732,6 +852,67 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, enriquecimiento, enriquecido_at: patch.enriquecido_at });
   }
 
+  // ── Punto 1: redactar el próximo toque de seguimiento ─────────────────
+  if (action === 'follow-up') {
+    if (!(await checkRateLimit('owner-followup:' + ip, 60, 10, { failClosed: true })))
+      return res.status(429).json({ error: 'Esperá un momento antes de redactar otro seguimiento.' });
+
+    const id = clean(req.body?.id, 60);
+    if (!id) return res.status(400).json({ error: 'Falta el id del prospecto' });
+
+    const q = await fetch(
+      `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+      { headers: svcHeaders() }
+    );
+    const lead = q.ok ? (await q.json())[0] : null;
+    if (!lead) return res.status(404).json({ error: 'Prospecto no encontrado' });
+
+    const { mensaje, error } = await draftFollowUp(lead);
+    if (error) {
+      const msg = error === 'anthropic_not_configured'
+        ? 'El análisis con IA no está configurado.'
+        : 'No pudimos redactar el seguimiento. Probá de nuevo.';
+      return res.status(error === 'anthropic_not_configured' ? 503 : 502).json({ error: msg });
+    }
+
+    const generadoAt = new Date().toISOString();
+    const upd = await fetch(
+      `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', headers: svcHeaders({ Prefer: 'return=minimal' }),
+        body: JSON.stringify({ seguimiento_mensaje: mensaje, seguimiento_generado_at: generadoAt }) }
+    );
+    if (!upd.ok) console.warn('[owner] follow-up save error:', await upd.text()); // no bloquea
+    return res.status(200).json({ ok: true, seguimiento_mensaje: mensaje, seguimiento_generado_at: generadoAt });
+  }
+
+  // ── Punto 2: ayuda para responder cuando el prospecto contestó ────────
+  // Efímero: no toca la fila. Cada respuesta del prospecto es distinta.
+  if (action === 'reply') {
+    if (!(await checkRateLimit('owner-reply:' + ip, 60, 15, { failClosed: true })))
+      return res.status(429).json({ error: 'Esperá un momento antes de pedir otra respuesta.' });
+
+    const id = clean(req.body?.id, 60);
+    if (!id) return res.status(400).json({ error: 'Falta el id del prospecto' });
+
+    const q = await fetch(
+      `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+      { headers: svcHeaders() }
+    );
+    const lead = q.ok ? (await q.json())[0] : null;
+    if (!lead) return res.status(404).json({ error: 'Prospecto no encontrado' });
+
+    const { respuesta, error } = await replyDraft(lead, req.body?.prospecto_dijo);
+    if (error) {
+      const msg = error === 'missing_message'
+        ? 'Pegá primero lo que te dijo el prospecto.'
+        : error === 'anthropic_not_configured'
+          ? 'El análisis con IA no está configurado.'
+          : 'No pudimos redactar la respuesta. Probá de nuevo.';
+      return res.status(error === 'missing_message' ? 400 : error === 'anthropic_not_configured' ? 503 : 502).json({ error: msg });
+    }
+    return res.status(200).json({ ok: true, respuesta });
+  }
+
   if (action === 'update') {
     const id = clean(req.body?.id, 60);
     if (!id) return res.status(400).json({ error: 'Falta el id del prospecto' });
@@ -769,6 +950,20 @@ export default async function handler(req, res) {
       patch.seguir_desde = new Date(now + FOLLOW_UP_DAYS * 86400000).toISOString();
       // Si estaba "nuevo", el primer contacto lo pasa a "contactado".
       if (!patch.estado) patch.estado = 'contactado';
+      // Contamos el toque (leemos el valor actual para incrementarlo).
+      const cur = await fetch(
+        `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}&select=toques&limit=1`,
+        { headers: svcHeaders() }
+      );
+      const prev = cur.ok ? ((await cur.json())[0]?.toques || 0) : 0;
+      patch.toques = prev + 1;
+      // El seguimiento ya redactado se consumió con este toque: lo limpiamos para
+      // que el próximo se redacte de cero con el número de toque nuevo.
+      patch.seguimiento_mensaje = null;
+      patch.seguimiento_generado_at = null;
+      // Reseteamos el resultado: cada toque vuelve a preguntar "¿te respondió?".
+      patch.respondio = null;
+      patch.respondio_at = null;
     }
     // "Posponer": corre el próximo toque sin tocar el último contacto real.
     if (req.body?.posponer != null) {
