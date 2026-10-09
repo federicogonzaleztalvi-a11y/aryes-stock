@@ -945,7 +945,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         {hasImg
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
               loading="lazy" decoding="async"
-              style={{ maxHeight: imgH - 28, maxWidth: '100%', objectFit: 'contain',
+              style={{ maxHeight: imgH - 28, maxWidth: isMobile ? '100%' : imgH - 28, objectFit: 'contain',
                 transform: hov && open ? 'scale(1.06)' : 'none', transition: 'transform .25s' }} />
           : <div style={{ textAlign: 'center', padding: '0 10px' }}>
               <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#fff',
