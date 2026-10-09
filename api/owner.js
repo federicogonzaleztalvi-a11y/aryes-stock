@@ -613,10 +613,54 @@ Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después:
 // SOLO lee de Google e inserta en NUESTRA tabla (pazque_leads). No contacta a
 // nadie. Federico decide a quién escribirle y lo hace a mano por WhatsApp.
 //
-// País objetivo del sourcing. Pazque es para toda América, pero el GTM arranca por
+// País objetivo del sourcing. Pazque es para toda LATAM, pero el GTM arranca por
 // Uruguay. Para expandir a otro país alcanza con cambiar SOURCING_COUNTRY en Vercel
 // (ej: 'Argentina') — sin tocar código. Vacío = sin filtro de país (toda América).
 const SOURCING_COUNTRY = (process.env.SOURCING_COUNTRY || 'Uruguay').trim();
+
+// Mercados LATAM habilitables. El código YA está listo para toda la región: sumar
+// un país es apuntar SOURCING_COUNTRY a su nombre (sin tocar código). regionCode es
+// el sesgo geográfico de Google Places (ISO-3166 alpha-2). Hoy el único mercado
+// ACTIVO es el que diga SOURCING_COUNTRY (por defecto Uruguay); el resto queda
+// disponible para encender cuando Federico quiera.
+const MARKETS = {
+  'uruguay':   { regionCode: 'UY' },
+  'argentina': { regionCode: 'AR' },
+  'chile':     { regionCode: 'CL' },
+  'mexico':    { regionCode: 'MX' },
+  'méxico':    { regionCode: 'MX' },
+  'colombia':  { regionCode: 'CO' },
+  'peru':      { regionCode: 'PE' },
+  'perú':      { regionCode: 'PE' },
+  'paraguay':  { regionCode: 'PY' },
+  'bolivia':   { regionCode: 'BO' },
+  'ecuador':   { regionCode: 'EC' },
+};
+const activeMarket = MARKETS[SOURCING_COUNTRY.toLowerCase()] || null;
+// regionCode: solo un sesgo (no un filtro — el filtro real es la guardia geográfica
+// más abajo). Si el país no está en MARKETS dejamos que Google decida sin sesgo.
+const SOURCING_REGION = activeMarket?.regionCode || null;
+
+// Rubros objetivo del sourcing — los mismos para cualquier mercado. Las búsquedas
+// se arman combinando cada rubro con el país activo, así sumar un país nuevo NO
+// requiere escribir búsquedas a mano: el agente las genera solo.
+const SOURCING_RUBROS = [
+  'distribuidoras de alimentos',
+  'distribuidoras mayoristas de bebidas',
+  'distribuidoras de productos de limpieza',
+  'distribuidoras de cosmética y perfumería',
+  'distribuidoras de panadería y repostería',
+  'distribuidoras de productos para gastronomía',
+  'distribuidoras mayoristas de almacén',
+  'importadoras y distribuidoras de alimentos',
+];
+
+// Búsquedas del día para el agente proactivo (cron-ventas). Genera una lista de
+// queries para el país activo; si no hay país configurado, busca "en América Latina".
+export function getSourcingQueries() {
+  const where = SOURCING_COUNTRY || 'América Latina';
+  return SOURCING_RUBROS.map(r => `${r} en ${where}`);
+}
 const PLACES_URL = 'https://places.googleapis.com/v1/places:searchText';
 // Pedimos solo los campos que usamos (el field mask define el costo del SKU).
 const PLACES_FIELDS = [
@@ -631,7 +675,8 @@ async function placesSearch(query) {
   const results = [];
   let pageToken = null;
   for (let page = 0; page < 2; page++) {
-    const body = { textQuery: query, regionCode: 'UY', languageCode: 'es' };
+    const body = { textQuery: query, languageCode: 'es' };
+    if (SOURCING_REGION) body.regionCode = SOURCING_REGION; // sesgo del país activo
     if (pageToken) body.pageToken = pageToken;
     const r = await fetch(PLACES_URL, {
       method: 'POST',
@@ -657,7 +702,7 @@ async function placesSearch(query) {
 // Devuelve cuántas nuevas entraron.
 export async function sourceDistributors(query) {
   if (!GOOGLE_PLACES_KEY) return { error: 'places_not_configured' };
-  const q = clean(query, 160) || 'distribuidoras mayoristas en Uruguay';
+  const q = clean(query, 160) || `distribuidoras mayoristas en ${SOURCING_COUNTRY || 'América Latina'}`;
 
   const places = await placesSearch(q);
   if (places.length === 0) return { added: 0, found: 0 };

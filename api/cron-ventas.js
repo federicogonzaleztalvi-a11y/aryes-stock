@@ -25,7 +25,7 @@
 import { sendEmail } from './_email.js';
 // Reusamos el MISMO motor que /owner (una sola fuente de verdad: el mensaje que
 // arma el agente de la mañana es idéntico al del botón "Enriquecer").
-import { sourceDistributors, enrichLead, draftFollowUp } from './owner.js';
+import { sourceDistributors, enrichLead, draftFollowUp, getSourcingQueries } from './owner.js';
 
 const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC      = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -38,21 +38,14 @@ const SITE        = (process.env.SITE_URL || 'https://pazque.com').replace(/\/$/
 const H     = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' };
 const HJSON = { ...H, 'Content-Type': 'application/json' };
 
-// Rotación de mercado: el agente explora un rubro/zona distinto cada día en vez
-// de repetir la misma búsqueda. Determinístico por día (sin estado extra).
-const QUERIES = [
-  'distribuidoras de alimentos en Montevideo',
-  'distribuidoras mayoristas de bebidas en Uruguay',
-  'distribuidoras de productos de limpieza en Montevideo',
-  'distribuidoras de cosmética y perfumería en Uruguay',
-  'distribuidoras de panadería y repostería en Uruguay',
-  'distribuidoras de productos para gastronomía en Montevideo',
-  'distribuidoras mayoristas de almacén en Canelones',
-  'importadoras y distribuidoras de alimentos en Uruguay',
-];
+// Rotación de mercado: el agente explora un rubro distinto cada día en vez de
+// repetir la misma búsqueda. Determinístico por día (sin estado extra). Las
+// búsquedas las genera owner.js a partir del país activo (SOURCING_COUNTRY), así
+// el agente queda listo para cualquier mercado LATAM sin tocar este archivo.
 function pickQuery() {
+  const queries = getSourcingQueries();
   const dayNum = Math.floor(Date.now() / 86_400_000);
-  return QUERIES[dayNum % QUERIES.length];
+  return queries[dayNum % queries.length];
 }
 
 async function sbGet(path) {
