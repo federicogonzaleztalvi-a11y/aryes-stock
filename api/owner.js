@@ -295,6 +295,49 @@ async function findSocial(name, city) {
 const TAMANOS  = ['chico', 'mediano', 'grande', 'sin datos'];
 const PRIORIDS = ['alta', 'media', 'baja'];
 
+// ── Loop de aprendizaje: ejemplos reales de Federico ────────────────────────
+// Lee de pazque_leads los mejores ejemplos ya enviados para que el agente aprenda
+// de datos REALES (no de inventos): qué mensajes consiguieron respuesta y qué
+// corrige Federico cuando edita un borrador. Devuelve un bloque de texto listo
+// para pegar en el system prompt, o '' si todavía no hay historial (arranque frío:
+// el agente se comporta como antes hasta que haya señal real).
+async function fetchLearningBlock() {
+  const pick = async (filtro, limit) => {
+    try {
+      const r = await fetch(
+        `${SB_URL}/rest/v1/pazque_leads?${filtro}&select=rubro,mensaje_borrador,mensaje_final` +
+        `&order=enriquecido_at.desc.nullslast&limit=${limit}`,
+        { headers: svcHeaders() }
+      );
+      return r.ok ? await r.json() : [];
+    } catch { return []; }
+  };
+  // 1) Los que consiguieron respuesta: el patrón que SÍ funciona.
+  const ganadores = await pick('mensaje_final=not.is.null&respondio=is.true', 3);
+  // 2) Las correcciones de Federico (borrador → final): qué mejora a mano.
+  const editados  = await pick('fue_editado=is.true&mensaje_borrador=not.is.null&mensaje_final=not.is.null', 3);
+
+  const partes = [];
+  if (ganadores.length) {
+    partes.push(
+      'MENSAJES QUE CONSIGUIERON RESPUESTA (replicá su tono, largo y estructura — es lo que funciona de verdad):\n' +
+      ganadores.map((g, i) => `  Ejemplo ${i + 1}${g.rubro ? ` (${g.rubro})` : ''}:\n  "${(g.mensaje_final || '').trim()}"`).join('\n')
+    );
+  }
+  if (editados.length) {
+    partes.push(
+      'CORRECCIONES DE FEDERICO (editó el borrador antes de mandar — aprendé el patrón y aplicalo desde el inicio):\n' +
+      editados.map((e, i) =>
+        `  Caso ${i + 1}:\n  - Borrador del agente: "${(e.mensaje_borrador || '').trim()}"\n  - Como lo dejó Federico: "${(e.mensaje_final || '').trim()}"`
+      ).join('\n')
+    );
+  }
+  if (!partes.length) return '';
+  return '\n\nAPRENDIZAJE — EJEMPLOS REALES DE FEDERICO (usalos como guía de estilo y de qué funciona; ' +
+    'no copies el contenido puntual de cada negocio, copiá el tono, el largo y la estructura):\n' +
+    partes.join('\n\n');
+}
+
 // Exportada: el agente proactivo (api/cron-ventas.js) reusa exactamente este
 // enriquecimiento, para que el mensaje de WhatsApp y el análisis sean idénticos
 // venga de un clic en /owner o del cron de la mañana. Una sola fuente de verdad.
@@ -338,7 +381,8 @@ Reglas:
     · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
 - Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
-- COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.`;
+- COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.`
+    + (await fetchLearningBlock());
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -643,6 +687,24 @@ export default async function handler(req, res) {
       patch.estado = estado;
     }
     if (req.body?.notas != null) patch.notas = clean(req.body.notas, 2000) || null;
+
+    // Loop de aprendizaje — señal 1: ¿qué mandó Federico realmente?
+    // El tablero manda el mensaje final (editado o no) junto con el borrador que
+    // propuso el agente. Guardamos ambos y marcamos si lo editó: eso es lo que
+    // enrichLead usa después para aprender su estilo y sus correcciones.
+    if (req.body?.mensaje_final != null) {
+      const norm = (s) => clean(s, 1200).replace(/\s+/g, ' ').trim();
+      const fin = clean(req.body.mensaje_final, 1200) || null;
+      const bor = clean(req.body?.mensaje_borrador, 1200) || null;
+      patch.mensaje_final = fin;
+      if (bor) patch.mensaje_borrador = bor;
+      if (fin) patch.fue_editado = norm(fin) !== norm(bor || '');
+    }
+    // Loop de aprendizaje — señal 2 (de oro): ¿el prospecto contestó?
+    if (typeof req.body?.respondio === 'boolean') {
+      patch.respondio = req.body.respondio;
+      patch.respondio_at = new Date().toISOString();
+    }
 
     // Seguimiento: "Ya le escribí" registra el contacto y agenda el próximo toque.
     if (req.body?.marcar_contacto === true) {

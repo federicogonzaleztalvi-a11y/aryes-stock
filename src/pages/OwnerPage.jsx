@@ -238,12 +238,6 @@ function EnrichPanel({ e }) {
           ))}
         </div>
       )}
-      {e.mensaje_wa && (
-        <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4, marginBottom: 4 }}>MENSAJE DE WHATSAPP LISTO</div>
-          <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{e.mensaje_wa}</div>
-        </div>
-      )}
     </div>
   );
 }
@@ -256,7 +250,16 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
   const idx = FLUJO.indexOf(l.estado);
   const next = idx >= 0 && idx < 3 ? FLUJO[idx + 1] : null; // avanza hasta "convertido"
   const msgWa = l.enriquecimiento?.mensaje_wa || '';
-  const whref = waLink(l.tel, msgWa);
+  // Loop de aprendizaje: el mensaje es EDITABLE antes de mandar. 'draft' arranca
+  // en el borrador del agente; si Federico lo ajusta acá, el botón de WhatsApp usa
+  // su versión y, al marcar "Ya le escribí", guardamos borrador vs final.
+  const [draft, setDraft] = React.useState(msgWa);
+  // Si el agente re-genera el mensaje (re-analizar), refrescamos el editor.
+  React.useEffect(() => { setDraft(msgWa); }, [msgWa]);
+  const whref = waLink(l.tel, draft || msgWa);
+  // ¿Ya lo contactó y falta registrar si contestó? (señal de oro del loop)
+  const yaContactado = !!l.ultimo_contacto_at;
+  const faltaResultado = yaContactado && (l.respondio === null || l.respondio === undefined);
   const dias = diasDesde(l.ultimo_contacto_at);
   const seguir = tocaSeguir(l);
 
@@ -316,6 +319,53 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
       {/* Análisis del agente (peldaño 1b) */}
       {l.enriquecimiento && <EnrichPanel e={l.enriquecimiento} />}
 
+      {/* Mensaje de WhatsApp — EDITABLE (loop de aprendizaje peldaño 3).
+          Federico lo ajusta acá; el botón de WhatsApp manda su versión y el agente
+          aprende de lo que corrige. */}
+      {msgWa && (
+        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: C.faint, letterSpacing: .4 }}>MENSAJE DE WHATSAPP</span>
+            <span style={{ fontSize: 11.5, color: C.sub }}>— editalo si querés antes de mandar</span>
+            {draft.trim() !== msgWa.trim() && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.amber, background: C.amberBg, borderRadius: 50, padding: '1px 8px' }}>editado</span>
+            )}
+          </div>
+          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={4}
+            style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, color: C.ink, lineHeight: 1.5,
+              fontFamily: C.sans, border: `1px solid ${C.line}`, borderRadius: 8, padding: '9px 11px',
+              resize: 'vertical', background: C.bg }} />
+          {draft.trim() !== msgWa.trim() && (
+            <button onClick={() => setDraft(msgWa)} style={{
+              fontSize: 12, color: C.sub, background: 'transparent', border: 'none',
+              cursor: 'pointer', fontFamily: C.sans, marginTop: 4, padding: 0 }}>
+              ↺ Volver al borrador del agente
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Loop de aprendizaje — señal de oro: ¿contestó el prospecto? */}
+      {faltaResultado && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          background: C.greenSoft, border: `1px solid ${C.green}22`, borderRadius: 10, padding: '9px 12px' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>¿Te respondió?</span>
+          <span style={{ fontSize: 12, color: C.sub }}>Así el agente aprende qué mensajes funcionan.</span>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+            <button onClick={() => onUpdate(l.id, { respondio: true })} disabled={busy} style={{
+              fontSize: 13, fontWeight: 600, color: '#fff', background: busy ? '#b0b0a8' : C.green,
+              border: 'none', borderRadius: 50, padding: '7px 14px', cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+              👍 Sí, contestó
+            </button>
+            <button onClick={() => onUpdate(l.id, { respondio: false })} disabled={busy} style={{
+              fontSize: 13, fontWeight: 600, color: C.sub, background: C.card,
+              border: `1px solid ${C.line}`, borderRadius: 50, padding: '7px 14px', cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+              👎 Todavía no
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Acciones de estado + notas */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: `1px solid ${C.line}`, paddingTop: 12 }}>
         <button onClick={() => onEnrich(l.id)} disabled={enriching} title="El agente lee el prospecto y sugiere rubro, tamaño y ángulo de venta" style={{
@@ -325,7 +375,12 @@ function LeadCard({ l, onUpdate, onEnrich, busy, enriching }) {
           {enriching ? 'Analizando…' : (l.enriquecimiento ? '↻ Re-analizar' : '✨ Enriquecer')}
         </button>
         {l.estado !== 'descartado' && l.estado !== 'convertido' && (
-          <button onClick={() => onUpdate(l.id, { marcar_contacto: true })} disabled={busy}
+          <button onClick={() => onUpdate(l.id, {
+              marcar_contacto: true,
+              // Guardamos lo que realmente mandó (editado o no) + el borrador original:
+              // es la señal que el agente usa para aprender su estilo y correcciones.
+              ...(msgWa ? { mensaje_final: draft, mensaje_borrador: msgWa } : {}),
+            })} disabled={busy}
             title="Registra que ya le escribiste. Te lo recuerdo para seguirlo en unos días." style={{
             fontSize: 13, fontWeight: 600, color: C.ink, background: C.card,
             border: `1px solid ${C.line}`, borderRadius: 50, padding: '8px 14px',
