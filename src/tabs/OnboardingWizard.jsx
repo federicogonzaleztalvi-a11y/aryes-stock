@@ -188,13 +188,13 @@ function StepProduct({ data, setData, suppliers, onBack, onNext, onSkip }) {
   const UNITS = ['kg', 'g', 'lt', 'ml', 'u', 'pack', 'caja', 'bolsa', 'frasco', 'lata'];
   return (
     <div>
-      <StepHeader step={3} title="Creá tu primer producto" subtitle="Podés importar el catálogo completo desde Importar datos." />
+      <StepHeader step={3} title="Cargá tu primer producto" subtitle="Este es el que verán tus clientes en tu portal de pedidos. Después podés importar el catálogo completo desde Importar datos." />
       <Field label="Nombre del producto" required>
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Chocolate amargo 70%" />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Stock inicial">
-          <input style={inp} type="number" min="0" value={data.stock} onChange={e => setData(d => ({ ...d, stock: e.target.value }))} placeholder="0" />
+        <Field label="Precio de venta">
+          <input style={inp} type="number" min="0" step="0.01" value={data.precio} onChange={e => setData(d => ({ ...d, precio: e.target.value }))} placeholder="0.00" />
         </Field>
         <Field label="Unidad">
           <select style={inp} value={data.unit} onChange={e => setData(d => ({ ...d, unit: e.target.value }))}>
@@ -202,17 +202,23 @@ function StepProduct({ data, setData, suppliers, onBack, onNext, onSkip }) {
           </select>
         </Field>
       </div>
+      <div style={{ fontSize: 12, color: T.textSm, margin: '-6px 0 14px', lineHeight: 1.5 }}>
+        💡 El <strong>precio de venta</strong> es lo que ve tu cliente en el portal. El stock y el costo son internos (opcionales).
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Stock inicial">
+          <input style={inp} type="number" min="0" value={data.stock} onChange={e => setData(d => ({ ...d, stock: e.target.value }))} placeholder="0" />
+        </Field>
         <Field label="Costo unitario">
           <input style={inp} type="number" min="0" step="0.01" value={data.unitCost} onChange={e => setData(d => ({ ...d, unitCost: e.target.value }))} placeholder="0.00" />
         </Field>
-        <Field label="Proveedor">
-          <select style={inp} value={data.supplierId} onChange={e => setData(d => ({ ...d, supplierId: e.target.value }))}>
-            <option value="">— sin asignar —</option>
-            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </Field>
       </div>
+      <Field label="Proveedor">
+        <select style={inp} value={data.supplierId} onChange={e => setData(d => ({ ...d, supplierId: e.target.value }))}>
+          <option value="">— sin asignar —</option>
+          {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </Field>
       <BtnRow onBack={onBack} onSkip={onSkip} onNext={onNext} canNext={!!data.name.trim()} />
     </div>
   );
@@ -228,16 +234,16 @@ function StepUser({ data, setData, onBack, onNext, onSkip, loading, error }) {
   ];
   return (
     <div>
-      <StepHeader step={4} title="Creá el primer usuario" subtitle="Podés gestionar todos los usuarios desde Config → Usuarios." />
+      <StepHeader step={4} title="¿Querés sumar a alguien de tu equipo?" subtitle="Opcional. Vos ya tenés tu cuenta de administrador. Si trabajás solo, apretá “Saltear” — podés sumar gente cuando quieras desde Config → Usuarios." />
       <Field label="Nombre">
         <input style={inp} value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Nombre completo" />
       </Field>
-      <Field label="Email" required>
+      <Field label="Email">
         <input style={inp} type="email" value={data.email} onChange={e => setData(d => ({ ...d, email: e.target.value }))} placeholder="usuario@empresa.com" />
       </Field>
-      <Field label="Contraseña" required>
+      <Field label="Contraseña">
         <div style={{ position: 'relative' }}>
-          <input style={{ ...inp, paddingRight: 44 }} type={show ? 'text' : 'password'} value={data.password} onChange={e => setData(d => ({ ...d, password: e.target.value }))} placeholder="Mínimo 6 caracteres" />
+          <input style={{ ...inp, paddingRight: 44 }} type={show ? 'text' : 'password'} value={data.password} onChange={e => setData(d => ({ ...d, password: e.target.value }))} placeholder="Mínimo 8 caracteres" />
           <button type="button" onClick={() => setShow(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: T.textSm }}>
             {show ? '🙈' : '👁'}
           </button>
@@ -256,7 +262,7 @@ function StepUser({ data, setData, onBack, onNext, onSkip, loading, error }) {
       </Field>
       {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#dc2626', fontFamily: T.sans, marginTop: 4 }}>{error}</div>}
       <BtnRow onBack={onBack} onSkip={onSkip} onNext={onNext} nextLabel="Crear usuario →" loading={loading}
-        canNext={!!data.email.trim() && data.password.length >= 6} />
+        canNext={!!data.email.trim() && data.password.length >= 8} />
     </div>
   );
 }
@@ -265,10 +271,10 @@ function StepUser({ data, setData, onBack, onNext, onSkip, loading, error }) {
 function StepDone({ onFinish }) {
   return (
     <div style={{ textAlign: 'center', padding: '12px 0' }}>
-      <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
-      <h2 style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: T.text, margin: '0 0 12px' }}>¡Todo listo!</h2>
+      <div style={{ fontSize: 56, marginBottom: 16 }}>🚀</div>
+      <h2 style={{ fontFamily: T.serif, fontSize: 28, fontWeight: 500, color: T.text, margin: '0 0 12px' }}>¡Buen arranque!</h2>
       <p style={{ fontFamily: T.sans, fontSize: 15, color: T.textSm, lineHeight: 1.7, margin: '0 0 28px' }}>
-        Tu sistema está configurado.<br />Podés seguir agregando proveedores, productos y usuarios en cualquier momento.
+        Ya tenés lo básico cargado. En el dashboard te espera una <strong>lista de pasos</strong> para dejar tu portal listo para vender: subir tu catálogo, invitar clientes y más.
       </p>
       <button onClick={onFinish} style={{ padding: '12px 36px', background: G, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 15, fontFamily: T.sans, fontWeight: 700 }}>
         Ir al dashboard →
@@ -298,7 +304,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
   }, [session?.orgId]);
   const [brand, setBrand] = useState({ name: '', logoUrl: '', color: '#059669' });
   const [supplier, setSupplier] = useState({ name: '', flag: 'AR', currency: 'USD', company: '', email: '' });
-  const [product, setProduct] = useState({ name: '', stock: '0', unit: 'kg', unitCost: '0', supplierId: '' });
+  const [product, setProduct] = useState({ name: '', stock: '0', unit: 'kg', unitCost: '0', precio: '', supplierId: '' });
   const [user, setUser] = useState({ name: '', email: '', password: '', role: 'operador' });
 
   // savedSuppliers accumulates as we create them, so product step can reference them
@@ -311,8 +317,11 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
 
   // ── Save helpers ─────────────────────────────────────────────────────────────
   const saveCompanyAndBrand = async () => {
-    // Save brand to app_config
-    const brandToSave = { ...brand, name: brand.name || company.name };
+    // Save brand to app_config. Guardamos también el país DENTRO de brandcfg
+    // (además de companycfg) porque brandcfg lo cargan TODOS los roles al entrar:
+    // así la checklist del dashboard puede decidir si mostrar o no el paso de
+    // factura electrónica (CFE/DGI es solo de Uruguay). Sin país → se asume UY.
+    const brandToSave = { ...brand, name: brand.name || company.name, pais: company.country || '' };
     // Update localStorage for immediate sidebar update
     localStorage.setItem('aryes-brand', JSON.stringify({ ...brandToSave, _org: getOrgId() }));
     try {
@@ -363,6 +372,7 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
       unit: product.unit || 'kg',
       stock: Number(product.stock) || 0,
       unit_cost: Number(product.unitCost) || 0,
+      precio_venta: Number(product.precio) || 0,  // lo que ve el cliente en el portal
       min_stock: 5,
       daily_usage: 0.5,
       category: '',
@@ -375,13 +385,13 @@ export default function OnboardingWizard({ session, onComplete, onSkip: onSkipAl
     LS.set('aryes6-products', [...existing, {
       id, name: product.name, supplierId: prod.supplier_id,
       unit: prod.unit, stock: prod.stock, unitCost: prod.unit_cost,
-      minStock: prod.min_stock, history: [],
+      precioVenta: prod.precio_venta, minStock: prod.min_stock, history: [],
     }]);
     try { await db.upsert('products', prod, 'uuid'); } catch { /* non-blocking */ }
   };
 
   const createUser = async () => {
-    if (!user.email.trim() || user.password.length < 6) return false;
+    if (!user.email.trim() || user.password.length < 8) return false;
     try {
       const res = await fetch('/api/admin-users?action=create', {
         method: 'POST',

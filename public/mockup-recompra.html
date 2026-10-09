@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Pedidos recurrentes (recompra)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#f4efe6; --tile:#f7f5f1; --ink:#28271f; --gray:#7a7a74;
+    --forest:#3f5344; --green:#059669; --line:#ececec;
+    --sans:'DM Sans',system-ui,sans-serif; --display:'Playfair Display',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e7e2d8;font-family:var(--sans);color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;padding:24px 14px 60px;min-height:100vh}
+  .note{max-width:380px;text-align:center;color:#6b6b66;font-size:12.5px;line-height:1.5;margin:0 0 18px}
+  .note b{color:var(--ink)}
+  /* teléfono */
+  .phone{width:340px;max-width:100%;background:#fff;border-radius:30px;
+    box-shadow:0 18px 44px rgba(40,39,31,.20);overflow:hidden;border:1px solid #ddd}
+  .bar{height:30px;background:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;color:var(--gray);border-bottom:1px solid var(--line)}
+  .screen{padding:16px 15px 20px;min-height:520px}
+  .kicker{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gray);font-weight:600}
+  h1{font-family:var(--display);font-size:19px;margin:3px 0 2px;font-weight:700}
+  .sub{color:var(--gray);font-size:12px;margin:0 0 14px;line-height:1.4}
+  /* card genérica */
+  .card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px}
+  .card + .card{margin-top:11px}
+  /* botones */
+  .btn{display:block;width:100%;border:none;border-radius:11px;padding:11px;font-family:var(--sans);
+    font-size:13.5px;font-weight:600;cursor:pointer;text-align:center}
+  .btn-primary{background:var(--forest);color:#fff}
+  .btn-ghost{background:transparent;color:var(--forest);border:1.5px solid #d7d2c7}
+  .btn-green{background:var(--green);color:#fff}
+  .btn + .btn{margin-top:8px}
+  .center{text-align:center}
+  /* línea de item */
+  .item{display:flex;align-items:center;gap:10px;padding:8px 0}
+  .item + .item{border-top:1px solid var(--line)}
+  .thumb{width:38px;height:38px;border-radius:8px;background:var(--tile);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:17px}
+  .item .nm{flex:1;min-width:0;font-size:12.5px;font-weight:600}
+  .item .qty{font-size:11px;color:var(--gray);font-weight:400}
+  .item .pr{font-size:12.5px;font-weight:600;white-space:nowrap}
+  .total{display:flex;justify-content:space-between;align-items:baseline;margin-top:11px;
+    padding-top:11px;border-top:1px dashed var(--line)}
+  .total b{font-family:var(--display);font-size:17px}
+  /* banner recordatorio */
+  .remind{background:#f2f9f5;border:1px solid #d3e8db;border-radius:13px;padding:13px;position:relative}
+  .remind .tag{display:inline-block;background:var(--green);color:#fff;font-size:9.5px;font-weight:700;
+    letter-spacing:.6px;text-transform:uppercase;padding:3px 8px;border-radius:99px;margin-bottom:8px}
+  .remind h3{margin:0 0 4px;font-size:13.5px}
+  .remind p{margin:0 0 11px;font-size:11.5px;color:var(--gray);line-height:1.45}
+  /* toast confirmado */
+  .ok{background:#f2f9f5;border:1px solid #d3e8db;border-radius:13px;padding:15px;text-align:center}
+  .ok .big{font-size:30px}
+  .ok h3{margin:7px 0 3px;font-family:var(--display);font-size:17px}
+  .ok p{margin:0;color:var(--gray);font-size:12px;line-height:1.4}
+  /* selector frecuencia */
+  .freq{display:flex;gap:7px;margin:11px 0 2px}
+  .freq button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:8px 3px;
+    font-family:var(--sans);font-size:11px;font-weight:600;color:var(--ink);cursor:pointer}
+  .freq button.on{border-color:var(--forest);background:#eef1ee;color:var(--forest)}
+  .managed{font-size:11px;color:var(--gray);margin-top:13px;text-align:center;line-height:1.4}
+  .managed a{color:var(--forest);font-weight:600;text-decoration:none;cursor:pointer}
+  .steps{display:flex;gap:6px;justify-content:center;margin:18px 0 4px}
+  .dot{width:7px;height:7px;border-radius:99px;background:#cfc9bb}
+  .dot.on{background:var(--forest);width:18px}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+  <p class="note">Mockup navegable · <b>Pedidos recurrentes (recompra)</b><br>
+    Tocá los botones para recorrer el flujo tal como lo viviría el cliente de Eric.</p>
+
+  <div class="phone">
+    <div class="bar">portal de Eric · pazque</div>
+    <div class="screen" id="screen"></div>
+  </div>
+
+  <div class="steps" id="steps"></div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+let freq = 'semanal';
+const FREQ_LABEL = {semanal:'cada semana', quincenal:'cada 15 días', mensual:'cada mes'};
+
+const ITEMS = [
+  {emoji:'🧀', nm:'Queso muzzarella 5 kg',  qty:'× 4', pr:'$3.200'},
+  {emoji:'🥛', nm:'Crema de leche 1 L',     qty:'× 12', pr:'$1.440'},
+  {emoji:'🍅', nm:'Salsa de tomate 3 kg',   qty:'× 6', pr:'$2.100'},
+  {emoji:'🫒', nm:'Aceite de oliva 5 L',    qty:'× 2', pr:'$1.960'},
+];
+const TOTAL = '$8.700';
+
+function itemsHTML(){
+  return ITEMS.map(i=>`<div class="item">
+    <div class="thumb">${i.emoji}</div>
+    <div class="nm">${i.nm}<div class="qty">${i.qty}</div></div>
+    <div class="pr">${i.pr}</div></div>`).join('');
+}
+function dots(n){
+  return [0,1,2,3].map(i=>`<div class="dot ${i===n?'on':''}"></div>`).join('');
+}
+
+// ── Pantalla 1: pedido recién hecho + ofrecer recompra ──────────────
+function screen1(){
+  $('steps').innerHTML = dots(0);
+  $('screen').innerHTML = `
+    <div class="ok" style="margin-bottom:16px">
+      <div class="big">✅</div>
+      <h3>¡Pedido enviado!</h3>
+      <p>Eric lo recibió. Te avisamos cuando salga el reparto.</p>
+    </div>
+
+    <div class="card">
+      <div class="kicker">Ahorrá tiempo</div>
+      <h1 style="font-size:17px;margin:3px 0 5px">¿Pedís esto seguido?</h1>
+      <p class="sub" style="margin-bottom:4px">Programá la recompra y te lo dejamos listo. Vos confirmás siempre antes de que se envíe.</p>
+      <div class="freq">
+        <button data-f="semanal" class="on" onclick="setFreq('semanal')">Cada semana</button>
+        <button data-f="quincenal" onclick="setFreq('quincenal')">Cada 15 días</button>
+        <button data-f="mensual" onclick="setFreq('mensual')">Cada mes</button>
+      </div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="goto(2)">Repetir este pedido <span id="fLbl">cada semana</span></button>
+      <button class="btn btn-ghost" onclick="alert('(En el portal real: seguís navegando sin agendar nada.)')">Ahora no</button>
+    </div>`;
+}
+function setFreq(f){
+  freq=f;
+  document.querySelectorAll('.freq button').forEach(b=>b.classList.toggle('on', b.dataset.f===f));
+  const l=$('fLbl'); if(l) l.textContent = FREQ_LABEL[f];
+}
+
+// ── Pantalla 2: confirmación de que quedó agendado ──────────────────
+function screen2(){
+  $('steps').innerHTML = dots(1);
+  $('screen').innerHTML = `
+    <div class="ok">
+      <div class="big">🔁</div>
+      <h3>Recompra activada</h3>
+      <p>Vas a recibir tu pedido de siempre <b>${FREQ_LABEL[freq]}</b>.</p>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="kicker">Tu pedido de siempre</div>
+      ${itemsHTML()}
+      <div class="total"><span>Total estimado</span><b>${TOTAL}</b></div>
+    </div>
+    <p class="managed">Lo administrás vos: podés <a onclick="alert('(Pausar / saltar una entrega / cambiar frecuencia / cancelar.)')">pausar, saltar o cancelar</a> cuando quieras.</p>
+    <button class="btn btn-ghost" style="margin-top:14px" onclick="goto(3)">▶︎ Ver qué pasa la próxima semana</button>`;
+}
+
+// ── Pantalla 3: recordatorio en el portal (semana siguiente) ────────
+function screen3(){
+  $('steps').innerHTML = dots(2);
+  $('screen').innerHTML = `
+    <div class="kicker">La semana siguiente</div>
+    <h1>Buen día 👋</h1>
+    <p class="sub">Esto te aparece al entrar al portal (y te llega un email igual).</p>
+
+    <div class="remind">
+      <span class="tag">Tu recompra</span>
+      <h3>¿Repetimos tu pedido de siempre?</h3>
+      <p>Toca ${FREQ_LABEL[freq]}. Ya te armamos el carrito con lo de siempre — revisalo y confirmá con un toque.</p>
+      <button class="btn btn-green" onclick="goto(4)">Ver mi carrito listo</button>
+      <button class="btn btn-ghost" style="margin-top:8px" onclick="alert('(Salta esta semana. La recompra sigue activa para la próxima.)')">Esta semana no</button>
+    </div>
+
+    <div class="managed" style="margin-top:20px">Nadie recibe mercadería sin confirmar. Siempre tenés la última palabra.</div>`;
+}
+
+// ── Pantalla 4: carrito pre-armado listo para confirmar ─────────────
+function screen4(){
+  $('steps').innerHTML = dots(3);
+  $('screen').innerHTML = `
+    <div class="kicker">Carrito listo</div>
+    <h1 style="font-size:22px">Tu pedido de siempre</h1>
+    <p class="sub">Ya cargado. Ajustá cantidades si querés, o confirmá tal cual.</p>
+
+    <div class="card">
+      ${itemsHTML()}
+      <div class="total"><span>Total</span><b>${TOTAL}</b></div>
+    </div>
+
+    <button class="btn btn-green" style="margin-top:14px" onclick="goto(5)">Confirmar pedido</button>
+    <button class="btn btn-ghost" onclick="alert('(Abre el catálogo para agregar algo extra esta semana.)')">+ Agregar algo más</button>`;
+}
+
+// ── Pantalla 5: confirmado ──────────────────────────────────────────
+function screen5(){
+  $('steps').innerHTML = dots(3);
+  $('screen').innerHTML = `
+    <div class="ok" style="margin-top:40px">
+      <div class="big">🎉</div>
+      <h3>¡Listo!</h3>
+      <p>Tu pedido se envió con un solo toque.<br>Nos vemos la próxima ${FREQ_LABEL[freq].replace('cada ','')}.</p>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:24px" onclick="goto(1)">↺ Volver a empezar el mockup</button>`;
+}
+
+function goto(n){
+  ({1:screen1,2:screen2,3:screen3,4:screen4,5:screen5})[n]();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+goto(1);
+</script>
+</body>
+</html>

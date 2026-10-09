@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!-- mobile-native baseline: viewport-fit cover + keyboard resize -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3efe6">
+<title>Portal · estilo Sosa (mockup)</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Paleta estilo Sosa: verde bosque + crema + menta, acento cálido */
+    --forest:#1f4d3a;     /* verde profundo (marca/acento) */
+    --forest-2:#2d6a4f;
+    --mint:#dcefe4;       /* menta suave (fondos de sección) */
+    --cream:#f3efe6;      /* crema de fondo */
+    --paper:#fffdf8;      /* tarjeta */
+    --ink:#20231f;        /* texto principal */
+    --muted:#6f726a;      /* texto secundario */
+    --line:#e7e2d6;       /* bordes sutiles */
+    --amber:#c6792f;      /* detalle cálido (ofertas) */
+    --display:'Fraunces',Georgia,serif;
+    --sans:'DM Sans',system-ui,sans-serif;
+    --ease-out:cubic-bezier(.2,.7,.3,1);
+    --r:18px;             /* radio generoso */
+  }
+  *{box-sizing:border-box}
+  html{
+    -webkit-tap-highlight-color:transparent;   /* mobile-native §2 */
+    -webkit-text-size-adjust:100%;
+    overscroll-behavior:none;
+  }
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--sans);line-height:1.5;
+       -webkit-font-smoothing:antialiased}
+  input{font-size:16px}                          /* mobile-native §4: no zoom en iOS */
+  button,a,[role="button"]{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+
+  /* ---------- Top bar (chrome translúcido, apple-design §12) ---------- */
+  .bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;
+       padding:14px 22px;background:rgba(243,239,230,.82);backdrop-filter:blur(16px) saturate(140%);
+       border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:600;
+         font-size:21px;letter-spacing:-.02em;color:var(--forest)}
+  .brand .dot{width:30px;height:30px;border-radius:9px;background:var(--forest);color:#fff;
+         display:grid;place-items:center;font-size:15px;font-weight:700}
+  .search{flex:1;max-width:460px;display:flex;align-items:center;gap:9px;background:var(--paper);
+          border:1px solid var(--line);border-radius:12px;padding:9px 13px;color:var(--muted)}
+  .search input{border:0;outline:0;background:transparent;flex:1;color:var(--ink);font-family:var(--sans)}
+  .cart{margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--forest);color:#fff;
+        border:0;border-radius:12px;padding:10px 16px;font-size:14px;font-weight:600;font-family:var(--sans);
+        cursor:pointer;transition:transform .1s var(--ease-out),background .15s}
+  @media (hover:hover) and (pointer:fine){ .cart:hover{background:var(--forest-2)} }
+  .cart:active{transform:scale(.97)}             /* apple-design §1: press feedback */
+
+  /* ---------- Header editorial de la distribuidora ---------- */
+  .hero{padding:40px 22px 26px;max-width:1180px;margin:0 auto}
+  .kicker{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--forest-2)}
+  .hero h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,48px);line-height:1.02;
+           letter-spacing:-.025em;margin:8px 0 10px;max-width:16ch}   /* tracking negativo en display */
+  .hero p{color:var(--muted);font-size:16px;max-width:52ch;margin:0}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .chip{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:9px 16px;
+        font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;
+        transition:transform .1s var(--ease-out),border-color .15s,background .15s}
+  .chip:active{transform:scale(.96)}
+  .chip.on{background:var(--forest);color:#fff;border-color:var(--forest)}
+  @media (hover:hover) and (pointer:fine){ .chip:not(.on):hover{border-color:var(--forest-2)} }
+
+  /* ---------- Grid de productos ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:10px 22px 80px}
+  .secthdr{display:flex;align-items:baseline;gap:12px;margin:26px 2px 16px}
+  .secthdr h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.02em;margin:0}
+  .secthdr span{color:var(--muted);font-size:13.5px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:20px}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+        display:flex;flex-direction:column;transition:transform .18s var(--ease-out),box-shadow .18s}
+  @media (hover:hover) and (pointer:fine){
+    .card:hover{transform:translateY(-3px);box-shadow:0 14px 30px -14px rgba(31,77,58,.28)}
+  }
+  /* marco cuadrado (estándar Amazon) — fotos parejas */
+  .imgbox{aspect-ratio:1/1;background:#fff;padding:16px;display:flex;align-items:center;justify-content:center;
+          overflow:hidden;border-bottom:1px solid var(--line);position:relative}
+  .imgbox img{max-height:100%;max-width:100%;object-fit:contain;transition:transform .3s var(--ease-out)}
+  @media (hover:hover) and (pointer:fine){ .card:hover .imgbox img{transform:scale(1.05)} }
+  .tag{position:absolute;top:12px;left:12px;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;
+       letter-spacing:.04em;padding:4px 9px;border-radius:999px}
+
+  .cbody{padding:14px 15px 16px;display:flex;flex-direction:column;flex:1}
+  .mk{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--forest-2)}
+  .nm{font-size:15px;font-weight:600;line-height:1.3;margin:5px 0 2px;letter-spacing:-.01em}
+  .unit{font-size:12.5px;color:var(--muted)}
+  .price{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:-.02em;margin:10px 0 12px}
+  .price small{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0}
+
+  /* fila agregar: stepper + botón (premium, con press) */
+  .addrow{margin-top:auto;display:flex;gap:9px;align-items:stretch}
+  .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff}
+  .stepper button{width:34px;border:0;background:transparent;font-size:18px;color:var(--forest);cursor:pointer;
+       font-family:var(--sans);transition:background .12s}
+  .stepper button:active{background:var(--mint)}
+  .stepper .q{min-width:28px;text-align:center;font-weight:600;font-size:14px}
+  .add{flex:1;border:0;border-radius:11px;background:var(--forest);color:#fff;font-weight:600;font-size:13.5px;
+       font-family:var(--sans);cursor:pointer;transition:transform .1s var(--ease-out),background .15s}
+  @media (hover:hover) and (pointer:fine){ .add:hover{background:var(--forest-2)} }
+  .add:active{transform:scale(.97)}              /* feedback instantáneo al tocar */
+
+  .foot{max-width:1180px;margin:0 auto;padding:0 22px 50px;color:var(--muted);font-size:12.5px}
+  .note{background:var(--mint);border:1px solid #cbe3d5;border-radius:14px;padding:14px 16px;color:#285d45;
+        font-size:13px;max-width:1180px;margin:8px auto 0}
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+  <!-- Barra superior -->
+  <div class="bar">
+    <div class="brand"><span class="dot">A</span>Aryes</div>
+    <label class="search">
+      <span>🔎</span><input placeholder="Buscar productos…" aria-label="Buscar">
+    </label>
+    <button class="cart">🛒 Carrito · 3</button>
+  </div>
+
+  <!-- Header editorial (restraint: sin carrusel ni full-bleed) -->
+  <header class="hero">
+    <div class="kicker">Distribuidora · Pedidos online</div>
+    <h1>Hacé tu pedido en minutos</h1>
+    <p>Catálogo completo con tus precios. Agregá al carrito y confirmá — nosotros preparamos y despachamos.</p>
+    <div class="chips">
+      <button class="chip on">Todo</button>
+      <button class="chip">Aromatizantes</button>
+      <button class="chip">Azúcares</button>
+      <button class="chip">Aditivos</button>
+      <button class="chip">Más pedidos</button>
+    </div>
+  </header>
+
+  <div class="note">Mockup estático · estilo <strong>Sosa</strong> aplicando buen gusto de las skills (Emil + taste). No es producción — solo para evaluar la piel.</div>
+
+  <main class="wrap">
+    <div class="secthdr"><h2>Catálogo</h2><span id="count"></span></div>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <div class="foot">Precios mostrados a modo de ejemplo. Fotos reales del catálogo.</div>
+
+<script>
+  const B='https://mrotnqybqvmvlexncvno.supabase.co/storage/v1/object/public/product-images/aryes-ltda-6223/';
+  const A='https://aryes-catalogo.vercel.app/assets/';
+  const prods=[
+    {mk:'Mix',n:'Ácido Cítrico',u:'50 g',p:'$ 48',img:A+'mix-acido-citrico-DFiiFMqF.png'},
+    {mk:'Mix',n:'Agar Agar',u:'30 g',p:'$ 120',img:A+'mix-agar-agar-DrwtL0YI.png'},
+    {mk:'Mix',n:'Aromatizante',u:'1 L',p:'$ 390',img:B+'1791314568642-7d4kbv.png',tag:'Más pedido'},
+    {mk:'Mix',n:'Aromatizante',u:'30 ml',p:'$ 75',img:B+'1791383470317-spidif.png'},
+    {mk:'Mix',n:'Azúcar Cristal Colores',u:'80 g',p:'$ 95',img:B+'1791384672867-01nbtk.jpg',tag:'Oferta'},
+    {mk:'Mix',n:'Azúcar Impalpable',u:'1 kg',p:'$ 140',img:B+'1782222333078-d5olgi.png'},
+  ];
+  const card=p=>`<article class="card">
+    <div class="imgbox">${p.tag?`<span class="tag">${p.tag}</span>`:''}<img src="${p.img}" alt="${p.n}" loading="eager"></div>
+    <div class="cbody">
+      <div class="mk">${p.mk}</div>
+      <div class="nm">${p.n}</div>
+      <div class="unit">${p.u}</div>
+      <div class="price">${p.p} <small>/ unidad</small></div>
+      <div class="addrow">
+        <div class="stepper"><button aria-label="Quitar">−</button><span class="q">1</span><button aria-label="Agregar">+</button></div>
+        <button class="add">Agregar</button>
+      </div>
+    </div>
+  </article>`;
+  const g=document.getElementById('grid');
+  g.innerHTML=prods.map(card).join('');
+  document.getElementById('count').textContent=prods.length+' productos';
+  // stepper demo (sin framework)
+  g.addEventListener('click',e=>{
+    const b=e.target.closest('.stepper button'); if(!b)return;
+    const q=b.parentElement.querySelector('.q'); let n=+q.textContent;
+    n += b.textContent.trim()==='+'?1:-1; q.textContent=Math.max(0,n);
+  });
+</script>
+</body>
+</html>

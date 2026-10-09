@@ -3,8 +3,10 @@
 // Creates a new organization + admin user automatically
 
 import { useState } from 'react';
+import { SB_URL, SKEY } from '../lib/constants.js';
 
 const G   = '#059669';
+const ONBOARDING_KEY = 'stock-onboarding-done';
 const F   = { sans: "'Inter',system-ui,sans-serif" };
 
 // Atribución: si el prospecto llegó desde un link del agente (/register?ref=<id>),
@@ -48,19 +50,51 @@ export default function RegisterPage() {
       });
       const data = await r.json();
       if (!r.ok) { setErr(data.error || 'Error al registrarse'); setLoading(false); return; }
-      // CRITICAL SECURITY: Clear any existing session from a previous user in this browser
-      // to prevent cross-org leak when the new user clicks "Ingresar a mi cuenta".
-      // The registered user must explicitly authenticate with their new credentials.
+      // CRITICAL SECURITY: Clear any existing session + caches from a previous user in
+      // this browser, so the fresh signup never inherits another org's data. También
+      // borramos las marcas de onboarding por-navegador para que el nuevo dueño vea el
+      // wizard de arranque limpio (si otro ya lo había completado en esta máquina).
       try {
-        localStorage.removeItem('aryes-session');
-        // Also clear any org-tagged caches that could leak data from previous org
         const keysToRemove = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith('aryes-')) keysToRemove.push(key);
         }
         keysToRemove.forEach(k => localStorage.removeItem(k));
+        localStorage.removeItem('aryes-session');
+        localStorage.removeItem(ONBOARDING_KEY);      // 'stock-onboarding-done'
+        localStorage.removeItem('aryes-setup-dismissed');
       } catch (e) { /* non-fatal */ }
+
+      // ── Auto-login: entramos directo a la app, sin pedir que escriba la contraseña
+      // de nuevo. register.js crea el usuario con email_confirm:true, así que el
+      // grant por contraseña funciona al instante. Armamos la sesión EXACTAMENTE
+      // como lo hace el login de main.jsx (mismo shape). Si algo falla, caemos a la
+      // pantalla de éxito manual (fallback) para no dejar al usuario trabado.
+      try {
+        const tokRes = await fetch(SB_URL + '/auth/v1/token?grant_type=password', {
+          method:  'POST',
+          headers: { apikey: SKEY, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email: form.email.trim().toLowerCase(), password: form.password }),
+        });
+        const tok = await tokRes.json();
+        if (tokRes.ok && tok.access_token) {
+          const meta      = tok.user?.user_metadata || {};
+          const role      = meta.role   || 'admin';
+          const orgId     = meta.org_id || data.orgId;
+          const name      = meta.nombre || form.nombre.trim();
+          const username  = form.email.split('@')[0];
+          const expiresIn = (tok.expires_in || 3600) * 1000;
+          const session   = { ...tok, email: form.email.trim().toLowerCase(), role, name, username, orgId, expiresAt: Date.now() + expiresIn };
+          localStorage.setItem('aryes-session', JSON.stringify(session));
+          // Hard navigation → recarga completa: main.jsx lee la sesión fresca y
+          // monta la app ya logueada, con el onboarding wizard para el admin nuevo.
+          window.location.href = '/app';
+          return;
+        }
+      } catch (e) { /* cae al fallback manual */ }
+
+      // Fallback: no pudimos auto-loguear → pantalla de éxito con ingreso manual.
       setOrgId(data.orgId);
       setOk(true);
     } catch {

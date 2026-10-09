@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pazque · Demo recorte de fondo</title>
+<link rel="preconnect" href="https://esm.sh" />
+<style>
+  :root{
+    --g:#059669; --forest:#3f5344; --ink:#28271f; --gray:#6b6b66;
+    --cream:#f4efe6; --cream-tile:#fbf8f1; --line:#e8e6df;
+    --sans:'DM Sans','Inter',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#faf9f6;color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.5;padding:28px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  header .dot{width:30px;height:30px;border-radius:9px;background:var(--forest);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px}
+  h1{font-size:21px;font-weight:800;letter-spacing:-.4px}
+  .sub{color:var(--gray);font-size:14px;margin:2px 0 26px}
+  .sub b{color:var(--ink);font-weight:700}
+
+  /* Drop zone */
+  .drop{border:2px dashed #d4d2c8;border-radius:16px;padding:38px 24px;text-align:center;
+    background:#fff;cursor:pointer;transition:.15s;position:relative}
+  .drop:hover,.drop.over{border-color:var(--g);background:#f5fdf9}
+  .drop .emoji{font-size:30px;margin-bottom:8px}
+  .drop .t{font-weight:700;font-size:15px}
+  .drop .h{font-size:12.5px;color:var(--gray);margin-top:4px}
+  .drop input{display:none}
+
+  /* Progress */
+  #prog{display:none;margin-top:18px;background:#fff;border:1px solid var(--line);
+    border-radius:12px;padding:16px 18px}
+  #prog.on{display:block}
+  .bar{height:8px;border-radius:20px;background:#eee;overflow:hidden;margin-top:10px}
+  .bar > i{display:block;height:100%;width:0;background:var(--g);transition:width .25s}
+  #progtxt{font-size:13px;color:var(--gray);font-weight:600}
+  .note{font-size:12px;color:#9a9a94;margin-top:8px}
+
+  /* Results */
+  #out{display:none;margin-top:30px}
+  #out.on{display:block}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:760px){.cols{grid-template-columns:1fr}}
+  .panel h3{font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+    color:var(--gray);margin-bottom:10px}
+  .tile{border:1px solid var(--line);border-radius:16px;height:340px;display:flex;
+    align-items:center;justify-content:center;overflow:hidden;padding:16px}
+  .tile.orig{background:var(--cream-tile)}
+  .tile.white{background:#fff}
+  .tile img{max-width:100%;max-height:100%;object-fit:contain}
+  .checker{background-image:
+     linear-gradient(45deg,#e9e9e4 25%,transparent 25%),
+     linear-gradient(-45deg,#e9e9e4 25%,transparent 25%),
+     linear-gradient(45deg,transparent 75%,#e9e9e4 75%),
+     linear-gradient(-45deg,transparent 75%,#e9e9e4 75%);
+     background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+
+  /* Card context preview */
+  .ctx{margin-top:34px}
+  .ctx h2{font-size:16px;font-weight:800;margin-bottom:4px}
+  .ctx .cx-sub{font-size:13px;color:var(--gray);margin-bottom:16px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:520px}
+  .card{background:#fff;border:1px solid #f0f0ec;border-radius:16px;overflow:hidden;
+    box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .card .ph{height:170px;display:flex;align-items:center;justify-content:center;padding:14px 16px}
+  .card .ph.a{background:var(--cream-tile)}
+  .card .ph.b{background:#fff}
+  .card .ph img{max-width:100%;max-height:100%;object-fit:contain}
+  .card .body{padding:10px 12px 13px}
+  .card .cat{font-size:11px;color:var(--gray);letter-spacing:.3px}
+  .card .nm{font-size:13px;font-weight:600;line-height:1.3;margin:2px 0 6px}
+  .card .pr{font-size:16px;font-weight:800;color:var(--g)}
+  .badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.5px;
+    color:#fff;background:var(--forest);padding:3px 8px;border-radius:20px;margin-bottom:8px}
+
+  .actions{margin-top:26px;display:flex;gap:12px;flex-wrap:wrap}
+  .btn{font-family:var(--sans);font-size:13.5px;font-weight:700;border-radius:10px;
+    padding:11px 18px;cursor:pointer;border:1px solid transparent}
+  .btn.p{background:var(--g);color:#fff}
+  .btn.s{background:#fff;color:var(--ink);border-color:var(--line)}
+  .err{display:none;margin-top:16px;background:#fef2f2;border:1px solid #fecaca;
+    color:#b91c1c;font-size:13px;font-weight:600;border-radius:10px;padding:12px 14px}
+  .err.on{display:block}
+  .foot{margin-top:40px;font-size:12px;color:#9a9a94;line-height:1.6;
+    border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="dot">P</div>
+    <h1>Recorte de fondo — demo de calidad</h1>
+  </header>
+  <p class="sub">Soltá una foto real de un producto (con mesada o fondo sucio). Se recorta sobre <b>blanco puro</b> acá, en tu navegador, gratis. Es para <b>decidir si vale la pena</b> — todavía no está instalado en Pazque.</p>
+
+  <label class="drop" id="drop">
+    <div class="emoji">📷</div>
+    <div class="t">Arrastrá una foto o tocá para elegir</div>
+    <div class="h">JPG o PNG · idealmente un producto con fondo no-blanco</div>
+    <input type="file" id="file" accept="image/*" />
+  </label>
+
+  <div id="prog">
+    <div id="progtxt">Preparando…</div>
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="note">La primera vez descarga el modelo de IA (~6 MB). Después queda en caché y es instantáneo.</div>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <div id="out">
+    <div class="cols">
+      <div class="panel">
+        <h3>Original (como la subís hoy)</h3>
+        <div class="tile orig"><img id="imgOrig" alt="original" /></div>
+      </div>
+      <div class="panel">
+        <h3>Recortada sobre blanco</h3>
+        <div class="tile white"><img id="imgCut" alt="recortada" /></div>
+      </div>
+    </div>
+
+    <div class="ctx">
+      <h2>Cómo se vería en el portal</h2>
+      <p class="cx-sub">La misma card del cliente, con la foto de hoy vs. la recortada.</p>
+      <div class="cards">
+        <div class="card">
+          <div class="ph a"><img id="cardOrig" alt="" /></div>
+          <div class="body">
+            <div class="cat">Categoría</div>
+            <div class="nm">Producto de ejemplo x 1u</div>
+            <div class="pr">$ 420,00</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ph b"><img id="cardCut" alt="" /></div>
+          <div class="body">
+            <span class="badge">MÁS PEDIDO</span>
+            <div class="cat">Categoría</div>
+            <div class="nm">Producto de ejemplo x 1u</div>
+            <div class="pr">$ 420,00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a class="btn p" id="dl" download="producto-recortado.png">Descargar recortada (PNG)</a>
+      <button class="btn s" id="again">Probar otra foto</button>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>Nota técnica:</b> corre <code>@imgly/background-removal</code> (familia U²-Net/IS-Net, la misma clase de modelo que usa el "remove background" de Shopify), 100% en el navegador vía WebAssembly. Cero costo por imagen, cero servidor. Esta página es una maqueta cargada desde CDN — no toca el código de Pazque.
+  </div>
+</div>
+
+<script type="module">
+  import { removeBackground } from 'https://esm.sh/@imgly/background-removal@1.5.5';
+
+  const $ = (id) => document.getElementById(id);
+  const drop = $('drop'), fileI = $('file'), prog = $('prog'), out = $('out'),
+        err = $('err'), barfill = $('barfill'), progtxt = $('progtxt');
+
+  ['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) run(f); });
+  fileI.addEventListener('change', ev => { const f = ev.target.files[0]; if (f) run(f); });
+  $('again').addEventListener('click', () => { out.classList.remove('on'); drop.style.display='block'; err.classList.remove('on'); fileI.value=''; });
+
+  let lastUrl = null;
+
+  async function run(file){
+    err.classList.remove('on'); out.classList.remove('on');
+    drop.style.display='none'; prog.classList.add('on');
+    progtxt.textContent='Cargando modelo y procesando…'; barfill.style.width='6%';
+
+    // Mostrar el original de inmediato
+    const origUrl = URL.createObjectURL(file);
+    $('imgOrig').src = origUrl; $('cardOrig').src = origUrl;
+
+    try{
+      const blob = await removeBackground(file, {
+        progress: (key, cur, tot) => {
+          const pct = tot ? Math.round(cur/tot*100) : 0;
+          if (key && key.startsWith('fetch')) { progtxt.textContent='Descargando modelo… '+pct+'%'; barfill.style.width=Math.max(6,pct*0.7)+'%'; }
+          else { progtxt.textContent='Recortando la imagen…'; barfill.style.width='85%'; }
+        }
+      });
+      barfill.style.width='100%';
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      lastUrl = URL.createObjectURL(blob);
+      $('imgCut').src = lastUrl; $('cardCut').src = lastUrl;
+      $('dl').href = lastUrl;
+      setTimeout(() => { prog.classList.remove('on'); out.classList.add('on'); }, 250);
+    }catch(e){
+      console.error(e);
+      prog.classList.remove('on'); drop.style.display='block';
+      err.textContent='No se pudo procesar. Probá con otra foto (JPG/PNG). Detalle: '+(e && e.message ? e.message : e);
+      err.classList.add('on');
+    }
+  }
+</script>
+</body>
+</html>

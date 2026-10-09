@@ -33,7 +33,14 @@ function SetupChecklist({ products = [], suppliers = [], clientes = [], ventas =
     } catch { return null; }
   })();
 
-  const steps = STEPS.map(s => {
+  // La factura electrónica CFE es un trámite SOLO de Uruguay (DGI). Para una org
+  // de otro país ese paso no aplica y ensuciaría la checklist. Si no sabemos el
+  // país (orgs viejas sin dato, como la de Eric) asumimos Uruguay → se muestra.
+  const pais = (brand?.pais || brandCfg?.pais || '').trim();
+  const esUruguay = !pais || /uruguay/i.test(pais);
+  const VISIBLE_STEPS = esUruguay ? STEPS : STEPS.filter(s => s.id !== 'cfe');
+
+  const steps = VISIBLE_STEPS.map(s => {
     let done = false;
     if (s.id === 'brand')    done = !!(brand?.name);
     if (s.id === 'supplier') done = suppliers.length > 0;

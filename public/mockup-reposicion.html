@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Recordatorio inteligente de reposición</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#28271f; --gray:#7a7a74; --forest:#3f5344; --green:#059669;
+    --line:#ececec; --tile:#f7f5f1;
+    --sans:'DM Sans',system-ui,sans-serif; --display:'Playfair Display',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e7e2d8;font-family:var(--sans);color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;padding:24px 14px 60px;min-height:100vh}
+  .note{max-width:400px;text-align:center;color:#6b6b66;font-size:12.5px;line-height:1.5;margin:0 0 18px}
+  .note b{color:var(--ink)}
+  .phone{width:340px;max-width:100%;background:#fff;border-radius:30px;
+    box-shadow:0 18px 44px rgba(40,39,31,.20);overflow:hidden;border:1px solid #ddd}
+  .bar{height:30px;background:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;color:var(--gray);border-bottom:1px solid var(--line)}
+  .screen{padding:15px 14px 20px;min-height:520px}
+  .kicker{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gray);font-weight:600}
+
+  /* header portal simulado */
+  .phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .phead .logo{font-family:var(--display);font-size:16px;font-weight:700}
+  .phead .cart{font-size:12px;color:var(--gray)}
+
+  /* sección reposición — sobria, plana, tipo herramienta (no card blandita) */
+  .repo{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .repo-head{display:flex;align-items:center;gap:8px;padding:11px 12px;background:#fafafa;border-bottom:1px solid var(--line)}
+  .repo-head .t{font-size:13px;font-weight:700}
+  .repo-head .why{font-size:10.5px;color:var(--gray);margin-top:1px}
+  .dot-g{width:7px;height:7px;border-radius:99px;background:var(--green);flex-shrink:0}
+
+  .row{display:flex;align-items:center;gap:10px;padding:10px 12px}
+  .row + .row{border-top:1px solid var(--line)}
+  .th{width:40px;height:40px;border-radius:8px;background:var(--tile);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .row .nm{flex:1;min-width:0}
+  .row .nm b{font-size:12.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .nm .meta{font-size:10.5px;color:var(--gray);margin-top:2px}
+  .badge{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:99px;margin-right:5px;vertical-align:middle}
+  .badge.due{background:#fdecec;color:#c0392b}
+  .badge.soon{background:#fff6e5;color:#b7791f}
+  .add{flex-shrink:0;border:1.5px solid var(--forest);color:var(--forest);background:#fff;border-radius:9px;
+    font-family:var(--sans);font-size:12px;font-weight:600;padding:7px 12px;cursor:pointer}
+  .add.on{background:var(--forest);color:#fff}
+
+  .repo-foot{padding:10px 12px;border-top:1px solid var(--line);background:#fafafa}
+  .btn{display:block;width:100%;border:none;border-radius:10px;padding:11px;font-family:var(--sans);
+    font-size:13.5px;font-weight:600;cursor:pointer;text-align:center;background:var(--green);color:#fff}
+
+  .explain{margin-top:16px;border:1px dashed var(--line);border-radius:12px;padding:12px}
+  .explain h4{margin:0 0 6px;font-size:12px;font-weight:700}
+  .explain p{margin:0;font-size:11.5px;color:var(--gray);line-height:1.5}
+  .explain code{background:var(--tile);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--ink)}
+
+  /* estado vacío (cliente sin historial) */
+  .empty{text-align:center;padding:26px 14px;color:var(--gray)}
+  .empty .big{font-size:26px}
+  .empty p{font-size:12px;margin:8px 0 0;line-height:1.5}
+
+  .tabs{display:flex;gap:8px;margin:18px 0 0;justify-content:center}
+  .tabs button{border:1.5px solid #d7d2c7;background:#fff;border-radius:99px;padding:7px 14px;
+    font-family:var(--sans);font-size:12px;font-weight:600;color:var(--ink);cursor:pointer}
+  .tabs button.on{border-color:var(--forest);background:#eef1ee;color:var(--forest)}
+</style>
+</head>
+<body>
+  <p class="note">Mockup · <b>Recordatorio inteligente de reposición</b><br>
+    Aparece en la portada del portal. Usa el <b>ritmo real</b> de cada cliente, no un calendario fijo.</p>
+
+  <div class="phone">
+    <div class="bar">portal de Eric · pazque</div>
+    <div class="screen" id="screen"></div>
+  </div>
+
+  <div class="tabs">
+    <button id="tCon" class="on" onclick="render('con')">Cliente con historial</button>
+    <button id="tSin" onclick="render('sin')">Cliente nuevo (sin data)</button>
+  </div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+
+const DUE = [
+  {emoji:'🧀', nm:'Queso muzzarella 5 kg', cada:9,  hace:11, estado:'due'},
+  {emoji:'🍅', nm:'Salsa de tomate 3 kg',  cada:12, hace:12, estado:'due'},
+  {emoji:'🥛', nm:'Crema de leche 1 L',    cada:14, hace:10, estado:'soon'},
+];
+
+function rowHTML(p, i){
+  const badge = p.estado==='due'
+    ? `<span class="badge due">Toca reponer</span>`
+    : `<span class="badge soon">Pronto</span>`;
+  return `<div class="row">
+    <div class="th">${p.emoji}</div>
+    <div class="nm">
+      <b>${p.nm}</b>
+      <div class="meta">${badge}última vez hace ${p.hace} días · suele pedir cada ~${p.cada}</div>
+    </div>
+    <button class="add" id="add${i}" onclick="toggle(${i})">Agregar</button>
+  </div>`;
+}
+
+function screenCon(){
+  const due = DUE.filter(p=>p.estado==='due').length;
+  $('screen').innerHTML = `
+    <div class="phead">
+      <div class="logo">Distribuidora Eric</div>
+      <div class="cart">🛒 0</div>
+    </div>
+
+    <div class="repo">
+      <div class="repo-head">
+        <div class="dot-g"></div>
+        <div>
+          <div class="t">Reponé lo de siempre</div>
+          <div class="why">${due} productos que ya te estarían por faltar</div>
+        </div>
+      </div>
+      ${DUE.map(rowHTML).join('')}
+      <div class="repo-foot">
+        <button class="btn" onclick="alert('(Agrega los marcados al carrito de una.)')">Agregar los que faltan al carrito</button>
+      </div>
+    </div>
+
+    <div class="explain">
+      <h4>Cómo lo calcula (sin magia)</h4>
+      <p>Mira los pedidos <b>reales</b> de este cliente. Si suele pedir muzzarella
+      cada <code>~9 días</code> y ya pasaron <code>11</code>, la marca
+      <b>“Toca reponer”</b>. Nada de calendario fijo: usa el ritmo de cada uno.</p>
+    </div>`;
+}
+
+function screenSin(){
+  $('screen').innerHTML = `
+    <div class="phead">
+      <div class="logo">Distribuidora Eric</div>
+      <div class="cart">🛒 0</div>
+    </div>
+    <div class="repo">
+      <div class="repo-head">
+        <div class="dot-g" style="background:#cfc9bb"></div>
+        <div><div class="t">Reponé lo de siempre</div></div>
+      </div>
+      <div class="empty">
+        <div class="big">🌱</div>
+        <p>Todavía no hay suficientes pedidos de este cliente<br>para conocer su ritmo.<br><br>
+        <b>La sección aparece sola</b> cuando junte unas cuantas compras.<br>Cero ruido hasta entonces.</p>
+      </div>
+    </div>
+    <div class="explain">
+      <h4>Por qué está bien así</h4>
+      <p>El recordatorio se <b>gana con data</b>. Cliente nuevo no ve nada raro;
+      a medida que pide, la feature “despierta” sola. Nunca inventa un ritmo que no existe.</p>
+    </div>`;
+}
+
+const sel = {};
+function toggle(i){
+  sel[i]=!sel[i];
+  const b=$('add'+i); if(!b) return;
+  b.classList.toggle('on', sel[i]);
+  b.textContent = sel[i] ? '✓ Agregado' : 'Agregar';
+}
+function render(which){
+  $('tCon').classList.toggle('on', which==='con');
+  $('tSin').classList.toggle('on', which==='sin');
+  (which==='con'?screenCon:screenSin)();
+}
+render('con');
+</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup · Color de marca por distribuidora</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brand:#3f5344; --brand-soft:#eef1ee; --ink:#28271f; --gray:#7a7a74;
+    --line:#ececec; --tile:#f7f5f1;
+    --sans:'DM Sans',system-ui,sans-serif; --display:'Playfair Display',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#e7e2d8;font-family:var(--sans);color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;padding:24px 14px 60px;min-height:100vh}
+  .note{max-width:420px;text-align:center;color:#6b6b66;font-size:12.5px;line-height:1.5;margin:0 0 6px}
+  .note b{color:var(--ink)}
+
+  /* selector de color (lo que vería el distribuidor en Configuración) */
+  .picker{display:flex;gap:10px;align-items:center;margin:14px 0 20px;background:#fff;
+    border:1px solid #ddd;border-radius:99px;padding:8px 14px;box-shadow:0 4px 14px rgba(0,0,0,.06)}
+  .picker span{font-size:11.5px;color:var(--gray);font-weight:600;margin-right:2px}
+  .sw{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid #fff;
+    box-shadow:0 0 0 1px #ddd;transition:transform .1s}
+  .sw:hover{transform:scale(1.12)}
+  .sw.on{box-shadow:0 0 0 2px #28271f}
+
+  .phone{width:340px;max-width:100%;background:#fff;border-radius:30px;
+    box-shadow:0 18px 44px rgba(40,39,31,.20);overflow:hidden;border:1px solid #ddd}
+  .bar{height:30px;background:#fff;display:flex;align-items:center;justify-content:center;
+    font-size:10.5px;color:var(--gray);border-bottom:1px solid var(--line)}
+  .screen{padding:0 0 18px}
+
+  /* header con color de marca */
+  .phead{background:var(--brand);color:#fff;padding:14px 15px 16px;transition:background .25s}
+  .phead .logo{font-family:var(--display);font-size:17px;font-weight:700}
+  .phead .sub{font-size:11px;opacity:.85;margin-top:1px}
+  .searchbar{margin-top:12px;background:rgba(255,255,255,.16);border-radius:9px;padding:8px 11px;
+    font-size:12px;color:rgba(255,255,255,.9)}
+
+  .body{padding:14px 15px}
+  .kicker{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--brand);font-weight:700;transition:color .25s}
+  h2{font-family:var(--display);font-size:17px;margin:3px 0 12px;font-weight:700}
+
+  /* card producto */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .prod{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .prod .img{height:74px;background:var(--tile);display:flex;align-items:center;justify-content:center;font-size:30px}
+  .prod .info{padding:8px 9px}
+  .prod .nm{font-size:11.5px;font-weight:600;line-height:1.3}
+  .prod .pr{font-size:13px;font-weight:700;margin-top:3px}
+  .prod .add{margin-top:7px;width:100%;border:none;background:var(--brand);color:#fff;border-radius:8px;
+    padding:7px;font-family:var(--sans);font-size:11.5px;font-weight:600;cursor:pointer;transition:background .25s}
+  .tag{display:inline-block;background:var(--brand-soft);color:var(--brand);font-size:9.5px;font-weight:700;
+    padding:2px 7px;border-radius:99px;transition:.25s}
+
+  /* barra envío gratis (usa color marca) */
+  .ship{margin:14px 0 4px;background:var(--brand-soft);border-radius:10px;padding:10px 11px;transition:.25s}
+  .ship .t{font-size:11px;color:var(--brand);font-weight:600;transition:color .25s}
+  .ship .track{height:6px;background:#fff;border-radius:99px;margin-top:6px;overflow:hidden}
+  .ship .fill{height:100%;width:70%;background:var(--brand);border-radius:99px;transition:background .25s}
+
+  /* footer / botón carrito flotante */
+  .fab{margin:16px 15px 0;background:var(--brand);color:#fff;border-radius:12px;padding:13px;
+    text-align:center;font-size:13.5px;font-weight:600;transition:background .25s}
+
+  .foot{text-align:center;font-size:10px;color:var(--gray);margin-top:26px}
+  .nmeta{max-width:400px;text-align:center;color:#6b6b66;font-size:11.5px;line-height:1.5;margin:20px 0 0}
+  .nmeta code{background:#fff;border:1px solid #ddd;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+  <p class="note"><b>Color de marca por distribuidora</b> · el mismo portal, pintado con el color de cada uno.</p>
+
+  <div class="picker">
+    <span>Color:</span>
+    <div class="sw on" style="background:#3f5344" data-c="#3f5344" data-s="#eef1ee" onclick="setC(this)" title="Verde (Eric · default)"></div>
+    <div class="sw" style="background:#1e4fa3" data-c="#1e4fa3" data-s="#eaf0fb" onclick="setC(this)" title="Azul"></div>
+    <div class="sw" style="background:#b02a37" data-c="#b02a37" data-s="#fbeaec" onclick="setC(this)" title="Rojo"></div>
+    <div class="sw" style="background:#7c3aed" data-c="#7c3aed" data-s="#f1eafe" onclick="setC(this)" title="Violeta"></div>
+    <div class="sw" style="background:#c2681a" data-c="#c2681a" data-s="#fbf0e5" onclick="setC(this)" title="Naranja"></div>
+    <div class="sw" style="background:#0f172a" data-c="#0f172a" data-s="#e9ecf2" onclick="setC(this)" title="Negro/Elegante"></div>
+  </div>
+
+  <div class="phone">
+    <div class="bar">portal de la distribuidora · pazque</div>
+    <div class="screen">
+      <div class="phead">
+        <div class="logo">Distribuidora Eric</div>
+        <div class="sub">Mayorista · HORECA</div>
+        <div class="searchbar">🔎 Buscar productos…</div>
+      </div>
+
+      <div class="body">
+        <div class="kicker">Destacados</div>
+        <h2>Lo más pedido esta semana</h2>
+
+        <div class="ship">
+          <div class="t">Te faltan $1.300 para envío sin cargo</div>
+          <div class="track"><div class="fill"></div></div>
+        </div>
+
+        <div class="grid" style="margin-top:12px">
+          <div class="prod">
+            <div class="img">🧀</div>
+            <div class="info">
+              <span class="tag">Oferta</span>
+              <div class="nm" style="margin-top:5px">Queso muzzarella 5 kg</div>
+              <div class="pr">$800</div>
+              <button class="add">Agregar</button>
+            </div>
+          </div>
+          <div class="prod">
+            <div class="img">🫒</div>
+            <div class="info">
+              <div class="nm">Aceite de oliva 5 L</div>
+              <div class="pr">$980</div>
+              <button class="add">Agregar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fab">🛒 Ver carrito · $6.400</div>
+      <div class="foot">powered by Pazque</div>
+    </div>
+  </div>
+
+  <p class="nmeta">Cada distribuidora elige su color en <b>Configuración</b>. Pazque repinta header, botones,
+  etiquetas y barras con ese color. El <b>default sigue siendo el verde de Eric</b> — nadie cambia salvo que quiera.<br>
+  Tocá los círculos de arriba para ver el efecto.</p>
+
+<script>
+function setC(el){
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on');
+  const r=document.documentElement.style;
+  r.setProperty('--brand', el.dataset.c);
+  r.setProperty('--brand-soft', el.dataset.s);
+}
+</script>
+</body>
+</html>
