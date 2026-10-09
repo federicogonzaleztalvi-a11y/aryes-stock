@@ -338,6 +338,59 @@ async function fetchLearningBlock() {
     partes.join('\n\n');
 }
 
+// ── Agente crítico: segunda pasada de calidad al mensaje (peldaño d) ─────────
+// Antes de mostrarle a Federico el primer mensaje de WhatsApp, un SEGUNDO agente
+// lo revisa contra las reglas duras (largo, tono founder, sin emojis, UNA sola
+// observación REAL, nada inventado) y lo deja impecable. Es control de calidad
+// interno: no agrega datos nuevos, solo pule lo que el primer agente redactó.
+// Si no hay key, el mensaje viene vacío, o el crítico falla/no parsea, devolvemos
+// el mensaje original sin bloquear: el crítico solo puede mejorar, nunca romper.
+async function critiqueMessage(mensaje, compact) {
+  const msg = clean(mensaje, 700);
+  if (!ANTHROPIC_KEY || !msg) return msg;
+
+  const system = `Sos director comercial de Pazque y revisás el PRIMER mensaje de WhatsApp que un SDR le va a mandar a una distribuidora, antes de que salga. Tu trabajo es dejarlo impecable SIN inventar nada.
+
+Te paso el mensaje propuesto y el contexto REAL del prospecto (es lo único que se sabe del negocio).
+
+Checklist — corregí todo lo que no cumpla, manteniendo lo que ya estaba bien:
+- Español rioplatense, voseo.
+- MÁXIMO 3 líneas cortas. Si sobra, recortá. Menos es más.
+- CERO emojis. CERO signos de exclamación. CERO mayúsculas de énfasis.
+- Arranca presentándose seco y claro: "Hola <nombre>, soy Federico, fundador de Pazque." Si no hay nombre de contacto, un saludo neutro igual de sobrio.
+- UNA sola observación del negocio, y tiene que ser VERDADERA según el contexto. Si el mensaje afirma algo que NO está en el contexto (seguidores, sucursales, zona, qué distribuye), borralo o neutralizalo: no se inventan datos. Ante la duda, mensaje más neutro pero honesto.
+- Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de recibirlos uno por uno por WhatsApp.
+- Cierra con una pregunta breve, de bajo compromiso, sin prometer duración fija (nada de "en 20 minutos").
+- Tono de fundador seguro escribiéndole a un par. Nada de relleno ("espero que estés bien"), nada de folleto, nada de adulación.
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después:
+{ "mensaje": "<la versión final, impecable>" }`;
+
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        system,
+        messages: [{ role: 'user', content: 'Mensaje propuesto:\n"' + msg + '"\n\nContexto del prospecto:\n' + JSON.stringify(compact, null, 2) }],
+      }),
+    });
+    if (!r.ok) { console.warn('[owner] critic anthropic error:', r.status); return msg; }
+    const d = await r.json();
+    let text = (d?.content?.[0]?.text || '').trim().replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+    const start = text.indexOf('{'); const end = text.lastIndexOf('}');
+    if (start >= 0 && end > start) text = text.slice(start, end + 1);
+    const parsed = JSON.parse(text);
+    const mejorado = clean(parsed.mensaje, 700);
+    return mejorado || msg;
+  } catch (e) {
+    console.warn('[owner] critic parse error:', e.message);
+    return msg;
+  }
+}
+
 // Exportada: el agente proactivo (api/cron-ventas.js) reusa exactamente este
 // enriquecimiento, para que el mensaje de WhatsApp y el análisis sean idénticos
 // venga de un clic en /owner o del cron de la mañana. Una sola fuente de verdad.
@@ -411,6 +464,9 @@ Reglas:
       senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
       mensaje_wa: clean(parsed.mensaje_wa, 700),
     };
+    // Peldaño (d): el agente crítico revisa el mensaje antes de mostrarlo. Pule
+    // tono/largo y saca cualquier dato inventado. Si falla, deja el original.
+    out.mensaje_wa = await critiqueMessage(out.mensaje_wa, compact);
     return { enriquecimiento: out };
   } catch (e) {
     console.warn('[owner] enrich parse error:', e.message);

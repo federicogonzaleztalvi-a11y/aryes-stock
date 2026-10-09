@@ -453,6 +453,157 @@ function CopyLink() {
   );
 }
 
+// ── Métricas del agente (peldaño c) ──────────────────────────────────
+// Mide con datos REALES (lo que Federico marcó: contacto + ¿respondió? + edición)
+// si el agente está funcionando. Tres preguntas que importan:
+//   1) ¿Qué tasa de respuesta estoy teniendo? (termómetro general)
+//   2) ¿El "fit" que predice el agente se traduce en respuestas? (¿acierta?)
+//   3) ¿Editar el mensaje a mano ayuda a que respondan? (¿vale la pena editar?)
+// Todo se calcula acá, en el cliente, desde los leads que ya cargamos: nada de
+// inventar, cero llamadas extra al server.
+function pct(num, den) { return den > 0 ? Math.round((num / den) * 100) : null; }
+
+const FIT_META = {
+  alta:  { label: 'Fit alto',  fg: C.green },
+  media: { label: 'Fit medio', fg: C.amber },
+  baja:  { label: 'Fit bajo',  fg: C.faint },
+};
+
+// Barrita de tasa de respuesta (resp / contactados) con su porcentaje.
+function RateRow({ label, labelColor, cont, resp }) {
+  const p = pct(resp, cont);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ fontSize: 12.5, color: labelColor || C.ink, minWidth: 92, fontWeight: 500 }}>{label}</span>
+      <div style={{ flex: 1, height: 7, background: C.line, borderRadius: 50, overflow: 'hidden' }}>
+        <div style={{ width: `${p || 0}%`, height: '100%', background: C.green, borderRadius: 50,
+          transition: 'width 320ms cubic-bezier(0.23,1,0.32,1)' }} />
+      </div>
+      <span style={{ fontSize: 12.5, color: C.sub, minWidth: 74, textAlign: 'right' }}>
+        {p == null ? '—' : `${p}%`} <span style={{ color: C.faint }}>({resp}/{cont})</span>
+      </span>
+    </div>
+  );
+}
+
+function MetricsPanel({ leads }) {
+  const [open, setOpen] = React.useState(false);
+
+  const m = React.useMemo(() => {
+    const contactados = leads.filter(l => l.ultimo_contacto_at);
+    const respondieron = contactados.filter(l => l.respondio === true).length;
+    const demos = leads.filter(l => l.estado === 'demo' || l.estado === 'convertido').length;
+    const clientes = leads.filter(l => l.estado === 'convertido').length;
+
+    // Por fit (lo que el agente predijo) → ¿se traduce en respuestas reales?
+    const porFit = ['alta', 'media', 'baja'].map(p => {
+      const g = contactados.filter(l => (l.enriquecimiento?.prioridad || 'media') === p);
+      return { fit: p, cont: g.length, resp: g.filter(l => l.respondio === true).length };
+    }).filter(x => x.cont > 0);
+
+    // Por rubro (top 5 por volumen de contactados).
+    const rubroMap = {};
+    for (const l of contactados) {
+      const ru = (l.enriquecimiento?.rubro && l.enriquecimiento.rubro !== 'sin datos')
+        ? l.enriquecimiento.rubro : (l.rubro || 'Sin rubro');
+      (rubroMap[ru] ||= { rubro: ru, cont: 0, resp: 0 }).cont++;
+      if (l.respondio === true) rubroMap[ru].resp++;
+    }
+    const porRubro = Object.values(rubroMap).sort((a, b) => b.cont - a.cont).slice(0, 5);
+
+    // ¿Editar el mensaje ayuda? Tal cual vs editado, sobre los que tienen mensaje final.
+    const conMsg = contactados.filter(l => l.mensaje_final);
+    const grp = (ed) => {
+      const g = conMsg.filter(l => !!l.fue_editado === ed);
+      return { cont: g.length, resp: g.filter(l => l.respondio === true).length };
+    };
+
+    return {
+      contactados: contactados.length, respondieron, demos, clientes,
+      porFit, porRubro, edit: { talCual: grp(false), editado: grp(true) },
+    };
+  }, [leads]);
+
+  const wrap = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 16 };
+
+  if (m.contactados === 0) {
+    return (
+      <div style={wrap}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Rendimiento</div>
+        <div style={{ fontSize: 12.5, color: C.sub }}>
+          A medida que marques contactos y respuestas, acá vas a ver tu tasa de respuesta y qué está funcionando.
+        </div>
+      </div>
+    );
+  }
+
+  const tasa = pct(m.respondieron, m.contactados);
+  const mostrarEdit = m.edit.talCual.cont > 0 || m.edit.editado.cont > 0;
+
+  return (
+    <div style={wrap}>
+      {/* Resumen siempre visible: el termómetro general */}
+      <button onClick={() => setOpen(v => !v)} style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'transparent',
+        border: 'none', padding: 0, cursor: 'pointer', fontFamily: C.sans, textAlign: 'left' }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Rendimiento</span>
+        <span style={{ fontSize: 13, color: C.sub }}>
+          <strong style={{ color: C.green }}>{tasa}% de respuesta</strong> · {m.respondieron} de {m.contactados} contactados
+        </span>
+        {m.demos > 0 && <span style={{ fontSize: 12.5, color: C.sub }}>· {m.demos} demo{m.demos === 1 ? '' : 's'}</span>}
+        {m.clientes > 0 && <span style={{ fontSize: 12.5, color: C.green }}>· {m.clientes} cliente{m.clientes === 1 ? '' : 's'}</span>}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.faint }}>{open ? 'ocultar ▲' : 'ver detalle ▾'}</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {m.porFit.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: .3, marginBottom: 8 }}>
+                ¿ACIERTA EL AGENTE? — RESPUESTA SEGÚN EL FIT QUE PREDIJO
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {m.porFit.map(f => (
+                  <RateRow key={f.fit} label={FIT_META[f.fit].label} labelColor={FIT_META[f.fit].fg} cont={f.cont} resp={f.resp} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mostrarEdit && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: .3, marginBottom: 8 }}>
+                ¿CONVIENE EDITAR EL MENSAJE?
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {m.edit.talCual.cont > 0 && <RateRow label="Tal cual" cont={m.edit.talCual.cont} resp={m.edit.talCual.resp} />}
+                {m.edit.editado.cont > 0 && <RateRow label="Editado" cont={m.edit.editado.cont} resp={m.edit.editado.resp} />}
+              </div>
+            </div>
+          )}
+
+          {m.porRubro.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: .3, marginBottom: 8 }}>
+                RESPUESTA POR RUBRO
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {m.porRubro.map(r => (
+                  <RateRow key={r.rubro} label={r.rubro} cont={r.cont} resp={r.resp} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ fontSize: 11.5, color: C.faint, lineHeight: 1.5 }}>
+            Las tasas se calculan sobre prospectos que ya contactaste. Cuantos más marques, más confiables son.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Bandeja ──────────────────────────────────────────────────────────
 function Inbox({ token, onLogout }) {
   const [leads,   setLeads]   = React.useState([]);
@@ -555,6 +706,9 @@ function Inbox({ token, onLogout }) {
             </button>
           </div>
         </div>
+
+        {/* Métricas: ¿está funcionando el agente? (datos reales de Federico) */}
+        {!loading && !error && <MetricsPanel leads={leads} />}
 
         {/* Sourcing: el agente busca distribuidoras reales en Google */}
         <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
