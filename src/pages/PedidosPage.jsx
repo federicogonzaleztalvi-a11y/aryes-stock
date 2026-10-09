@@ -876,6 +876,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
   const hasImg = item.imagen_url && !imgErr;
   const open = onOpen ? () => onOpen(item) : undefined;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  // Capacidad REAL de hover (mouse preciso). En touch, onMouseEnter se dispara al
+  // tocar y el hover se queda pegado (la card quedaba levantada tras tocarla). Por
+  // eso los efectos de hover sólo se aplican cuando el dispositivo puede hacer hover.
+  const canHover = typeof window !== 'undefined' && window.matchMedia
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const imgH = isMobile ? 120 : 160;
   // Variantes: el cliente elige cantidad por opción (color/sabor/...). El precio,
   // IVA y descuentos son del producto padre. La clave de carrito es "id::variantId".
@@ -900,7 +905,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
 
   return (
     <div style={{ background: '#fff', borderRadius: 16,
-      border: `1px solid ${hov ? '#e6e6e0' : '#f0f0ec'}`,
+      border: `1px solid ${hov && canHover ? '#e6e6e0' : '#f0f0ec'}`,
       // height:100% → en un riel (flex) o grilla que estira las celdas a la card
       // más alta, todas las cards quedan de igual altura y el botón "+ Agregar"
       // se alinea abajo (lo empuja el spacer flex:1 de adentro). Si el contenedor
@@ -909,9 +914,9 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
       overflow: 'hidden', display: 'flex', flexDirection: 'column',
       // Señales de "tocable" en mobile (no hay hover): (1) sombra de reposo →
       // la card se lee como superficie elevada; (2) press → se hunde al tocar.
-      transform: open && pressed ? 'scale(.97)' : (hov && open ? 'translateY(-3px)' : 'none'),
-      boxShadow: hov && open ? '0 12px 30px rgba(0,0,0,.12)' : '0 1px 3px rgba(0,0,0,.05)',
-      transition: 'transform .16s, box-shadow .22s, border-color .18s' }}
+      transform: open && pressed ? 'scale(.97)' : (hov && canHover && open ? 'translateY(-3px)' : 'none'),
+      boxShadow: hov && canHover && open ? '0 12px 30px rgba(0,0,0,.12)' : '0 1px 3px rgba(0,0,0,.05)',
+      transition: 'transform .16s cubic-bezier(.23,1,.32,1), box-shadow .22s cubic-bezier(.23,1,.32,1), border-color .18s ease' }}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       onPointerDown={() => open && setPressed(true)}
@@ -946,7 +951,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
               loading="lazy" decoding="async"
               style={{ maxHeight: isMobile ? imgH - 28 : '100%', maxWidth: '100%', objectFit: 'contain',
-                transform: hov && open ? 'scale(1.06)' : 'none', transition: 'transform .25s' }} />
+                transform: hov && canHover && open ? 'scale(1.06)' : 'none', transition: 'transform .25s cubic-bezier(.23,1,.32,1)' }} />
           : <div style={{ textAlign: 'center', padding: '0 10px' }}>
               <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#fff',
                 border: `1.5px solid ${FOREST}2e`, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1035,20 +1040,20 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           <VariantCta item={item} options={variantOpts} carrito={carrito || {}} label={item.variants.label} isMobile={isMobile} onPick={() => (onPickVariants ? onPickVariants(item) : open?.())} />
         ) : qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <button onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
+            <button className="pz-press" onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
               width: 40, height: 40, border: `1.5px solid ${G}`, borderRadius: 8,
               background: '#fff', color: G, fontSize: 18, cursor: 'pointer', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>-</button>
             <input type="number" inputMode="numeric" min="0" value={qty} aria-label={`Cantidad de ${item.nombre}`} onChange={e=>{const v=parseInt(e.target.value,10);if(isNaN(v)||v<=0)onRemove(item);else{const d=v-qty;if(d>0)for(let i=0;i<d;i++)onAdd(item);else if(d<0)for(let i=0;i<-d;i++)onRemove(item);}}} onFocus={e=>e.target.select()} style={{flex:1,minWidth:0,height:40,boxSizing:'border-box',fontSize:16,fontWeight:700,color:'#1a1a18',textAlign:'center',border:'1px solid #e0e0d8',borderRadius:6,padding:'0',outline:'none',background:'#fafaf7'}}/>
-            <button onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
+            <button className="pz-press" onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
               width: 40, height: 40, background: G, border: 'none', borderRadius: 8,
               color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>+</button>
           </div>
         ) : publico ? (
-          <button onClick={() => onAdd(item)} style={{
+          <button className="pz-press" onClick={() => onAdd(item)} style={{
             marginTop: 4, padding: '11px 0', background: G, color: '#fff',
             border: 'none', borderRadius: 8, cursor: 'pointer',
             fontSize: 12, fontWeight: 600, fontFamily: SANS,
@@ -1056,7 +1061,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
             Ingresá para comprar
           </button>
         ) : (
-          <button onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
+          <button className="pz-press" onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
             marginTop: 4, padding: '11px 0',
             background: item.precio > 0 ? G : '#f0f0ec',
             color: item.precio > 0 ? '#fff' : GRAY,
@@ -2927,8 +2932,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                 </span>
               </div>
               <div style={{ height: 6, borderRadius: 50, background: '#e8e8e0', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pctEnvioGratis}%`, borderRadius: 50,
-                  background: G, transition: 'width .35s ease' }} />
+                {/* scaleX en vez de width: sólo transform/opacity corren en GPU; animar
+                    width fuerza relayout. Origen a la izquierda = llena hacia la derecha. */}
+                <div style={{ height: '100%', width: '100%', transformOrigin: 'left',
+                  transform: `scaleX(${Math.max(0, Math.min(100, pctEnvioGratis)) / 100})`,
+                  background: G, transition: 'transform .35s cubic-bezier(.23,1,.32,1)' }} />
               </div>
             </div>
           )}
@@ -4553,7 +4561,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: SANS }}>
       {/* Transición sutil al cambiar de pantalla (catálogo ↔ ficha): leve fade +
           subida, como las apps nativas. Suave, no "salta". */}
-      <style>{'@keyframes pzFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.pz-fade{animation:pzFade .22s ease both}.pz-hscroll::-webkit-scrollbar{display:none}.pz-cattile{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.pz-cattile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(63,83,68,.14);border-color:#d8ccb2}.pz-cattile img{transition:transform .4s ease}.pz-cattile:hover img{transform:scale(1.04)}'}</style>
+      <style>{'@keyframes pzFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.pz-fade{animation:pzFade .22s ease both}.pz-hscroll::-webkit-scrollbar{display:none}.pz-cattile{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.pz-cattile img{transition:transform .4s ease}@media (hover:hover) and (pointer:fine){.pz-cattile:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(63,83,68,.14);border-color:#d8ccb2}.pz-cattile:hover img{transform:scale(1.04)}}.pz-press{transition:transform .14s cubic-bezier(.23,1,.32,1)}.pz-press:active{transform:scale(.97)}'}</style>
 
       {vendorMode && (
         <div style={{ background: '#0f3d2e', color: '#fff', padding: '8px 16px',
