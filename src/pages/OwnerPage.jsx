@@ -278,6 +278,17 @@ function LeadCard({ l, onUpdate, onEnrich, onFollowUp, onReply, busy, enriching,
   const [replyOut, setReplyOut] = React.useState('');
   const replyHref = waLink(l.tel, replyOut);
 
+  // Atribución: link de auto-registro de ESTE prospecto. Si entra por acá, la
+  // prueba queda conectada al lead (lo ves como "inició prueba"). Usamos el host
+  // actual (sirve igual en preview que en pazque.com).
+  const regLink = `${window.location.origin}/register?ref=${l.id}`;
+  const [copiedReg, setCopiedReg] = React.useState(false);
+  const copyReg = () => {
+    try { navigator.clipboard.writeText(regLink); setCopiedReg(true); setTimeout(() => setCopiedReg(false), 1600); }
+    catch { /* clipboard no disponible: el link igual se ve en el title */ }
+  };
+  const inicioPrueba = !!l.inicio_prueba_at;
+
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
       display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -288,6 +299,12 @@ function LeadCard({ l, onUpdate, onEnrich, onFollowUp, onReply, busy, enriching,
             <span style={{ background: est.bg, color: est.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{est.label}</span>
             {seguir && (
               <span style={{ background: C.amberBg, color: C.amber, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 50 }}>⏰ Seguí hoy</span>
+            )}
+            {inicioPrueba && (
+              <span title={`Se registró e inició la prueba el ${fmtDate(l.inicio_prueba_at)}`}
+                style={{ background: C.green, color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 50 }}>
+                ✅ Inició prueba
+              </span>
             )}
           </div>
           {(l.empresa || l.rubro) && (
@@ -327,6 +344,14 @@ function LeadCard({ l, onUpdate, onEnrich, onFollowUp, onReply, busy, enriching,
                 border: `1px solid ${C.blue}55`, borderRadius: 50, padding: '7px 14px' }}>
               Email
             </a>
+          )}
+          {!inicioPrueba && (
+            <button onClick={copyReg} title={`Copia el link de auto-registro de este prospecto:\n${regLink}\nSi entra por acá, la prueba queda atribuida a este lead.`}
+              style={{ fontSize: 13, fontWeight: 600, color: copiedReg ? '#fff' : C.sub,
+                background: copiedReg ? C.green : 'transparent', cursor: 'pointer', fontFamily: C.sans,
+                border: `1px solid ${copiedReg ? C.green : C.line}`, borderRadius: 50, padding: '7px 14px' }}>
+              {copiedReg ? '✓ Copiado' : '🔗 Link de registro'}
+            </button>
           )}
         </div>
       </div>
@@ -597,6 +622,8 @@ function MetricsPanel({ leads }) {
     const respondieron = contactados.filter(l => l.respondio === true).length;
     const demos = leads.filter(l => l.estado === 'demo' || l.estado === 'convertido').length;
     const clientes = leads.filter(l => l.estado === 'convertido').length;
+    // El norte del agente: cuántos se registraron e iniciaron la prueba solos.
+    const pruebas = leads.filter(l => l.inicio_prueba_at).length;
 
     // Por fit (lo que el agente predijo) → ¿se traduce en respuestas reales?
     const porFit = ['alta', 'media', 'baja'].map(p => {
@@ -622,7 +649,7 @@ function MetricsPanel({ leads }) {
     };
 
     return {
-      contactados: contactados.length, respondieron, demos, clientes,
+      contactados: contactados.length, respondieron, demos, clientes, pruebas,
       porFit, porRubro, edit: { talCual: grp(false), editado: grp(true) },
     };
   }, [leads]);
@@ -654,6 +681,7 @@ function MetricsPanel({ leads }) {
           <strong style={{ color: C.green }}>{tasa}% de respuesta</strong> · {m.respondieron} de {m.contactados} contactados
         </span>
         {m.demos > 0 && <span style={{ fontSize: 12.5, color: C.sub }}>· {m.demos} demo{m.demos === 1 ? '' : 's'}</span>}
+        {m.pruebas > 0 && <span style={{ fontSize: 12.5, fontWeight: 700, color: C.green }}>· {m.pruebas} {m.pruebas === 1 ? 'inició' : 'iniciaron'} prueba</span>}
         {m.clientes > 0 && <span style={{ fontSize: 12.5, color: C.green }}>· {m.clientes} cliente{m.clientes === 1 ? '' : 's'}</span>}
         <span style={{ marginLeft: 'auto', fontSize: 12, color: C.faint }}>{open ? 'ocultar ▲' : 'ver detalle ▾'}</span>
       </button>
@@ -711,8 +739,15 @@ function MetricsPanel({ leads }) {
 // Lo primero que ve Federico al entrar: qué mover HOY, ordenado por urgencia.
 // No inventa trabajo — resume el que ya existe en la lista y lo lleva de un clic
 // al filtro correcto. Si no hay nada pendiente, lo dice en calma (no ruido).
-function FocoHoy({ contesto, seguir, listos, onVerSeguir, onVerActivos }) {
+function FocoHoy({ pruebas, contesto, seguir, listos, onVerSeguir, onVerActivos, onVerPruebas }) {
   const items = [];
+  // El norte del agente: alguien entró y arrancó la prueba solo. Va primero —
+  // es el momento de oro para acompañar el arranque (red de seguridad humana).
+  if (pruebas > 0) items.push({
+    icon: '✅', fg: C.green, bg: C.greenSoft,
+    txt: <><strong>{pruebas}</strong> inici{pruebas === 1 ? 'ó' : 'aron'} la prueba — acompañá el arranque antes de que se enfríe</>,
+    cta: { label: 'Ver', onClick: onVerPruebas },
+  });
   if (contesto > 0) items.push({
     icon: '💬', fg: C.green, bg: C.greenSoft,
     txt: <><strong>{contesto}</strong> te contest{contesto === 1 ? 'ó' : 'aron'} — respondé la objeción antes de que se enfríe</>,
@@ -749,12 +784,14 @@ function FocoHoy({ contesto, seguir, listos, onVerSeguir, onVerActivos }) {
             background: it.bg, border: `1px solid ${it.fg}22`, borderRadius: 10, padding: '9px 12px' }}>
             <span style={{ fontSize: 15 }}>{it.icon}</span>
             <span style={{ fontSize: 13, color: C.ink, lineHeight: 1.4 }}>{it.txt}</span>
-            <button onClick={it.cta.onClick} style={{
-              marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: it.fg, background: C.card,
-              border: `1px solid ${it.fg}55`, borderRadius: 50, padding: '5px 13px',
-              cursor: 'pointer', fontFamily: C.sans, whiteSpace: 'nowrap' }}>
-              {it.cta.label}
-            </button>
+            {it.cta && (
+              <button onClick={it.cta.onClick} style={{
+                marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: it.fg, background: C.card,
+                border: `1px solid ${it.fg}55`, borderRadius: 50, padding: '5px 13px',
+                cursor: 'pointer', fontFamily: C.sans, whiteSpace: 'nowrap' }}>
+                {it.cta.label}
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -879,10 +916,17 @@ function Inbox({ token, onLogout }) {
   const activos = leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado' || l.estado === 'demo');
   const paraSeguir = leads.filter(tocaSeguir)
     .sort((a, b) => new Date(a.seguir_desde || 0) - new Date(b.seguir_desde || 0)); // más atrasado primero
-  const visibles = filtro === 'todos' ? leads : filtro === 'seguir' ? paraSeguir : activos;
+  // Inició prueba y todavía no es cliente pago: están en la ventana de onboarding.
+  const paraPruebas = leads.filter(l => l.inicio_prueba_at && l.estado !== 'convertido')
+    .sort((a, b) => new Date(b.inicio_prueba_at || 0) - new Date(a.inicio_prueba_at || 0)); // más reciente primero
+  const visibles = filtro === 'todos' ? leads
+    : filtro === 'seguir' ? paraSeguir
+    : filtro === 'pruebas' ? paraPruebas
+    : activos;
   const nuevos = leads.filter(l => l.estado === 'nuevo').length;
 
   // Foco de hoy (punto 3): qué mover primero, calculado en el cliente.
+  const focoPruebas = paraPruebas.length;
   const focoContesto = leads.filter(l => l.respondio === true && ACTIVOS_SEGUIBLES.includes(l.estado)).length;
   const focoListos = leads.filter(l => l.estado === 'nuevo' && l.enriquecimiento?.prioridad === 'alta').length;
 
@@ -910,8 +954,9 @@ function Inbox({ token, onLogout }) {
 
         {/* Foco de hoy: lo primero que hay que mover (punto 3) */}
         {!loading && !error && leads.length > 0 && (
-          <FocoHoy contesto={focoContesto} seguir={paraSeguir.length} listos={focoListos}
-            onVerSeguir={() => setFiltro('seguir')} onVerActivos={() => setFiltro('activos')} />
+          <FocoHoy pruebas={focoPruebas} contesto={focoContesto} seguir={paraSeguir.length} listos={focoListos}
+            onVerSeguir={() => setFiltro('seguir')} onVerActivos={() => setFiltro('activos')}
+            onVerPruebas={() => setFiltro('pruebas')} />
         )}
 
         {/* Métricas: ¿está funcionando el agente? (datos reales de Federico) */}
@@ -949,18 +994,20 @@ function Inbox({ token, onLogout }) {
         {/* Filtro */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
           {[
+            ...(paraPruebas.length ? [['pruebas', `✅ Inició prueba (${paraPruebas.length})`]] : []),
             ['seguir',  `⏰ Para seguir${paraSeguir.length ? ` (${paraSeguir.length})` : ''}`],
             ['activos', `Activos${nuevos ? ` (${nuevos})` : ''}`],
             ['todos',   `Todos (${leads.length})`],
           ].map(([id, lbl]) => {
             const sel = filtro === id;
             const alert = id === 'seguir' && paraSeguir.length > 0;
+            const win = id === 'pruebas';
             return (
               <button key={id} onClick={() => setFiltro(id)} style={{
                 padding: '6px 14px', borderRadius: 50, fontSize: 13, fontFamily: C.sans, cursor: 'pointer', fontWeight: 500,
-                border: `1px solid ${sel ? (alert ? C.amber : C.ink) : (alert ? C.amber + '55' : C.line)}`,
-                background: sel ? (alert ? C.amber : C.ink) : C.card,
-                color: sel ? '#fff' : (alert ? C.amber : C.sub) }}>
+                border: `1px solid ${sel ? (win ? C.green : alert ? C.amber : C.ink) : (win ? C.green + '55' : alert ? C.amber + '55' : C.line)}`,
+                background: sel ? (win ? C.green : alert ? C.amber : C.ink) : C.card,
+                color: sel ? '#fff' : (win ? C.green : alert ? C.amber : C.sub) }}>
                 {lbl}
               </button>
             );

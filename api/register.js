@@ -43,7 +43,7 @@ async function handler(req, res) {
   }
   if (!SB_URL || !SB_SVC)     return res.status(500).json({ error: 'Server misconfigured' });
 
-  const { empresa, email, password, nombre } = req.body || {};
+  const { empresa, email, password, nombre, ref } = req.body || {};
 
   // Validate inputs
   if (!empresa?.trim())  return res.status(400).json({ error: 'Nombre de empresa requerido' });
@@ -166,6 +166,23 @@ async function handler(req, res) {
   }
 
   log.info('register', 'new org registered', { orgId, empresa: empresa.trim(), email });
+
+  // ── Atribución del agente de ventas (best-effort, NUNCA bloquea el registro) ──
+  // Si el prospecto llegó desde un link del agente (/register?ref=<id del lead>),
+  // conectamos esta prueba con el pazque_lead: así /owner sabe de qué mensaje salió.
+  // El ref es el UUID del lead (ni dato personal ni adivinable). Si algo falla,
+  // el registro ya está hecho igual — esto es solo medición.
+  const refUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(ref || '').trim())
+    ? String(ref).trim() : null;
+  if (refUuid) {
+    try {
+      await fetch(`${SB_URL}/rest/v1/pazque_leads?id=eq.${refUuid}`, {
+        method:  'PATCH',
+        headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify({ inicio_prueba_at: new Date().toISOString(), org_convertida: orgId }),
+      });
+    } catch (e) { log.warn('register', 'lead attribution failed (non-fatal)', { refUuid, error: e?.message }); }
+  }
 
   // Email de bienvenida (non-blocking)
   try {

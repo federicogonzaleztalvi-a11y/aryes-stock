@@ -54,8 +54,17 @@ const CODE_TTL_MIN = 10;                 // el código vence a los 10 minutos
 const SESSION_DAYS = 30;                 // la sesión dura 30 días por dispositivo
 const MAX_CODE_ATTEMPTS = 5;             // intentos por código antes de invalidarlo
 const FOLLOW_UP_DAYS = 3;                // cadencia por defecto entre toques de seguimiento
+const SITE = (process.env.SITE_URL || 'https://pazque.com').replace(/\/$/, '');
 
 const ESTADOS = ['nuevo', 'contactado', 'demo', 'convertido', 'descartado'];
+
+// Link de auto-registro atribuido a un prospecto. El id es un UUID (ni dato
+// personal ni adivinable), así que es seguro ponerlo en la URL. register.js lo
+// lee para conectar la prueba con este lead. Es el vehículo del objetivo del
+// agente: que la distribuidora entre y arranque la prueba SOLA.
+function altaLink(leadId) {
+  return leadId ? `${SITE}/register?ref=${encodeURIComponent(leadId)}` : `${SITE}/register`;
+}
 
 function svcHeaders(extra = {}) {
   const k = SB_SVC || SB_ANON;
@@ -453,7 +462,7 @@ Reglas:
     · Se presenta seco y claro: "Hola Diego, soy Federico, fundador de Pazque."
     · Una sola observación puntual y VERDADERA del negocio de ellos, sacada de la web o del rubro (ej: "vi que distribuís bebidas a comercios en Montevideo"), como quien entiende el rubro, no como quien adula. Si NO tenés dato real del negocio (sin web y rubro genérico), no inventes una observación: hacé un mensaje más neutro pero honesto.
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
-    · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos"). Ej: "¿Te sirve que te muestre cómo se vería para tu operación?".
+    · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos") y SIN prometer que vos le armás nada (es auto-servicio: lo prueba él). Ej: "¿Te sirve que te muestre cómo funciona?" o "¿lo querrías probar?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
 - Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
 - COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.`
@@ -508,6 +517,7 @@ export async function draftFollowUp(lead) {
 
   const toque = (Number(lead.toques) || 1) + 1; // el que estamos por redactar
   const enr = lead.enriquecimiento || {};
+  const link = altaLink(lead.id);
   const compact = {
     nombre:   lead.nombre || '',
     empresa:  lead.empresa || '',
@@ -515,6 +525,7 @@ export async function draftFollowUp(lead) {
     angulo:   enr.angulo || '',
     primer_mensaje: lead.mensaje_final || enr.mensaje_wa || '',
     toque_numero: toque,
+    link_de_registro: link,
   };
 
   // La guía cambia según el toque: cada uno prueba un ángulo nuevo y más corto.
@@ -522,7 +533,7 @@ export async function draftFollowUp(lead) {
   if (toque <= 2) {
     guia = 'Es el SEGUNDO toque. Retomá cordial, SIN reclamar que no contestó. Sumá UN ángulo nuevo de valor que no usaste en el primero (ej: ahorro de tiempo del equipo, menos errores de pedido, que el cliente pide fuera de hora). Cerrá con una pregunta distinta a la del primer mensaje.';
   } else if (toque === 3) {
-    guia = 'Es el TERCER toque. Más corto todavía (1-2 líneas). Ofrecé algo concreto y de bajo compromiso: mostrarle en 1 minuto cómo se vería su catálogo en el portal, o mandarle un ejemplo. Una sola pregunta directa.';
+    guia = `Es el TERCER toque. Más corto todavía (1-2 líneas). Ofrecé algo concreto y de bajo compromiso: que lo pruebe él mismo gratis. OJO: es auto-servicio, Pazque NO le arma el portal — lo crea él solo en minutos. Invitalo a entrar y probarlo con el link de auto-registro que te paso (campo link_de_registro) — pegalo TAL CUAL, sin acortar ni cambiar. Ej: "te dejo el acceso para que lo pruebes gratis, se arma en minutos: <link>". Una sola invitación directa. PROHIBIDO sugerir que vos le armás el catálogo o le cargás los productos.`;
   } else {
     guia = 'Es un cierre cortés (breakup). Mensaje muy corto, sin culpa ni reproche: decís que no querés insistir, dejás la puerta abierta para cuando le sirva, y le pedís un simple sí/no para saber si cierro el tema. Este tipo de mensaje suele destrabar respuestas justamente porque libera la presión.';
   }
@@ -560,22 +571,26 @@ export async function replyDraft(lead, prospectoDijo) {
   if (!dijo) return { error: 'missing_message' };
 
   const enr = lead.enriquecimiento || {};
+  const link = altaLink(lead.id);
   const compact = {
     nombre:  lead.nombre || '',
     empresa: lead.empresa || '',
     rubro:   enr.rubro || lead.rubro || '',
     angulo:  enr.angulo || '',
     lo_que_dijo_el_prospecto: dijo,
+    link_de_registro: link,
   };
 
   const system = `Sos Federico, fundador de Pazque (SaaS B2B: un portal donde los clientes de una distribuidora hacen los pedidos solos, en vez de recibirlos por WhatsApp uno por uno; catálogo con fotos y precios; toma de pedidos por voz/foto). Un prospecto te RESPONDIÓ por WhatsApp. Te paso textual lo que dijo. Redactá tu contrarréplica.
 
+OBJETIVO: que la distribuidora entre SOLA a Pazque y arranque la prueba gratis de 14 días. Es AUTO-SERVICIO: Pazque NO le arma el portal ni le carga los productos — lo crea él mismo en minutos (por eso es fácil, ese es el gancho). NUNCA prometas que vos le vas a armar el catálogo o subir sus fotos. Cuando el prospecto muestra interés, pide ver algo, pide info o pregunta cómo seguir, invitalo a entrar y probarlo él mismo con el link de auto-registro que te paso (campo link_de_registro): pegalo TAL CUAL, sin acortar ni cambiar. Ej: "te dejo el acceso para que lo pruebes gratis, se arma en minutos: <link>". Si el prospecto todavía está frío o escéptico, NO tires el link de una: primero destrabá la objeción y recién ahí ofrecelo.
+
 Manejo de objeciones típicas (adaptá, no recites):
 - "Ya tengo un sistema / ERP": no competís con el ERP; Pazque es la cara al cliente (el portal de pedidos), y se puede integrar. Preguntá cómo hacen hoy los pedidos sus clientes.
-- "No tengo tiempo": por eso mismo; el portal justamente saca trabajo manual de tomar pedidos. Ofrecé algo de 1 minuto.
-- "¿Cuánto sale?": no te escapes pero no tires número a ciegas; decí que depende del tamaño y proponé mostrarle primero cómo se vería para su operación.
-- "Mandame info": mejor algo vivo y breve que un PDF; ofrecé mostrarle su propio catálogo en el portal.
-- Si muestra interés real: no sobrevendas, proponé el siguiente paso concreto (mostrarle el portal con sus productos).
+- "No tengo tiempo": por eso mismo; el portal justamente saca trabajo manual de tomar pedidos. Ofrecé que lo pruebe él mismo gratis con el link, se arma en minutos.
+- "¿Cuánto sale?": no te escapes pero no tires número a ciegas; decí que lo puede probar gratis 14 días y que el precio depende del tamaño.
+- "Mandame info": mejor algo vivo que un PDF; pasale el link para que entre y lo pruebe él mismo gratis.
+- Si muestra interés real: no sobrevendas, pasale el link de auto-registro como próximo paso concreto.
 
 Reglas duras:
 - Español rioplatense, voseo.

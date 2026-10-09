@@ -7,7 +7,15 @@ import { useState } from 'react';
 const G   = '#059669';
 const F   = { sans: "'Inter',system-ui,sans-serif" };
 
+// Atribución: si el prospecto llegó desde un link del agente (/register?ref=<id>),
+// capturamos ese id para que register.js conecte esta prueba con el lead.
+function refFromUrl() {
+  try { return (new URLSearchParams(window.location.search).get('ref') || '').trim().slice(0, 64); }
+  catch { return ''; }
+}
+
 export default function RegisterPage() {
+  const [ref] = useState(refFromUrl);
   const [form, setForm] = useState({ empresa: '', nombre: '', email: '', password: '', confirm: '' });
   const [err,  setErr]  = useState('');
   const [ok,   setOk]   = useState(false);
@@ -35,6 +43,7 @@ export default function RegisterPage() {
           nombre:   form.nombre.trim(),
           email:    form.email.trim().toLowerCase(),
           password: form.password,
+          ...(ref ? { ref } : {}),
         }),
       });
       const data = await r.json();
