@@ -295,7 +295,10 @@ async function findSocial(name, city) {
 const TAMANOS  = ['chico', 'mediano', 'grande', 'sin datos'];
 const PRIORIDS = ['alta', 'media', 'baja'];
 
-async function enrichLead(lead) {
+// Exportada: el agente proactivo (api/cron-ventas.js) reusa exactamente este
+// enriquecimiento, para que el mensaje de WhatsApp y el análisis sean idénticos
+// venga de un clic en /owner o del cron de la mañana. Una sola fuente de verdad.
+export async function enrichLead(lead) {
   if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
 
   // Datos reales del negocio (no genérico): leemos su web y el IG/FB que linkea a
@@ -411,7 +414,7 @@ async function placesSearch(query) {
 
 // Busca distribuidoras, descarta las que ya tenemos (por place_id) y las inserta.
 // Devuelve cuántas nuevas entraron.
-async function sourceDistributors(query) {
+export async function sourceDistributors(query) {
   if (!GOOGLE_PLACES_KEY) return { error: 'places_not_configured' };
   const q = clean(query, 160) || 'distribuidoras mayoristas en Uruguay';
 
