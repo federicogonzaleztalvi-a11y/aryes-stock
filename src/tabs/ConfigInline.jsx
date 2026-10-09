@@ -1854,6 +1854,26 @@ export default function ConfigInline({
                   </label>
                 </div>
 
+                {/* Descripción al compartir el link (preview de WhatsApp/redes) */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Descripción al compartir el link</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>El texto que ven tus clientes cuando les compartís el link del catálogo por WhatsApp. Dejalo vacío para usar el texto por defecto.</div>
+                  </div>
+                  <input
+                    key={'sharedesc'+(brandCfg?.shareDesc||'')}
+                    type="text" maxLength={160}
+                    defaultValue={brandCfg?.shareDesc||''}
+                    placeholder="Hacé tu pedido online — catálogo y precios en un solo lugar"
+                    onBlur={e=>{
+                      const v=e.target.value.trim();
+                      const updated={...(brandCfg||{}),shareDesc:v};
+                      setBrandCfg(updated);
+                      db.upsert('app_config',{key:'brandcfg',value:updated,org_id:getOrgId()},'key,org_id');
+                    }}
+                    style={{width:'100%',padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,background:'#fafaf7',color:'#1a1a18'}}/>
+                </div>
+
                 {/* Pedido mínimo */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
                   <div>

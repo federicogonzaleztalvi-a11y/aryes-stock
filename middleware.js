@@ -20,8 +20,10 @@ export const config = {
 const SB_URL = process.env.SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
+// Default pensado para el CLIENTE que recibe el link (no para el distribuidor).
+// Cada org puede sobrescribirlo desde Config → "Descripción al compartir el link".
 const FALLBACK_DESC =
-  'Sistema de gestión para distribuidoras — inventario, ventas, rutas y portal B2B';
+  'Hacé tu pedido online — catálogo y precios en un solo lugar';
 
 function sanitizeOrg(v) {
   return String(v || '').replace(/[^a-z0-9_-]/gi, '');
@@ -102,7 +104,8 @@ export default async function middleware(request) {
     let html = await originRes.text();
 
     const nameAttr = escapeAttr(name);
-    const descAttr = escapeAttr(FALLBACK_DESC);
+    const desc = (brand.shareDesc && String(brand.shareDesc).trim()) || FALLBACK_DESC;
+    const descAttr = escapeAttr(desc);
     const urlAttr = escapeAttr(pageUrl);
     const logoAttr = logo ? escapeAttr(logo) : '';
 
