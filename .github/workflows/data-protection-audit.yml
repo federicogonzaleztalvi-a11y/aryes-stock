@@ -1,0 +1,115 @@
+name: Protección de Datos (Torre de Control · agente de confidencialidad)
+
+# INGENIERO DE SEGURIDAD DE DATOS del equipo CTO. A diferencia del Code Reviewer
+# (que mira SÓLO lo que cambia un PR) y del Security Audit (que mira SÓLO las
+# librerías), este agente audita el ESTADO PARADO de todo el código buscando fugas
+# de datos confidenciales — los tuyos y los de tus clientes. Es el que contesta la
+# pregunta "¿mi info y la de mis clientes están protegidas?".
+#
+# Corre solo una vez por semana (y a pedido). Es PURO LEER + AVISAR: nunca toca
+# código, nunca mergea, nunca abre PRs (regla de oro de la Torre: proponer = solo).
+# Si encuentra algo, abre UN Issue en lenguaje claro. Si está todo limpio, no
+# molesta.
+on:
+  schedule:
+    - cron: "0 13 * * 4"   # jueves 10:00 Montevideo (separado del Security Audit del lunes)
+  workflow_dispatch: {}      # correr a mano desde la pestaña Actions
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # leer el código del repo
+      issues: write           # abrir el issue con los hallazgos
+      id-token: write         # auth OIDC de la GitHub App de Claude
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          # gh CLI (pre-instalado) se autentica con este token.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Sos el INGENIERO DE SEGURIDAD DE DATOS de Pazque (SaaS B2B multi-tenant
+            EN PRODUCCIÓN con un cliente real, Eric / org `aryes-ltda-6223`). Pazque
+            maneja información confidencial del dueño (Federico) y de SUS CLIENTES
+            (los compradores de cada distribuidora). Tu único trabajo es auditar el
+            código del repo buscando fugas o exposición de esa data, y avisarle a
+            Federico (que NO programa) en lenguaje claro. Leé `CLAUDE.md` primero.
+
+            NO estás revisando un cambio puntual: estás revisando el ESTADO ACTUAL
+            de todo el código. Buscás agujeros que YA existen, no los que entran por
+            un PR (de eso se encarga el Code Reviewer).
+
+            QUÉ AUDITAR (lo más grave primero):
+
+            1) AISLAMIENTO MULTI-TENANT (lo más crítico). Toda query a datos de una
+               organización debe scopear por `org_id` tomado del login/sesión/JWT,
+               NUNCA de algo que mande el cliente en el body o la query del request.
+               Buscá cualquier endpoint donde el `org_id` (o `orgId`) salga de
+               `req.body`, `req.query` o params del cliente y se use para leer o
+               escribir datos. Ese es el camino #1 por el que un cliente podría ver
+               o pisar datos de otro. Revisá especialmente `api/catalogo.js`,
+               `api/pedido.js`, `api/_create-order.js`, `api/historial.js` y
+               cualquier endpoint por-org.
+
+            2) ENDPOINTS SIN AUTH. Cada API por-org debe validar al que llama con
+               `resolveMember` (o equivalente); cada cron debe exigir `CRON_SECRET`.
+               Listá los handlers en `api/` que NO tengan ningún chequeo de auth
+               antes de tocar datos. Un endpoint abierto que devuelve datos de una
+               org es una fuga.
+
+            3) SECRETOS EXPUESTOS AL NAVEGADOR. En Vite sólo las variables con
+               prefijo `VITE_` llegan al bundle del cliente. Buscá en `src/`
+               cualquier uso de claves de servidor (SERVICE_ROLE_KEY, WA_ACCESS_TOKEN,
+               ANTHROPIC_KEY, tokens, passwords, connection strings) o claves
+               literales hardcodeadas. Todo lo que termine en el bundle lo puede
+               leer cualquiera con el navegador.
+
+            4) SECRETOS HARDCODEADOS EN EL REPO. Claves/API keys/tokens escritos a
+               mano en cualquier archivo (deberían venir de variables de entorno).
+
+            5) XSS / INYECCIÓN. Data de usuario interpolada en HTML sin pasar por
+               `esc()` (ya existe el helper en varios archivos). SQL/command
+               injection: inputs del request metidos crudos en una query o en un
+               comando de shell.
+
+            CÓMO TRABAJAR: usá Grep/Glob/Read para rastrear estos patrones y, cuando
+            encuentres un candidato, ABRÍ el archivo y leé la función completa para
+            confirmar si es un riesgo REAL o un falso positivo. No reportes a ciegas
+            sobre un grep.
+
+            ENTREGA:
+              • Si encontrás AL MENOS un riesgo real: abrí UN solo Issue con
+                    gh issue create --title "<título>" --label seguridad --body-file <archivo.md>
+                En español rioplatense, ordenado por gravedad (🔴 crítico / 🟠
+                importante / 🟡 menor). Por cada hallazgo: archivo:línea, qué está
+                expuesto, qué podría ver/pisar un atacante o un cliente de otra org,
+                y el fix concreto. Sé honesto: si algo es teórico y no explotable en
+                el uso real, decilo igual pero marcalo como tal. No infles para
+                parecer riguroso ni minimices un agujero real.
+              • Si está TODO LIMPIO: NO abras ningún issue. Sólo imprimí en el log
+                un resumen de qué revisaste y que no encontraste nada. No generes
+                ruido.
+
+            NOTA PARA EL ISSUE (incluila siempre al final si abrís uno): este
+            auditor mira el CÓDIGO. No puede verificar desde acá si las tablas de
+            Supabase tienen RLS prendido ahora mismo (eso vive en la base, no en el
+            repo). Si querés cubrir también eso, es un chequeo aparte contra la base.
+
+            REGLAS DURAS: NO edites código, NO abras PRs, NO mergees, NO cierres
+            nada. Sólo leés y, si hace falta, abrís el issue informativo.
+          # Sólo lectura + Bash para `gh`. Claves válidas de settings.json nada más
+          # (una inválida descarta todo el bloque y el agente queda sin permisos).
+          settings: |
+            {
+              "model": "claude-opus-4-8",
+              "permissions": {
+                "defaultMode": "acceptEdits",
+                "allow": ["Read", "Grep", "Glob", "Bash"]
+              }
+            }
