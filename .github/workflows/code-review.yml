@@ -34,7 +34,7 @@ jobs:
       pull-requests: write    # dejar el review/comentario en el PR
       id-token: write         # auth OIDC de la GitHub App de Claude
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0       # historia completa: el agente necesita diffear contra main
 
