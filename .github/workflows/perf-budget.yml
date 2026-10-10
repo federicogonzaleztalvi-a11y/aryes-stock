@@ -18,6 +18,10 @@ on:
 
 jobs:
   budget:
+    # Los PRs de Dependabot pueden traer el lockfile a medio resolver (típico en
+    # subidas major), lo que haría fallar el `npm ci` acá por un motivo ajeno al
+    # peso del bundle. El peso igual se controla en cada push a main y en tus PRs.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read

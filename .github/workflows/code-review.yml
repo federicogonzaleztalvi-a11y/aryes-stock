@@ -24,6 +24,10 @@ concurrency:
 
 jobs:
   review:
+    # No gastamos una corrida de IA revisando PRs de bots (Dependabot). Son subidas
+    # de dependencias mecánicas; además la Action de Claude por seguridad se niega a
+    # correr disparada por un bot. Los PRs de humanos (vos) SÍ se revisan.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read          # leer el código del repo

@@ -22,8 +22,16 @@ updates:
     labels: ["dependencias"]
     commit-message:
       prefix: "deps"
+    # NO tocar subidas de versión MAYOR (ej. react-router 6→7, vite 4→7). Una
+    # "major" puede romper la app y además deja el package-lock.json inconsistente
+    # (Dependabot no siempre resuelve bien las dependencias internas en un major).
+    # Federico no puede evaluar un major a ojo, así que esas quedan afuera del
+    # automático — si en algún momento querés una, se hace a mano y con cuidado.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     # Agrupa los updates chicos (parches y menores) en UN solo PR para no generar
-    # ruido; los "major" (que pueden romper) vienen cada uno en su PR aparte.
+    # ruido.
     groups:
       menores-y-parches:
         update-types: ["minor", "patch"]
