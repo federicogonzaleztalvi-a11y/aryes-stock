@@ -1,0 +1,53 @@
+name: CI
+
+# Corre en cada push a main y en cada Pull Request.
+# Gate real: test + build deben pasar para poder mergear/deployar.
+# lint corre informativo hasta quemar el backlog (ver continue-on-error abajo).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+  lint:
+    name: Lint (informativo hasta quemar backlog)
+    runs-on: ubuntu-latest
+    # TODO: quitar continue-on-error cuando los 83 errores preexistentes esten en 0.
+    # El hook local (husky + lint-staged) ya bloquea codigo nuevo con errores.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
