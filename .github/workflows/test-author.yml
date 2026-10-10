@@ -58,7 +58,7 @@ jobs:
       issues: write           # comentar el issue disparador
       id-token: write         # auth OIDC de la GitHub App de Claude
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0       # historia completa: para diffear el PR contra main
 
