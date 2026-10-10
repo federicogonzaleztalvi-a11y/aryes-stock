@@ -265,4 +265,60 @@ export const templates = {
         </p>
       </div>`,
   }),
+
+  // Acompañamiento de ACTIVACIÓN (product-led growth). Lo dispara
+  // cron-activacion.js a las orgs en prueba que todavía NO cargaron catálogo
+  // (ningún producto con precio de venta). Secuencia corta de 3 avisos; el
+  // agente para apenas la org carga su primer producto.
+  //
+  // REGLA DURA (self-serve): NUNCA prometer que nosotros armamos el portal o
+  // cargamos los productos. El valor es que lo hace la distribuidora sola, en
+  // minutos. Todo el copy es "cargás vos", nunca "te lo cargamos".
+  //
+  // stage: 1 = primer día ("cargá tu primer producto"),
+  //        2 = ~3 días (importar lista de Excel, el camino rápido),
+  //        3 = ~7 días (último aviso + ayuda humana si la necesita).
+  activacion: ({ empresa, stage, appUrl, importUrl }) => {
+    const paso1 = {
+      subject: `Tu portal de ${empresa || 'tu distribuidora'} está a un producto de arrancar`,
+      titulo: 'Cargá tu primer producto',
+      cuerpo: `Ya tenés tu cuenta lista para <strong>${esc(empresa || 'tu distribuidora')}</strong>. El siguiente paso lo hacés vos en un minuto: cargá un producto con su precio y tu portal queda listo para que tus clientes pidan.`,
+      cta: 'Cargar mi primer producto →',
+      url: appUrl,
+      extra: 'Empezá con uno solo para verlo funcionando. Después sumás el resto cuando quieras.',
+    };
+    const paso2 = {
+      subject: `¿Tenés tu lista en Excel? Subila y armá tu catálogo en 2 minutos`,
+      titulo: 'Importá tu lista de precios',
+      cuerpo: `Si ya tenés tus productos en una planilla de Excel, no hace falta cargarlos de a uno: subís el archivo y Pazque arma el catálogo por vos en un par de minutos. Lo hacés desde el importador, sin ayuda de nadie.`,
+      cta: 'Importar mi lista de Excel →',
+      url: importUrl || appUrl,
+      extra: 'Funciona con tu propia lista o con nuestra plantilla. Vos la subís, el sistema la carga.',
+    };
+    const paso3 = {
+      subject: `¿Seguimos con ${empresa || 'tu portal'}? Te damos una mano`,
+      titulo: 'Estamos para ayudarte a arrancar',
+      cuerpo: `Vimos que todavía no cargaste tu catálogo en <strong>${esc(empresa || 'tu cuenta')}</strong>. Es el único paso que falta para que tus clientes empiecen a pedirte online. Si algo te trabó, respondé este mail o escribinos a contacto@pazque.com y te orientamos para que lo cargues vos mismo, rápido.`,
+      cta: 'Entrar y cargar mi catálogo →',
+      url: appUrl,
+      extra: 'Tu prueba sigue activa. Cuando cargues tu primer producto, dejás de recibir estos recordatorios.',
+    };
+    const s = stage >= 3 ? paso3 : stage === 2 ? paso2 : paso1;
+    return {
+      subject: s.subject,
+      html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:500px;margin:0 auto;padding:32px 24px">
+        <img src="https://pazque.com/pazque-logo.png" alt="Pazque" style="height:28px;margin-bottom:24px" />
+        <h1 style="font-size:22px;font-weight:700;color:#1a1a18;margin:0 0 12px">${esc(s.titulo)}</h1>
+        <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 20px">${s.cuerpo}</p>
+        <a href="${esc(s.url)}" style="display:inline-block;padding:12px 28px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px">
+          ${esc(s.cta)}
+        </a>
+        <p style="font-size:13px;color:#6a6a68;line-height:1.6;margin:20px 0 0">${esc(s.extra)}</p>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px">
+          Pazque — Acompañamiento de tu prueba. Si ya cargaste tu catálogo, ignorá este mensaje.
+        </p>
+      </div>`,
+    };
+  },
 };
