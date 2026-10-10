@@ -47,7 +47,7 @@
       "maxDuration": 300
     },
     "api/cron-director.js": {
-      "maxDuration": 60
+      "maxDuration": 120
     }
   },
   "rewrites": [
