@@ -81,8 +81,11 @@ export default async function handler(req, res) {
   const orgs = await orgsRes.json();
 
   let sent = 0, activated = 0, skipped = 0;
-  const appUrl    = `${SITE}/app`;
-  const importUrl = `${SITE}/app`;   // el importador vive dentro del panel
+  // Deep-links al panel (el admin navega por /app/<tab>): cada aviso cae en el
+  // lugar exacto donde se resuelve, no en la home genérica.
+  const appUrl    = `${SITE}/app`;             // home / checklist de arranque
+  const addUrl    = `${SITE}/app/inventory`;   // cargar un producto a mano
+  const importUrl = `${SITE}/app/importar`;    // importar el catálogo desde Excel
 
   for (const org of orgs) {
     const email = (org.email || '').trim();
@@ -118,7 +121,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      const tpl = templates.activacion({ empresa: org.name, stage: target, appUrl, importUrl });
+      const tpl = templates.activacion({ empresa: org.name, stage: target, appUrl, importUrl, addUrl });
       await sendEmail({ to: email, ...tpl });
       await fetch(`${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org.id)}`, {
         method: 'PATCH', headers: HJSON,

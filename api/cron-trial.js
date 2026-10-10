@@ -38,6 +38,30 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Último llamado: orgs cuya prueba vence dentro de ~1 día ──
+  // Sin esto el countdown saltaba de "3 días" directo a "venció". Ventana angosta
+  // (now → +1 día) + cron diario = cada org recibe este toque una sola vez.
+  const in1day = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString();
+  const soon = await fetch(
+    SB_URL + '/rest/v1/organizations?subscription_status=eq.trial&trial_ends_at=gt.' + encodeURIComponent(now.toISOString()) + '&trial_ends_at=lte.' + encodeURIComponent(in1day) + '&select=id,name,email,trial_ends_at&limit=50',
+    { headers: { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC } }
+  );
+  let soonSent = 0;
+  if (soon.ok) {
+    const soonOrgs = await soon.json();
+    for (const org of soonOrgs) {
+      if (!org.email) continue;
+      const daysLeft = Math.max(0, Math.ceil((new Date(org.trial_ends_at) - now) / 86400000));
+      try {
+        const tpl = templates.trialExpiring(org.name || '', daysLeft);
+        await sendEmail({ to: org.email, ...tpl });
+        soonSent++;
+      } catch (e) {
+        console.error('[cron-trial] soon email failed:', org.id, e.message);
+      }
+    }
+  }
+
   // ── Also check orgs whose trial expired today (send "trial ended" email) ──
   const expired = await fetch(
     SB_URL + '/rest/v1/organizations?subscription_status=eq.trial&trial_ends_at=lte.' + encodeURIComponent(now.toISOString()) + '&select=id,name,email,trial_ends_at&limit=50',
@@ -71,5 +95,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ ok: true, checked: orgs.length, sent, expiredChecked: expired.ok ? (await expired.clone().json()).length : 0, expiredSent });
+  return res.status(200).json({ ok: true, checked: orgs.length, sent, soonSent, expiredChecked: expired.ok ? (await expired.clone().json()).length : 0, expiredSent });
 }

@@ -278,13 +278,15 @@ export const templates = {
   // stage: 1 = primer día ("cargá tu primer producto"),
   //        2 = ~3 días (importar lista de Excel, el camino rápido),
   //        3 = ~7 días (último aviso + ayuda humana si la necesita).
-  activacion: ({ empresa, stage, appUrl, importUrl }) => {
+  // Cada paso lleva a un deep-link distinto del panel: addUrl (cargar a mano un
+  // producto), importUrl (importar la lista de Excel), appUrl (home del panel).
+  activacion: ({ empresa, stage, appUrl, importUrl, addUrl }) => {
     const paso1 = {
       subject: `Tu portal de ${empresa || 'tu distribuidora'} está a un producto de arrancar`,
       titulo: 'Cargá tu primer producto',
       cuerpo: `Ya tenés tu cuenta lista para <strong>${esc(empresa || 'tu distribuidora')}</strong>. El siguiente paso lo hacés vos en un minuto: cargá un producto con su precio y tu portal queda listo para que tus clientes pidan.`,
       cta: 'Cargar mi primer producto →',
-      url: appUrl,
+      url: addUrl || appUrl,
       extra: 'Empezá con uno solo para verlo funcionando. Después sumás el resto cuando quieras.',
     };
     const paso2 = {
