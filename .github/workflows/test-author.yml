@@ -5,9 +5,13 @@ name: QA · Autor de Tests (Torre de Control)
 # revises. Útil para blindar una función crítica antes de tocarla, o para subir la
 # cobertura de a poco sin que vos tengas que escribir una línea.
 #
-# Se dispara de dos formas:
+# Se dispara de tres formas:
 #   1) Poniéndole a un Issue el label `needs-tests` (describí ahí qué querés cubrir).
 #   2) A mano desde Actions (workflow_dispatch), indicando el archivo/función objetivo.
+#   3) AUTOMÁTICO: cuando se abre un PR que toca ALGUNO de los archivos CRÍTICOS de
+#      Pazque (pedido, precios, catálogo, auth). Esto es lo que haría Amazon: el
+#      código que más duele si se rompe no se mergea sin tests. El agente abre un PR
+#      aparte con los tests para ese cambio; vos decidís mergearlos (regla de oro).
 #
 # El agente explora el repo, escribe tests con Vitest (el framework que ya usa
 # Pazque), verifica que corran en verde, y ABRE UN PR. NUNCA mergea (regla de oro).
@@ -19,13 +23,34 @@ on:
       target:
         description: 'Qué cubrir con tests (archivo, función o flujo)'
         required: true
+  # Sólo al ABRIR/reabrir el PR (no en cada push: evita gastar una corrida de IA en
+  # cada commit). El filtro `paths` hace que corra únicamente si el PR toca uno de
+  # los archivos críticos listados.
+  pull_request:
+    types: [opened, reopened]
+    paths:
+      - 'api/pedido.js'
+      - 'api/_create-order.js'
+      - 'api/catalogo.js'
+      - 'api/otp-send.js'
+      - 'api/otp-verify.js'
+      - 'api/historial.js'
+      - 'src/lib/pricing.js'
 
 jobs:
   write-tests:
-    # Por label sólo corre con `needs-tests`; el disparo manual siempre corre.
+    # - Por label: sólo con `needs-tests`.
+    # - Manual (workflow_dispatch): siempre.
+    # - Por PR: salteamos a los bots (Dependabot) y a los PRs que abren los propios
+    #   agentes (ramas tests/ y auto-fix/) para no entrar en un bucle de agentes
+    #   generándose tests entre ellos.
     if: >
       github.event_name == 'workflow_dispatch' ||
-      github.event.label.name == 'needs-tests'
+      (github.event_name == 'issues' && github.event.label.name == 'needs-tests') ||
+      (github.event_name == 'pull_request' &&
+        github.actor != 'dependabot[bot]' &&
+        !startsWith(github.head_ref, 'tests/') &&
+        !startsWith(github.head_ref, 'auto-fix/'))
     runs-on: ubuntu-latest
     permissions:
       contents: write         # crear la rama con los tests nuevos
@@ -35,9 +60,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0       # historia completa: para diffear el PR contra main
 
       - uses: anthropics/claude-code-action@v1
+        env:
+          # gh CLI se autentica con este token (independiente del OIDC de la App).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Vacío salvo cuando el disparador es un PR que tocó archivos críticos.
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           branch_prefix: tests/
@@ -46,8 +76,15 @@ jobs:
             cliente real Eric / org aryes-ltda-6223). Leé `CLAUDE.md` primero.
 
             OBJETIVO: escribir TESTS (no código de la app) para lo que se pide en
-            el disparador de este workflow — el cuerpo del Issue con label
-            `needs-tests`, o el input `target` del disparo manual.
+            el disparador de este workflow. Averiguá cuál fue el disparador:
+              • Si la variable de entorno PR_NUMBER NO está vacía → te disparó un PR
+                que tocó un archivo CRÍTICO (pedido, precios, catálogo, auth). Traé
+                el diff con `gh pr diff "$PR_NUMBER"` y mirá los archivos tocados
+                completos. Escribí tests que BLINDEN justo ese cambio: lo que el PR
+                modifica y los invariantes que ese código no puede romper. En la
+                descripción de TU PR aclarás que son los tests para el PR #$PR_NUMBER.
+              • Si PR_NUMBER está vacío → te dispararon a mano (input `target`) o por
+                un Issue con label `needs-tests`: cubrí lo que pide ese disparador.
 
             CÓMO:
               • Usá Vitest, que ya está configurado (`npm run test`). Seguí el
