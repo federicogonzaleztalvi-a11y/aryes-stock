@@ -1,0 +1,87 @@
+name: Security Audit (Torre de Control · agente de seguridad)
+
+# Agente de SEGURIDAD del equipo CTO. Una vez por semana (y a pedido) escanea las
+# dependencias de Pazque buscando vulnerabilidades conocidas (CVEs) con `npm audit`.
+#
+# Lógica de costo: el escaneo crudo es gratis y corre siempre. El agente de Claude
+# SÓLO se despierta si aparece algo GRAVE (high/critical). En ese caso lee el
+# reporte + package.json y abre UN Issue en lenguaje claro: qué librería, qué
+# riesgo real para Pazque, y el fix concreto (casi siempre "subir a la versión X").
+# NO toca código ni mergea (regla de oro: proponer = solo; actuar = humano).
+#
+# El Issue NO lleva el label `auto-fix` a propósito: subir una dependencia es tarea
+# de Dependabot / tuya, no del agente que edita código de la app.
+on:
+  schedule:
+    - cron: "0 13 * * 1"   # lunes 10:00 Montevideo
+  workflow_dispatch: {}      # correr a mano desde la pestaña Actions
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write          # abrir el issue con el hallazgo
+      id-token: write        # auth OIDC de la GitHub App de Claude
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Paso 1 — escaneo crudo. Guarda el JSON y marca si hay high/critical.
+      # `|| true`: npm audit devuelve exit!=0 cuando encuentra algo; no queremos
+      # que eso corte el workflow, lo evaluamos nosotros.
+      - name: Escanear dependencias (npm audit)
+        id: scan
+        run: |
+          npm audit --omit=dev --json > audit.json || true
+          HIGH=$(node -e "const a=require('./audit.json');const v=a.metadata?.vulnerabilities||{};console.log((v.high||0)+(v.critical||0))")
+          echo "high_critical=$HIGH" >> "$GITHUB_OUTPUT"
+          echo "Vulnerabilidades high/critical encontradas: $HIGH"
+
+      # Paso 2 — SÓLO si hay algo grave: el agente triagea y abre el issue.
+      - name: Triage y reporte (Claude)
+        if: steps.scan.outputs.high_critical != '0'
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Sos el INGENIERO DE SEGURIDAD de Pazque (SaaS B2B multi-tenant en
+            producción, cliente real Eric / org aryes-ltda-6223). El escaneo
+            semanal `npm audit` encontró vulnerabilidades high/critical en las
+            dependencias de producción.
+
+            PASO 1 — Leé `audit.json` (reporte crudo de npm audit en la raíz) y
+            `package.json`. Entendé qué librería está afectada, por qué, y si
+            Pazque realmente usa el camino vulnerable.
+
+            PASO 2 — Abrí UN Issue de GitHub (en español rioplatense, para
+            Federico que NO programa) con:
+                gh issue create --title "<título>" --label seguridad --body-file <archivo.md>
+            Contenido del body:
+              • **Gravedad** y en una línea qué significa el riesgo en criollo.
+              • **Qué librería** y a través de qué dependencia entra.
+              • **¿Nos afecta de verdad?** honesto: ¿Pazque usa ese código o es
+                teórico? No infles el riesgo ni lo minimices.
+              • **Fix concreto:** la versión a la que hay que subir (si Dependabot
+                ya la va a proponer, decilo) o la acción recomendada.
+            Si hay varias vulnerabilidades, agrupalas en UN solo issue ordenadas
+            por gravedad. Sé preciso y accionable.
+
+            REGLAS DURAS: NO edites código, NO abras PRs, NO mergees. Sólo leés y
+            abrís el issue informativo. Si al leer el detalle resulta que no es
+            explotable en nuestro uso, decilo claramente igual en el issue.
+          # Sólo lectura + Bash para `gh`. Claves válidas de settings.json nada más
+          # (una inválida descarta todo el bloque y el agente queda sin permisos).
+          settings: |
+            {
+              "model": "claude-opus-4-8",
+              "permissions": {
+                "defaultMode": "acceptEdits",
+                "allow": ["Read", "Grep", "Glob", "Bash"]
+              }
+            }

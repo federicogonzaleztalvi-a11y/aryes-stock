@@ -1,0 +1,39 @@
+# Dependabot — parte "mecánica" del Agente de Seguridad (Torre de Control).
+#
+# Qué hace: cada semana revisa si salieron versiones nuevas de las librerías que
+# usa Pazque (npm) y de las propias GitHub Actions, y ABRE UN PULL REQUEST con la
+# actualización. No mergea nada: el PR cae en la cinta normal y lo revisa solo el
+# Code Reviewer (code-review.yml). Vos mergeás con un clic si está OK.
+#
+# Por qué importa: las librerías viejas acumulan bugs y agujeros de seguridad.
+# Mantenerlas al día es "higiene" que en una empresa real hace un equipo entero;
+# acá lo hace este bot + el reviewer, gratis y en piloto automático (regla de oro
+# de la Torre: proponer = solo; mergear = humano).
+version: 2
+updates:
+  # Librerías del proyecto (package.json / package-lock.json).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Tope de PRs abiertos a la vez: no queremos 30 PRs tapando la cinta.
+    open-pull-requests-limit: 5
+    labels: ["dependencias"]
+    commit-message:
+      prefix: "deps"
+    # Agrupa los updates chicos (parches y menores) en UN solo PR para no generar
+    # ruido; los "major" (que pueden romper) vienen cada uno en su PR aparte.
+    groups:
+      menores-y-parches:
+        update-types: ["minor", "patch"]
+
+  # Las propias GitHub Actions que usan nuestros workflows (checkout, etc.).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["dependencias"]
+    commit-message:
+      prefix: "ci"

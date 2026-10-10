@@ -1,0 +1,79 @@
+name: Release Guardian (Torre de Control · smoke post-deploy)
+
+# GUARDIÁN DE RELEASE del equipo CTO. Apenas Vercel termina un deploy de
+# PRODUCCIÓN, este workflow le pega a los caminos públicos críticos COMO UN
+# CLIENTE y verifica que sigan vivos. Es la red que atrapa un "deploy que rompió
+# el sitio" en SEGUNDOS, sin esperar hasta 10 min al monitor de salud (cron-health).
+#
+# Diferencia con cron-health:
+#   • cron-health = cada 10 min, siempre. Atrapa caídas de infra en cualquier momento.
+#   • este        = justo DESPUÉS de cada deploy. Atrapa "el cambio que subiste rompió algo".
+#
+# Si algo falla, abre UN Issue de incidente (visible, con GITHUB_TOKEN que siempre
+# está) y deja el check en ROJO. NO hace rollback automático a propósito: volver
+# atrás un deploy es una acción con consecuencia sobre la prod de Eric → la decidís
+# vos con un clic (regla de oro de la Torre). El issue te deja el comando exacto.
+on:
+  deployment_status: {}
+
+jobs:
+  smoke:
+    # Sólo cuando un deploy de PRODUCCIÓN termina OK. Los previews y los fallidos
+    # no disparan el smoke (no tendría sentido).
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment == 'Production'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      # Prueba los caminos públicos críticos. Sólo GET, cero efectos: no crea
+      # pedidos ni manda OTP (igual criterio que cron-health). Acumula los fallos.
+      - name: Smoke de caminos públicos
+        id: smoke
+        run: |
+          SITE="https://pazque.com"
+          FAILS=""
+          check () {
+            local path="$1"; local name="$2"
+            local code
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$SITE$path" || echo "000")
+            echo "$name ($path) -> HTTP $code"
+            if [ "$code" != "200" ]; then FAILS="$FAILS\n- $name ($SITE$path): HTTP $code"; fi
+          }
+          check "/" "Landing / app"
+          check "/pedidos" "Portal del cliente"
+          if [ -n "$FAILS" ]; then
+            echo "failed=1" >> "$GITHUB_OUTPUT"
+            printf "%b" "$FAILS" > smoke-fails.txt
+            echo "SMOKE FALLÓ:"; printf "%b\n" "$FAILS"
+            exit 1
+          fi
+          echo "failed=0" >> "$GITHUB_OUTPUT"
+          echo "Todos los caminos públicos responden 200. Deploy sano."
+
+      # Si el smoke falló, abre el issue de incidente con el comando de rollback.
+      - name: Abrir incidente si el smoke falló
+        if: always() && steps.smoke.outputs.failed == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          {
+            echo "## 🔴 Un deploy de producción dejó caído un camino crítico"
+            echo ""
+            echo "El Guardián de Release probó los caminos públicos **justo después del último deploy** y alguno no responde 200."
+            echo ""
+            echo "**Caminos caídos:**"
+            printf "%b\n" "$(cat smoke-fails.txt)"
+            echo ""
+            echo "**Deploy:** $DEPLOY_URL"
+            echo ""
+            echo "### Qué hacer (1 clic)"
+            echo "Si confirmás que este deploy rompió algo, volvé a la versión anterior desde Vercel → pestaña *Deployments* → el deploy anterior → **Promote to Production** (o \`npx vercel rollback\`). El rollback NO es automático a propósito: lo decidís vos."
+          } > incident.md
+          gh issue create \
+            --title "🔴 Deploy rompió un camino público de Pazque" \
+            --label incidente \
+            --body-file incident.md

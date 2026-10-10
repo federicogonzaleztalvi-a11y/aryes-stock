@@ -1,0 +1,5 @@
+{
+  "_comment": "Presupuesto de performance del bundle de Pazque. Lo vigila perf-budget.yml en cada PR. Si un cambio hace que el JavaScript que baja el navegador supere estos topes, el check se pone en rojo y te avisa en el PR. No bloquea el merge por sí solo (lo decidís vos), es una alarma de 'esto empezó a pesar de más'. Medido sobre dist/assets, bytes sin comprimir. Baseline 2026-10-10: total ~4.86MB, chunk mayor ~1.43MB.",
+  "maxTotalJsBytes": 5300000,
+  "maxChunkBytes": 1600000
+}

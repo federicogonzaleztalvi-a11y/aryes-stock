@@ -1,0 +1,80 @@
+name: QA · Autor de Tests (Torre de Control)
+
+# INGENIERO DE QA del equipo CTO. A diferencia del Code Reviewer (que MARCA lo que
+# falta), este AGENTE ESCRIBE los tests que faltan y abre un PR para que los
+# revises. Útil para blindar una función crítica antes de tocarla, o para subir la
+# cobertura de a poco sin que vos tengas que escribir una línea.
+#
+# Se dispara de dos formas:
+#   1) Poniéndole a un Issue el label `needs-tests` (describí ahí qué querés cubrir).
+#   2) A mano desde Actions (workflow_dispatch), indicando el archivo/función objetivo.
+#
+# El agente explora el repo, escribe tests con Vitest (el framework que ya usa
+# Pazque), verifica que corran en verde, y ABRE UN PR. NUNCA mergea (regla de oro).
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Qué cubrir con tests (archivo, función o flujo)'
+        required: true
+
+jobs:
+  write-tests:
+    # Por label sólo corre con `needs-tests`; el disparo manual siempre corre.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.label.name == 'needs-tests'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write         # crear la rama con los tests nuevos
+      pull-requests: write    # abrir el PR
+      issues: write           # comentar el issue disparador
+      id-token: write         # auth OIDC de la GitHub App de Claude
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          branch_prefix: tests/
+          prompt: |
+            Sos el INGENIERO DE QA de Pazque (SaaS B2B multi-tenant en producción,
+            cliente real Eric / org aryes-ltda-6223). Leé `CLAUDE.md` primero.
+
+            OBJETIVO: escribir TESTS (no código de la app) para lo que se pide en
+            el disparador de este workflow — el cuerpo del Issue con label
+            `needs-tests`, o el input `target` del disparo manual.
+
+            CÓMO:
+              • Usá Vitest, que ya está configurado (`npm run test`). Seguí el
+                estilo de los tests existentes si los hay.
+              • Enfocá en los INVARIANTES que más duelen si se rompen: aislamiento
+                multi-tenant por `org_id`, precios, flujo de pedido, auth. Casos
+                felices Y casos borde / errores.
+              • NO cambies el código de producción para que un test pase. Si
+                encontrás un bug real mientras escribís tests, NO lo arregles acá:
+                documentalo en la descripción del PR para que se trate aparte.
+              • Corré `npm run test` y asegurate de que TODO quede en verde antes
+                de abrir el PR.
+
+            ENTREGA: abrí UN Pull Request con los tests nuevos. En la descripción,
+            en español claro (el que aprueba no programa): qué cubriste, por qué
+            esos casos importan, y cualquier bug que hayas detectado de paso.
+
+            REGLAS DURAS: sólo tests. NO toques lógica de la app, NO mergees, NO
+            cierres nada.
+          # defaultMode acceptEdits (no hay humano en CI). Puede leer/escribir y
+          # correr Bash (para `npm run test`) + abrir el PR. Sólo claves válidas de
+          # settings.json (una inválida descarta todo el bloque).
+          settings: |
+            {
+              "model": "claude-opus-4-8",
+              "permissions": {
+                "defaultMode": "acceptEdits",
+                "allow": ["Read", "Edit", "Write", "Bash", "mcp__github__create_pull_request"]
+              }
+            }

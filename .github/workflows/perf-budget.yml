@@ -1,0 +1,85 @@
+name: Performance · Presupuesto de bundle (Torre de Control)
+
+# INGENIERO DE PERFORMANCE del equipo CTO. Cada cambio que toca el frontend puede,
+# sin querer, hacer que la app pese más (una librería pesada importada de más, un
+# chunk que se infla). Más peso = la app de Eric y sus clientes carga más lento,
+# sobre todo en celulares con datos. Este guardián buildea la app en cada PR y
+# compara el tamaño del JavaScript contra el presupuesto en `.github/perf-budget.json`.
+#
+# Si se pasa del tope, deja el check en ROJO y comenta en el PR qué creció. NO
+# bloquea el merge por sí solo: es una alarma (regla de oro: avisar = solo; la
+# decisión es tuya). Si el crecimiento es justificado, subís el número del
+# presupuesto en ese mismo PR y listo.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write    # comentar el resultado en el PR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Build de producción
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      # Mide el JS de dist/assets y lo compara con el presupuesto. Escribe un
+      # resumen (report.md) y marca si se pasó (over=1).
+      - name: Medir contra el presupuesto
+        id: measure
+        run: |
+          node <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const budget = JSON.parse(fs.readFileSync('.github/perf-budget.json', 'utf8'));
+          const dir = 'dist/assets';
+          const kb = (n) => (n / 1024).toFixed(0) + ' KB';
+          let total = 0, biggest = { name: '', size: 0 };
+          for (const f of fs.readdirSync(dir)) {
+            if (!f.endsWith('.js')) continue;
+            const size = fs.statSync(path.join(dir, f)).size;
+            total += size;
+            if (size > biggest.size) biggest = { name: f, size };
+          }
+          const overTotal = total > budget.maxTotalJsBytes;
+          const overChunk = biggest.size > budget.maxChunkBytes;
+          const over = overTotal || overChunk;
+          const line = (ok, label, val, max) =>
+            `${ok ? '🟢' : '🔴'} ${label}: **${kb(val)}** (tope ${kb(max)})`;
+          let md = '## 📦 Presupuesto de bundle\n\n';
+          md += line(!overTotal, 'JavaScript total', total, budget.maxTotalJsBytes) + '\n\n';
+          md += line(!overChunk, `Chunk más grande (${biggest.name})`, biggest.size, budget.maxChunkBytes) + '\n\n';
+          md += over
+            ? '> El bundle creció por encima del presupuesto. Si el crecimiento es justificado, subí los números en `.github/perf-budget.json` en este mismo PR. Si no, conviene revisar qué se importó de más.'
+            : '> Dentro de presupuesto. 👍';
+          fs.writeFileSync('report.md', md);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `over=${over ? 1 : 0}\n`);
+          console.log(md);
+          EOF
+
+      - name: Comentar en el PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR_NUMBER" --body-file report.md
+
+      # Deja el check en rojo si se pasó (señal visible; no bloquea por sí solo).
+      - name: Marcar rojo si se pasó del presupuesto
+        if: steps.measure.outputs.over == '1'
+        run: |
+          echo "El bundle superó el presupuesto de performance."
+          exit 1
