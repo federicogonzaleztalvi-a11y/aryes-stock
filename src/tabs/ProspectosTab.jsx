@@ -194,6 +194,8 @@ export default function ProspectosTab() {
   const [ciudadIn,   setCiudadIn]   = React.useState('');
   const [enrichBusy, setEnrichBusy] = React.useState('');  // id enriqueciéndose
   const [openEnrich, setOpenEnrich] = React.useState('');  // id con panel abierto
+  const [editMsg,    setEditMsg]    = React.useState({});  // { [leadId]: texto editado del WhatsApp }
+  const [savingMsg,  setSavingMsg]  = React.useState('');  // id guardando el mensaje
 
   const load = React.useCallback(async () => {
     setLoading(true); setError('');
@@ -373,6 +375,24 @@ export default function ProspectosTab() {
     finally { setEnrichBusy(''); }
   };
 
+  // Loop de aprendizaje — señal 1: guardar el mensaje que el vendedor realmente va
+  // a mandar (editado o tal cual). El motor aprende del texto final, no del
+  // borrador del agente. Optimista: la tarjeta refleja el cambio al toque.
+  const saveMessage = async (l, texto) => {
+    const t = String(texto || '').trim();
+    if (!t) return;
+    setSavingMsg(l.id);
+    setLeads(prev => prev.map(x => x.id === l.id ? { ...x, mensaje_final: t } : x));
+    setEditMsg(prev => { const n = { ...prev }; delete n[l.id]; return n; }); // vuelve a "sin cambios pendientes"
+    try {
+      await fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'edit-message', id: l.id, mensaje: t }),
+      });
+    } catch { /* noop */ }
+    finally { setSavingMsg(''); }
+  };
+
   const visibles = filtro === 'todos'
     ? leads
     : leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado');
@@ -537,7 +557,12 @@ export default function ProspectosTab() {
             const enr = l.enriquecimiento;
             const eb = enrichBusy === l.id;
             const showEnr = openEnrich === l.id && enr;
-            const wa = waLink(l.tel, enr?.mensaje_wa);
+            // Mensaje a mandar: el borrador del agente, salvo que el vendedor lo haya
+            // guardado editado (mensaje_final) o lo esté editando ahora (editMsg).
+            const guardado = l.mensaje_final || enr?.mensaje_wa || '';
+            const msgActual = (l.id in editMsg) ? editMsg[l.id] : guardado;
+            const msgCambio = (l.id in editMsg) && editMsg[l.id].trim() !== guardado.trim();
+            const wa = waLink(l.tel, msgActual);
             return (
               <div key={l.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 16,
                 display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -633,16 +658,35 @@ export default function ProspectosTab() {
                     )}
                     {enr.mensaje_wa && (
                       <div style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 10, padding: 12 }}>
-                        <div style={{ fontSize: 10.5, color: C.faint, fontWeight: 700, letterSpacing: 0.4, marginBottom: 6 }}>MENSAJE DE WHATSAPP LISTO</div>
-                        <div style={{ fontSize: 13.5, color: C.ink, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{enr.mensaje_wa}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <div style={{ fontSize: 10.5, color: C.faint, fontWeight: 700, letterSpacing: 0.4 }}>MENSAJE DE WHATSAPP — EDITALO ANTES DE MANDAR</div>
+                          {l.fue_editado && <span style={{ fontSize: 10.5, color: C.blue, fontWeight: 600 }}>✎ editado por vos</span>}
+                        </div>
+                        <textarea
+                          value={msgActual}
+                          onChange={e => setEditMsg(prev => ({ ...prev, [l.id]: e.target.value }))}
+                          rows={Math.min(8, Math.max(3, msgActual.split('\n').length + 1))}
+                          style={{ width: '100%', boxSizing: 'border-box', fontSize: 13.5, color: C.ink, lineHeight: 1.5,
+                            fontFamily: C.sans, border: `1px solid ${C.line}`, borderRadius: 8, padding: 10, resize: 'vertical', background: C.card }} />
+                        <div style={{ fontSize: 11, color: C.faint, marginTop: 6 }}>
+                          Lo que guardes acá es lo que Pazque usa para aprender qué textos te funcionan. Ajustalo a tu estilo.
+                        </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                          {msgCambio && (
+                            <button onClick={() => saveMessage(l, editMsg[l.id])} disabled={savingMsg === l.id}
+                              style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: savingMsg === l.id ? '#b0b0a8' : C.ink,
+                                border: 'none', borderRadius: 50, padding: '8px 16px', cursor: savingMsg === l.id ? 'default' : 'pointer', fontFamily: C.sans }}>
+                              {savingMsg === l.id ? 'Guardando…' : 'Guardar cambios'}
+                            </button>
+                          )}
                           {wa
-                            ? <a href={wa} target="_blank" rel="noopener noreferrer" onClick={() => markContacted(l)} style={{ fontSize: 13, fontWeight: 600,
-                                color: '#fff', background: C.green, textDecoration: 'none', borderRadius: 50, padding: '8px 16px' }}>
+                            ? <a href={wa} target="_blank" rel="noopener noreferrer"
+                                onClick={() => { if (msgCambio) saveMessage(l, editMsg[l.id]); markContacted(l); }}
+                                style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: C.green, textDecoration: 'none', borderRadius: 50, padding: '8px 16px' }}>
                                 Abrir en WhatsApp
                               </a>
                             : <span style={{ fontSize: 12, color: C.faint, alignSelf: 'center' }}>Sin teléfono — copiá el mensaje</span>}
-                          <button onClick={() => { try { navigator.clipboard?.writeText(enr.mensaje_wa); } catch { /* noop */ } }}
+                          <button onClick={() => { try { navigator.clipboard?.writeText(msgActual); } catch { /* noop */ } }}
                             style={{ fontSize: 13, color: C.ink, background: 'transparent', border: `1px solid ${C.line}`,
                               borderRadius: 50, padding: '8px 16px', cursor: 'pointer', fontFamily: C.sans }}>
                             Copiar mensaje

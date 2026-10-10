@@ -314,12 +314,16 @@ async function fetchPortalLearningBlock(orgId) {
   try {
     const r = await fetch(
       `${SB_URL}/rest/v1/portal_leads?org_id=eq.${encodeURIComponent(org)}` +
-      `&respondio=is.true&enriquecimiento=not.is.null&select=enriquecimiento` +
-      `&order=enriquecido_at.desc.nullslast&limit=3`,
+      `&respondio=is.true&select=enriquecimiento,mensaje_final` +
+      `&order=respondio_at.desc.nullslast&limit=3`,
       { headers: svcHeaders() }
     );
     const rows = r.ok ? await r.json() : [];
-    const ejemplos = rows.map(x => clean(x?.enriquecimiento?.mensaje_wa, 700)).filter(Boolean);
+    // Preferimos el mensaje FINAL que el vendedor mandó (editado o no) sobre el
+    // borrador del agente: ése es el texto que de verdad consiguió la respuesta.
+    const ejemplos = rows
+      .map(x => clean(x?.mensaje_final || x?.enriquecimiento?.mensaje_wa, 700))
+      .filter(Boolean);
     if (!ejemplos.length) return '';
     return '\n\nMENSAJES DE ESTA DISTRIBUIDORA QUE CONSIGUIERON RESPUESTA (replicá su tono, ' +
       'largo y estructura: es lo que funciona de verdad con sus comercios. No copies el ' +
@@ -605,7 +609,8 @@ export default async function handler(req, res) {
 
   // ── Rutas de sourcing por-org (admin + vendedor; editar ICP = solo admin) ─
   const isMemberAction =
-    action === 'source' || action === 'enrich' || action === 'sourcing-config' || action === 'reply';
+    action === 'source' || action === 'enrich' || action === 'sourcing-config' ||
+    action === 'reply' || action === 'edit-message';
 
   if (isMemberAction) {
     const member = await resolveMember(req, ['admin', 'vendedor']);
@@ -680,6 +685,30 @@ export default async function handler(req, res) {
       await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
         method: 'PATCH', headers: { ...svcHeaders(), Prefer: 'return=minimal' },
         body: JSON.stringify({ respondio: req.body.respondio, respondio_at: new Date().toISOString() }),
+      });
+      return res.status(200).json({ ok: true });
+    }
+
+    // Loop de aprendizaje — señal 1 (paridad con owner.js): el vendedor guarda el
+    // mensaje que REALMENTE va a mandar (editado o tal cual el borrador). Guardamos
+    // el texto final y si lo corrigió respecto del borrador del agente. El motor
+    // (fetchPortalLearningBlock) aprende del texto final, no del borrador crudo.
+    if (req.method === 'POST' && action === 'edit-message') {
+      const id  = clean(req.body?.id, 40);
+      const txt = clean(req.body?.mensaje, 700);
+      if (!id)  return res.status(400).json({ error: 'Falta id' });
+      if (!txt) return res.status(400).json({ error: 'El mensaje no puede quedar vacío' });
+      const lr = await fetch(
+        `${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}&select=enriquecimiento&limit=1`,
+        { headers: svcHeaders() }
+      );
+      const lead = (lr.ok ? await lr.json() : [])?.[0];
+      if (!lead) return res.status(404).json({ error: 'Prospecto no encontrado' });
+      const norm = s => clean(s, 700).replace(/\s+/g, ' ').trim();
+      const borrador = clean(lead?.enriquecimiento?.mensaje_wa, 700);
+      await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
+        method: 'PATCH', headers: { ...svcHeaders(), Prefer: 'return=minimal' },
+        body: JSON.stringify({ mensaje_final: txt, fue_editado: norm(txt) !== norm(borrador) }),
       });
       return res.status(200).json({ ok: true });
     }

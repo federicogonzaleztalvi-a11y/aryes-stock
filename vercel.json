@@ -39,6 +39,12 @@
     },
     "api/cron-reposicion.js": {
       "maxDuration": 300
+    },
+    "api/cron-cobranzas.js": {
+      "maxDuration": 300
+    },
+    "api/cron-reactivacion.js": {
+      "maxDuration": 300
     }
   },
   "rewrites": [
@@ -125,6 +131,12 @@
   }, {
     "path": "/api/cron-reposicion",
     "schedule": "0 14 * * *"
+  }, {
+    "path": "/api/cron-cobranzas",
+    "schedule": "0 15 * * *"
+  }, {
+    "path": "/api/cron-reactivacion",
+    "schedule": "0 16 * * *"
   }],
   "version": 2
 }

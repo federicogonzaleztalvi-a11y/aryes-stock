@@ -275,6 +275,86 @@ export const templates = {
     };
   },
 
+  // Recordatorio de COBRANZA al comprador con facturas vencidas (lo dispara
+  // cron-cobranzas.js). Tono profesional y respetuoso: es plata que el comprador
+  // le debe a la distribuidora, no un push de venta. `facturas` es un array de
+  // { numero, saldo, diasVencida } y `totalDeuda` la suma pendiente. El canal es
+  // el email de cobranza/administración del cliente (o su email general).
+  cobranzas: ({ empresa, nombre, facturas = [], totalDeuda, simbolo = '$', portalUrl, logoUrl }) => {
+    const lista = (facturas || []).slice(0, 8);
+    const fmt = n => `${esc(simbolo)} ${Math.round(Number(n || 0)).toLocaleString('es-UY')}`;
+    const filas = lista.map(f => `
+      <tr style="border-bottom:1px solid #f4f4f0">
+        <td style="padding:8px 0;color:#1a1a18">${esc(f.numero || 'Factura')}</td>
+        <td style="padding:8px 0;text-align:center;color:#b42318">${esc(f.diasVencida)} días</td>
+        <td style="padding:8px 0;text-align:right;color:#1a1a18;font-weight:600">${fmt(f.saldo)}</td>
+      </tr>`).join('');
+    return {
+      subject: `Recordatorio de pago — ${empresa || 'Pazque'}`,
+      html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(empresa || '')}" style="height:36px;max-width:180px;object-fit:contain;margin-bottom:24px" />` : ''}
+        <h1 style="font-size:21px;font-weight:700;color:#1a1a18;margin:0 0 10px">Tenés pagos pendientes</h1>
+        <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 16px">
+          Hola ${esc(nombre || '')}, te escribimos de <strong>${esc(empresa || 'tu proveedor')}</strong> para recordarte
+          que tenés ${lista.length === 1 ? 'una factura vencida' : `<strong>${lista.length} facturas vencidas</strong>`}.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin:0 0 8px">
+          <thead>
+            <tr style="border-bottom:2px solid #efefeb;text-align:left;color:#6a6a68;font-size:12px">
+              <th style="padding:6px 0">Factura</th>
+              <th style="padding:6px 0;text-align:center">Vencida hace</th>
+              <th style="padding:6px 0;text-align:right">Saldo</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+        <div style="text-align:right;font-size:16px;font-weight:700;color:#1a1a18;border-top:2px solid #efefeb;padding-top:10px;margin-bottom:22px">
+          Total adeudado: ${fmt(totalDeuda)}
+        </div>
+        ${portalUrl ? `<a href="${esc(portalUrl)}" style="display:inline-block;padding:13px 30px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">
+          Ver mi estado de cuenta →
+        </a>` : ''}
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px;line-height:1.5">
+          Si ya hiciste el pago, ignorá este mensaje — puede cruzarse con la acreditación. Recordatorio automático de ${esc(empresa || 'Pazque')}.
+        </p>
+      </div>`,
+    };
+  },
+
+  // Recordatorio de REACTIVACIÓN al comprador que dejó de comprar (churn, lo
+  // dispara cron-reactivacion.js). Distinto de reposición (ése es por ritmo, a
+  // un comprador activo que se atrasó): acá el comprador lleva MUCHO sin pedir y
+  // el objetivo es recuperarlo antes de perderlo. `dias` es cuántos hace que no
+  // pide; `productos` lo que solía pedir.
+  reactivacion: ({ empresa, nombre, productos = [], dias, portalUrl, logoUrl }) => {
+    const lista = (productos || []).slice(0, 4);
+    const itemsHtml = lista.length
+      ? `<ul style="margin:0 0 20px;padding-left:18px;color:#4b4b48;font-size:15px;line-height:1.7">
+           ${lista.map(p => `<li>${esc(p)}</li>`).join('')}
+         </ul>`
+      : '';
+    return {
+      subject: `Hace rato no te vemos 👋 — ${empresa || 'Pazque'}`,
+      html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(empresa || '')}" style="height:36px;max-width:180px;object-fit:contain;margin-bottom:24px" />` : ''}
+        <h1 style="font-size:21px;font-weight:700;color:#1a1a18;margin:0 0 10px">¿Todo bien? Te extrañamos</h1>
+        <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 ${itemsHtml ? '14px' : '20px'}">
+          Hola ${esc(nombre || '')}, ${dias ? `hace <strong>${esc(dias)} días</strong> que no hacés un pedido en ` : 'hace un tiempo que no te vemos por '}<strong>${esc(empresa || 'el portal')}</strong>.
+          Queríamos saber si está todo bien y recordarte que seguimos acá cuando necesites.${lista.length ? ' Lo que solías pedir:' : ''}
+        </p>
+        ${itemsHtml}
+        <a href="${esc(portalUrl)}" style="display:inline-block;padding:13px 30px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">
+          Volver a comprar →
+        </a>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px;line-height:1.5">
+          Si ya no lo necesitás, ignorá este mensaje. Recordatorio automático de ${esc(empresa || 'Pazque')}.
+        </p>
+      </div>`,
+    };
+  },
+
   trialExpiring: (empresa, daysLeft) => ({
     subject: daysLeft <= 1 ? 'Tu prueba de Pazque vence hoy' : `Te quedan ${daysLeft} días de prueba — Pazque`,
     html: `
