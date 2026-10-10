@@ -614,6 +614,185 @@ function RateRow({ label, labelColor, cont, resp }) {
   );
 }
 
+// ── RevOps: el embudo de ventas de Pazque ────────────────────────────
+// La foto de dónde están TODOS los prospectos: de prospectado a cliente, con
+// el % que pasa de una etapa a la otra y cuánto tarda cada salto. Es el cimiento
+// del equipo de ventas: sin estos números no se pueden construir los agentes de
+// aprendizaje y de A/B que vienen después. Calcula todo acá en el navegador con
+// los leads que ya están cargados — no agrega llamadas ni toca el servidor.
+const DAY_MS = 86400000;
+function avgDias(arr) {
+  if (!arr.length) return null;
+  return +(arr.reduce((a, b) => a + b, 0) / arr.length / DAY_MS).toFixed(1);
+}
+function tsOf(v) { const t = v ? Date.parse(v) : NaN; return Number.isNaN(t) ? null : t; }
+
+function FunnelPanel({ leads }) {
+  const [open, setOpen] = React.useState(false);
+
+  const f = React.useMemo(() => {
+    const esContactado = (l) => (l.toques || 0) > 0 || !!l.ultimo_contacto_at ||
+      ['contactado', 'demo', 'convertido'].includes(l.estado);
+    const esRespondio = (l) => l.respondio === true || ['demo', 'convertido'].includes(l.estado);
+    const esConvertido = (l) => l.estado === 'convertido';
+
+    const sourced = leads.length;
+    const enriched = leads.filter(l => !!l.enriquecido_at).length;
+    const contacted = leads.filter(esContactado).length;
+    const replied = leads.filter(esRespondio).length;
+    const converted = leads.filter(esConvertido).length;
+
+    const etapas = [
+      { etapa: 'Prospectados', total: sourced,   from: null },
+      { etapa: 'Enriquecidos', total: enriched,  from: sourced },
+      { etapa: 'Contactados',  total: contacted, from: enriched },
+      { etapa: 'Respondieron', total: replied,   from: contacted },
+      { etapa: 'Clientes',     total: converted, from: replied },
+    ].map(e => ({ ...e, conv: e.from == null ? null : pct(e.total, e.from), ancho: sourced ? Math.round((e.total / sourced) * 100) : 0 }));
+
+    // Velocidad: días promedio por salto, sólo sobre los que efectivamente saltaron.
+    const dEnrich = [], dContact = [], dReply = [], dConvert = [];
+    for (const l of leads) {
+      const c = tsOf(l.created_at), e = tsOf(l.enriquecido_at),
+        k = tsOf(l.ultimo_contacto_at), rp = tsOf(l.respondio_at), u = tsOf(l.updated_at);
+      if (c && e && e >= c) dEnrich.push(e - c);
+      if (e && k && k >= e) dContact.push(k - e);
+      if (k && rp && rp >= k) dReply.push(rp - k);
+      if (c && esConvertido(l) && u && u >= c) dConvert.push(u - c);
+    }
+    const velocidad = [
+      { label: 'Prospectar → enriquecer', dias: avgDias(dEnrich) },
+      { label: 'Enriquecer → contactar',  dias: avgDias(dContact) },
+      { label: 'Contactar → respuesta',   dias: avgDias(dReply) },
+      { label: 'Prospectar → cliente',    dias: avgDias(dConvert) },
+    ].filter(v => v.dias != null);
+
+    const now = Date.now();
+    const nuevosEn = (d) => leads.filter(l => { const c = tsOf(l.created_at); return c && (now - c) <= d * DAY_MS; }).length;
+
+    // A/B: tasa de respuesta por molde de mensaje (solo cuentan los contactados).
+    const byVar = {};
+    for (const l of leads) {
+      if (!l.variante) continue;
+      const v = (byVar[l.variante] ||= { variante: l.variante, cont: 0, resp: 0 });
+      if (esContactado(l)) v.cont += 1;
+      if (esRespondio(l))  v.resp += 1;
+    }
+    const variantes = Object.values(byVar)
+      .map(v => ({ ...v, tasa: pct(v.resp, v.cont) }))
+      .sort((a, b) => b.tasa - a.tasa);
+    const hayAB = variantes.some(v => v.cont > 0);
+
+    return { etapas, velocidad, sem: nuevosEn(7), mes: nuevosEn(30), sourced, variantes, hayAB };
+  }, [leads]);
+
+  const VLABEL = { observacion: 'Molde A · con observación', directo: 'Molde B · directo' };
+
+  const wrap = { background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, marginBottom: 16 };
+
+  if (f.sourced === 0) {
+    return (
+      <div style={wrap}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 4 }}>Embudo de ventas</div>
+        <div style={{ fontSize: 12.5, color: C.sub }}>
+          Cuando el agente sume prospectos vas a ver acá el embudo completo: de prospectado a cliente, con el % que pasa cada etapa.
+        </div>
+      </div>
+    );
+  }
+
+  const clientes = f.etapas[f.etapas.length - 1].total;
+  const convTotal = pct(clientes, f.sourced);
+
+  return (
+    <div style={wrap}>
+      <button onClick={() => setOpen(v => !v)} style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%', background: 'transparent',
+        border: 'none', padding: 0, cursor: 'pointer', fontFamily: C.sans, textAlign: 'left' }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Embudo de ventas</span>
+        <span style={{ fontSize: 13, color: C.sub }}>
+          <strong style={{ color: C.ink }}>{f.sourced}</strong> prospectos
+          {clientes > 0 && <> · <strong style={{ color: C.green }}>{clientes} cliente{clientes === 1 ? '' : 's'}</strong>
+            {convTotal != null && <span style={{ color: C.faint }}> ({convTotal}%)</span>}</>}
+        </span>
+        {f.sem > 0 && <span style={{ fontSize: 12.5, color: C.sub }}>· +{f.sem} esta semana</span>}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.faint }}>{open ? 'ocultar ▲' : 'ver detalle ▾'}</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Embudo: cada etapa como barra, con el % que pasó de la anterior */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+            {f.etapas.map((e, i) => (
+              <div key={e.etapa} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12.5, color: C.ink, minWidth: 104, fontWeight: 500 }}>{e.etapa}</span>
+                <div style={{ flex: 1, height: 22, background: C.bg, borderRadius: 6, overflow: 'hidden', border: `1px solid ${C.line}` }}>
+                  <div style={{ width: `${Math.max(e.ancho, e.total > 0 ? 3 : 0)}%`, height: '100%',
+                    background: i === f.etapas.length - 1 ? C.green : C.greenDeep, opacity: 1 - i * 0.14,
+                    borderRadius: 5, transition: 'width 360ms cubic-bezier(0.23,1,0.32,1)' }} />
+                </div>
+                <span style={{ fontSize: 12.5, color: C.sub, minWidth: 88, textAlign: 'right' }}>
+                  <strong style={{ color: C.ink }}>{e.total}</strong>
+                  {e.conv != null && <span style={{ color: C.faint }}> · {e.conv}% ↓</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {f.velocidad.length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: .3, marginBottom: 8 }}>
+                VELOCIDAD — DÍAS PROMEDIO POR SALTO
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {f.velocidad.map(v => (
+                  <div key={v.label} style={{ background: C.bg, border: `1px solid ${C.line}`, borderRadius: 8, padding: '7px 11px' }}>
+                    <div style={{ fontSize: 11.5, color: C.sub }}>{v.label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{v.dias} <span style={{ fontSize: 11.5, fontWeight: 400, color: C.faint }}>días</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {f.hayAB && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: .3, marginBottom: 8 }}>
+                QUÉ MENSAJE FUNCIONA MEJOR — TASA DE RESPUESTA POR MOLDE
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {f.variantes.map((v, i) => (
+                  <div key={v.variante} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12.5, color: C.ink, flex: 1 }}>
+                      {VLABEL[v.variante] || v.variante}
+                      {i === 0 && v.cont > 0 && v.tasa > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700, color: C.green,
+                          background: C.greenBg || '#f0fdf4', borderRadius: 50, padding: '1px 8px' }}>mejor</span>
+                      )}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: C.sub }}>
+                      {v.resp}/{v.cont} respondieron · <strong style={{ color: C.ink }}>{v.tasa}%</strong>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 18, fontSize: 12.5, color: C.sub }}>
+            <span>Prospectos nuevos — <strong style={{ color: C.ink }}>{f.sem}</strong> últimos 7 días</span>
+            <span><strong style={{ color: C.ink }}>{f.mes}</strong> últimos 30 días</span>
+          </div>
+
+          <div style={{ fontSize: 11.5, color: C.faint, lineHeight: 1.5 }}>
+            El % de cada barra es cuántos pasaron desde la etapa de arriba. La velocidad se mide sólo sobre los que ya dieron ese salto.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetricsPanel({ leads }) {
   const [open, setOpen] = React.useState(false);
 
@@ -958,6 +1137,9 @@ function Inbox({ token, onLogout }) {
             onVerSeguir={() => setFiltro('seguir')} onVerActivos={() => setFiltro('activos')}
             onVerPruebas={() => setFiltro('pruebas')} />
         )}
+
+        {/* RevOps: el embudo completo de prospectado a cliente (dónde están todos) */}
+        {!loading && !error && <FunnelPanel leads={leads} />}
 
         {/* Métricas: ¿está funcionando el agente? (datos reales de Federico) */}
         {!loading && !error && <MetricsPanel leads={leads} />}

@@ -58,6 +58,24 @@ function clean(v, max = 200) {
   return String(v == null ? '' : v).trim().slice(0, max);
 }
 
+// Nombre comparable para dedupe: minúsculas, sin tildes, sin puntuación ni
+// sufijos societarios ("srl", "sa", "ltda"). Así "Café Brasilero S.A." y
+// "cafe brasilero" caen en el mismo cubo aunque vengan por caminos distintos.
+function normName(v) {
+  return String(v || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(s\.?a\.?|s\.?r\.?l\.?|ltda\.?|inc\.?|llc\.?)\b/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+}
+
+// Dominio raíz de una URL (sin www ni protocolo). '' si no parsea.
+function domainOf(url) {
+  try { return new URL(String(url)).hostname.replace(/^www\./, '').toLowerCase(); }
+  catch { return ''; }
+}
+
 // Valida el JWT del admin y resuelve { org }. Solo rol admin.
 async function resolveAdmin(req) {
   const authHeader = req.headers['authorization'] || '';
@@ -170,31 +188,51 @@ async function sourceVenues(org, rubro) {
 
   if (places.length === 0) return { added: 0, found: 0, usadas, tope: cfg.tope };
 
-  // Dedupe POR ORG (otra org puede tener el mismo comercio).
+  // Dedupe POR ORG (otra org puede tener el mismo comercio). Traemos place_id,
+  // nombre y web de TODOS los prospectos de la org (no solo los de sourcing): así
+  // no reofrecemos un comercio que ya entró por el formulario o por otra búsqueda,
+  // aunque Google le haya dado otro place_id.
   const existing = await fetch(
-    `${SB_URL}/rest/v1/portal_leads?select=place_id&org_id=eq.${encodeURIComponent(org)}&place_id=not.is.null`,
+    `${SB_URL}/rest/v1/portal_leads?select=place_id,nombre,landing_url&org_id=eq.${encodeURIComponent(org)}`,
     { headers: svcHeaders() }
   );
-  const known = new Set((existing.ok ? await existing.json() : []).map(x => x.place_id));
+  const prev = existing.ok ? await existing.json() : [];
+  const knownPlace  = new Set(prev.map(x => x.place_id).filter(Boolean));
+  const knownName   = new Set(prev.map(x => normName(x.nombre)).filter(Boolean));
+  const knownDomain = new Set(prev.map(x => domainOf(x.landing_url)).filter(Boolean));
 
   const rows = [];
   for (const p of places) {
     const pid = p.id;
-    if (!pid || known.has(pid)) continue;
+    if (!pid || knownPlace.has(pid)) continue;
     if (p.businessStatus && p.businessStatus !== 'OPERATIONAL') continue; // cerrados fuera
-    known.add(pid);
     const nombre = clean(p.displayName?.text, 200);
     if (!nombre) continue;
-    const rating = typeof p.rating === 'number' ? `${p.rating}★ (${p.userRatingCount || 0} reseñas)` : '';
+    const nkey = normName(nombre);
+    const dkey = domainOf(p.websiteUri);
+    if (nkey && knownName.has(nkey)) continue;        // mismo comercio por nombre
+    if (dkey && knownDomain.has(dkey)) continue;      // mismo comercio por dominio
+    // Filtro de salud: un listado sin NINGÚN canal de contacto (ni teléfono ni
+    // web) y sin una sola reseña no es accionable ni verificable → fuera. No
+    // filtramos por rating/volumen: un comercio chico y nuevo puede ser gran
+    // comprador, y descartarlo por pocas reseñas perdería prospectos reales.
+    const tel  = clean(p.internationalPhoneNumber, 40).replace(/[^\d+]/g, '');
+    const web  = clean(p.websiteUri, 300);
+    const resenas = Number(p.userRatingCount) || 0;
+    if (!tel && !web && resenas === 0) continue;
+    knownPlace.add(pid);
+    if (nkey) knownName.add(nkey);
+    if (dkey) knownDomain.add(dkey);
+    const rating = typeof p.rating === 'number' ? `${p.rating}★ (${resenas} reseñas)` : '';
     const contexto = [clean(p.formattedAddress, 220), rating].filter(Boolean).join(' · ');
     rows.push({
       org_id:      org,
       nombre,                                                   // nombre del comercio
-      tel:         clean(p.internationalPhoneNumber, 40).replace(/[^\d+]/g, '') || null,
+      tel:         tel || null,
       comercio:    clean(p.primaryTypeDisplayName?.text, 120) || r,  // el rubro/tipo
       ciudad:      cfg.ciudad || null,
       mensaje:     clean(contexto, 400) || null,                // dirección + rating
-      landing_url: clean(p.websiteUri, 300) || null,
+      landing_url: web || null,
       place_id:    pid,
       origen:      'sourcing',
       utm_source:  'sourcing-google',
@@ -210,11 +248,94 @@ async function sourceVenues(org, rubro) {
   return { added: rows.length, found: places.length, usadas, tope: cfg.tope };
 }
 
+// ── Agente crítico: 2ª pasada de calidad al 1er WhatsApp (paridad con owner.js) ──
+// Antes de mostrarle al vendedor el mensaje, un SEGUNDO agente lo revisa contra
+// las reglas duras (largo, tono, sin emojis, UNA sola observación REAL, nada
+// inventado) y lo deja impecable. A diferencia del crítico de Pazque, acá el
+// remitente es la DISTRIBUIDORA (orgName) ofreciéndose como proveedor mayorista,
+// no Pazque. No agrega datos: solo pule lo que el primer agente redactó. Si no
+// hay key, el mensaje viene vacío o el crítico falla, devolvemos el original sin
+// bloquear: el crítico solo puede mejorar, nunca romper.
+async function critiquePortalMessage(mensaje, compact, orgName) {
+  const msg = clean(mensaje, 700);
+  if (!anthropicConfigured() || !msg) return msg;
+
+  const system = `Sos el director comercial de ${orgName}, una distribuidora mayorista, y revisás el PRIMER mensaje de WhatsApp que un vendedor le va a mandar a un comercio (cafetería, restaurante, hotel, almacén) para ofrecerle ser su proveedor mayorista, antes de que salga. Tu trabajo es dejarlo impecable SIN inventar nada.
+
+Te paso el mensaje propuesto y el contexto REAL del comercio (es lo único que se sabe de ese negocio).
+
+Checklist — corregí todo lo que no cumpla, manteniendo lo que ya estaba bien:
+- Español rioplatense, voseo.
+- MÁXIMO 3 líneas cortas. Si sobra, recortá. Menos es más.
+- CERO emojis. CERO signos de exclamación. CERO mayúsculas de énfasis.
+- Se presenta en nombre de la distribuidora, seco y claro: "Hola, te escribo de ${orgName}." Si hay un nombre de contacto, saludalo; si no, saludo neutro igual de sobrio.
+- UNA sola observación del comercio, y tiene que ser VERDADERA según el contexto. Si el mensaje afirma algo que NO está en el contexto (sucursales, zona, qué venden, movimiento), borralo o neutralizalo: no se inventan datos. Ante la duda, mensaje más neutro pero honesto.
+- Ofrece ser su proveedor mayorista con UNA sola ventaja concreta (surtido, precios de mayorista, entrega, pedir desde un portal sin llamar). No listes todo.
+- Cierra con una pregunta breve, de bajo compromiso, sin prometer nada fijo. Ej: "¿Te paso el catálogo con precios para que veas?".
+- Tono de proveedor serio escribiéndole a un comercio, no spam ni folleto. Nada de relleno ("espero que estés bien"), nada de adulación.
+
+Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después:
+{ "mensaje": "<la versión final, impecable>" }`;
+
+  const parsed = await anthropicJSON({
+    system,
+    user: 'Mensaje propuesto:\n"' + msg + '"\n\nContexto del comercio:\n' + JSON.stringify(compact, null, 2),
+  });
+  const mejorado = clean(parsed?.mensaje, 700);
+  return mejorado || msg;
+}
+
+// ── A/B de redacción: dos moldes de 1er mensaje para medir cuál convierte ────
+// No es "a ojo": cada mensaje se etiqueta con la variante usada y el tablero
+// muestra la tasa de respuesta por variante. Reparto parejo y ESTABLE por lead
+// (el mismo prospecto cae siempre en la misma variante) para que los datos sean
+// comparables. Cuando haya señal clara, el cliente se queda con la ganadora.
+const PROMPT_VERSION = 'p1';
+const VARIANTS = {
+  observacion: '· Abrí con UNA observación puntual y VERDADERA del comercio (de su web o su rubro), después la ventaja concreta, y cerrá con la pregunta.',
+  directo:     '· Sin preámbulo ni observación: presentate y pasá derecho a UNA ventaja concreta en una línea, después la pregunta. Todavía más corto.',
+};
+function pickVariant(seed) {
+  const keys = Object.keys(VARIANTS);
+  const s = String(seed || '');
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return keys[h % keys.length];
+}
+
+// ── Loop de aprendizaje por-org: aprende de lo que YA funcionó en ESA org ─────
+// Trae los mensajes que consiguieron respuesta en la MISMA distribuidora y los
+// pasa como guía de estilo al redactar uno nuevo. Arranque frío: sin historial
+// devuelve '' y el agente redacta como siempre. Scopeado SIEMPRE por org_id —
+// nunca cruza datos entre clientes.
+async function fetchPortalLearningBlock(orgId) {
+  const org = sanitizeOrg(orgId);
+  if (!org) return '';
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/portal_leads?org_id=eq.${encodeURIComponent(org)}` +
+      `&respondio=is.true&enriquecimiento=not.is.null&select=enriquecimiento` +
+      `&order=enriquecido_at.desc.nullslast&limit=3`,
+      { headers: svcHeaders() }
+    );
+    const rows = r.ok ? await r.json() : [];
+    const ejemplos = rows.map(x => clean(x?.enriquecimiento?.mensaje_wa, 700)).filter(Boolean);
+    if (!ejemplos.length) return '';
+    return '\n\nMENSAJES DE ESTA DISTRIBUIDORA QUE CONSIGUIERON RESPUESTA (replicá su tono, ' +
+      'largo y estructura: es lo que funciona de verdad con sus comercios. No copies el ' +
+      'contenido puntual de cada negocio, copiá el estilo):\n' +
+      ejemplos.map((m, i) => `  Ejemplo ${i + 1}:\n  "${m.trim()}"`).join('\n');
+  } catch { return ''; }
+}
+
 // ── Enriquecimiento: Claude entiende el comercio y arma el 1er WhatsApp ──────
 // El cliente de Pazque (la distribuidora `orgName`) le vende SUMINISTRO a este
 // comercio. El mensaje se presenta como proveedor mayorista, no como Pazque.
 async function enrichPortalLead(lead, orgName) {
   if (!anthropicConfigured()) return { error: 'anthropic_not_configured' };
+
+  const variante = pickVariant(lead.id || lead.place_id || lead.nombre);
+  const learning = await fetchPortalLearningBlock(lead.org_id);
 
   // Mejor fuente: la web/red que ya conocemos. Si el comercio no tiene nada
   // (ni web ni red en Google), buscamos su IG por nombre y lo verificamos.
@@ -250,20 +371,23 @@ Reglas:
     · Ofrecé ser su proveedor mayorista con UNA sola ventaja concreta (surtido, precios de mayorista, entrega, pedir desde un portal sin llamar). No listes todo.
     · Cerrá con una pregunta breve de bajo compromiso, SIN prometer nada fijo. Ej: "¿Te paso el catálogo con precios para que veas?".
     · Que suene a un proveedor serio escribiéndole a un comercio, no a spam. Nada de relleno.
-- Usá SOLO lo que te paso (incluido "web"). Nunca inventes datos que no estén ahí.`;
+    ${VARIANTS[variante]}
+- Usá SOLO lo que te paso (incluido "web"). Nunca inventes datos que no estén ahí.` + learning;
 
   const parsed = await anthropicJSON({ system, user: 'Comercio:\n' + JSON.stringify(compact, null, 2) });
   if (!parsed) return { error: 'enrich_failed' };
-  return {
-    enriquecimiento: {
-      rubro:      clean(parsed.rubro, 120) || 'sin datos',
-      tamano:     TAMANOS.includes(parsed.tamano) ? parsed.tamano : 'sin datos',
-      prioridad:  PRIORIDS.includes(parsed.prioridad) ? parsed.prioridad : 'media',
-      angulo:     clean(parsed.angulo, 400),
-      senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
-      mensaje_wa: clean(parsed.mensaje_wa, 700),
-    },
+  const out = {
+    rubro:      clean(parsed.rubro, 120) || 'sin datos',
+    tamano:     TAMANOS.includes(parsed.tamano) ? parsed.tamano : 'sin datos',
+    prioridad:  PRIORIDS.includes(parsed.prioridad) ? parsed.prioridad : 'media',
+    angulo:     clean(parsed.angulo, 400),
+    senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
+    mensaje_wa: clean(parsed.mensaje_wa, 700),
   };
+  // 2ª pasada: el agente crítico pule el mensaje antes de mostrarlo. Si falla,
+  // deja el original (nunca bloquea el enriquecimiento).
+  out.mensaje_wa = await critiquePortalMessage(out.mensaje_wa, compact, orgName);
+  return { enriquecimiento: out, variante, prompt_version: PROMPT_VERSION };
 }
 
 // Lee la config de captación. { activa, notify_phone, notify_email }.
@@ -481,7 +605,7 @@ export default async function handler(req, res) {
 
   // ── Rutas de sourcing por-org (admin + vendedor; editar ICP = solo admin) ─
   const isMemberAction =
-    action === 'source' || action === 'enrich' || action === 'sourcing-config';
+    action === 'source' || action === 'enrich' || action === 'sourcing-config' || action === 'reply';
 
   if (isMemberAction) {
     const member = await resolveMember(req, ['admin', 'vendedor']);
@@ -534,9 +658,30 @@ export default async function handler(req, res) {
 
       await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
         method: 'PATCH', headers: { ...svcHeaders(), Prefer: 'return=minimal' },
-        body: JSON.stringify({ enriquecimiento: out.enriquecimiento, enriquecido_at: new Date().toISOString() }),
+        body: JSON.stringify({
+          enriquecimiento: out.enriquecimiento,
+          enriquecido_at: new Date().toISOString(),
+          variante: out.variante,
+          prompt_version: out.prompt_version,
+        }),
       });
       return res.status(200).json({ ok: true, enriquecimiento: out.enriquecimiento });
+    }
+
+    // Señal de oro del loop de aprendizaje: ¿el comercio contestó el WhatsApp?
+    // El vendedor marca Sí/No desde el prospecto contactado. Solo guarda el
+    // resultado (scoped a la org) — enrichPortalLead lo usa después para aprender
+    // qué mensajes funcionan en ESA distribuidora.
+    if (req.method === 'POST' && action === 'reply') {
+      const id = clean(req.body?.id, 40);
+      if (!id) return res.status(400).json({ error: 'Falta id' });
+      if (typeof req.body?.respondio !== 'boolean')
+        return res.status(400).json({ error: 'Falta respondio' });
+      await fetch(`${SB_URL}/rest/v1/portal_leads?id=eq.${encodeURIComponent(id)}&org_id=eq.${encodeURIComponent(org)}`, {
+        method: 'PATCH', headers: { ...svcHeaders(), Prefer: 'return=minimal' },
+        body: JSON.stringify({ respondio: req.body.respondio, respondio_at: new Date().toISOString() }),
+      });
+      return res.status(200).json({ ok: true });
     }
 
     return res.status(405).json({ error: 'Método no permitido' });

@@ -85,6 +85,24 @@ function clean(v, max = 500) {
   return String(v == null ? '' : v).trim().slice(0, max);
 }
 
+// Nombre comparable para dedupe: minúsculas, sin tildes, sin puntuación ni
+// sufijos societarios ("srl", "sa", "ltda"). Así "Distrib. López S.A." y
+// "distribuidora lopez" caen en el mismo cubo aunque vengan por caminos distintos.
+function normName(v) {
+  return String(v || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(s\.?a\.?|s\.?r\.?l\.?|ltda\.?|inc\.?|llc\.?)\b/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+}
+
+// Dominio raíz de una URL (sin www ni protocolo). '' si no parsea.
+function domainOf(url) {
+  try { return new URL(String(url)).hostname.replace(/^www\./, '').toLowerCase(); }
+  catch { return ''; }
+}
+
 // ── Sesión: valida el token del header contra owner_sessions ────────────────
 async function sessionOk(req) {
   const token = req.headers['x-owner-token'];
@@ -304,6 +322,24 @@ async function findSocial(name, city) {
 const TAMANOS  = ['chico', 'mediano', 'grande', 'sin datos'];
 const PRIORIDS = ['alta', 'media', 'baja'];
 
+// ── A/B de redacción: dos moldes de 1er mensaje para medir cuál convierte ────
+// No es "a ojo": cada mensaje se etiqueta con la variante usada y el tablero del
+// dueño muestra la tasa de respuesta por variante. Reparto parejo y ESTABLE por
+// prospecto (el mismo lead cae siempre en la misma variante) para que los datos
+// sean comparables. Cuando haya señal clara, Federico se queda con la ganadora.
+const PROMPT_VERSION = 'p1';
+const VARIANTS = {
+  observacion: '· Abrí con UNA observación puntual y VERDADERA del negocio (de su web o rubro), después el valor, y cerrá con la pregunta.',
+  directo:     '· Sin preámbulo ni observación: presentate y pasá derecho al valor concreto en una línea, después la pregunta. Todavía más corto.',
+};
+function pickVariant(seed) {
+  const keys = Object.keys(VARIANTS);
+  const s = String(seed || '');
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return keys[h % keys.length];
+}
+
 // ── Loop de aprendizaje: ejemplos reales de Federico ────────────────────────
 // Lee de pazque_leads los mejores ejemplos ya enviados para que el agente aprenda
 // de datos REALES (no de inventos): qué mensajes consiguieron respuesta y qué
@@ -428,6 +464,8 @@ Respondé ÚNICAMENTE con un JSON válido, sin texto antes ni después:
 export async function enrichLead(lead) {
   if (!ANTHROPIC_KEY) return { error: 'anthropic_not_configured' };
 
+  const variante = pickVariant(lead.id || lead.place_id || lead.empresa || lead.nombre);
+
   // Datos reales del negocio (no genérico): leemos su web y el IG/FB que linkea a
   // fondo con Apify. Si no tiene nada, buscamos su IG por nombre y lo verificamos.
   let web = await readWeb(lead.landing_url);
@@ -464,6 +502,7 @@ Reglas:
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
     · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos") y SIN prometer que vos le armás nada (es auto-servicio: lo prueba él). Ej: "¿Te sirve que te muestre cómo funciona?" o "¿lo querrías probar?".
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
+    ${VARIANTS[variante]}
 - Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
 - COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.`
     + (await fetchLearningBlock());
@@ -498,7 +537,7 @@ Reglas:
     // Peldaño (d): el agente crítico revisa el mensaje antes de mostrarlo. Pule
     // tono/largo y saca cualquier dato inventado. Si falla, deja el original.
     out.mensaje_wa = await critiqueMessage(out.mensaje_wa, compact);
-    return { enriquecimiento: out };
+    return { enriquecimiento: out, variante, prompt_version: PROMPT_VERSION };
   } catch (e) {
     console.warn('[owner] enrich parse error:', e.message);
     return { error: 'enrich_failed' };
@@ -707,21 +746,39 @@ export async function sourceDistributors(query) {
   const places = await placesSearch(q);
   if (places.length === 0) return { added: 0, found: 0 };
 
-  // Traemos los place_id que ya tenemos para no duplicar.
+  // Traemos place_id, nombre y web de lo que ya tenemos para no duplicar — no solo
+  // por place_id, también por nombre y dominio: así no reofrecemos la misma
+  // distribuidora si Google le dio otro place_id o entró por una demo.
   const existing = await fetch(
-    `${SB_URL}/rest/v1/pazque_leads?select=place_id&place_id=not.is.null`,
+    `${SB_URL}/rest/v1/pazque_leads?select=place_id,empresa,nombre,landing_url`,
     { headers: svcHeaders() }
   );
-  const known = new Set((existing.ok ? await existing.json() : []).map(r => r.place_id));
+  const prev = existing.ok ? await existing.json() : [];
+  const knownPlace  = new Set(prev.map(r => r.place_id).filter(Boolean));
+  const knownName   = new Set(prev.flatMap(r => [normName(r.empresa), normName(r.nombre)]).filter(Boolean));
+  const knownDomain = new Set(prev.map(r => domainOf(r.landing_url)).filter(Boolean));
 
   const rows = [];
   for (const p of places) {
     const pid = p.id;
-    if (!pid || known.has(pid)) continue;
+    if (!pid || knownPlace.has(pid)) continue;
     if (p.businessStatus && p.businessStatus !== 'OPERATIONAL') continue; // saltamos cerrados / temporalmente cerrados
-    known.add(pid); // evita duplicados dentro del mismo lote
     const nombre = clean(p.displayName?.text, 200);
     if (!nombre) continue;
+    const nkey = normName(nombre);
+    const dkey = domainOf(p.websiteUri);
+    if (nkey && knownName.has(nkey)) continue;    // misma distribuidora por nombre
+    if (dkey && knownDomain.has(dkey)) continue;  // misma distribuidora por dominio
+    // Filtro de salud: un listado sin NINGÚN canal de contacto (ni teléfono ni web)
+    // y sin una sola reseña no es accionable ni verificable → fuera. No filtramos
+    // por rating/volumen: una distribuidora chica real igual puede ser buen fit.
+    const telRaw  = clean(p.internationalPhoneNumber, 40);
+    const webRaw  = clean(p.websiteUri, 300);
+    const resenas = Number(p.userRatingCount) || 0;
+    if (!telRaw && !webRaw && resenas === 0) continue;
+    knownPlace.add(pid);              // evita duplicados dentro del mismo lote
+    if (nkey) knownName.add(nkey);
+    if (dkey) knownDomain.add(dkey);
     const addr = clean(p.formattedAddress, 220);
     // Guardia geográfica: regionCode de Google es solo un sesgo, no un filtro — puede
     // colar negocios de otros países. Usamos el componente de país ESTRUCTURADO de Google
@@ -737,15 +794,15 @@ export async function sourceDistributors(query) {
     }
     // Guardamos dirección + señal de tamaño (rating y reseñas) como contexto del lead.
     const rating = typeof p.rating === 'number'
-      ? `${p.rating}★ (${p.userRatingCount || 0} reseñas)` : '';
+      ? `${p.rating}★ (${resenas} reseñas)` : '';
     const contexto = [addr, rating].filter(Boolean).join(' · ');
     rows.push({
       nombre,                                   // en sourcing el "nombre" es la distribuidora
       empresa: nombre,
-      tel: clean(p.internationalPhoneNumber, 40) || null,
+      tel: telRaw || null,
       rubro: clean(p.primaryTypeDisplayName?.text, 120) || null,
       mensaje: clean(contexto, 300) || null,   // dirección + rating como contexto
-      landing_url: clean(p.websiteUri, 300) || null,
+      landing_url: webRaw || null,
       place_id: pid,
       origen: 'sourcing',
       utm_source: 'sourcing-google',
@@ -895,7 +952,7 @@ export default async function handler(req, res) {
     const lead = q.ok ? (await q.json())[0] : null;
     if (!lead) return res.status(404).json({ error: 'Prospecto no encontrado' });
 
-    const { enriquecimiento, error } = await enrichLead(lead);
+    const { enriquecimiento, variante, prompt_version, error } = await enrichLead(lead);
     if (error) {
       const msg = error === 'anthropic_not_configured'
         ? 'El análisis con IA no está configurado.'
@@ -903,7 +960,7 @@ export default async function handler(req, res) {
       return res.status(error === 'anthropic_not_configured' ? 503 : 502).json({ error: msg });
     }
 
-    const patch = { enriquecimiento, enriquecido_at: new Date().toISOString() };
+    const patch = { enriquecimiento, enriquecido_at: new Date().toISOString(), variante, prompt_version };
     const upd = await fetch(
       `${SB_URL}/rest/v1/pazque_leads?id=eq.${encodeURIComponent(id)}`,
       { method: 'PATCH', headers: svcHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(patch) }

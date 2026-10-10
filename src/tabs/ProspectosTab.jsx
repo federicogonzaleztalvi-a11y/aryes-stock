@@ -54,6 +54,125 @@ function fmtDate(s) {
   } catch { return s; }
 }
 
+function pct(n, base) {
+  if (!base) return 0;
+  return Math.round((n / base) * 100);
+}
+
+// ── Mini-RevOps por-org: el embudo del cliente con sus propios números ───────
+// Se calcula 100% en el navegador desde los prospectos ya cargados (cero API
+// nueva). Muestra cuántos avanzan en cada etapa y, abajo, qué molde de mensaje
+// (A/B) está consiguiendo más respuestas — para elegir la ganadora con datos,
+// no a ojo. Colapsable: no estorba si el cliente solo quiere su bandeja.
+function FunnelPanel({ leads }) {
+  const [open, setOpen] = React.useState(false);
+
+  const m = React.useMemo(() => {
+    const total = leads.length;
+    const esEnriquecido = (l) => !!l.enriquecimiento;
+    const esContactado  = (l) => l.estado === 'contactado' || l.estado === 'convertido' || l.respondio != null;
+    const esRespondio   = (l) => l.respondio === true || l.estado === 'convertido';
+    const esCliente     = (l) => l.estado === 'convertido';
+
+    const enriquecidos = leads.filter(esEnriquecido).length;
+    const contactados  = leads.filter(esContactado).length;
+    const respondieron = leads.filter(esRespondio).length;
+    const clientes     = leads.filter(esCliente).length;
+
+    const etapas = [
+      { k: 'Prospectos',   n: total,        prev: null },
+      { k: 'Enriquecidos', n: enriquecidos, prev: total },
+      { k: 'Contactados',  n: contactados,  prev: enriquecidos },
+      { k: 'Respondieron', n: respondieron, prev: contactados },
+      { k: 'Clientes',     n: clientes,     prev: respondieron },
+    ].map(e => ({ ...e, conv: e.prev == null ? null : pct(e.n, e.prev), ancho: pct(e.n, total || 1) }));
+
+    // A/B: tasa de respuesta por variante (solo cuentan los que se contactaron).
+    const byVar = {};
+    for (const l of leads) {
+      if (!l.variante) continue;
+      const v = (byVar[l.variante] ||= { variante: l.variante, contactados: 0, respondieron: 0 });
+      if (esContactado(l)) v.contactados += 1;
+      if (esRespondio(l))  v.respondieron += 1;
+    }
+    const variantes = Object.values(byVar)
+      .map(v => ({ ...v, tasa: pct(v.respondieron, v.contactados) }))
+      .sort((a, b) => b.tasa - a.tasa);
+    const hayABData = variantes.some(v => v.contactados > 0);
+
+    return { total, etapas, variantes, hayABData };
+  }, [leads]);
+
+  if (!m.total) return null;
+
+  const VLABEL = { observacion: 'Molde A · con observación', directo: 'Molde B · directo' };
+
+  return (
+    <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 14, marginBottom: 16, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: C.sans, padding: '14px 18px', textAlign: 'left' }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>Tu embudo</div>
+          <div style={{ fontSize: 12.5, color: C.sub, marginTop: 2 }}>
+            {m.total} prospectos · {m.etapas[3].n} respondieron · {m.etapas[4].n} clientes
+          </div>
+        </div>
+        <span style={{ fontSize: 13, color: C.blue, fontWeight: 600 }}>{open ? 'Ocultar' : 'Ver'}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: '4px 18px 18px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {m.etapas.map(e => (
+              <div key={e.k} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 96, fontSize: 12.5, color: C.sub, flexShrink: 0 }}>{e.k}</div>
+                <div style={{ flex: 1, background: C.bg, borderRadius: 6, height: 24, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', inset: 0, width: `${Math.max(e.ancho, e.n > 0 ? 4 : 0)}%`,
+                    background: `linear-gradient(90deg, ${C.green}, #34d399)`, borderRadius: 6, transition: 'width .3s' }} />
+                  <span style={{ position: 'absolute', left: 8, top: 0, height: 24, display: 'flex', alignItems: 'center',
+                    fontSize: 12, fontWeight: 700, color: C.ink }}>{e.n}</span>
+                </div>
+                <div style={{ width: 54, fontSize: 11.5, color: C.faint, textAlign: 'right', flexShrink: 0 }}>
+                  {e.conv == null ? '' : `${e.conv}%`}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10.5, color: C.faint, marginTop: 6 }}>
+            El % es cuántos pasan de una etapa a la siguiente.
+          </div>
+
+          {m.hayABData && (
+            <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 14, paddingTop: 12 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, marginBottom: 2 }}>Qué mensaje funciona mejor</div>
+              <div style={{ fontSize: 11.5, color: C.faint, marginBottom: 10 }}>
+                El agente prueba dos moldes de primer mensaje. Esta es la tasa de respuesta de cada uno.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {m.variantes.map((v, i) => (
+                  <div key={v.variante} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ flex: 1, fontSize: 12.5, color: C.ink }}>
+                      {VLABEL[v.variante] || v.variante}
+                      {i === 0 && v.contactados > 0 && v.tasa > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700, color: C.green,
+                          background: C.greenBg, borderRadius: 50, padding: '1px 8px' }}>mejor</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: C.sub, flexShrink: 0 }}>
+                      {v.respondieron}/{v.contactados} respondieron · <b style={{ color: C.ink }}>{v.tasa}%</b>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProspectosTab() {
   const [leads,   setLeads]   = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -168,6 +287,20 @@ export default function ProspectosTab() {
       fetch('/api/lead', {
         method: 'POST', headers: getAuthHeaders(),
         body: JSON.stringify({ action: 'contacted', id: l.id }),
+      }).catch(() => {});
+    } catch { /* noop */ }
+  };
+
+  // Señal de oro del loop de aprendizaje: ¿el comercio contestó el WhatsApp?
+  // Optimista: la tarjeta refleja el resultado al toque; el motor lo usa para
+  // aprender qué mensajes funcionan en ESTA distribuidora. Se puede corregir
+  // (tocar Sí/No de nuevo) si el vendedor marcó mal.
+  const reply = (l, val) => {
+    setLeads(prev => prev.map(x => x.id === l.id ? { ...x, respondio: val } : x));
+    try {
+      fetch('/api/lead', {
+        method: 'POST', headers: getAuthHeaders(),
+        body: JSON.stringify({ action: 'reply', id: l.id, respondio: val }),
       }).catch(() => {});
     } catch { /* noop */ }
   };
@@ -377,6 +510,8 @@ export default function ProspectosTab() {
         ))}
       </div>
 
+      {!loading && !error && <FunnelPanel leads={leads} />}
+
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: C.faint, fontSize: 14 }}>Cargando…</div>
       ) : error ? (
@@ -464,6 +599,23 @@ export default function ProspectosTab() {
                   )}
                   {l.estado === 'convertido' && (
                     <span style={{ fontSize: 12, color: C.green, fontWeight: 500 }}>✓ Ya es cliente</span>
+                  )}
+                  {l.estado === 'contactado' && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.faint }}>
+                      ¿Respondió?
+                      <button onClick={() => reply(l, true)} style={{
+                        fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: C.sans, borderRadius: 50, padding: '4px 11px',
+                        border: `1px solid ${l.respondio === true ? C.green : C.line}`,
+                        background: l.respondio === true ? C.green : C.card, color: l.respondio === true ? '#fff' : C.sub }}>
+                        Sí
+                      </button>
+                      <button onClick={() => reply(l, false)} style={{
+                        fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: C.sans, borderRadius: 50, padding: '4px 11px',
+                        border: `1px solid ${l.respondio === false ? C.red : C.line}`,
+                        background: l.respondio === false ? C.red : C.card, color: l.respondio === false ? '#fff' : C.sub }}>
+                        No
+                      </button>
+                    </span>
                   )}
                 </div>
 
