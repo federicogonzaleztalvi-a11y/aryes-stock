@@ -45,6 +45,9 @@
     },
     "api/cron-reactivacion.js": {
       "maxDuration": 300
+    },
+    "api/cron-director.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -137,6 +140,9 @@
   }, {
     "path": "/api/cron-reactivacion",
     "schedule": "0 16 * * *"
+  }, {
+    "path": "/api/cron-director",
+    "schedule": "0 12 * * 1"
   }],
   "version": 2
 }
