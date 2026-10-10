@@ -242,6 +242,39 @@ export const templates = {
       </div>`,
   }),
 
+  // Recordatorio de REPOSICIÓN (lo dispara cron-reposicion.js). Se le manda al
+  // comprador que se atrasó respecto de SU propio ritmo de pedidos. `productos`
+  // es un array de nombres (lo que suele pedir); `dias` es cuántos hace que no
+  // pide. El valor es "reponé lo de siempre en un toque", no un push genérico.
+  reposicion: ({ empresa, nombre, productos = [], dias, portalUrl, logoUrl }) => {
+    const lista = (productos || []).slice(0, 4);
+    const itemsHtml = lista.length
+      ? `<ul style="margin:0 0 20px;padding-left:18px;color:#4b4b48;font-size:15px;line-height:1.7">
+           ${lista.map(p => `<li>${esc(p)}</li>`).join('')}
+         </ul>`
+      : '';
+    return {
+      subject: `¿Reponés lo de siempre? — ${empresa || 'Pazque'}`,
+      html: `
+      <div style="font-family:'Inter',system-ui,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px">
+        ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(empresa || '')}" style="height:36px;max-width:180px;object-fit:contain;margin-bottom:24px" />` : ''}
+        <h1 style="font-size:21px;font-weight:700;color:#1a1a18;margin:0 0 10px">
+          ¿Te hace falta reponer?
+        </h1>
+        <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 ${itemsHtml ? '14px' : '20px'}">
+          Hola ${esc(nombre || '')}, ${dias ? `hace <strong>${esc(dias)} días</strong> que no hacés un pedido en ` : 'queremos facilitarte el próximo pedido en '}<strong>${esc(empresa || 'el portal')}</strong>.${lista.length ? ' Lo que solés pedir:' : ''}
+        </p>
+        ${itemsHtml}
+        <a href="${esc(portalUrl)}" style="display:inline-block;padding:13px 30px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">
+          Reponer en un toque →
+        </a>
+        <p style="font-size:12px;color:#9a9a98;margin-top:28px;line-height:1.5">
+          Si no lo necesitás ahora, ignorá este mensaje. Recordatorio automático de ${esc(empresa || 'Pazque')}.
+        </p>
+      </div>`,
+    };
+  },
+
   trialExpiring: (empresa, daysLeft) => ({
     subject: daysLeft <= 1 ? 'Tu prueba de Pazque vence hoy' : `Te quedan ${daysLeft} días de prueba — Pazque`,
     html: `

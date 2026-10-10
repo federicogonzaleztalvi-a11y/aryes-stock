@@ -36,6 +36,9 @@
     },
     "api/cron-health.js": {
       "maxDuration": 30
+    },
+    "api/cron-reposicion.js": {
+      "maxDuration": 300
     }
   },
   "rewrites": [
@@ -119,6 +122,9 @@
   }, {
     "path": "/api/cron-health",
     "schedule": "*/10 * * * *"
+  }, {
+    "path": "/api/cron-reposicion",
+    "schedule": "0 14 * * *"
   }],
   "version": 2
 }

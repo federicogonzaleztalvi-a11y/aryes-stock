@@ -1947,6 +1947,23 @@ export default function ConfigInline({
                   </label>
                 </div>
 
+                {/* Toggle: Recordatorio de reposición */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Recordatorio de reposición</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Detecta el ritmo de compra de cada cliente y, cuando se atrasa respecto de lo habitual, le recuerda por email reponer lo de siempre. Sin calendario fijo: solo avisa si de verdad se atrasó. Solo a clientes con email cargado.</div>
+                  </div>
+                  <label style={{position:'relative',display:'inline-block',width:44,height:24,cursor:'pointer',flexShrink:0}}>
+                    <input type="checkbox" checked={brandCfg?.reorderReminders===true} onChange={e=>{
+                      const updated = {...(brandCfg||{}), reorderReminders: e.target.checked};
+                      setBrandCfg(updated);
+                      db.upsert('app_config', {key:'brandcfg',value:updated,org_id:getOrgId()}, 'key,org_id');
+                    }} style={{opacity:0,width:0,height:0}} />
+                    <span style={{position:'absolute',inset:0,background:brandCfg?.reorderReminders===true?'#059669':'#ccc',borderRadius:12,transition:'.2s'}} />
+                    <span style={{position:'absolute',top:2,left:brandCfg?.reorderReminders===true?22:2,width:20,height:20,background:'#fff',borderRadius:10,transition:'.2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}} />
+                  </label>
+                </div>
+
                 {/* URL del portal */}
                 <div style={{background:'#f7f6f3',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px'}}>
                   <div style={{fontFamily:'Inter,sans-serif',fontSize:12,fontWeight:700,color:'#1a1a18',marginBottom:8}}>URL de tu portal</div>
