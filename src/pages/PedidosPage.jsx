@@ -1041,13 +1041,13 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
         ) : qty > 0 ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
             <button className="pz-press" onClick={() => onRemove(item)} aria-label={`Quitar una unidad de ${item.nombre}`} style={{
-              width: 40, height: 40, border: `1.5px solid ${G}`, borderRadius: 8,
+              width: 44, height: 44, border: `1.5px solid ${G}`, borderRadius: 8,
               background: '#fff', color: G, fontSize: 18, cursor: 'pointer', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>-</button>
-            <input type="number" inputMode="numeric" min="0" value={qty} aria-label={`Cantidad de ${item.nombre}`} onChange={e=>{const v=parseInt(e.target.value,10);if(isNaN(v)||v<=0)onRemove(item);else{const d=v-qty;if(d>0)for(let i=0;i<d;i++)onAdd(item);else if(d<0)for(let i=0;i<-d;i++)onRemove(item);}}} onFocus={e=>e.target.select()} style={{flex:1,minWidth:0,height:40,boxSizing:'border-box',fontSize:16,fontWeight:700,color:'#1a1a18',textAlign:'center',border:'1px solid #e0e0d8',borderRadius:6,padding:'0',outline:'none',background:'#fafaf7'}}/>
+            <input type="number" inputMode="numeric" min="0" value={qty} aria-label={`Cantidad de ${item.nombre}`} onChange={e=>{const v=parseInt(e.target.value,10);if(isNaN(v)||v<=0)onRemove(item);else{const d=v-qty;if(d>0)for(let i=0;i<d;i++)onAdd(item);else if(d<0)for(let i=0;i<-d;i++)onRemove(item);}}} onFocus={e=>e.target.select()} style={{flex:1,minWidth:0,height:44,boxSizing:'border-box',fontSize:16,fontWeight:700,color:'#1a1a18',textAlign:'center',border:'1px solid #e0e0d8',borderRadius:6,padding:'0',outline:'none',background:'#fafaf7'}}/>
             <button className="pz-press" onClick={() => onAdd(item)} aria-label={`Agregar una unidad de ${item.nombre}`} style={{
-              width: 40, height: 40, background: G, border: 'none', borderRadius: 8,
+              width: 44, height: 44, background: G, border: 'none', borderRadius: 8,
               color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, flexShrink: 0,
             }}>+</button>
@@ -1208,18 +1208,18 @@ function VariantPicker({ item, options, carrito, onAdd, onRemove, label, maxH = 
               {q > 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                   <button onClick={() => onRemove(item, o.id)} aria-label={`Quitar ${o.label}`} style={{
-                    width: 24, height: 24, border: `1px solid ${G}`, borderRadius: 6, background: '#fff',
+                    width: 32, height: 32, border: `1px solid ${G}`, borderRadius: 6, background: '#fff',
                     color: G, fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{'\u2212'}</button>
                   <span style={{ minWidth: 18, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#1a1a18' }}>{q}</span>
                   <button onClick={() => onAdd(item, o.id)} aria-label={`Agregar ${o.label}`} style={{
-                    width: 24, height: 24, border: 'none', borderRadius: 6, background: G,
+                    width: 32, height: 32, border: 'none', borderRadius: 6, background: G,
                     color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                 </div>
               ) : (
                 <button onClick={() => onAdd(item, o.id)} aria-label={`Agregar ${o.label}`} style={{
-                  flexShrink: 0, width: 24, height: 24, border: 'none', borderRadius: 6, background: G,
+                  flexShrink: 0, width: 32, height: 32, border: 'none', borderRadius: 6, background: G,
                   color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', lineHeight: 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
               )}
@@ -2065,8 +2065,40 @@ function HistorialPedidos({ session, onReordenar }) {
   );
 }
 
+// ── Resumen de totales ────────────────────────────────────────────────────────
+// Un solo bloque de totales (Subtotal neto + IVA desglosado por tasa + Total con
+// IVA) usado por las 3 pantallas del carrito: lista, confirmación y éxito. Antes
+// estaba triplicado; cualquier cambio a la lógica de totales iba a 3 lugares.
+// `boxed` = fondo gris con padding (confirmación/éxito); sin boxed = plano (lista).
+function TotalesResumen({ lineasConCalc, subtotalNeto, total, boxed = false, totalSize = 22 }) {
+  const rates = [...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a, b) => a - b);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6,
+      ...(boxed ? { background: '#f7f7f4', borderRadius: 10, padding: '12px 16px' } : {}) }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
+        <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
+      </div>
+      {rates.map(rate => {
+        const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s, l) => s + l.ivaLinea, 0);
+        return (
+          <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
+            <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaDeRate)}</span>
+          </div>
+        );
+      })}
+      <div style={{ borderTop: '1px solid #e8e8e0', paddingTop: 8, marginTop: 2,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
+        <span style={{ fontSize: totalSize, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
-function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddSugerido, onRemove, onRemoveLine, onGuardarLista, brandCfg, brandNombre, coBuy, recommended }) {
+function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos, onAdd, onAddSugerido, onRemove, onRemoveLine, onGuardarLista, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
   // "Guardar como lista": el cliente nombra el carrito armado para repetirlo luego.
   const [guardarOpen, setGuardarOpen] = useState(false);
@@ -2520,27 +2552,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
 
           {/* Totales */}
           <div style={{ padding: '0 24px 16px' }}>
-            <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '12px 16px',
-              display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
-                <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
-              </div>
-              {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a, b) => a - b).map(rate => {
-                const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s, l) => s + l.ivaLinea, 0);
-                return (
-                  <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
-                    <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaDeRate)}</span>
-                  </div>
-                );
-              })}
-              <div style={{ borderTop: '1px solid #e8e8e0', paddingTop: 8, marginTop: 2,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
-                <span style={{ fontSize: 20, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
-              </div>
-            </div>
+            <TotalesResumen lineasConCalc={lineasConCalc} subtotalNeto={subtotalNeto} total={total} boxed totalSize={20} />
           </div>
 
           {/* Nota del pedido — editable acá, en la confirmación (se movió del
@@ -2692,27 +2704,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
 
         {/* Totales */}
         <div style={{ padding: '0 24px 16px' }}>
-          <div style={{ background: '#f7f7f4', borderRadius: 10, padding: '12px 16px',
-            display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
-              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
-            </div>
-            {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
-              const ivaDeRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
-              return (
-                <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
-                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaDeRate)}</span>
-                </div>
-              );
-            })}
-            <div style={{ borderTop: '1px solid #e8e8e0', paddingTop: 8, marginTop: 2,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
-              <span style={{ fontSize: 20, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
-            </div>
-          </div>
+          <TotalesResumen lineasConCalc={lineasConCalc} subtotalNeto={subtotalNeto} total={total} boxed totalSize={20} />
         </div>
 
         {/* Nota */}
@@ -2728,8 +2720,28 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
         {/* CTA */}
         <div style={{ padding: '0 24px 32px' }}>
           <p style={{ fontSize: 12, color: '#6a6a68', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
-            Tu distribuidor recibió el pedido. Te avisamos cuando esté confirmado.
+            {brandCfg?.seguimientoPedidos
+              ? 'Tu distribuidor recibió el pedido. Te avisamos cuando esté confirmado.'
+              : 'Tu distribuidor recibió el pedido y se va a poner en contacto para coordinar la entrega.'}
           </p>
+
+          {/* Seguimiento post-compra (patrón Amazon "Track your order"): el cliente
+              salta directo a "Mis pedidos", donde ve el estado en vivo (pendiente →
+              confirmado → preparando → en camino → entregado). Sólo con pedido real:
+              el historial necesita sesión/token, en demo no hay nada que seguir. */}
+          {lastOrderId && !isDemo && onVerPedidos && brandCfg?.seguimientoPedidos && (
+            <button onClick={onVerPedidos} style={{
+              width: '100%', padding: '12px 0', background: '#fff', color: G,
+              border: `1.5px solid ${G}`, borderRadius: 50, fontSize: 13.5, fontWeight: 600,
+              cursor: 'pointer', fontFamily: SANS, marginBottom: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Seguir mi pedido
+            </button>
+          )}
 
           {/* Descargar PDF / Enviar por mail — sólo con pedido real (id devuelto) */}
           {lastOrderId && !isDemo && (
@@ -2930,12 +2942,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e2e2dc', borderRadius: 8, overflow: 'hidden' }}>
                   <button onClick={() => onRemove && onRemove(item, variantId)} aria-label={`Quitar uno de ${item.nombre}`} style={{
-                    width: 32, height: 32, border: 'none', background: '#f7f7f4', color: G,
+                    width: 44, height: 44, border: 'none', background: '#f7f7f4', color: G,
                     fontSize: 18, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{'\u2212'}</button>
                   <span aria-live="polite" style={{ minWidth: 36, textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>{qty}</span>
                   <button onClick={() => onAdd && onAdd(item, variantId)} aria-label={`Agregar uno de ${item.nombre}`} style={{
-                    width: 32, height: 32, border: 'none', background: '#f7f7f4', color: G,
+                    width: 44, height: 44, border: 'none', background: '#f7f7f4', color: G,
                     fontSize: 18, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                 </div>
@@ -2994,25 +3006,27 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </div>
             </div>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: '#6a6a68' }}>Subtotal neto</span>
-              <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(subtotalNeto)}</span>
-            </div>
-            {[...new Set(lineasConCalc.map(l => l.ivaRate))].sort((a,b)=>a-b).map(rate => {
-              const ivaRate = lineasConCalc.filter(l => l.ivaRate === rate).reduce((s,l) => s + l.ivaLinea, 0);
-              return (
-                <div key={rate} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, color: '#6a6a68' }}>IVA {rate}%</span>
-                  <span style={{ fontSize: 12, color: '#6a6a68' }}>{fmt.currency(ivaRate)}</span>
+          {/* Fecha de entrega (si la org usa reparto): el cliente ve "cuándo llega"
+              ya en el carrito, no recién en la confirmación — patrón Amazon/grocery
+              de mostrar la promesa de entrega mientras se arma el pedido. */}
+          {entregaLabel && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4',
+              border: '1px solid #bbf7d0', borderRadius: 10, padding: '11px 14px', marginBottom: 14 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#166534', letterSpacing: .4 }}>
+                  {entrega.modo === 'cliente' ? 'FECHA DE ENTREGA' : 'ENTREGA ESTIMADA'}
                 </div>
-              );
-            })}
-            <div style={{ borderTop: '0.5px solid #e8e8e0', paddingTop: 8,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Total con IVA</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: G }}>{fmt.currency(total)}</span>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#14532d', marginTop: 1 }}>{entregaLabel}</div>
+              </div>
             </div>
+          )}
+          <div style={{ marginBottom: 14 }}>
+            <TotalesResumen lineasConCalc={lineasConCalc} subtotalNeto={subtotalNeto} total={total} totalSize={22} />
           </div>
           {err && (
             <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
@@ -3867,6 +3881,22 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   }, [reorderMsg]);
 
   const totalItems = Object.values(carrito).reduce((s, q) => s + q, 0);
+
+  // Total del carrito para la pill de mobile. Usa EXACTAMENTE la misma matemática
+  // que el carrito (calcLinea/calcTotales del lib compartido) — mismo número que
+  // "Total con IVA" del CartDrawer, nunca un promedio ni una aproximación. En modo
+  // público no hay precios reales, así que la pill no muestra monto (se gatea abajo).
+  const cartTotal = useMemo(() => {
+    const lins = Object.entries(carrito)
+      .filter(([, q]) => q > 0)
+      .map(([key, qty]) => {
+        const baseId = key.includes('::') ? key.slice(0, key.indexOf('::')) : key;
+        const base = items.find(i => i.id === baseId);
+        return base ? calcLinea(base, qty) : null;
+      })
+      .filter(Boolean);
+    return calcTotales(lins).total;
+  }, [carrito, items]);
 
   // ── Persistencia del carrito por cliente ──────────────────────────────────
   // Identidad del carrito: cliente logueado, o un slot propio por dataset demo.
@@ -5461,14 +5491,15 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         isMobile ? (
           /* Celular: en vez de un círculo chico, una píldora ancha centrada con
              etiqueta. Es el patrón de las apps de compra (Amazon/Mercado Libre):
-             target de toque grande y claro "Ver pedido". Flotante (no barra opaca
-             de ancho completo) para no tapar la última fila del catálogo ni
-             requerir reflow. El subtotal exacto vive en el drawer (su motor de
-             descuentos/tramos); no lo duplicamos acá para no mostrar un número
-             que no cuadre. */
+             target de toque grande y claro "Ver pedido" + el total a la derecha.
+             Flotante (no barra opaca de ancho completo) para no tapar la última
+             fila del catálogo ni requerir reflow. El total es el MISMO número que
+             "Total con IVA" del drawer (cartTotal usa el motor de precios
+             compartido), nunca un promedio ni aproximación. En modo público no
+             hay precios → se muestra solo "Ver pedido". */
           <div style={{ position: 'fixed', bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
             left: 16, right: 16, zIndex: Z.fab, display: 'flex', justifyContent: 'center' }}>
-            <button onClick={() => setShowCart(true)} aria-label={`Ver pedido, ${totalItems} ${totalItems !== 1 ? 'productos' : 'producto'}`} style={{
+            <button onClick={() => setShowCart(true)} aria-label={`Ver pedido, ${totalItems} ${totalItems !== 1 ? 'productos' : 'producto'}${!isPublic && cartTotal > 0 ? `, total ${fmt.currency(cartTotal)}` : ''}`} style={{
               width: '100%', maxWidth: 440, background: G, color: '#fff', border: 'none', borderRadius: 50,
               padding: '14px 20px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(26,138,60,.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -5485,9 +5516,14 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 </span>
                 Ver pedido
               </span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M13 6l6 6-6 6"/>
-              </svg>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {!isPublic && cartTotal > 0 && (
+                  <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap' }}>{fmt.currency(cartTotal)}</span>
+                )}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+              </span>
             </button>
           </div>
         ) : (
@@ -5534,6 +5570,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           onAdd={(it, v) => addItem(it, v, 'carrito_mas')} onAddSugerido={(it) => addItem(it, undefined, 'carrito_sugerido')} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}
           onGuardarLista={guardarLista}
+          onVerPedidos={() => { setCarrito({}); setShowCart(false); setDetalle(null); setVista('historial'); }}
           onConfirm={() => { setCarrito({}); setShowCart(false); }} />
       )}
     </div>

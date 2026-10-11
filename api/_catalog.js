@@ -466,6 +466,28 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
     }
   } catch { /* config load failed — defaults */ }
 
+  // ── 4b. Seguimiento de pedidos: capacidad AUTO-DETECTADA ────────────────────
+  // Se enciende sola cuando la org ya movió al menos un pedido más allá de
+  // "pendiente" — señal honesta de que trabaja los estados DENTRO de Pazque. Si
+  // nunca avanzó ninguno (usa el portal sólo como toma de pedidos y despacha por
+  // su ERP/WhatsApp), queda OFF y el portal no promete un seguimiento que nadie
+  // va a mover (evita el stepper clavado en "Pendiente"). Un booleano explícito
+  // en brandcfg manda sobre la auto-detección (escape hatch a futuro).
+  if (typeof portalCfg.seguimientoPedidos !== 'boolean') {
+    let seguimiento = false;
+    try {
+      const segRes = await fetch(
+        `${SB_URL}/rest/v1/b2b_orders?select=id&org_id=eq.${org}&estado=neq.pendiente&limit=1`,
+        { headers }
+      );
+      if (segRes.ok) {
+        const segData = await segRes.json();
+        seguimiento = Array.isArray(segData) && segData.length > 0;
+      }
+    } catch { /* detección falló — OFF por defecto, nunca prometemos de más */ }
+    portalCfg = { ...portalCfg, seguimientoPedidos: seguimiento };
+  }
+
   return {
     items,
     categorias,
