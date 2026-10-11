@@ -47,7 +47,10 @@ export default async function handler(req, res) {
   const enabledOrgs = new Map();
   for (const row of cfgRows) {
     const v = row.value || {};
-    if (v.abandonedCartEmails === true) {
+    // Default ON (opt-out): prendido salvo que la org lo apague explícitamente
+    // (abandonedCartEmails === false). Así la venta automática viene activada de
+    // fábrica en cada cliente; apagarlo es una decisión consciente desde la config.
+    if (v.abandonedCartEmails !== false) {
       enabledOrgs.set(row.org_id, { name: v.name || '', logoUrl: v.logo || v.logoUrl || '' });
     }
   }

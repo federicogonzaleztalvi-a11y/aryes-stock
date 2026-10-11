@@ -92,7 +92,10 @@ export default async function handler(req, res) {
   const enabledOrgs = new Map();
   for (const row of cfgRows) {
     const v = row.value || {};
-    if (v.reactivationReminders === true) {
+    // Default ON (opt-out): prendido salvo que la org lo apague explícitamente
+    // (reactivationReminders === false). El kill-switch global sigue siendo la env
+    // REACTIVATION_AGENT_ENABLED; esto sólo cambia el default por-org a prendido.
+    if (v.reactivationReminders !== false) {
       enabledOrgs.set(row.org_id, { name: v.name || '', logoUrl: v.logo || v.logoUrl || '' });
     }
   }

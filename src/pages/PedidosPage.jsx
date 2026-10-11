@@ -1623,6 +1623,30 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               antes del checkout). Sólo renderiza si la org usa reparto (modo ≠ off). */}
           {item.precio > 0 && <EntregaHint reparto={brandCfg?.reparto} zona={zona} />}
 
+          {/* Línea de confianza por defecto: una org que NO activó señales de stock
+              NI usa reparto dejaba el PDP "pelado" debajo del precio. Este fallback
+              neutro (sin inventar disponibilidad ni fechas) sólo aparece cuando ni
+              el bloque de stock ni el de entrega renderizan, para que siempre haya
+              una señal de que hay alguien del otro lado que confirma el pedido. */}
+          {item.precio > 0 && (() => {
+            const stockWouldRender = (demo || brandCfg?.stockSignals === true)
+              && Number.isFinite(Number(item.available_stock));
+            const entregaInfo = calcularEntrega(brandCfg?.reparto, zona, new Date());
+            const entregaWouldRender = entregaInfo.modo !== 'off' && entregaInfo.fecha;
+            if (stockWouldRender || entregaWouldRender) return null;
+            return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16,
+                padding: '8px 13px', borderRadius: 12, background: '#f7f7f4', border: '1px solid #ececE4',
+                fontSize: 13, fontFamily: SANS, color: '#4a4a44', lineHeight: 1.35, maxWidth: 420 }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6a6a68" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" />
+                </svg>
+                Tu distribuidor confirma disponibilidad y coordina la entrega al recibir el pedido.
+              </div>
+            );
+          })()}
+
           {/* Unidad de medida flexible: selector Unidad / Caja de X (sólo si hay bulto real). */}
           {canBox && (
             <div style={{ marginBottom: 12 }}>
@@ -2595,7 +2619,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
         <button onClick={onConfirm} aria-label="Cerrar" style={{
           position: 'absolute', top: 12, right: 12, zIndex: 10,
           width: 36, height: 36, borderRadius: '50%',
-          background: 'rgba(255,255,255,.25)', border: 'none',
+          background: 'rgba(0,0,0,.28)', border: 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', color: 'white',
         }}>
@@ -2704,7 +2728,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
         {/* CTA */}
         <div style={{ padding: '0 24px 32px' }}>
           <p style={{ fontSize: 12, color: '#6a6a68', textAlign: 'center', marginBottom: 14, lineHeight: 1.6 }}>
-            Tu distribuidor recibio el pedido. Te avisamos cuando este confirmado.
+            Tu distribuidor recibió el pedido. Te avisamos cuando esté confirmado.
           </p>
 
           {/* Descargar PDF / Enviar por mail — sólo con pedido real (id devuelto) */}
@@ -2763,7 +2787,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             borderRadius: 50, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}>
-            Ver mas productos
+            Ver más productos
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
@@ -2827,6 +2851,35 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+          {/* Estado vacío (patrón Amazon/Shopify): un carrito sin productos no debe
+              verse como una pantalla rota. Ícono tenue + mensaje + CTA para volver
+              al catálogo. Sólo cuando no hay líneas (los sugeridos pueden seguir
+              apareciendo arriba para invitar a sumar algo). */}
+          {lineas.length === 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              textAlign: 'center', padding: '48px 20px 40px', gap: 12 }}>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#f4f4f0',
+                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#b0b0a8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18' }}>Tu pedido está vacío</div>
+              <div style={{ fontSize: 13, color: '#6a6a68', lineHeight: 1.45, maxWidth: 240 }}>
+                Agregá productos del catálogo y los vas a ver acá para revisarlos antes de confirmar.
+              </div>
+              <button onClick={onClose} style={{
+                marginTop: 4, padding: '11px 22px', background: G, color: '#fff', border: 'none',
+                borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                Ver productos
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+              </button>
             </div>
           )}
           {lineasConCalc.map(({ key, item, qty, variantId, ivaRate, descEfectivoPct, unidEnCaja, precioConDto, precioRef, netoLinea, faltanParaCaja, ahorroSiCompleta, tramos }) => (
@@ -2910,6 +2963,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
             </div>
           ))}
         </div>
+        {lineas.length > 0 && (
         <div style={{ padding: '16px 20px', borderTop: '1px solid #f0ede8' }}>
           {/* Checkout en 2 pasos (patrón Amazon/Shopify): el carrito solo revisa
               productos + total y lleva a la pantalla de confirmación. La sucursal
@@ -3022,6 +3076,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onAdd, onAddS
               </svg></>)}
           </button>
         </div>
+        )}
       </div>
     </div>
   );
@@ -5392,7 +5447,9 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       <PoweredByPazque />
 
       {reorderMsg && (
-        <div role="status" style={{ position: 'fixed', bottom: 84, left: '50%', transform: 'translateX(-50%)',
+        <div role="status" style={{ position: 'fixed',
+          bottom: (isMobile && totalItems > 0 && !showCart) ? 'calc(84px + env(safe-area-inset-bottom, 0px))' : 84,
+          left: '50%', transform: 'translateX(-50%)',
           zIndex: Z.fab + 1, background: '#1a1a18', color: '#fff', padding: '11px 18px',
           borderRadius: 10, fontSize: 13, fontFamily: SANS, fontWeight: 500, maxWidth: 'calc(100% - 40px)',
           boxShadow: '0 6px 20px rgba(0,0,0,.25)', textAlign: 'center' }}>
@@ -5401,22 +5458,56 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       )}
 
       {totalItems > 0 && !showCart && (
-        <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: Z.fab }}>
-          <button onClick={() => setShowCart(true)} aria-label={`Ver carrito, ${totalItems} ${totalItems !== 1 ? 'items' : 'item'}`} style={{
-            background: G, color: '#fff', border: 'none', borderRadius: '50%',
-            width: 52, height: 52, cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(26,138,60,.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
-          }}>
-            {Icon.cart}
-            <span style={{ position: 'absolute', top: -4, right: -4, background: '#dc2626',
-              color: '#fff', borderRadius: '50%', minWidth: 22, height: 22, padding: '0 5px',
-              border: '2px solid #fff', boxSizing: 'border-box',
-              fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {totalItems}
-            </span>
-          </button>
-        </div>
+        isMobile ? (
+          /* Celular: en vez de un círculo chico, una píldora ancha centrada con
+             etiqueta. Es el patrón de las apps de compra (Amazon/Mercado Libre):
+             target de toque grande y claro "Ver pedido". Flotante (no barra opaca
+             de ancho completo) para no tapar la última fila del catálogo ni
+             requerir reflow. El subtotal exacto vive en el drawer (su motor de
+             descuentos/tramos); no lo duplicamos acá para no mostrar un número
+             que no cuadre. */
+          <div style={{ position: 'fixed', bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+            left: 16, right: 16, zIndex: Z.fab, display: 'flex', justifyContent: 'center' }}>
+            <button onClick={() => setShowCart(true)} aria-label={`Ver pedido, ${totalItems} ${totalItems !== 1 ? 'productos' : 'producto'}`} style={{
+              width: '100%', maxWidth: 440, background: G, color: '#fff', border: 'none', borderRadius: 50,
+              padding: '14px 20px', cursor: 'pointer', boxShadow: '0 6px 20px rgba(26,138,60,.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+              fontFamily: SANS, fontSize: 15, fontWeight: 700 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  {Icon.cart}
+                  <span style={{ position: 'absolute', top: -8, right: -8, background: '#dc2626',
+                    color: '#fff', borderRadius: '50%', minWidth: 19, height: 19, padding: '0 4px',
+                    border: '2px solid #fff', boxSizing: 'border-box',
+                    fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {totalItems}
+                  </span>
+                </span>
+                Ver pedido
+              </span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: Z.fab }}>
+            <button onClick={() => setShowCart(true)} aria-label={`Ver carrito, ${totalItems} ${totalItems !== 1 ? 'items' : 'item'}`} style={{
+              background: G, color: '#fff', border: 'none', borderRadius: '50%',
+              width: 52, height: 52, cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(26,138,60,.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+            }}>
+              {Icon.cart}
+              <span style={{ position: 'absolute', top: -4, right: -4, background: '#dc2626',
+                color: '#fff', borderRadius: '50%', minWidth: 22, height: 22, padding: '0 5px',
+                border: '2px solid #fff', boxSizing: 'border-box',
+                fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {totalItems}
+              </span>
+            </button>
+          </div>
+        )
       )}
 
       {/* Pedí por voz (estilo Zapia) */}
