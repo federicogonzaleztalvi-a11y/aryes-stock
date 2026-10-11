@@ -2027,6 +2027,53 @@ function HistorialPedidos({ session, onReordenar }) {
                     </div>
                   );
                 })()}
+                {/* Prueba de entrega (POD) — hora real + quién recibió + foto/firma, de
+                    SimpliRoute. Gateado a 'entregada' + presencia de datos: si no hay POD
+                    (sin integración o aún no entregado) no se muestra nada → degrada al
+                    comportamiento actual. Nivel Amazon ("entregado 14:32, recibió Juan"). */}
+                {p.estado === 'entregada' && (p.entregado_en || p.pod) && (() => {
+                  const pod = p.pod || {};
+                  const hora = p.entregado_en || pod.hora;
+                  let horaFmt = null;
+                  if (hora) {
+                    const d = new Date(hora);
+                    if (!isNaN(d)) horaFmt = d.toLocaleString('es', {
+                      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                    });
+                  }
+                  const fotos = Array.isArray(pod.fotos) ? pod.fotos.filter(Boolean) : [];
+                  return (
+                    <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0',
+                      borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, color: G }}>
+                            Entregado{horaFmt ? ` · ${horaFmt}` : ''}
+                          </div>
+                          {pod.observacion && (
+                            <div style={{ fontSize: 11, color: '#4a4a42', marginTop: 2 }}>{pod.observacion}</div>
+                          )}
+                        </div>
+                      </div>
+                      {(fotos.length > 0 || pod.firma) && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                          {fotos.slice(0, 3).map((u, i) => (
+                            <img key={i} src={u} alt="Prueba de entrega" loading="lazy"
+                              style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid #d1fae5' }} />
+                          ))}
+                          {pod.firma && (
+                            <img src={pod.firma} alt="Firma" loading="lazy"
+                              style={{ height: 52, maxWidth: 120, borderRadius: 8, objectFit: 'contain',
+                                background: '#fff', border: '1px solid #d1fae5', padding: 2 }} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {(p.items || []).map((it, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between',

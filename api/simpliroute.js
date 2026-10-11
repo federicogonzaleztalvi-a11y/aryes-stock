@@ -175,15 +175,30 @@ export default async function handler(req, res) {
     if (!cfg || cfg.webhook_secret !== secret) return res.status(401).json({ error: 'No autorizado' });
 
     const body = req.body || {};
-    const status = body.status || body.visit?.status || body.data?.status;
-    const reference = body.reference || body.visit?.reference || body.data?.reference;
+    const v = body.visit || body.data || body;   // SimpliRoute anida distinto según el evento
+    const status = body.status || v.status;
+    const reference = body.reference || v.reference;
 
     // Solo entregas completadas con referencia (= id del pedido) actualizan Pazque.
     if (reference && (status === 'completed' || status === 'partial')) {
-      // Marca el pedido entregado → mueve el stepper del portal del cliente (Fase 1d).
+      // Prueba de entrega (POD): capturada best-effort con varios fallbacks porque el
+      // nombre exacto de los campos lo confirmamos recién cuando una org conecte y
+      // entregue de verdad. Si algo no viene, queda null y el portal lo omite.
+      const pod = {
+        hora:        v.checkout_time || v.checkout_date || body.checkout_time || null,
+        observacion: v.checkout_observation || v.checkout_comment || v.comment || null,
+        firma:       v.signature || v.checkout_signature || null,
+        fotos:       Array.isArray(v.pictures) ? v.pictures
+                   : Array.isArray(v.checkout_pictures) ? v.checkout_pictures : null,
+        lat:         v.checkout_latitude ?? v.checkout_lat ?? null,
+        lng:         v.checkout_longitude ?? v.checkout_lng ?? null,
+      };
+      const entregado_en = pod.hora || new Date().toISOString();
+
+      // Marca el pedido entregado + POD → mueve el stepper del portal del cliente (Fase 1d).
       await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(reference)}&org_id=eq.${encodeURIComponent(org)}`, {
         method: 'PATCH', headers: { ...svcHeaders(), Prefer: 'return=minimal' },
-        body: JSON.stringify({ estado: 'entregada' }),
+        body: JSON.stringify({ estado: 'entregada', entregado_en, pod }),
       }).catch(() => {});
       // Espeja a la venta vinculada para la pestaña Ventas del admin (best-effort).
       try {
