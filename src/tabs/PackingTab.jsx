@@ -1,11 +1,13 @@
 import { useApp } from '../context/AppContext.tsx';
 import { useState, useEffect } from 'react';
 import { LS, db, getOrgId, getSession } from '../lib/constants.js';
+import EtiquetasPDF from '../components/EtiquetasPDF.jsx';
 
 function PackingTab(){
   const G="#059669";
   const KPACK="aryes-packings";
-  const { ventas, setVentas, isDemoMode } = useApp();
+  const { ventas, setVentas, isDemoMode, brandCfg } = useApp();
+  const [etiqueta,setEtiqueta]=useState(null);
   const [packings,setPackings]=useState(()=>LS.get(KPACK,[]));
   const [sel,setSel]=useState(null);
   const [validados,setValidados]=useState({});
@@ -39,13 +41,27 @@ function PackingTab(){
   };
 
   const toggleValidar=(key)=>setValidados(v=>({...v,[key]:{...v[key],validado:!v[key].validado}}));
+  // Short-ship: registrar la cantidad REAL que se mete en el bulto (puede ser < pedida
+  // por faltante/roto/sin stock). Default = cantidad pedida, así no cambia el flujo normal.
+  const setCantReal=(key,val)=>setValidados(v=>({...v,[key]:{...v[key],cantReal:val}}));
   const todosValidados=sel&&Object.values(validados).every(v=>v.validado);
 
   const confirmarPacking=async()=>{
     if(!todosValidados){setMsg("Debes validar todos los items antes de confirmar");return;}
     const venta=sel;
+    // Items con cantidad REAL enviada + cantidad pedida preservada (short-ship).
+    // Si no se tocó, cantReal = pedida → comportamiento idéntico al anterior.
+    const itemsReal=(venta.items||[]).map(it=>{
+      const key=it.productoId||it.nombre;
+      const cantPed=Number(it.cantidad)||0;
+      const cr=Number(validados[key]?.cantReal);
+      const real=(isNaN(cr)||cr<0)?cantPed:cr;
+      return {...it,cantidad:real,cantPedida:cantPed};
+    });
+    const parcial=itemsReal.some(it=>Number(it.cantidad)!==Number(it.cantPedida));
+    const notasFinal=parcial?[notas,"Entrega parcial: ver cantidades enviadas."].filter(Boolean).join(" · "):notas;
     const pk={id:crypto.randomUUID(),ventaId:venta.id,nroVenta:venta.nroVenta,clienteNombre:venta.clienteNombre,
-      items:venta.items,bultos,notas,estado:"listo",fecha:new Date().toLocaleDateString("es"),creadoEn:new Date().toISOString()};
+      items:itemsReal,bultos,notas:notasFinal,estado:"listo",fecha:new Date().toLocaleDateString("es"),creadoEn:new Date().toISOString()};
     const upd=[pk,...packings];
     setPackings(upd);
     LS.set(KPACK,upd);
@@ -98,14 +114,23 @@ function PackingTab(){
         {(sel.items||[]).map(it=>{
           const key=it.productoId||it.nombre;
           const v=validados[key];
+          const cantPed=Number(it.cantidad)||0;
+          const cr=v?.cantReal;
+          const crNum=(cr===''||cr==null)?cantPed:Number(cr);
+          const parcial=!isNaN(crNum)&&crNum!==cantPed;
           return(
-            <div key={key} onClick={()=>toggleValidar(key)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:8,marginBottom:8,cursor:"pointer",background:v?.validado?"#f0fdf4":"#f9fafb",border:"2px solid "+(v?.validado?"#059669":"#e5e7eb"),transition:"all .15s"}}>
-              <div style={{width:24,height:24,borderRadius:"50%",background:v?.validado?"#059669":"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,flexShrink:0}}>{v?.validado?"✓":""}</div>
+            <div key={key} onClick={()=>toggleValidar(key)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:8,marginBottom:8,cursor:"pointer",background:v?.validado?(parcial?"#fffbeb":"#f0fdf4"):"#f9fafb",border:"2px solid "+(v?.validado?(parcial?"#f59e0b":"#059669"):"#e5e7eb"),transition:"all .15s"}}>
+              <div style={{width:24,height:24,borderRadius:"50%",background:v?.validado?(parcial?"#f59e0b":"#059669"):"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,flexShrink:0}}>{v?.validado?"✓":""}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600,color:"#1a1a1a"}}>{it.nombre}</div>
-                <div style={{fontSize:12,color:"#888"}}>{it.cantidad} {it.unidad}</div>
+                <div style={{fontSize:12,color:"#888"}}>Pedido: {cantPed} {it.unidad}{parcial&&<span style={{color:"#b45309",fontWeight:700}}> · Enviado: {crNum} {it.unidad}</span>}</div>
               </div>
-              <span style={{fontSize:12,fontWeight:700,color:v?.validado?"#059669":"#9ca3af"}}>{v?.validado?"VALIDADO":"Tocar para validar"}</span>
+              <div onClick={e=>e.stopPropagation()} style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+                <label style={{fontSize:9,fontWeight:600,color:"#9ca3af",textTransform:"uppercase",letterSpacing:.5}}>Enviado</label>
+                <input type="number" min="0" value={cr==null?cantPed:cr} onChange={e=>setCantReal(key,e.target.value)}
+                  style={{width:64,padding:"5px 8px",border:"1px solid "+(parcial?"#f59e0b":"#e5e7eb"),borderRadius:6,fontSize:13,fontFamily:"inherit",textAlign:"right",boxSizing:"border-box",color:parcial?"#b45309":"#1a1a1a",fontWeight:parcial?700:400}} />
+              </div>
+              <span style={{fontSize:12,fontWeight:700,color:v?.validado?(parcial?"#b45309":"#059669"):"#9ca3af",minWidth:70,textAlign:"right"}}>{v?.validado?(parcial?"PARCIAL":"VALIDADO"):"Tocar"}</span>
             </div>
           );
         })}
@@ -153,16 +178,23 @@ function PackingTab(){
         <div style={{marginTop:24}}>
           <h3 style={{fontSize:15,fontWeight:700,color:"#1a1a1a",marginBottom:12}}>Historial de packings</h3>
           <div style={{background:"#fff",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-            {packings.slice(0,8).map((pk,i)=>(
+            {packings.slice(0,8).map((pk,i)=>{
+              const esParcial=(pk.items||[]).some(it=>it.cantPedida!=null&&Number(it.cantidad)!==Number(it.cantPedida));
+              return(
               <div key={pk.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f3f4f6",background:i%2===0?"#fff":"#fafafa"}}>
                 <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:G}}>{pk.nroVenta}</div><div style={{fontSize:11,color:"#666"}}>{pk.clienteNombre} · {pk.fecha}</div></div>
                 <div style={{fontSize:12,color:"#888"}}>{pk.bultos} bulto{pk.bultos>1?"s":""}</div>
+                {esParcial&&<span style={{background:"#fffbeb",color:"#b45309",fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Parcial</span>}
                 <span style={{background:"#f0fdf4",color:G,fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:20}}>Listo</span>
+                <button onClick={()=>setEtiqueta({data:{nroVenta:pk.nroVenta,clienteNombre:pk.clienteNombre,items:pk.items,org_id:getOrgId()},bultos:Math.max(1,Number(pk.bultos)||1)})}
+                  title="Imprimir etiquetas de bulto" style={{padding:"5px 12px",border:"1px solid #e5e7eb",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:12,fontWeight:600,color:"#374151",whiteSpace:"nowrap"}}>🏷️ Etiquetas</button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
+      {etiqueta&&<EtiquetasPDF tipo="despacho" data={etiqueta.data} cantidad={etiqueta.bultos} brandCfg={brandCfg} onClose={()=>setEtiqueta(null)} />}
     </section>
   );
 }

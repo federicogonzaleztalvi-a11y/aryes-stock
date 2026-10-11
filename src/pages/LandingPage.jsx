@@ -544,7 +544,7 @@ export default function LandingPage() {
               }}>TMS</div>
               <h3 style={{ fontFamily: F.serif, fontSize: 24, fontWeight: 400, margin: '0 0 8px' }}>Ventas, rutas y entregas</h3>
               <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.6, margin: 0 }}>
-                Rutas optimizadas por zona, GPS live del conductor, ETA por parada, firma digital,
+                Rutas por zona, GPS live del conductor, ETA por parada, firma digital,
                 foto de entrega y tracking público para tus clientes. Todo en tiempo real.
               </p>
             </div>
@@ -641,11 +641,11 @@ export default function LandingPage() {
             }}>14 días gratis · Oferta de lanzamiento</div>
 
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: '#1a1a18' }}>USD 149</span>
+              <span style={{ fontFamily: F.serif, fontSize: 48, fontWeight: 400, color: '#1a1a18' }}>USD 199</span>
               <span style={{ fontSize: 15, color: '#9a9a96' }}>/mes</span>
             </div>
             <p style={{ fontSize: 13, color: G, fontWeight: 500, margin: '0 0 4px' }}>Precio de lanzamiento por 3 meses</p>
-            <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 16px' }}>Luego USD 299/mes</p>
+            <p style={{ fontSize: 12, color: '#9a9a96', margin: '0 0 16px' }}>Luego USD 399/mes</p>
 
             <div style={{ background: '#f0fdf4', border: '1px solid #d6efdc', borderRadius: 10, padding: '10px 14px', margin: '0 0 20px', fontSize: 12.5, color: '#27500a', lineHeight: 1.5, textAlign: 'left' }}>
               Menos que <strong>medio sueldo de un vendedor part-time</strong>, y el portal toma pedidos por vos las 24 horas.
@@ -732,7 +732,7 @@ export default function LandingPage() {
                 {[
                   ['Inventario en tiempo real', true, false, false, true],
                   ['Ventas y facturacion', true, false, false, true],
-                  ['Rutas de entrega optimizadas', true, false, true, false],
+                  ['Pedido, stock y entrega en un solo lugar', true, false, false, false],
                   ['Portal de pedidos para tus clientes', true, false, false, false],
                   ['Cobros y cuenta corriente', true, false, false, true],
                   ['Tracking en vivo para el cliente', true, false, true, false],

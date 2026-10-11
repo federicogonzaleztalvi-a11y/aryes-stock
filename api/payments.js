@@ -62,8 +62,8 @@ function verifyMPSignature(req) {
 }
 
 const PLANS = {
-  pro:       { amount: 11990, title: 'Pazque', currency: 'UYU' },
-  pro_intro: { amount: 5990, title: 'Pazque — Precio lanzamiento', currency: 'UYU' },
+  pro:       { amount: 15990, title: 'Pazque', currency: 'UYU' },
+  pro_intro: { amount: 7990, title: 'Pazque — Precio lanzamiento', currency: 'UYU' },
 };
 
 const INTRO_MONTHS = 3;
@@ -139,7 +139,7 @@ async function mpSubscription(req, res) {
   if (!orgs?.length) return res.status(404).json({ error: 'Org no encontrada' });
   const org = orgs[0];
 
-  // Determinar precio según antigüedad (intro 3 meses a 149, después 299)
+  // Determinar precio según antigüedad (intro 3 meses a 199, después 399)
   const planData = getPlanForOrg(org);
 
   // Si la org ya tiene un plan en MP, reusar el init_point existente (evita duplicados por doble click)

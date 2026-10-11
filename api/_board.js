@@ -21,7 +21,7 @@
 const SB_URL        = process.env.SUPABASE_URL;
 const SB_SVC        = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
-const PRICE_USD     = Number(process.env.PAZQUE_PRICE_USD || 149);
+const PRICE_USD     = Number(process.env.PAZQUE_PRICE_USD || 199);
 
 const H   = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' };
 const DAY = 24 * 60 * 60 * 1000;
