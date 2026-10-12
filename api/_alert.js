@@ -4,10 +4,11 @@
 // logger central (_log.js), así CUALQUIER log.error/log.fatal de CUALQUIER
 // endpoint dispara una alerta, sin tocar cada archivo.
 //
-// CANAL: email vía Resend (ya configurado). WhatsApp queda para más adelante:
-// Meta NO permite mensajes proactivos libres fuera de la ventana de 24h, exige
-// una plantilla pre-aprobada (ver broadcast.js). Cuando exista 'pazque_alerta'
-// aprobada, se suma acá sin cambiar el resto.
+// CANALES: email vía Resend (siempre) + WhatsApp OPCIONAL. Meta NO permite
+// mensajes proactivos libres fuera de la ventana de 24h, exige una plantilla
+// pre-aprobada (ver broadcast.js). Usamos 'pazque_alerta'. El WhatsApp SOLO se
+// manda si está seteada la env var ALERT_WHATSAPP (tu número); sin esa var, el
+// comportamiento es idéntico al de antes: email y nada más.
 //
 // SEGURIDAD DE DISEÑO (por qué esto no puede empeorar las cosas):
 //   • Fire-and-forget: nunca bloquea ni rompe el request que lo originó.
@@ -23,6 +24,15 @@ import { sendEmail } from './_email.js';
 // sin setup; se puede apuntar a una casilla dedicada con la env var ALERT_EMAIL.
 const ALERT_EMAIL = process.env.ALERT_EMAIL || 'contacto@pazque.com';
 const IS_PROD = (process.env.VERCEL_ENV || process.env.NODE_ENV) === 'production';
+
+// Canal WhatsApp (opcional). Número destino en formato internacional, solo dígitos
+// (ej. 59891806973). Vacío → alertas solo por email (comportamiento previo).
+// Requiere la plantilla 'pazque_alerta' APROBADA en Meta.
+const ALERT_WHATSAPP = String(process.env.ALERT_WHATSAPP || '').replace(/\D/g, '');
+const WA_TOKEN       = process.env.WA_ACCESS_TOKEN;
+const WA_PHONE_ID    = process.env.WA_PHONE_NUMBER_ID;
+const WA_ALERT_TPL   = process.env.WA_ALERT_TEMPLATE || 'pazque_alerta';
+const WA_ALERT_LANG  = process.env.WA_ALERT_LANG || 'es_AR';
 
 // Throttle en memoria (por instancia lambda). Imperfecto entre instancias, pero
 // resuelve el caso común (un mismo error disparándose en loop) y el cap acota el
@@ -82,5 +92,33 @@ async function _send(entry) {
         Torre de Control de Pazque · alerta automática. Se agrupa por tipo de error (máx 1 cada 10 min) para no inundarte.
       </p>
     </div>`;
-  await sendEmail({ to: ALERT_EMAIL, subject, html });
+
+  // Email siempre; WhatsApp solo si está configurado el destino. allSettled: que
+  // un canal falle nunca impide el otro, y nada propaga error (maybeAlert ya envuelve).
+  const tareas = [sendEmail({ to: ALERT_EMAIL, subject, html })];
+  if (ALERT_WHATSAPP && WA_TOKEN && WA_PHONE_ID) {
+    tareas.push(_sendWhatsApp(`${service} — ${msg}`));
+  }
+  await Promise.allSettled(tareas);
+}
+
+// Manda la plantilla 'pazque_alerta' con un único parámetro de cuerpo {{1}} = resumen
+// del error. La plantilla aporta el texto fijo alrededor ("🔔 Pazque — alerta…").
+async function _sendWhatsApp(resumen) {
+  const texto = String(resumen || 'error').slice(0, 600);
+  const r = await fetch('https://graph.facebook.com/v21.0/' + WA_PHONE_ID + '/messages', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: ALERT_WHATSAPP,
+      type: 'template',
+      template: {
+        name: WA_ALERT_TPL,
+        language: { code: WA_ALERT_LANG },
+        components: [{ type: 'body', parameters: [{ type: 'text', text: texto }] }],
+      },
+    }),
+  });
+  if (!r.ok) throw new Error(await r.text());
 }
