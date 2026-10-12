@@ -25,6 +25,17 @@ const GH_TOKEN = process.env.GH_AUTOFIX_TOKEN || '';
 const GH_REPO  = process.env.GH_AUTOFIX_REPO || 'federicogonzaleztalvi-a11y/aryes-stock';
 const LABEL    = 'auto-fix';
 
+// Servicios "sintéticos": no son errores reales de la app sino pings de prueba
+// del propio canal de alertas (ver api/alert-test.js). A propósito disparan la
+// alerta por email/WhatsApp para verificar que el caño funciona, pero NO deben
+// abrir un Issue ni un PR de auto-fix — no hay nada que arreglar en el código.
+const SERVICIOS_IGNORADOS = new Set(['alert-test']);
+
+// ¿Esta entrada es una alerta de prueba y no un error real? Exportada para test.
+export function esAlertaDePrueba(entry) {
+  return SERVICIOS_IGNORADOS.has(entry?.service);
+}
+
 // Firma corta y estable del error, para dedup y para el título del issue.
 function _sig(entry) {
   return (entry.service || '?') + ' — ' + (entry.msg || '?');
@@ -51,6 +62,7 @@ async function _yaExiste(marker) {
 export function maybeFileIssue(entry) {
   try {
     if (!IS_PROD || !ENABLED || !GH_TOKEN) return null;
+    if (esAlertaDePrueba(entry)) return null;   // pings de prueba no generan auto-fix
     return _crear(entry).catch(() => {});   // nunca propaga error
   } catch { return null; }
 }
