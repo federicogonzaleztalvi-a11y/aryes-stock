@@ -4,18 +4,20 @@
 // está configurado ALERT_WHATSAPP, también WhatsApp). Pasa por el MISMO logger
 // central que una alerta real: llama log.error, que dispara maybeAlert (_alert.js).
 //
-// Protegido con CRON_SECRET (mismo secreto que los crons): sin el token no hace
+// Protegido por token (CRON_SECRET o ALERT_TEST_TOKEN): sin el token no hace
 // nada. No toca la DB ni cambia estado. Es solo un "ping" del caño de alertas.
 //
-//   GET /api/alert-test?secret=<CRON_SECRET>
+//   GET /api/alert-test?secret=<CRON_SECRET | ALERT_TEST_TOKEN>
 // ----------------------------------------------------------------------------
 import { log } from './_log.js';
 
 const CRON_SECRET = process.env.CRON_SECRET;
+const TEST_TOKEN  = process.env.ALERT_TEST_TOKEN;
 
 export default function handler(req, res) {
   const token = req.query?.secret || (req.headers.authorization || '').replace('Bearer ', '');
-  if (!CRON_SECRET || token !== CRON_SECRET) {
+  const ok = (CRON_SECRET && token === CRON_SECRET) || (TEST_TOKEN && token === TEST_TOKEN);
+  if (!ok) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
