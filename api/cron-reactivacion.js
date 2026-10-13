@@ -28,11 +28,13 @@
 // ----------------------------------------------------------------------------
 
 import { sendEmail, templates } from './_email.js';
+import { sendWaTemplate, digits, WA_REMINDERS_ON, WA_READY } from './_whatsapp.js';
 
 const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC      = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 const ENABLED     = process.env.REACTIVATION_AGENT_ENABLED === 'true';
+const WA_REACT_TEMPLATE = process.env.WA_REACT_TEMPLATE || 'pazque_reactivacion';
 
 const H     = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' };
 const HJSON = { ...H, 'Content-Type': 'application/json' };
@@ -147,29 +149,47 @@ export default async function handler(req, res) {
 
       candidates++;
 
-      // Ficha del comprador: nombre + email. Sin email no podemos avisar.
+      // Ficha del comprador: nombre + email + teléfono. Canal: WhatsApp si está
+      // prendido y hay teléfono; si no, email (comportamiento previo). La columna
+      // real es `name` (no `nombre`).
       let nombre = pedidos[pedidos.length - 1]?.cliente_nombre || '';
       let email = '';
+      let phone = '';
       try {
-        const cli = await sbGet(`clients?id=eq.${encodeURIComponent(clienteId)}&select=nombre,email&limit=1`);
-        nombre = cli[0]?.nombre || nombre;
+        const cli = await sbGet(`clients?id=eq.${encodeURIComponent(clienteId)}&select=name,email,phone&limit=1`);
+        nombre = cli[0]?.name || nombre;
         email = (cli[0]?.email || '').trim();
-      } catch { /* sin ficha → sin email */ }
-      if (!email) { skipped++; continue; }
+        phone = digits(cli[0]?.phone);
+      } catch { /* sin ficha → sin canal */ }
 
+      const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8;
+      if (!usarWa && !email) { skipped++; continue; }   // sin canal posible
+
+      const dias = Math.round(diasDesdeUltimo);
       const productos = topProductos(pedidos.map(p => p.items), 4);
       const portalUrl = 'https://pazque.com/pedidos?org=' + encodeURIComponent(orgId);
 
       try {
-        const tpl = templates.reactivacion({
-          empresa: org.name,
-          nombre,
-          productos,
-          dias: Math.round(diasDesdeUltimo),
-          portalUrl,
-          logoUrl: org.logoUrl,
-        });
-        await sendEmail({ to: email, ...tpl });
+        if (usarWa) {
+          // Plantilla pazque_reactivacion: {{1}}=días sin pedir, {{2}}=empresa;
+          // botón URL dinámico {{1}}=org_id.
+          await sendWaTemplate({
+            to: phone,
+            template: WA_REACT_TEMPLATE,
+            bodyParams: [String(dias), org.name || 'tu proveedor'],
+            urlButtonParam: orgId,
+          });
+        } else {
+          const tpl = templates.reactivacion({
+            empresa: org.name,
+            nombre,
+            productos,
+            dias,
+            portalUrl,
+            logoUrl: org.logoUrl,
+          });
+          await sendEmail({ to: email, ...tpl });
+        }
 
         // Registrar el envío (upsert) para respetar el enfriamiento.
         await fetch(`${SB_URL}/rest/v1/reactivation_reminders?on_conflict=org_id,cliente_id`, {

@@ -15,10 +15,12 @@
 // cliente no tiene email, se saltea silenciosamente.
 
 import { sendEmail, templates } from './_email.js';
+import { sendWaTemplate, digits, WA_REMINDERS_ON, WA_READY } from './_whatsapp.js';
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
+const WA_CART_TEMPLATE = process.env.WA_CART_TEMPLATE || 'pazque_carrito';
 
 const H = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC };
 const HJSON = { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
@@ -114,35 +116,53 @@ export default async function handler(req, res) {
       }
     } catch { /* si falla el chequeo, seguimos: peor caso un recordatorio de más */ }
 
-    // Ficha del cliente: necesitamos nombre + email. Sin email no podemos avisar.
+    // Ficha del cliente: nombre + email + teléfono. Elegimos canal: si el canal
+    // WhatsApp de recordatorios está prendido y el cliente tiene teléfono, va por
+    // WhatsApp (donde vive el comprador mayorista); si no, email (comportamiento
+    // previo). La columna real es `name` (no `nombre`).
     let nombre = '';
     let email = '';
+    let phone = '';
     try {
       const cliRes = await fetch(
         SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(cart.client_id) +
-          '&select=nombre,email&limit=1',
+          '&select=name,email,phone&limit=1',
         { headers: H }
       );
       if (cliRes.ok) {
         const cli = await cliRes.json();
-        nombre = cli[0]?.nombre || '';
+        nombre = cli[0]?.name || '';
         email = (cli[0]?.email || '').trim();
+        phone = digits(cli[0]?.phone);
       }
     } catch { /* sin ficha → no avisamos */ }
-    if (!email) { skipped++; continue; }
+
+    const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8;
+    if (!usarWa && !email) { skipped++; continue; }   // sin canal posible
 
     const portalUrl = 'https://pazque.com/pedidos?org=' + encodeURIComponent(cart.org_id);
 
     try {
-      const tpl = templates.carritoAbandonado({
-        empresa: org.name,
-        nombre,
-        lineCount,
-        portalUrl,
-        logoUrl: org.logoUrl,
-        stage: targetStage,
-      });
-      await sendEmail({ to: email, ...tpl });
+      if (usarWa) {
+        // Plantilla pazque_carrito: {{1}}=cantidad de productos, {{2}}=empresa;
+        // botón URL dinámico {{1}}=org_id (completa pazque.com/pedidos?org={{1}}).
+        await sendWaTemplate({
+          to: phone,
+          template: WA_CART_TEMPLATE,
+          bodyParams: [String(lineCount), org.name || 'tu proveedor'],
+          urlButtonParam: cart.org_id,
+        });
+      } else {
+        const tpl = templates.carritoAbandonado({
+          empresa: org.name,
+          nombre,
+          lineCount,
+          portalUrl,
+          logoUrl: org.logoUrl,
+          stage: targetStage,
+        });
+        await sendEmail({ to: email, ...tpl });
+      }
 
       // Avanzar la etapa para no repetir el mismo aviso.
       await fetch(
