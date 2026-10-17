@@ -46,9 +46,16 @@ const APIFY_TOKEN = process.env.APIFY_TOKEN;   // opcional: lee IG/FB reales pas
 // Solo sube el techo — las demás acciones siguen respondiendo en <2s.
 export const config = { maxDuration: 60 };
 
-// Único mail autorizado a entrar. Default: la casilla de Federico. Se puede
-// sobreescribir con OWNER_EMAIL (por si algún día cambia), pero no hace falta.
-const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'federico@pazque.com').trim().toLowerCase();
+// Mails autorizados a entrar. Default: la casilla de Federico. Para sumar otro,
+// seteá OWNER_EMAILS en Vercel como lista separada por comas
+// (ej: "federico@pazque.com,socio@pazque.com"). OWNER_EMAIL se sigue respetando
+// por compatibilidad. El código de login se manda al mail que lo pide (si está
+// autorizado), no a una casilla fija → cada persona recibe el suyo.
+const OWNER_EMAILS = new Set(
+  (process.env.OWNER_EMAILS || process.env.OWNER_EMAIL || 'federico@pazque.com')
+    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+);
+const isOwnerEmail = (e) => OWNER_EMAILS.has(e);
 
 const CODE_TTL_MIN = 10;                 // el código vence a los 10 minutos
 const SESSION_DAYS = 30;                 // la sesión dura 30 días por dispositivo
@@ -316,6 +323,67 @@ async function findSocial(name, city) {
   return '';
 }
 
+// ── Detección de e-commerce del prospecto (señales REALES, cero inferencia) ──
+// Baja el HTML crudo del sitio y busca HUELLAS de plataformas de e-commerce y de
+// portales de pedidos. NO usa IA: es match de strings sobre el HTML + headers, así
+// que lo que reporta es un hecho verificable, no humo. Devuelve:
+//   { tiene:true,  plataforma, tipo:'B2C'|'B2B', senal }  → vende online
+//   { tiene:false, ... }                                   → tiene web, sin tienda
+//   null                                                   → sin web propia (IG/FB
+//                                                            no cuentan) o no se pudo leer
+// Para qué sirve: cambia el ÁNGULO de venta. Tienda B2C (Tiendanube/Shopify) =
+// vende al público online pero sus mayoristas le siguen pidiendo por WhatsApp →
+// fit altísimo. Portal B2B propio = competidor adentro → desplazamiento. Nada =
+// greenfield, pitch clásico.
+const ECOM_PLATFORMS = [
+  { plat: 'Tiendanube',    tipo: 'B2C', re: /tiendanube|mitiendanube|nuvemshop/i },
+  { plat: 'Shopify',       tipo: 'B2C', re: /cdn\.shopify\.com|myshopify\.com|shopify\.theme|x-shopify/i },
+  { plat: 'WooCommerce',   tipo: 'B2C', re: /woocommerce|plugins\/woocommerce/i },
+  { plat: 'VTEX',          tipo: 'B2C', re: /vteximg|vtexcommercestable|vtexassets|vtex\.com/i },
+  { plat: 'Mercado Shops', tipo: 'B2C', re: /mercadoshops|mshops\./i },
+  { plat: 'Ecwid',         tipo: 'B2C', re: /ecwid/i },
+  { plat: 'PrestaShop',    tipo: 'B2C', re: /prestashop/i },
+  { plat: 'BigCommerce',   tipo: 'B2C', re: /bigcommerce/i },
+  { plat: 'Magento',       tipo: 'B2C', re: /magento/i },
+  { plat: 'Wix Stores',    tipo: 'B2C', re: /wixstores|ecom-platform-data/i },
+];
+// Portal de pedidos mayorista propio (posible competidor adentro). Frases
+// ESPECÍFICAS a propósito: "hacé tu pedido" suelto es ambiguo (puede ser "por
+// WhatsApp") y daría falso positivo → no se cuenta.
+const ECOM_B2B  = /portal de pedidos|acceso mayorista|login mayorista|zona mayorista|portal b2b|cat[aá]logo mayorista|ingreso mayorista|cuenta mayorista/i;
+// Carrito genérico sin plataforma identificada (señal más débil, pero real).
+const ECOM_CART = /agregar al carrito|a[ñn]adir al carrito|add to cart|finalizar compra|ir al carrito|mi carrito/i;
+
+async function detectEcommerce(url) {
+  if (!url) return null;
+  let host = '';
+  try { host = new URL(/^https?:\/\//i.test(url) ? url : 'https://' + url).hostname.replace(/^www\./, ''); }
+  catch { return null; }
+  // IG/FB/WhatsApp/linktree no son e-commerce propio: no los evaluamos.
+  if (/(^|\.)(instagram\.com|facebook\.com|fb\.com|m\.facebook\.com|wa\.me|api\.whatsapp\.com|linktr\.ee)$/i.test(host)) return null;
+
+  let html = '';
+  try {
+    const u = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4500);
+    const r = await fetch(u, { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PazqueBot/1.0)' } });
+    clearTimeout(t);
+    const ct = r.headers.get('content-type') || '';
+    if (!r.ok || !/text\/html/i.test(ct)) return null;
+    // Los headers a veces delatan la plataforma (ej. Server: Shopify, X-Powered-By).
+    const hdrs = `${r.headers.get('server') || ''} ${r.headers.get('x-powered-by') || ''} ${r.headers.get('powered-by') || ''}`;
+    html = hdrs + ' ' + (await r.text()).slice(0, 200000);
+  } catch { return null; }
+
+  for (const p of ECOM_PLATFORMS) {
+    if (p.re.test(html)) return { tiene: true, plataforma: p.plat, tipo: p.tipo, senal: `Huella de ${p.plat} en el sitio` };
+  }
+  if (ECOM_B2B.test(html))  return { tiene: true, plataforma: 'Portal de pedidos propio', tipo: 'B2B', senal: 'Menciona portal/acceso mayorista online' };
+  if (ECOM_CART.test(html)) return { tiene: true, plataforma: 'Tienda online (sin identificar)', tipo: 'B2C', senal: 'Botones de carrito/checkout en el sitio' };
+  return { tiene: false, plataforma: '', tipo: 'ninguno', senal: 'Sitio sin tienda online' };
+}
+
 // ── Enriquecimiento: Claude infiere rubro/tamaño/prioridad/ángulo ───────────
 // Usa lo que el prospecto dejó (nombre, empresa, rubro, mensaje) MÁS el contenido
 // real de su sitio web o red social cuando tiene uno. Si no hay señal, "sin datos".
@@ -467,9 +535,21 @@ export async function enrichLead(lead) {
   const variante = pickVariant(lead.id || lead.place_id || lead.empresa || lead.nombre);
 
   // Datos reales del negocio (no genérico): leemos su web y el IG/FB que linkea a
-  // fondo con Apify. Si no tiene nada, buscamos su IG por nombre y lo verificamos.
-  let web = await readWeb(lead.landing_url);
+  // fondo con Apify. En paralelo detectamos si ya vende online (e-commerce). Si no
+  // tiene nada, buscamos su IG por nombre y lo verificamos.
+  const [web0, ecom] = await Promise.all([
+    readWeb(lead.landing_url),
+    detectEcommerce(lead.landing_url),
+  ]);
+  let web = web0;
   if (!web) web = await findSocial(lead.empresa || lead.nombre, '');
+
+  // Texto del e-commerce para el contexto de la IA (hecho verificado, no inferencia).
+  const ecomCtx = ecom
+    ? (ecom.tiene
+        ? `${ecom.plataforma}${ecom.tipo === 'B2B' ? ' — portal de pedidos B2B (posible competidor adentro)' : ' — tienda online al público (B2C)'}`
+        : 'tiene sitio web pero SIN tienda online')
+    : 'sin datos';
 
   const compact = {
     nombre:   lead.nombre || '',
@@ -478,12 +558,18 @@ export async function enrichLead(lead) {
     mensaje:  lead.mensaje || '',
     sitio:    lead.landing_url || '',
     web:      web || '',
+    ecommerce: ecomCtx,
     llegó_por: [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' / ') || 'directo',
   };
 
   const system = `Sos un SDR senior (sales development) de Pazque, un SaaS B2B para distribuidoras mayoristas de LATAM. Pazque le da a la distribuidora un portal donde sus clientes hacen pedidos solos (en vez de por WhatsApp uno por uno), catálogo con fotos y precios, y toma de pedidos por voz/foto.
 
-Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio (nombre/rubro/zona/rating). Además, si la distribuidora tiene sitio web o redes (Instagram/Facebook), te paso su contenido real en el campo "web" — puede ser el texto del sitio o el resumen de su perfil de redes (descripción, seguidores). Usalo como tu mejor fuente para entender QUÉ distribuye, a quién y qué tamaño tiene. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
+Te paso los datos de un prospecto (una distribuidora). Puede venir de dos formas: (a) pidió una demo y dejó un mensaje, o (b) lo encontró nuestro agente en un directorio (nombre/rubro/zona/rating). Además, si la distribuidora tiene sitio web o redes (Instagram/Facebook), te paso su contenido real en el campo "web" — puede ser el texto del sitio o el resumen de su perfil de redes (descripción, seguidores). Usalo como tu mejor fuente para entender QUÉ distribuye, a quién y qué tamaño tiene. También te paso el campo "ecommerce": un hecho VERIFICADO (no inferencia) sobre si ya vende online y con qué plataforma. Tu tarea: enriquecerlo para que el dueño de Pazque sepa cómo encararlo Y dejarle listo un primer mensaje de WhatsApp.
+
+Cómo leer el campo "ecommerce" (dato real, no lo pongas en duda):
+- "tienda online al público (B2C)" (Tiendanube, Shopify, etc.): BUEN fit. Vende al público final, pero sus clientes MAYORISTAS le siguen pidiendo por WhatsApp uno por uno — Pazque es el portal B2B que le falta. Angulo: "ya vendés online al público, pero tus clientes mayoristas te piden por WhatsApp; Pazque es ese portal para ellos".
+- "portal de pedidos B2B (posible competidor adentro)": ya tiene una solución mayorista. Fit más bajo/competitivo; prioridad baja salvo señal fuerte. No ofrezcas lo que ya tienen; angulo sólo si hay un hueco claro.
+- "tiene sitio web pero SIN tienda online" o "sin datos": greenfield, buen fit, pero NO afirmes que no tienen e-commerce si el dato es "sin datos".
 
 Reglas:
 - Respondé ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después.
@@ -533,6 +619,9 @@ Reglas:
       angulo:     clean(parsed.angulo, 400),
       senales:    Array.isArray(parsed.senales) ? parsed.senales.slice(0, 4).map(s => clean(s, 160)).filter(Boolean) : [],
       mensaje_wa: clean(parsed.mensaje_wa, 700),
+      // Hecho verificado por fingerprint (no inferencia de la IA). Lo guardamos
+      // crudo para mostrarlo como dato duro en la ficha del prospecto.
+      ecommerce:  ecom ? { tiene: !!ecom.tiene, plataforma: ecom.plataforma || '', tipo: ecom.tipo || 'ninguno', senal: ecom.senal || '' } : null,
     };
     // Peldaño (d): el agente crítico revisa el mensaje antes de mostrarlo. Pule
     // tono/largo y saca cualquier dato inventado. Si falla, deja el original.
@@ -833,8 +922,8 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'Demasiados intentos. Esperá un momento.' });
 
     const email = clean(req.body?.email, 160).toLowerCase();
-    // Respuesta SIEMPRE genérica: no revelamos cuál es el mail de dueño.
-    if (email !== OWNER_EMAIL) return res.status(200).json({ ok: true });
+    // Respuesta SIEMPRE genérica: no revelamos cuáles son los mails de dueño.
+    if (!isOwnerEmail(email)) return res.status(200).json({ ok: true });
 
     const code = String(randomInt(0, 1000000)).padStart(6, '0');
     const row = {
@@ -851,7 +940,7 @@ export default async function handler(req, res) {
     }
     try {
       const tpl = templates.ownerLoginCode(code, CODE_TTL_MIN);
-      await sendEmail({ to: OWNER_EMAIL, subject: tpl.subject, html: tpl.html });
+      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html });
     } catch (e) {
       console.warn('[owner] code email failed:', e.message);
     }
@@ -865,7 +954,7 @@ export default async function handler(req, res) {
 
     const email = clean(req.body?.email, 160).toLowerCase();
     const code  = clean(req.body?.code, 6).replace(/\D/g, '');
-    if (email !== OWNER_EMAIL || code.length !== 6)
+    if (!isOwnerEmail(email) || code.length !== 6)
       return res.status(401).json({ error: 'Código incorrecto o vencido.' });
 
     // Traemos el código más reciente, vivo, para ese mail.

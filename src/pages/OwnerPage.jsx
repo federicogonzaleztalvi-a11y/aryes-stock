@@ -217,6 +217,26 @@ function Gate({ onEnter }) {
   );
 }
 
+// Badge de e-commerce (hecho verificado por fingerprint, no inferencia de la IA).
+// Verde = buen fit (vende al público pero sus mayoristas piden por WhatsApp);
+// ámbar = portal B2B propio (posible competidor adentro); gris = sin tienda online.
+function EcomBadge({ ecom }) {
+  if (!ecom) return null;
+  let bg, fg, label;
+  if (!ecom.tiene) {
+    bg = '#eef0f2'; fg = '#5b6470'; label = 'Sin tienda online';
+  } else if (ecom.tipo === 'B2B') {
+    bg = '#fff3d6'; fg = '#8a5a00'; label = `Portal B2B · ${ecom.plataforma || 'propio'}`;
+  } else {
+    bg = '#e3f4ea'; fg = '#1d7a46'; label = `E-commerce B2C · ${ecom.plataforma || 'tienda online'}`;
+  }
+  return (
+    <span title={ecom.senal || ''} style={{ background: bg, color: fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>
+      🛒 {label}
+    </span>
+  );
+}
+
 // Panel con lo que el agente infirió del prospecto (peldaño 1b, solo lectura).
 function EnrichPanel({ e }) {
   if (!e) return null;
@@ -225,9 +245,10 @@ function EnrichPanel({ e }) {
                 e.tamano && e.tamano !== 'sin datos' ? `Tamaño ${e.tamano}` : null].filter(Boolean);
   return (
     <div style={{ background: C.greenSoft, border: `1px solid ${C.green}22`, borderRadius: 10, padding: '10px 12px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: e.angulo ? 6 : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: (e.angulo || e.ecommerce) ? 6 : 0 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: C.green, letterSpacing: .3 }}>✨ ANÁLISIS</span>
         <span style={{ background: prio.bg, color: prio.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{prio.label}</span>
+        <EcomBadge ecom={e.ecommerce} />
         {bits.length > 0 && <span style={{ fontSize: 12.5, color: C.sub }}>{bits.join(' · ')}</span>}
       </div>
       {e.angulo && <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{e.angulo}</div>}

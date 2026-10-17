@@ -31,7 +31,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const ENABLED     = process.env.HEALTH_MONITOR_ENABLED === 'true';
 const ALERT_EMAIL = process.env.ALERT_EMAIL || 'contacto@pazque.com';
 const SITE        = (process.env.SITE_URL || 'https://pazque.com').replace(/\/$/, '');
-const TIMEOUT_MS  = 8000;   // un chequeo que tarda más que esto se cuenta como caído
+const TIMEOUT_MS  = 12000;  // margen para cold-starts; un pico de 8s no es una caída
+const RECHECK_MS  = 3000;   // espera antes de reconfirmar un chequeo que falló
 
 function esc(v) {
   return String(v == null ? '' : v)
@@ -99,7 +100,8 @@ function buildAlert(failed, all) {
       </table>
       <p style="font-size:12px;color:#9a9a98;margin-top:22px;line-height:1.5">
         Monitor de salud de Pazque · chequeo automático cada 10 min. Sólo lee, no toca datos.
-        Si esto es un pico transitorio, el próximo chequeo lo confirmará recuperado.
+        Esta alerta se dispara sólo tras fallar DOS veces seguidas (con un reintento de por medio),
+        así que no es un pico transitorio: algo estuvo caído.
       </p>
     </div>`;
   return { subject, html };
@@ -118,9 +120,26 @@ export default async function handler(req, res) {
   const results = [];
   for (const c of CHECKS) {
     const r = await c.run();
-    results.push({ name: c.name, detail: c.detail, ...r });
+    results.push({ name: c.name, detail: c.detail, run: c.run, ...r });
   }
-  const failed = results.filter(r => !r.ok);
+
+  // Anti-falso-positivo: un chequeo que falló puede ser un pico transitorio
+  // (cold-start, hipo de red). NO alertamos por una sola falla: esperamos un
+  // momento y lo reconfirmamos. Sólo cuenta como caído si vuelve a fallar.
+  // Así una lectura lenta aislada no dispara un email de incidente.
+  let failed = results.filter(r => !r.ok);
+  if (failed.length) {
+    await new Promise(r => setTimeout(r, RECHECK_MS));
+    for (const r of results) {
+      if (r.ok) continue;
+      const retry = await r.run();
+      if (retry.ok) { Object.assign(r, retry); r.recovered = true; }  // se recuperó: era un pico
+      else { Object.assign(r, retry); r.confirmed = true; }           // falló dos veces: real
+    }
+    failed = results.filter(r => !r.ok);
+  }
+  // Limpiamos el puntero a la función antes de devolver/serializar.
+  for (const r of results) delete r.run;
 
   if (failed.length) {
     try {
