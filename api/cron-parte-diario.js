@@ -36,6 +36,14 @@ const H = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'applicat
 const DAY_MS = 24 * 60 * 60 * 1000;
 const UY_OFFSET_MS = 3 * 60 * 60 * 1000;  // Uruguay = UTC-3 (sin horario de verano)
 
+// Precios de la landing (un solo plan): USD 199/mes los primeros 3 meses de cada
+// cliente (precio de lanzamiento), luego USD 399/mes. El MRR estimado aplica 199
+// a las orgs con <90 días de vida y 399 a las más antiguas — es una estimación
+// honesta a partir de created_at, no un dato de facturación real.
+const PRECIO_LANZAMIENTO = 199;
+const PRECIO_PLENO       = 399;
+const LANZAMIENTO_DIAS   = 90;
+
 function esc(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -101,6 +109,73 @@ async function listarOrgsReales() {
   return orgs;
 }
 
+// Foto de Pazque COMO EMPRESA (no de los clientes): cuántos clientes tengo,
+// cuántos pagan, MRR estimado, pipeline del embudo y pendientes de prospección.
+// Todo de lectura, de las tablas organizations + pazque_leads.
+async function fotoPazque(fromISO, toISO) {
+  // --- Clientes (organizations) ---
+  const orgRes = await fetch(
+    SB_URL + '/rest/v1/organizations?select=id,active,plan,subscription_status,plan_name,trial_ends_at,created_at',
+    { headers: H }
+  );
+  const orgs = orgRes.ok ? await orgRes.json() : [];
+  const reales = orgs.filter(o => o.id !== DEMO_ORG);
+
+  const now = Date.now();
+  let activos = 0, pagos = 0, enPrueba = 0, nuevosAyer = 0, mrr = 0;
+  const pruebasPorVencer = [];  // {id, dias}
+  for (const o of reales) {
+    if (o.active === false) continue;
+    activos++;
+    const creada = o.created_at ? new Date(o.created_at).getTime() : null;
+    if (creada && creada >= new Date(fromISO).getTime() && creada < new Date(toISO).getTime()) nuevosAyer++;
+
+    const estado = (o.subscription_status || '').toLowerCase();
+    const pagando = estado === 'active' || (o.plan_name && o.plan_name !== 'trial' && estado !== 'trial');
+    if (pagando) {
+      pagos++;
+      const diasVida = creada ? Math.floor((now - creada) / DAY_MS) : 999;
+      mrr += diasVida < LANZAMIENTO_DIAS ? PRECIO_LANZAMIENTO : PRECIO_PLENO;
+    } else if (estado === 'trial') {
+      enPrueba++;
+      if (o.trial_ends_at) {
+        const dias = Math.ceil((new Date(o.trial_ends_at).getTime() - now) / DAY_MS);
+        if (dias >= 0 && dias <= 7) pruebasPorVencer.push({ id: o.id, dias });
+      }
+    }
+  }
+  pruebasPorVencer.sort((a, b) => a.dias - b.dias);
+
+  // --- Pipeline del embudo (pazque_leads) ---
+  const leadRes = await fetch(
+    SB_URL + '/rest/v1/pazque_leads?select=estado,respondio,ultimo_contacto_at,seguir_desde,created_at',
+    { headers: H }
+  );
+  const leads = leadRes.ok ? await leadRes.json() : [];
+  const pipeline = { nuevo: 0, contactado: 0, demo: 0, convertido: 0, descartado: 0 };
+  let contactosNuevosAyer = 0;
+  let faltaMarcar = 0;   // ya contactados, sin registrar si respondieron (loop abierto)
+  let contestaron = 0;   // respondió que SÍ → hay que seguir la charla
+  let paraSeguirHoy = 0; // activos con seguir_desde vencido
+  for (const l of leads) {
+    const e = (l.estado || 'nuevo').toLowerCase();
+    if (pipeline[e] != null) pipeline[e]++;
+    if (l.created_at && new Date(l.created_at).getTime() >= new Date(fromISO).getTime()
+        && new Date(l.created_at).getTime() < new Date(toISO).getTime()) contactosNuevosAyer++;
+    // Loop de seguimiento (lo que vos marcás en /owner).
+    const yaContactado = !!l.ultimo_contacto_at;
+    if (yaContactado && (l.respondio === null || l.respondio === undefined)) faltaMarcar++;
+    if (l.respondio === true && e !== 'convertido' && e !== 'descartado') contestaron++;
+    if (yaContactado && l.respondio === false && l.seguir_desde
+        && new Date(l.seguir_desde).getTime() <= now) paraSeguirHoy++;
+  }
+
+  return {
+    activos, pagos, enPrueba, nuevosAyer, mrr, pruebasPorVencer,
+    pipeline, contactosNuevosAyer, faltaMarcar, contestaron, paraSeguirHoy,
+  };
+}
+
 export default async function handler(req, res) {
   if (req.headers.authorization !== 'Bearer ' + CRON_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -112,6 +187,9 @@ export default async function handler(req, res) {
   const { from, to } = rangoAyerUruguay();
   const fromISO = from.toISOString();
   const toISO = to.toISOString();
+
+  // 0) Foto de Pazque como empresa (clientes, MRR, pipeline, pendientes).
+  const pz = await fotoPazque(fromISO, toISO);
 
   // 1) Salud del sitio (lo primero que querés saber a la mañana).
   const salud = await chequearSalud();
@@ -170,6 +248,44 @@ export default async function handler(req, res) {
     weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Montevideo',
   });
 
+  // --- Bloque "Pazque, la empresa" (tu foto como dueño) ---
+  const nuevosTxt = pz.nuevosAyer > 0
+    ? ` <span style="color:#059669;font-weight:700">+${pz.nuevosAyer} ayer</span>` : '';
+  const vencenTxt = pz.pruebasPorVencer.length
+    ? pz.pruebasPorVencer.map(p => `${esc(p.id)} (vence en ${p.dias}d)`).join(', ')
+    : null;
+
+  const pipeTxt = [
+    pz.pipeline.nuevo ? `${pz.pipeline.nuevo} nuevos` : null,
+    pz.pipeline.contactado ? `${pz.pipeline.contactado} contactados` : null,
+    pz.pipeline.demo ? `${pz.pipeline.demo} en demo` : null,
+    pz.pipeline.convertido ? `${pz.pipeline.convertido} convertidos` : null,
+  ].filter(Boolean).join(' · ') || 'sin leads todavía';
+
+  const pendientes = [
+    pz.contestaron ? `💬 <b>${pz.contestaron}</b> te contestaron → seguí la charla` : null,
+    pz.paraSeguirHoy ? `🔁 <b>${pz.paraSeguirHoy}</b> para seguir hoy` : null,
+    pz.faltaMarcar ? `⏳ <b>${pz.faltaMarcar}</b> esperan que marques si contestaron` : null,
+  ].filter(Boolean);
+
+  const pazqueBloque = `
+    <div style="background:#faf9f7;border:1px solid #f0ede8;border-radius:12px;padding:16px 18px;margin-bottom:24px">
+      <p style="font-size:11px;color:#9a9a98;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">Pazque · la plataforma</p>
+      <div style="font-size:13px;color:#1a1a18;line-height:1.9">
+        👥 <b>${pz.activos}</b> cliente${pz.activos === 1 ? '' : 's'} activo${pz.activos === 1 ? '' : 's'}${nuevosTxt}
+        <span style="color:#6a6a68"> · ${pz.pagos} pago${pz.pagos === 1 ? '' : 's'} · ${pz.enPrueba} en prueba</span><br/>
+        💵 <b style="color:#059669">${money(pz.mrr)}</b> <span style="color:#6a6a68">MRR estimado (USD/mes)</span><br/>
+        ${vencenTxt ? `⏰ <span style="color:#b45309">Pruebas por vencer: ${esc(vencenTxt)}</span><br/>` : ''}
+        🎯 <span style="color:#6a6a68">Pipeline:</span> ${pipeTxt}${pz.contactosNuevosAyer ? ` <span style="color:#059669">(+${pz.contactosNuevosAyer} ayer)</span>` : ''}
+      </div>
+      ${pendientes.length ? `
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0ede8;font-size:12px;color:#1a1a18;line-height:1.9">
+          <span style="color:#9a9a98;text-transform:uppercase;font-size:10px;letter-spacing:.5px;font-weight:700">Pendientes tuyos (prospección)</span><br/>
+          ${pendientes.join('<br/>')}
+          <div style="margin-top:8px"><a href="${SITE}/owner" style="color:#059669;font-weight:600;text-decoration:none">Abrir /owner →</a></div>
+        </div>` : ''}
+    </div>`;
+
   const saludBadge = salud.ok
     ? `<span style="background:#ecfdf5;color:#059669;font-weight:700;font-size:12px;padding:4px 12px;border-radius:20px">🟢 TODO OPERATIVO</span>`
     : `<span style="background:#fef2f2;color:#b91c1c;font-weight:700;font-size:12px;padding:4px 12px;border-radius:20px">🔴 HAY UN PROBLEMA</span>`;
@@ -209,6 +325,8 @@ export default async function handler(req, res) {
       <h1 style="font-size:20px;font-weight:800;margin:0 0 2px">Buen día, Federico ☕</h1>
       <p style="font-size:13px;color:#6a6a68;margin:0 0 18px;text-transform:capitalize">${esc(fechaAyer)}</p>
 
+      ${pazqueBloque}
+
       <div style="margin-bottom:22px">
         ${saludBadge}
         <div style="margin-top:10px">${saludRows}</div>
@@ -242,9 +360,9 @@ export default async function handler(req, res) {
       </p>
     </div>`;
 
-  const subject = salud.ok
-    ? `☀️ Parte diario · ${totalPedidos} pedido${totalPedidos === 1 ? '' : 's'} · ${money(totalMonto)}`
-    : `🔴 Parte diario · algo está caído`;
+  const subject = !salud.ok
+    ? `🔴 Parte diario · algo está caído`
+    : `☀️ Parte diario · ${pz.activos} cliente${pz.activos === 1 ? '' : 's'} · ${money(pz.mrr)} MRR · ${totalPedidos} pedido${totalPedidos === 1 ? '' : 's'}`;
 
   try {
     await sendEmail({ to: TO_EMAIL, subject, html });
@@ -257,6 +375,7 @@ export default async function handler(req, res) {
     ok: true,
     salud: salud.ok,
     orgs: orgs.size,
+    pazque: { activos: pz.activos, pagos: pz.pagos, enPrueba: pz.enPrueba, mrr: pz.mrr },
     totalPedidos,
     totalMonto,
     demos: demos.length,
