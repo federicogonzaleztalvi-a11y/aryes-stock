@@ -61,8 +61,10 @@ function buildEmail(fin, brief) {
     <table style="width:100%;border-collapse:separate;border-spacing:8px;margin:0 -8px 8px">
       <tr>
         ${kpi('MRR cobrado', usd(ing.mrr_usd), ing.mrr_usd === 0 ? 'nadie paga aún' : `${c.pagas} pagas`, true)}
-        ${kpi('Burn mensual', usd(cost.burn_mensual_usd), `net burn ${usd(k.net_burn_mensual_usd)}`)}
-        ${kpi('Runway', k.runway_meses != null ? k.runway_meses + ' meses' : 'sin medir', k.caja_usd != null ? 'caja ' + usd(k.caja_usd) : 'falta ingresar caja')}
+        ${kpi('Burn mensual', usd(cost.burn_mensual_usd), `de bolsillo ${usd(k.net_burn_mensual_usd)}`)}
+        ${fin.financiamiento?.runway_aplica
+          ? kpi('Runway', k.runway_meses != null ? k.runway_meses + ' meses' : 'sin medir', k.caja_usd != null ? 'caja ' + usd(k.caja_usd) : 'falta ingresar caja')
+          : kpi('Financiamiento', 'de bolsillo', 'tarjeta · sin runway tradicional')}
       </tr>
       <tr>
         ${kpi('Break-even', (k.break_even_orgs ?? '—') + ' orgs', `a USD ${ing.precio_lista_usd}/mes`)}

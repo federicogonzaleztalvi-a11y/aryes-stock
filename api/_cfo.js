@@ -47,6 +47,11 @@ const AI_FLOOR   = Number(process.env.PAZQUE_AI_COST_FLOOR_USD ?? 10);
 // Caja disponible (opcional). Sin esto no se puede calcular runway honestamente.
 const CASH_USD   = process.env.PAZQUE_CASH_USD != null && process.env.PAZQUE_CASH_USD !== ''
   ? Number(process.env.PAZQUE_CASH_USD) : null;
+// Modo de financiamiento. Federico bootstrappea de bolsillo con tarjeta (sin caja
+// asignada) → el "runway" tradicional NO aplica; el límite es el costo mensual de
+// bolsillo sostenible, no meses de caja. Default: 'caja' si cargó caja, si no bootstrap.
+const FUNDING    = (process.env.PAZQUE_FUNDING || (CASH_USD != null ? 'caja' : 'bootstrap_tarjeta')).toLowerCase();
+const IS_BOOTSTRAP = FUNDING !== 'caja';
 // Take-rate hipotético para dimensionar la opción de monetización por GMV (%).
 const TAKE_RATE  = Number(process.env.PAZQUE_TAKE_RATE_PCT ?? 1.5);
 // Orgs internas/demo a excluir del ingreso real (config, no hardcode en la lógica).
@@ -56,7 +61,8 @@ const INTERNAL   = (process.env.PAZQUE_INTERNAL_ORGS || 'aryes-ltda')
 const BIZ = `Pazque: SaaS B2B multi-tenant para distribuidoras mayoristas (HORECA, food, cosmética) en LATAM.
 Modelo tipo Shopify (white-label por-org); precio de lista USD ${PRICE_USD}/mes por org. Lo construye Federico, fundador SOLO y NO-técnico (su tiempo es el recurso más escaso; no cobra sueldo → el P&L no tiene costo laboral, pero su tiempo SÍ es un costo real no-monetario).
 Etapa: pre-ingreso. Cliente ancla: Eric, distribuidora en Uruguay (depósito grande, 400+ compradores), hoy GRATIS como design-partner (free_forever). aryes-ltda es la org demo interna de Federico, no cobra.
-Monetización futura en 3 baldes: (1) suscripción (hoy), (2) take-rate sobre el GMV que pasa por la plataforma (riesgo cero, retener en la fuente), (3) financiamiento. El GMV de hoy dimensiona el balde 2.`;
+Monetización futura en 3 baldes: (1) suscripción (hoy), (2) take-rate sobre el GMV que pasa por la plataforma (riesgo cero, retener en la fuente), (3) financiamiento. El GMV de hoy dimensiona el balde 2.
+FINANCIAMIENTO: Federico BOOTSTRAPPEA — paga la infra de su BOLSILLO con tarjeta de crédito, sin presupuesto asignado ni caja en banco para Pazque. Por eso NO hay "runway" tradicional (meses de caja) y NO le pidas que "cargue la caja": no existe. El número a cuidar es el COSTO MENSUAL DE BOLSILLO (que sea sostenible a nivel personal) y, sobre todo, VALIDAR INGRESO antes de que ese costo escale al sumar clientes. El riesgo real en esta etapa es tiempo del fundador + falta de validación de que alguien paga, NO quedarse sin caja.`;
 
 function round(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
@@ -173,11 +179,19 @@ export async function gatherFinancials(now = Date.now()) {
       ia_supuesto: `max(piso USD ${AI_FLOOR}, ${agentRuns.length} corridas × USD ${AI_PER_RUN})`,
       burn_mensual_usd: burn,
     },
+    financiamiento: {
+      modo: IS_BOOTSTRAP ? 'de bolsillo (tarjeta de crédito), sin presupuesto asignado' : 'caja asignada',
+      costo_bolsillo_mensual_usd: netBurnMensual,   // lo que sale del bolsillo hoy (burn − ingreso)
+      runway_aplica: !IS_BOOTSTRAP,
+      nota: IS_BOOTSTRAP
+        ? 'Bootstrap: no hay runway tradicional. El límite es que el costo mensual de bolsillo sea sostenible y validar ingreso antes de que escale.'
+        : 'Runway = caja / burn.',
+    },
     kpis: {
       net_burn_mensual_usd: netBurnMensual,
       break_even_orgs: breakEvenOrgs,
       gross_margin_pct: grossMarginPct,
-      runway_meses: runwayMeses,
+      runway_meses: IS_BOOTSTRAP ? null : runwayMeses,
       caja_usd: CASH_USD,
       costo_por_cuenta_activa_usd: round(burn / Math.max(1, pagas.length + free.length)),
     },
@@ -185,7 +199,9 @@ export async function gatherFinancials(now = Date.now()) {
       ingreso: 'Solo cuenta como ingreso la org con cobro vía Stripe/MercadoPago. Design-partners y demo = USD 0.',
       costos_fijos: 'Valores por defecto de infra; ajustables por env (PAZQUE_COST_*).',
       ia: 'Estimación por nº de corridas de agentes en pazque_agent_log; no es el gasto exacto de la API.',
-      runway: CASH_USD == null ? 'SIN CALCULAR: falta ingresar la caja (env PAZQUE_CASH_USD).' : 'caja / burn.',
+      runway: IS_BOOTSTRAP
+        ? 'NO APLICA: bootstrap de bolsillo con tarjeta, sin caja. El número a cuidar es el costo mensual de bolsillo.'
+        : (CASH_USD == null ? 'SIN CALCULAR: falta ingresar la caja (env PAZQUE_CASH_USD).' : 'caja / burn.'),
     },
   };
 }
@@ -233,7 +249,7 @@ Español rioplatense (voseo), directo, de igual a igual. Devolvé SOLO un JSON c
   "accountability": "sobre la prioridad financiera del mes pasado: ¿se movió según los números? '' si no hay previa",
   "pyl": [ { "linea": "ej. Ingreso recurrente (MRR)", "monto_usd": "0", "nota": "media línea honesta" } ],
   "unit_economics": { "lectura": "2-4 frases: margen, costo de servir, break-even. Qué falta medir (CAC/LTV/churn) y por qué todavía no aplica o sí", "break_even": "qué hace falta para cubrir el burn en una línea" },
-  "runway": { "estado": "sano | ajustado | sin_medir", "meses": "nº o 'sin medir'", "lectura": "qué significa y qué hacer" },
+  "runway": { "estado": "sano | ajustado | sin_medir | no_aplica_bootstrap", "meses": "nº, 'sin medir', o 'no aplica' si es bootstrap de bolsillo", "lectura": "si es bootstrap: NO pidas cargar caja; hablá del costo mensual de bolsillo y su sostenibilidad. Si hay caja: qué significa y qué hacer" },
   "escenarios": [ { "nombre": "Base | Optimista | Pesimista", "supuestos": "...", "mrr_usd": "...", "runway": "...", "lectura": "..." } ],
   "la_movida_financiera": { "que": "la ÚNICA movida financiera de este mes", "por_que": "por qué ESTA", "impacto": "qué cambia en los números si se hace" },
   "banderas_rojas": [ "riesgo financiero concreto con el dato que lo dispara" ],
