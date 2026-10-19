@@ -633,6 +633,21 @@ Reglas:
   }
 }
 
+// Munición de cierre: lo que Pazque hace MÁS ALLÁ del portal de pedidos. El
+// opener (toque 1) va angosto a propósito — un solo dolor, el más legible (el
+// caos de pedidos por WhatsApp). Pero del toque 2 en adelante, y cuando el
+// prospecto contesta, abrimos el abanico: Pazque no es un e-commerce, es el
+// sistema operativo comercial de la distribuidora. Esta es la lista de la que
+// el modelo puede ELEGIR UN ángulo por mensaje (nunca enumerarlos todos: eso es
+// un folleto). Solo hechos reales del producto, sin inventar.
+const PAZQUE_STACK = `Pazque es MÁS que el portal de pedidos — es el sistema operativo comercial de la distribuidora. Además de que el cliente pide solo, cubre:
+- Stock / inventario: control de existencias en tiempo real, con depósito y ubicaciones de bodega (el pedido descuenta stock solo; sabés qué tenés y qué falta).
+- Facturación: pasaje a factura del pedido (factura electrónica), sin recargar datos a mano.
+- Conectores / integraciones: se conecta con el ERP o el sistema de facturación que ya usa (ej. Saico/Mercado), así no reemplaza nada — se suma.
+- Listas de precio por cliente: cada cliente ve SUS precios y descuentos.
+- Reparto: seguimiento de la entrega para el cliente, menos llamados de "¿dónde está mi pedido?".
+Elegí UN solo ángulo por mensaje, el que más le pegue a ESTE prospecto según su rubro y tamaño. Nunca los enumeres todos.`;
+
 // ── Punto 1: seguimiento redactado (la plata está en el follow-up) ──────────
 // La mayoría de las respuestas llegan del toque 2 al 5, no del primero. Esta
 // función redacta el PRÓXIMO toque usando el número de toque y el mensaje
@@ -659,7 +674,9 @@ export async function draftFollowUp(lead) {
   // La guía cambia según el toque: cada uno prueba un ángulo nuevo y más corto.
   let guia;
   if (toque <= 2) {
-    guia = 'Es el SEGUNDO toque. Retomá cordial, SIN reclamar que no contestó. Sumá UN ángulo nuevo de valor que no usaste en el primero (ej: ahorro de tiempo del equipo, menos errores de pedido, que el cliente pide fuera de hora). Cerrá con una pregunta distinta a la del primer mensaje.';
+    guia = `Es el SEGUNDO toque. Retomá cordial, SIN reclamar que no contestó. Sumá UN ángulo nuevo de valor que NO usaste en el primero. El primer mensaje ya pegó por el lado del portal de pedidos, así que acá conviene mostrar que Pazque es MÁS que eso: elegí un beneficio del stack (stock/inventario, depósito, facturación, conectores con su ERP, listas de precio o reparto) que le pegue a este prospecto. Cerrá con una pregunta distinta a la del primer mensaje.
+
+${PAZQUE_STACK}`;
   } else if (toque === 3) {
     guia = `Es el TERCER toque. Más corto todavía (1-2 líneas). Ofrecé algo concreto y de bajo compromiso: que lo pruebe él mismo gratis. OJO: es auto-servicio, Pazque NO le arma el portal — lo crea él solo en minutos. Invitalo a entrar y probarlo con el link de auto-registro que te paso (campo link_de_registro) — pegalo TAL CUAL, sin acortar ni cambiar. Ej: "te dejo el acceso para que lo pruebes gratis, se arma en minutos: <link>". Una sola invitación directa. PROHIBIDO sugerir que vos le armás el catálogo o le cargás los productos.`;
   } else {
@@ -710,6 +727,9 @@ export async function replyDraft(lead, prospectoDijo) {
   };
 
   const system = `Sos Federico, fundador de Pazque (SaaS B2B: un portal donde los clientes de una distribuidora hacen los pedidos solos, en vez de recibirlos por WhatsApp uno por uno; catálogo con fotos y precios; toma de pedidos por voz/foto). Un prospecto te RESPONDIÓ por WhatsApp. Te paso textual lo que dijo. Redactá tu contrarréplica.
+
+${PAZQUE_STACK}
+Usá esto para responder con precisión: si el prospecto pregunta por stock, facturación, su ERP o el depósito, ya sabés que Pazque lo cubre — respondé con ese ángulo concreto, no te quedes solo en "el portal de pedidos".
 
 OBJETIVO: que la distribuidora entre SOLA a Pazque y arranque la prueba gratis de 14 días. Es AUTO-SERVICIO: Pazque NO le arma el portal ni le carga los productos — lo crea él mismo en minutos (por eso es fácil, ese es el gancho). NUNCA prometas que vos le vas a armar el catálogo o subir sus fotos. Cuando el prospecto muestra interés, pide ver algo, pide info o pregunta cómo seguir, invitalo a entrar y probarlo él mismo con el link de auto-registro que te paso (campo link_de_registro): pegalo TAL CUAL, sin acortar ni cambiar. Ej: "te dejo el acceso para que lo pruebes gratis, se arma en minutos: <link>". Si el prospecto todavía está frío o escéptico, NO tires el link de una: primero destrabá la objeción y recién ahí ofrecelo.
 
