@@ -51,6 +51,9 @@
     },
     "api/cron-parte-diario.js": {
       "maxDuration": 60
+    },
+    "api/cron-guardian.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -149,6 +152,9 @@
   }, {
     "path": "/api/cron-parte-diario",
     "schedule": "0 10 * * *"
+  }, {
+    "path": "/api/cron-guardian",
+    "schedule": "0 */3 * * *"
   }],
   "version": 2
 }
