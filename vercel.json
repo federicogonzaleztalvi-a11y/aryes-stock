@@ -57,6 +57,9 @@
     },
     "api/cron-cfo.js": {
       "maxDuration": 120
+    },
+    "api/cron-data-guardian.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -161,6 +164,9 @@
   }, {
     "path": "/api/cron-cfo",
     "schedule": "0 12 1 * *"
+  }, {
+    "path": "/api/cron-data-guardian",
+    "schedule": "30 12 * * *"
   }],
   "version": 2
 }

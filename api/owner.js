@@ -494,7 +494,8 @@ Checklist — corregí todo lo que no cumpla, manteniendo lo que ya estaba bien:
 - CERO emojis. CERO signos de exclamación. CERO mayúsculas de énfasis.
 - Arranca presentándose seco y claro: "Hola <nombre>, soy Federico, fundador de Pazque." Si no hay nombre de contacto, un saludo neutro igual de sobrio.
 - UNA sola observación del negocio, y tiene que ser VERDADERA según el contexto. Si el mensaje afirma algo que NO está en el contexto (seguidores, sucursales, zona, qué distribuye), borralo o neutralizalo: no se inventan datos. Ante la duda, mensaje más neutro pero honesto.
-- Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de recibirlos uno por uno por WhatsApp.
+- NO AFIRMAR CÓMO OPERAN HOY: si el mensaje da por hecho cómo toman los pedidos (que "dependen del asesor", que "entran por WhatsApp uno por uno", que el cliente no puede pedir solo), eso es un SUPUESTO, no un dato — reescribilo como PREGUNTA ("¿cómo están tomando hoy los pedidos?") o como hipótesis suave ("si hoy te entran por WhatsApp..."). Nunca como afirmación sobre ellos.
+- Una frase de valor concreta: que sus clientes puedan hacer los pedidos solos desde un portal. El contraste con "pedir por WhatsApp uno por uno" va como pregunta o hipótesis, no como un hecho sobre ellos.
 - Cierra con una pregunta breve, de bajo compromiso, sin prometer duración fija (nada de "en 20 minutos").
 - Tono de fundador seguro escribiéndole a un par. Nada de relleno ("espero que estés bien"), nada de folleto, nada de adulación.
 
@@ -585,7 +586,7 @@ Reglas:
     · CERO emojis. CERO signos de exclamación. CERO MAYÚSCULAS de énfasis.
     · Se presenta seco y claro: "Hola Diego, soy Federico, fundador de Pazque."
     · Una sola observación puntual y VERDADERA del negocio de ellos, sacada de la web o del rubro (ej: "vi que distribuís bebidas a comercios en Montevideo"), como quien entiende el rubro, no como quien adula. Si NO tenés dato real del negocio (sin web y rubro genérico), no inventes una observación: hacé un mensaje más neutro pero honesto.
-    · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
+    · Una frase de valor concreta, SIN afirmar cómo trabajan hoy: que sus clientes puedan hacer los pedidos solos desde un portal. Si querés contrastar con "pedir por WhatsApp uno por uno", planteralo como PREGUNTA o hipótesis ("si hoy te entran por WhatsApp..."), nunca como un hecho sobre ellos.
     · Cierre FUERTE y con intención, nunca tibio ni pidiendo permiso. PROHIBIDO cerrar con fórmulas blandas tipo "¿tiene sentido que lo vean?", "¿te sirve que te muestre?" o "¿lo querrías probar?" — suenan a que vos mismo dudás de que valga la pena. El cierre tiene que buscar activamente al que decide. Elegí UNA de estas dos formas, la que mejor caiga:
         (a) Pedí el contacto del que decide con seguridad, asumiendo que vale la pena: "¿Con quién del equipo puedo hablar para mostrárselo, el dueño o el encargado comercial?" o "¿Sos vos quien ve estos temas o me pasás con el responsable?".
         (b) Abrí conversación con una pregunta punzante sobre SU operación concreta (usando el dato que tengas): "¿Cómo están tomando hoy los pedidos de esos {cantidad} clientes?".
@@ -594,6 +595,7 @@ Reglas:
     ${VARIANTS[variante]}
 - Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
 - COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.
+- HECHOS vs. CÓMO OPERAN HOY (clave): lo que ves en "web" son HECHOS (años, premios, flota, zonas, seguidores, líneas de producto) y los podés afirmar. Pero CÓMO toman hoy los pedidos —si sus clientes dependen del asesor, si los pedidos entran por WhatsApp uno por uno, si ya pide solo el cliente, si usan un ERP/call center— NO lo sabés: casi nunca está en los datos, y una distribuidora con flota/ERP/asesores puede tener un proceso que no imaginás. NUNCA lo afirmes como si lo supieras. En el "angulo" planteralo como hipótesis EXPLÍCITA ("probablemente", "en operaciones así suele pasar que", "si hoy..."). En el "mensaje_wa" NO lo afirmes: convertilo en PREGUNTA sobre su operación ("¿cómo están tomando hoy los pedidos entre visita y visita?"). Afirmar cómo trabajan y errarle te quema la credibilidad en la primera línea; preguntarlo abre la conversación.
 
 ${ALIADO_Y_PASE}`
     + (await fetchLearningBlock());
