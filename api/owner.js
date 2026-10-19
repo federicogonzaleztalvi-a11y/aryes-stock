@@ -590,7 +590,9 @@ Reglas:
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
     ${VARIANTS[variante]}
 - Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
-- COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.`
+- COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.
+
+${ALIADO_Y_PASE}`
     + (await fetchLearningBlock());
 
   try {
@@ -648,6 +650,19 @@ const PAZQUE_STACK = `Pazque es MÁS que el portal de pedidos — es el sistema 
 - Reparto: seguimiento de la entrega para el cliente, menos llamados de "¿dónde está mi pedido?".
 Elegí UN solo ángulo por mensaje, el que más le pegue a ESTE prospecto según su rubro y tamaño. Nunca los enumeres todos.`;
 
+// A QUIÉN le estás escribiendo en frío. El WhatsApp público de una distribuidora
+// casi nunca es el celular del dueño: suele ser la línea general o de pedidos —
+// la atiende "el que toma pedidos". Eso trae dos riesgos que esta guía neutraliza:
+//   (1) No es quien decide. Pazque es una decisión de dueño (cambia cómo factura,
+//       controla stock y le compran los clientes). El que atiende es el PUENTE al
+//       que decide, no el target.
+//   (2) El que toma pedidos puede sentir que Pazque lo reemplaza y enterrar el
+//       tema antes de que llegue al dueño. Hay que posicionarlo como ALIADO: le
+//       saca lo tedioso, no el puesto.
+const ALIADO_Y_PASE = `A QUIÉN le escribís (clave, casi siempre aplica en frío): el WhatsApp de una distribuidora suele ser la línea general o de pedidos, no el celular del dueño. Puede contestarte quien TOMA los pedidos, no quien decide. Dos cuidados:
+- ALIADO, NO REEMPLAZO: nunca plantees Pazque como que "automatiza", "reemplaza" o "saca de encima" a la persona que toma pedidos — eso la pone en contra y entierra el tema. Pazque le saca la parte TEDIOSA (transcribir pedidos de WhatsApp a mano, corregir errores, perseguir faltantes) y la deja hacer lo que una máquina no hace: vender, recomendar, cuidar la relación.
+- PUENTE AL QUE DECIDE: escribí el mensaje de modo que FUNCIONE igual si lo reenvían al dueño (claro sobre qué es Pazque y por qué le conviene al negocio). Si pinta que es una línea general, no pitchees de una: preguntá con quién podés hablar sobre cómo toman hoy los pedidos, o pedí amablemente que te pasen con el dueño/encargado. Sin presión.`;
+
 // ── Punto 1: seguimiento redactado (la plata está en el follow-up) ──────────
 // La mayoría de las respuestas llegan del toque 2 al 5, no del primero. Esta
 // función redacta el PRÓXIMO toque usando el número de toque y el mensaje
@@ -686,6 +701,8 @@ ${PAZQUE_STACK}`;
   const system = `Sos Federico, fundador de Pazque (SaaS B2B: un portal donde los clientes de una distribuidora hacen los pedidos solos, en vez de por WhatsApp uno por uno). Ya le escribiste a esta distribuidora y no te respondió todavía. Vas a redactar el PRÓXIMO mensaje de seguimiento por WhatsApp.
 
 ${guia}
+
+${ALIADO_Y_PASE}
 
 Reglas duras (iguales a tu estilo de siempre):
 - Español rioplatense, voseo.
@@ -738,6 +755,7 @@ Manejo de objeciones típicas (adaptá, no recites):
 - "No tengo tiempo": por eso mismo; el portal justamente saca trabajo manual de tomar pedidos. Ofrecé que lo pruebe él mismo gratis con el link, se arma en minutos.
 - "¿Cuánto sale?": no te escapes pero no tires número a ciegas; decí que lo puede probar gratis 14 días y que el precio depende del tamaño.
 - "Mandame info": mejor algo vivo que un PDF; pasale el link para que entre y lo pruebe él mismo gratis.
+- Suena a que te contesta QUIEN TOMA LOS PEDIDOS (no el dueño) y se siente amenazado ("yo ya los atiendo", "para eso estoy yo", tono a la defensiva): no lo confrontes. Dejá claro que Pazque NO lo reemplaza — le saca lo tedioso (cargar pedidos a mano, corregir errores) y lo deja vender y cuidar la relación. Si es quien decide, seguí; si no, pedí amablemente que te pase con el dueño/encargado para mostrarles cómo les ahorra trabajo a los dos.
 - Si muestra interés real: no sobrevendas, pasale el link de auto-registro como próximo paso concreto.
 
 Reglas duras:
