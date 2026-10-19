@@ -41,11 +41,41 @@ function readSession() {
   } catch { return null; }
 }
 
+// Recuperación dura para cuando la app quedó rota por un chunk viejo tras un
+// deploy. El error NO vive en localStorage (lo que limpiaba el botón antes era
+// inútil): vive en el Service Worker y en el Cache Storage del navegador, que
+// siguen sirviendo un index.html muerto. Des-registramos el SW, borramos todas
+// las cachés y recargamos con cache-bust para saltar la caché HTTP del navegador.
+async function hardReset() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister().catch(() => {})));
+    }
+    if (window.caches?.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k).catch(() => {})));
+    }
+  } catch {}
+  try { localStorage.removeItem('pazque_chunk_reload'); sessionStorage.removeItem('pazque_chunk_reload'); } catch {}
+  // Cache-bust: un query nuevo fuerza al navegador a traer el index fresco.
+  const u = new URL(window.location.href);
+  u.searchParams.set('_r', Date.now().toString(36));
+  window.location.replace(u.toString());
+}
+
 // ── Root Error Boundary ───────────────────────────────────────────
 class RootErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e, info: null }; }
-  componentDidCatch(e, info) { console.error('[ARYES ROOT ERROR]', e, info); this.setState({ info }); }
+  componentDidCatch(e, info) {
+    console.error('[ARYES ROOT ERROR]', e, info);
+    // Reportar a Sentry: un crash del boundary es un usuario real con la app rota
+    // en su navegador (ej. chunk viejo tras un deploy). Sin esto, la Torre de
+    // Control es ciega a los errores de cliente — sólo los veíamos de casualidad.
+    try { Sentry.captureException(e, { tags: { boundary: 'root' }, extra: { componentStack: info?.componentStack } }); } catch {}
+    this.setState({ info });
+  }
   render() {
     if (this.state.error) {
       return (
@@ -59,7 +89,7 @@ class RootErrorBoundary extends React.Component {
             {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
           </pre>
           <button
-            onClick={() => { localStorage.clear(); window.location.reload(); }}
+            onClick={() => hardReset()}
             style={{ marginTop:20, background:'#dc2626', color:'#fff', border:'none',
               padding:'10px 20px', borderRadius:6, cursor:'pointer', fontSize:14 }}>
             Limpiar cache y recargar

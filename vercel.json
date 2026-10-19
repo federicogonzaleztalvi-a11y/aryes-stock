@@ -48,6 +48,9 @@
     },
     "api/cron-director.js": {
       "maxDuration": 120
+    },
+    "api/cron-parte-diario.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -143,6 +146,9 @@
   }, {
     "path": "/api/cron-director",
     "schedule": "0 12 * * 1"
+  }, {
+    "path": "/api/cron-parte-diario",
+    "schedule": "0 10 * * *"
   }],
   "version": 2
 }
