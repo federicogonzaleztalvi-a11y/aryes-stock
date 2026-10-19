@@ -586,7 +586,10 @@ Reglas:
     · Se presenta seco y claro: "Hola Diego, soy Federico, fundador de Pazque."
     · Una sola observación puntual y VERDADERA del negocio de ellos, sacada de la web o del rubro (ej: "vi que distribuís bebidas a comercios en Montevideo"), como quien entiende el rubro, no como quien adula. Si NO tenés dato real del negocio (sin web y rubro genérico), no inventes una observación: hacé un mensaje más neutro pero honesto.
     · Una frase de valor concreta: que sus clientes hagan los pedidos solos desde un portal, en vez de que su equipo los reciba uno por uno por WhatsApp.
-    · Cierre con una pregunta breve y de bajo compromiso, SIN prometer una duración fija (nada de "en 20 minutos") y SIN prometer que vos le armás nada (es auto-servicio: lo prueba él). Ej: "¿Te sirve que te muestre cómo funciona?" o "¿lo querrías probar?".
+    · Cierre FUERTE y con intención, nunca tibio ni pidiendo permiso. PROHIBIDO cerrar con fórmulas blandas tipo "¿tiene sentido que lo vean?", "¿te sirve que te muestre?" o "¿lo querrías probar?" — suenan a que vos mismo dudás de que valga la pena. El cierre tiene que buscar activamente al que decide. Elegí UNA de estas dos formas, la que mejor caiga:
+        (a) Pedí el contacto del que decide con seguridad, asumiendo que vale la pena: "¿Con quién del equipo puedo hablar para mostrárselo, el dueño o el encargado comercial?" o "¿Sos vos quien ve estos temas o me pasás con el responsable?".
+        (b) Abrí conversación con una pregunta punzante sobre SU operación concreta (usando el dato que tengas): "¿Cómo están tomando hoy los pedidos de esos {cantidad} clientes?".
+      En ambos casos: SIN prometer duración fija (nada de "en 20 minutos") y SIN prometer que vos le armás nada (es auto-servicio: lo prueba él).
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
     ${VARIANTS[variante]}
 - Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
