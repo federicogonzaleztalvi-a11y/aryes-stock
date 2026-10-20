@@ -2852,17 +2852,31 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                 Te vamos a avisar cuando cambie el estado
               </div>
             ) : (
-              <button onClick={activarAvisos} style={{
-                width: '100%', padding: '12px 0', background: '#fff', color: G,
-                border: `1.5px solid ${G}`, borderRadius: 50, fontSize: 13.5, fontWeight: 600,
-                cursor: 'pointer', fontFamily: SANS, marginBottom: 14,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
+              /* Pre-prompt estilo Amazon: tarjeta propia con botón "Permitir". Al
+                 tocarlo recién aparece el cartel del sistema (ese sí lo controla el
+                 iPhone/Android, muestra "Permitir" en español). El pre-prompt existe
+                 porque el prompt del sistema se puede pedir UNA sola vez: lo gatillamos
+                 sólo cuando el comprador muestra interés. */
+              <div style={{ border: `1.5px solid ${G}`, borderRadius: 14, padding: '14px 16px',
+                marginBottom: 14, background: `color-mix(in srgb, ${G} 5%, #fff)`,
+                display: 'flex', alignItems: 'center', gap: 12 }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                   <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
                 </svg>
-                Avisame del estado de mi pedido
-              </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#1a1a18' }}>Seguí tu pedido</div>
+                  <div style={{ fontSize: 12, color: '#6a6a68', lineHeight: 1.45 }}>
+                    Te avisamos cuando lo confirmen y cuando llegue.
+                  </div>
+                </div>
+                <button onClick={activarAvisos} style={{
+                  flexShrink: 0, padding: '9px 18px', background: G, color: '#fff',
+                  border: 'none', borderRadius: 50, fontSize: 13.5, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: SANS }}>
+                  Permitir
+                </button>
+              </div>
             )
           )}
 
