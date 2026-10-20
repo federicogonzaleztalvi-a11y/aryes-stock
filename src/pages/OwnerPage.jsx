@@ -102,9 +102,16 @@ function tocaSeguir(l) {
 async function ownerFetch(body, token) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['x-owner-token'] = token;
-  const r = await fetch('/api/owner', { method: 'POST', headers, body: JSON.stringify(body) });
-  const data = await r.json().catch(() => ({}));
-  return { ok: r.ok, status: r.status, data };
+  try {
+    const r = await fetch('/api/owner', { method: 'POST', headers, body: JSON.stringify(body) });
+    const data = await r.json().catch(() => ({}));
+    return { ok: r.ok, status: r.status, data };
+  } catch {
+    // Corte de red / request abortado: no es un error de la app. Devolvemos un
+    // resultado controlado (ok:false, status:0) para que el que llama muestre un
+    // aviso amable y NO escale a Sentry como un crash.
+    return { ok: false, status: 0, data: { error: 'Se cortó la conexión. Revisá tu internet y probá de nuevo.' } };
+  }
 }
 
 // Marca la página como no-indexable mientras está montada (que /owner nunca
