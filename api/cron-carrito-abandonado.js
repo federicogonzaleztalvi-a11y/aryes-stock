@@ -15,7 +15,7 @@
 // cliente no tiene email, se saltea silenciosamente.
 
 import { sendEmail, templates } from './_email.js';
-import { sendWaTemplate, digits, WA_REMINDERS_ON, WA_READY } from './_whatsapp.js';
+import { sendWaTemplate, digits, WA_REMINDERS_ON, WA_READY, waWithinHours } from './_whatsapp.js';
 
 const SB_URL = process.env.SUPABASE_URL;
 const SB_SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -137,7 +137,9 @@ export default async function handler(req, res) {
       }
     } catch { /* sin ficha → no avisamos */ }
 
-    const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8;
+    // WhatsApp solo si está prendido, hay sender, el cliente tiene teléfono Y
+    // estamos en horario hábil (no de madrugada). Fuera de hora cae a email.
+    const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8 && waWithinHours();
     if (!usarWa && !email) { skipped++; continue; }   // sin canal posible
 
     const portalUrl = 'https://pazque.com/pedidos?org=' + encodeURIComponent(cart.org_id);

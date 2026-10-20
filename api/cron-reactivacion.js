@@ -28,7 +28,7 @@
 // ----------------------------------------------------------------------------
 
 import { sendEmail, templates } from './_email.js';
-import { sendWaTemplate, digits, WA_REMINDERS_ON, WA_READY } from './_whatsapp.js';
+import { sendWaTemplate, digits, WA_REMINDERS_ON, WA_READY, waWithinHours } from './_whatsapp.js';
 
 const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC      = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -162,7 +162,8 @@ export default async function handler(req, res) {
         phone = digits(cli[0]?.phone);
       } catch { /* sin ficha → sin canal */ }
 
-      const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8;
+      // WhatsApp solo en horario hábil (no de madrugada); fuera de hora cae a email.
+      const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8 && waWithinHours();
       if (!usarWa && !email) { skipped++; continue; }   // sin canal posible
 
       const dias = Math.round(diasDesdeUltimo);

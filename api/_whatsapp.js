@@ -20,6 +20,21 @@ export const WA_REMINDERS_ON = process.env.REMINDERS_WHATSAPP_ENABLED === 'true'
 // WhatsApp disponible = hay sender Pazque configurado.
 export const WA_READY = !!(WA_TOKEN && WA_PHONE_ID);
 
+// Franja horaria para el WhatsApp de recordatorios (hora Uruguay, UTC-3 fijo).
+// Fuera de la franja NO se manda WhatsApp: no le escribimos a un cliente de
+// madrugada, como hace cualquier app seria (Rappi, etc.). Solo restringe el
+// WhatsApp — el email, menos intrusivo, sigue saliendo a cualquier hora.
+// Ajustable por env; default 9:00–20:00.
+const UY_OFFSET_MS   = 3 * 60 * 60 * 1000;
+const WA_HOUR_START  = Number(process.env.WA_REMINDERS_HOUR_START ?? 9);
+const WA_HOUR_END    = Number(process.env.WA_REMINDERS_HOUR_END ?? 20);
+
+// true si AHORA es horario hábil en Uruguay para mandar un WhatsApp de recordatorio.
+export function waWithinHours(now = Date.now()) {
+  const h = new Date(now - UY_OFFSET_MS).getUTCHours();   // hora de pared uruguaya
+  return h >= WA_HOUR_START && h < WA_HOUR_END;
+}
+
 // Normaliza a solo dígitos (formato internacional que pide Meta: 59894…).
 export function digits(p) { return String(p || '').replace(/\D/g, ''); }
 
