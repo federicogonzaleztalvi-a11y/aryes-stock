@@ -332,7 +332,22 @@ async function handler(req, res) {
       body: JSON.stringify({ estado: 'confirmada', confirmado_en: now, confirmado_por: operador }),
     });
     log.info('pedido', 'b2b confirmado', { orderId, nroVenta, cliente: pedido.cliente_nombre });
-    
+
+    // Push al comprador (modelo Amazon: "tu pedido fue confirmado"). Best-effort,
+    // no bloquea ni rompe la confirmación si falla. Solo le llega si instaló el
+    // portal como app y activó notificaciones.
+    if (pedido.cliente_id) {
+      try {
+        const { pushToClient } = await import('./_push.js');
+        await pushToClient({
+          orgId: org, clientId: pedido.cliente_id,
+          title: 'Pedido confirmado ✅',
+          body: `Confirmamos tu pedido ${nroVenta}. Ya lo estamos preparando.`,
+          url: '/pedidos?org=' + encodeURIComponent(org),
+          tag: 'pedido-' + orderId,
+        });
+      } catch { /* push best-effort */ }
+    }
 
     return res.status(200).json({ ok: true, venta: {
       id: ventaId, nroVenta,

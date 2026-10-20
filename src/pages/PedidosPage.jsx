@@ -115,6 +115,14 @@ function loadSession() {
 }
 function saveSession(s) { localStorage.setItem(SK, JSON.stringify(s)); }
 
+// Convierte la VAPID public key (base64url) al Uint8Array que pide pushManager.subscribe.
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw     = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
 // Carrito persistente por cliente: se guarda en localStorage para que sobreviva
 // a un refresh / cierre de pestaña y siga ahí hasta que el cliente compre.
 // La clave incluye org + clienteId para que dos clientes en el mismo dispositivo
@@ -2167,6 +2175,9 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   const [downloading, setDownloading] = useState(false);
   const [emailOpen,   setEmailOpen]   = useState(false);
   const [emailAddr,   setEmailAddr]   = useState('');
+  // Avisos push del estado del pedido (modelo Amazon). 'idle' → ofrecer; 'ok' →
+  // ya activado; 'off' → navegador no soporta o el cliente los bloqueó.
+  const [notifState, setNotifState] = useState('idle');
   const [emailing,    setEmailing]    = useState(false);
   const [accionMsg,   setAccionMsg]   = useState('');
   const isDemo = typeof window !== 'undefined' && window.location.search.includes('demo=true');
@@ -2358,6 +2369,40 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
       else { const d = await r.json().catch(() => ({})); setErr(d.error || 'No se pudo confirmar el pedido.'); }
     } catch { setErr('Error de conexión. Intentá de nuevo.'); }
     finally { setLoading(false); }
+  };
+
+  // Activa los avisos push del estado del pedido (confirmado / entregado). Se
+  // dispara desde un botón en la pantalla de confirmación → es un gesto real del
+  // usuario, requisito para que el navegador muestre el prompt de permiso de forma
+  // confiable (Safari/iOS son estrictos con esto). Best-effort: si el navegador no
+  // soporta push o el cliente lo bloquea, no rompe nada, solo cambia el cartel.
+  const activarAvisos = async () => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        setNotifState('off'); return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { setNotifState('off'); return; }
+
+      const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+
+      const keyRes = await fetch(`${API}/api/push?action=vapid-key`);
+      if (!keyRes.ok) { setNotifState('off'); return; }
+      const { publicKey } = await keyRes.json();
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      const saveRes = await fetch(`${API}/api/push?action=subscribe-client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body: JSON.stringify({ subscription: sub.toJSON() }),
+      });
+      setNotifState(saveRes.ok ? 'ok' : 'off');
+    } catch { setNotifState('off'); }
   };
 
   // Descarga el PDF de la orden ANTES de confirmar (desde la vista previa).
@@ -2788,6 +2833,37 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
               </svg>
               Seguir mi pedido
             </button>
+          )}
+
+          {/* Avisos push (modelo Amazon "turn on notifications"): el comprador que
+              instaló el portal como app recibe en el cel el estado de SU pedido
+              (confirmado / entregado). Opt-in explícito desde un botón (gesto del
+              usuario, requisito para el prompt de permiso). Mismo gate que el
+              seguimiento: sólo si la org avanza estados; si no, no hay nada que
+              avisar. Oculto en demo y cuando el navegador no lo soporta. */}
+          {lastOrderId && !isDemo && brandCfg?.seguimientoPedidos && notifState !== 'off' && (
+            notifState === 'ok' ? (
+              <div style={{ textAlign: 'center', fontSize: 12.5, color: G, fontWeight: 600,
+                marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+                </svg>
+                Te vamos a avisar cuando cambie el estado
+              </div>
+            ) : (
+              <button onClick={activarAvisos} style={{
+                width: '100%', padding: '12px 0', background: '#fff', color: G,
+                border: `1.5px solid ${G}`, borderRadius: 50, fontSize: 13.5, fontWeight: 600,
+                cursor: 'pointer', fontFamily: SANS, marginBottom: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+                </svg>
+                Avisame del estado de mi pedido
+              </button>
+            )
           )}
 
           {/* Descargar PDF / Enviar por mail — sólo con pedido real (id devuelto) */}

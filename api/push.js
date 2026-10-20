@@ -36,6 +36,54 @@ export default async function handler(req, res) {
 
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
 
+  // POST /api/push?action=subscribe-client — suscripción del COMPRADOR del portal
+  // (modelo Amazon: avisos del estado de su pedido). A diferencia del admin, el
+  // comprador NO está en public.users ni usa Supabase Auth: se autentica con el
+  // token de portal_sessions (mismo criterio que track.js / cart.js). org_id y
+  // client_id se DERIVAN del servidor desde la sesión, nunca del body.
+  if (action === 'subscribe-client' && req.method === 'POST') {
+    const { subscription } = req.body || {};
+    if (!subscription?.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
+
+    const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
+    if (!token) return res.status(401).json({ error: 'No autenticado' });
+
+    let orgId = null, clientId = null;
+    try {
+      const sr = await fetch(
+        `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(token)}` +
+        `&expires_at=gte.${new Date().toISOString()}&revoked=eq.false&select=org_id,cliente_id&limit=1`,
+        { headers: { apikey: SB_SVC, Authorization: `Bearer ${SB_SVC}`, Accept: 'application/json' } }
+      );
+      if (sr.ok) { const rows = await sr.json(); if (rows?.[0]) { orgId = rows[0].org_id; clientId = rows[0].cliente_id || null; } }
+    } catch { /* sesión inválida → 401 abajo */ }
+    if (!orgId || !clientId) return res.status(401).json({ error: 'Sesión inválida' });
+
+    const r = await fetch(`${SB_URL}/rest/v1/push_subscriptions`, {
+      method:  'POST',
+      headers: {
+        apikey: SB_SVC, Authorization: `Bearer ${SB_SVC}`,
+        'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates',
+      },
+      body: JSON.stringify({
+        id:         subscription.endpoint.slice(-40),
+        org_id:     orgId,
+        role:       'client',
+        client_id:  clientId,
+        endpoint:   subscription.endpoint,
+        p256dh:     subscription.keys?.p256dh,
+        auth:       subscription.keys?.auth,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (!r.ok && r.status !== 409) {
+      log.error('push', 'client subscribe failed', { status: r.status });
+      return res.status(502).json({ error: 'Failed to save subscription' });
+    }
+    log.info('push', 'client subscribed', { orgId });
+    return res.status(200).json({ ok: true });
+  }
+
   // POST /api/push?action=subscribe — save push subscription from browser
   if (action === 'subscribe' && req.method === 'POST') {
     const { subscription } = req.body || {};

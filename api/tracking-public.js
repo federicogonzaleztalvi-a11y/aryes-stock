@@ -127,9 +127,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Sin campos válidos para actualizar' });
     }
 
-    // Verify ruta exists & belongs to org BEFORE patching (anti spoof)
+    // Verify ruta exists & belongs to org BEFORE patching (anti spoof).
+    // Traemos también las entregas actuales para detectar cuáles pasan a
+    // "entregado" en este PATCH y avisarle al comprador (push modelo Amazon).
     const verify = await fetch(
-      `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=id,driver_token&limit=1`,
+      `${SB_URL}/rest/v1/rutas?id=eq.${ruta}&org_id=eq.${org}&select=id,driver_token,entregas&limit=1`,
       { headers }
     );
     const verifyRows = await verify.json();
@@ -160,6 +162,31 @@ export default async function handler(req, res) {
       console.error('[tracking-public] PATCH error:', await r.text());
       return res.status(500).json({ error: 'Error al actualizar' });
     }
+
+    // Push "pedido entregado" a cada comprador cuya entrega RECIÉN pasó a
+    // entregado (antes no lo estaba). Best-effort: nunca rompe el PATCH del
+    // repartidor. Solo llega a quien instaló el portal y activó notificaciones.
+    if (Array.isArray(update.entregas)) {
+      try {
+        const antes = new Map(
+          (verifyRows[0].entregas || []).map(e => [e.clienteId, e.estado])
+        );
+        const reciénEntregadas = update.entregas.filter(
+          e => e?.clienteId && e.estado === 'entregado' && antes.get(e.clienteId) !== 'entregado'
+        );
+        if (reciénEntregadas.length) {
+          const { pushToClient } = await import('./_push.js');
+          await Promise.allSettled(reciénEntregadas.map(e => pushToClient({
+            orgId: org, clientId: e.clienteId,
+            title: 'Pedido entregado 📦',
+            body: 'Tu pedido fue entregado. ¡Gracias por tu compra!',
+            url: '/pedidos?org=' + encodeURIComponent(org),
+            tag: 'entrega-' + e.clienteId,
+          })));
+        }
+      } catch { /* push best-effort */ }
+    }
+
     return res.status(200).json({ ok: true });
   }
 
