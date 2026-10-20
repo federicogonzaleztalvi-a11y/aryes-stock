@@ -36,13 +36,11 @@ const H = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'applicat
 const DAY_MS = 24 * 60 * 60 * 1000;
 const UY_OFFSET_MS = 3 * 60 * 60 * 1000;  // Uruguay = UTC-3 (sin horario de verano)
 
-// Precios de la landing (un solo plan): USD 199/mes los primeros 3 meses de cada
-// cliente (precio de lanzamiento), luego USD 399/mes. El MRR estimado aplica 199
-// a las orgs con <90 días de vida y 399 a las más antiguas — es una estimación
-// honesta a partir de created_at, no un dato de facturación real.
-const PRECIO_LANZAMIENTO = 199;
-const PRECIO_PLENO       = 399;
-const LANZAMIENTO_DIAS   = 90;
+// MRR = plata REAL cobrada, cero estimación. El monto que efectivamente se le
+// factura a cada org vive en app_config (key=pazque_billing): un JSON
+// { org_id: USD_mensual_cobrado }. Lo setea Federico cuando un cliente pasa a
+// pago. Si una org no está en ese mapa (o vale 0), NO paga — ej: Eric es design
+// partner gratis, su MRR real es $0. Así el parte nunca infla el ingreso.
 
 function esc(v) {
   return String(v == null ? '' : v)
@@ -121,30 +119,40 @@ async function fotoPazque(fromISO, toISO) {
   const orgs = orgRes.ok ? await orgRes.json() : [];
   const reales = orgs.filter(o => o.id !== DEMO_ORG);
 
+  // Monto REAL cobrado por org (plata de verdad, no estimada). Mapa org_id → USD/mes.
+  const billRes = await fetch(
+    SB_URL + '/rest/v1/app_config?key=eq.pazque_billing&select=value&limit=1', { headers: H });
+  let billing = {};
+  if (billRes.ok) { const rows = await billRes.json(); billing = (rows[0] && rows[0].value) || {}; }
+
   const now = Date.now();
-  let activos = 0, pagos = 0, enPrueba = 0, nuevosAyer = 0, mrr = 0;
+  let activos = 0, pagos = 0, enPrueba = 0, gratis = 0, nuevosAyer = 0, mrr = 0;
   const pruebasPorVencer = [];  // {id, dias}
+  const quienPaga = [];         // {id, monto} — desglose honesto de quién paga cuánto
   for (const o of reales) {
     if (o.active === false) continue;
     activos++;
     const creada = o.created_at ? new Date(o.created_at).getTime() : null;
     if (creada && creada >= new Date(fromISO).getTime() && creada < new Date(toISO).getTime()) nuevosAyer++;
 
+    const monto = Number(billing[o.id]) || 0;   // lo que REALMENTE se le cobra a esta org
     const estado = (o.subscription_status || '').toLowerCase();
-    const pagando = estado === 'active' || (o.plan_name && o.plan_name !== 'trial' && estado !== 'trial');
-    if (pagando) {
+    if (monto > 0) {
       pagos++;
-      const diasVida = creada ? Math.floor((now - creada) / DAY_MS) : 999;
-      mrr += diasVida < LANZAMIENTO_DIAS ? PRECIO_LANZAMIENTO : PRECIO_PLENO;
+      mrr += monto;
+      quienPaga.push({ id: o.id, monto });
     } else if (estado === 'trial') {
       enPrueba++;
       if (o.trial_ends_at) {
         const dias = Math.ceil((new Date(o.trial_ends_at).getTime() - now) / DAY_MS);
         if (dias >= 0 && dias <= 7) pruebasPorVencer.push({ id: o.id, dias });
       }
+    } else {
+      gratis++;   // activa pero sin cobro real (ej: design partner como Eric)
     }
   }
   pruebasPorVencer.sort((a, b) => a.dias - b.dias);
+  quienPaga.sort((a, b) => b.monto - a.monto);
 
   // --- Pipeline del embudo (pazque_leads) ---
   const leadRes = await fetch(
@@ -171,7 +179,7 @@ async function fotoPazque(fromISO, toISO) {
   }
 
   return {
-    activos, pagos, enPrueba, nuevosAyer, mrr, pruebasPorVencer,
+    activos, pagos, enPrueba, gratis, nuevosAyer, mrr, pruebasPorVencer, quienPaga,
     pipeline, contactosNuevosAyer, faltaMarcar, contestaron, paraSeguirHoy,
   };
 }
@@ -254,6 +262,10 @@ export default async function handler(req, res) {
   const vencenTxt = pz.pruebasPorVencer.length
     ? pz.pruebasPorVencer.map(p => `${esc(p.id)} (vence en ${p.dias}d)`).join(', ')
     : null;
+  // Desglose honesto de quién paga cuánto (o la verdad: nadie todavía).
+  const cobroTxt = pz.quienPaga.length
+    ? ` <span style="color:#9a9a98">(${pz.quienPaga.map(q => esc(q.id) + ' ' + money(q.monto)).join(', ')})</span>`
+    : ` <span style="color:#9a9a98">— nadie paga todavía</span>`;
 
   const pipeTxt = [
     pz.pipeline.nuevo ? `${pz.pipeline.nuevo} nuevos` : null,
@@ -273,8 +285,8 @@ export default async function handler(req, res) {
       <p style="font-size:11px;color:#9a9a98;margin:0 0 12px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">Pazque · la plataforma</p>
       <div style="font-size:13px;color:#1a1a18;line-height:1.9">
         👥 <b>${pz.activos}</b> cliente${pz.activos === 1 ? '' : 's'} activo${pz.activos === 1 ? '' : 's'}${nuevosTxt}
-        <span style="color:#6a6a68"> · ${pz.pagos} pago${pz.pagos === 1 ? '' : 's'} · ${pz.enPrueba} en prueba</span><br/>
-        💵 <b style="color:#059669">${money(pz.mrr)}</b> <span style="color:#6a6a68">MRR estimado (USD/mes)</span><br/>
+        <span style="color:#6a6a68"> · ${pz.pagos} pagan · ${pz.enPrueba} en prueba${pz.gratis ? ` · ${pz.gratis} gratis` : ''}</span><br/>
+        💵 <b style="color:${pz.mrr > 0 ? '#059669' : '#6a6a68'}">${money(pz.mrr)}</b> <span style="color:#6a6a68">MRR cobrado (USD/mes)</span>${cobroTxt}<br/>
         ${vencenTxt ? `⏰ <span style="color:#b45309">Pruebas por vencer: ${esc(vencenTxt)}</span><br/>` : ''}
         🎯 <span style="color:#6a6a68">Pipeline:</span> ${pipeTxt}${pz.contactosNuevosAyer ? ` <span style="color:#059669">(+${pz.contactosNuevosAyer} ayer)</span>` : ''}
       </div>
