@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     SB_URL + '/rest/v1/portal_carts?reminder_stage=lt.2' +
       '&updated_at=lte.' + encodeURIComponent(olderThan) +
       '&updated_at=gte.' + encodeURIComponent(newerThan) +
-      '&select=org_id,client_id,items,updated_at,reminder_stage&limit=200',
+      '&select=org_id,client_id,items,updated_at,reminder_stage,reminded_at&limit=200',
     { headers: H }
   );
   if (!cartsRes.ok) return res.status(500).json({ error: 'carts DB error' });
@@ -88,14 +88,21 @@ export default async function handler(req, res) {
     if (lineCount === 0) { skipped++; continue; }
 
     const age = now - new Date(cart.updated_at).getTime();
+    // Tiempo desde el ÚLTIMO aviso que le mandamos. El aviso 2 debe salir 24h
+    // DESPUÉS del aviso 1, no 24h después de que editó el carrito. Sin esto, un
+    // carrito viejo (ej. 4 días) cumplía las dos ventanas a la vez y el cron
+    // mandaba aviso 1 y aviso 2 en corridas consecutivas (1h de diferencia).
+    const sinceRemind = cart.reminded_at
+      ? now - new Date(cart.reminded_at).getTime()
+      : Infinity;
 
-    // Etapa objetivo según antigüedad:
-    //   stage 0 + ≥4h  → mandar aviso 1
-    //   stage 1 + ≥24h → mandar aviso 2
-    //   resto          → todavía no toca
+    // Etapa objetivo:
+    //   stage 0 + ≥4h sin tocar el carrito          → mandar aviso 1
+    //   stage 1 + ≥24h desde el aviso 1             → mandar aviso 2
+    //   resto                                       → todavía no toca
     let targetStage = 0;
     if (cart.reminder_stage === 0 && age >= FOUR_HOURS) targetStage = 1;
-    else if (cart.reminder_stage === 1 && age >= TWENTY_FOUR_HOURS) targetStage = 2;
+    else if (cart.reminder_stage === 1 && sinceRemind >= TWENTY_FOUR_HOURS) targetStage = 2;
     if (targetStage === 0) { skipped++; continue; }
 
     // Safety: si el cliente YA confirmó un pedido después de tocar el carrito,
