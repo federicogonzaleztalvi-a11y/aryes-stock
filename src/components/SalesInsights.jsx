@@ -99,7 +99,17 @@ export default function SalesInsights({ isAdmin }) {
   const [err, setErr] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [filtroClase, setFiltroClase] = useState('');
+  const [ficha, setFicha] = useState(null);           // detalle de cliente abierto
+  const [fichaLoading, setFichaLoading] = useState(false);
   const fileRef = useRef(null);
+
+  const abrirFicha = useCallback(async (rs) => {
+    setFicha(null); setFichaLoading(true);
+    try {
+      const r = await fetch('/api/sales-analytics?action=ficha&rs=' + encodeURIComponent(rs), { headers: getAuthHeaders() });
+      if (r.ok) setFicha(await r.json());
+    } catch { /* noop */ } finally { setFichaLoading(false); }
+  }, []);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -308,7 +318,9 @@ export default function SalesInsights({ isAdmin }) {
                   const delta = x.ventas0 > 0 ? ((x.ventas12 - x.ventas0) / x.ventas0) * 100 : null;
                   const col = delta == null ? '#9a9a98' : delta >= 0 ? '#059669' : '#dc2626';
                   return (
-                    <tr key={x.rs} style={{ borderTop: '1px solid #f0f0ef' }}>
+                    <tr key={x.rs} onClick={() => abrirFicha(x.rs)} style={{ borderTop: '1px solid #f0f0ef', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                       <td style={{ padding: '7px 10px', color: '#9a9a98' }}>{x.puesto}</td>
                       <td style={{ padding: '7px 10px', color: '#1a1a1a' }}>
                         <div style={{ fontWeight: 600 }}>{x.nombre || x.rs}</div>
@@ -361,6 +373,126 @@ export default function SalesInsights({ isAdmin }) {
           </div>
         </div>
       )}
+
+      {(ficha || fichaLoading) && (
+        <FichaModal ficha={ficha} loading={fichaLoading} onClose={() => { setFicha(null); setFichaLoading(false); }} />
+      )}
+    </div>
+  );
+}
+
+// ── Modal: ficha de un cliente ──
+function FichaModal({ ficha, loading, onClose }) {
+  const maxMes = ficha ? Math.max(1, ...ficha.meses.map((m) => Math.max(ficha.mesActual[m] || 0, ficha.mesPrev[m] || 0))) : 1;
+  const delta = ficha && ficha.v0 > 0 ? ((ficha.v12 - ficha.v0) / ficha.v0) * 100 : null;
+  const deltaCol = delta == null ? '#9a9a98' : delta >= 0 ? '#059669' : '#dc2626';
+  const ddmmyy = (iso) => { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; };
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 9000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 16px', overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 760, boxShadow: '0 12px 40px rgba(0,0,0,.25)' }}>
+        {loading && !ficha && (
+          <div style={{ padding: 48, textAlign: 'center', color: '#9a9a98', fontSize: 13 }}>Cargando ficha…</div>
+        )}
+        {ficha && (
+          <>
+            {/* header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f0f0ef', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ background: CLASE_COLOR[ficha.clase] || '#9ca3af', color: '#fff', fontSize: 11, fontWeight: 800, padding: '2px 9px', borderRadius: 10 }}>Clase {ficha.clase}</span>
+                  {ficha.puesto && <span style={{ fontSize: 12, color: '#9a9a98' }}>#{ficha.puesto} de la cartera</span>}
+                </div>
+                <div style={{ fontFamily: 'Playfair Display,serif', fontSize: 22, color: '#1a1a1a', marginTop: 6 }}>{ficha.nombre || ficha.rs}</div>
+                {ficha.nombre && ficha.nombre !== ficha.rs && <div style={{ fontSize: 12, color: '#9a9a98' }}>{ficha.rs}</div>}
+              </div>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9a9a98', cursor: 'pointer', lineHeight: 1 }}>×</button>
+            </div>
+
+            <div style={{ padding: 24 }}>
+              {/* ventas + delta */}
+              <div style={{ display: 'flex', gap: 24, alignItems: 'baseline', marginBottom: 18, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#9a9a98', fontWeight: 600 }}>ÚLTIMOS 12 MESES</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a1a' }}>{fmtMoney(ficha.v12)}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#9a9a98', fontWeight: 600 }}>12M ANTERIORES: {fmtMoney(ficha.v0)}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: deltaCol }}>{delta == null ? 'cliente nuevo' : (delta >= 0 ? '▲ +' : '▼ ') + delta.toFixed(1) + '%'}</div>
+                </div>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>
+                  Última compra: <b>{ddmmyy(ficha.ultima)}</b>{ficha.diasSinComprar > 0 && <> · hace {ficha.diasSinComprar} días</>}
+                </div>
+              </div>
+
+              {/* barras mensuales */}
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+                  {ficha.meses.map((m) => {
+                    const a = ficha.mesActual[m] || 0, p = ficha.mesPrev[m] || 0;
+                    return (
+                      <div key={m} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 64, width: '100%', justifyContent: 'center' }}>
+                          <div title={'Año ant.: ' + fmtMoney(p)} style={{ width: '42%', height: (p / maxMes * 64) + 'px', background: '#e5e7eb', borderRadius: '2px 2px 0 0' }} />
+                          <div title={'Este período: ' + fmtMoney(a)} style={{ width: '42%', height: (a / maxMes * 64) + 'px', background: G, borderRadius: '2px 2px 0 0' }} />
+                        </div>
+                        <div style={{ fontSize: 9, color: '#9a9a98' }}>{fmtMes(m)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* análisis 5 líneas */}
+              <div style={{ background: '#f8faf5', border: '1px solid #e3edd8', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
+                {ficha.analisis.map((line, i) => {
+                  const [head, ...rest] = line.split(':');
+                  return (
+                    <div key={i} style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.5, marginBottom: i < ficha.analisis.length - 1 ? 8 : 0 }}>
+                      <b style={{ color: '#1a1a18' }}>{head}:</b>{rest.join(':')}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* perdidos / crecidos */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 16, marginBottom: 18 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>Lo que dejó de llevar</div>
+                  {ficha.perdidos.length ? ficha.perdidos.map((x, i) => (
+                    <div key={i} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', borderBottom: '1px solid #f5f5f4' }}>
+                      <span style={{ color: '#374151' }}>{x.producto}</span>
+                      <span style={{ color: '#dc2626', fontWeight: 600, whiteSpace: 'nowrap' }}>−{fmtMoney(-x.dif).replace('$ ', '')}</span>
+                    </div>
+                  )) : <div style={{ fontSize: 12, color: '#9a9a98' }}>Nada relevante.</div>}
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', marginBottom: 6 }}>Lo que creció</div>
+                  {ficha.crecidos.length ? ficha.crecidos.map((x, i) => (
+                    <div key={i} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', borderBottom: '1px solid #f5f5f4' }}>
+                      <span style={{ color: '#374151' }}>{x.producto}</span>
+                      <span style={{ color: '#059669', fontWeight: 600, whiteSpace: 'nowrap' }}>+{fmtMoney(x.dif).replace('$ ', '')}</span>
+                    </div>
+                  )) : <div style={{ fontSize: 12, color: '#9a9a98' }}>Nada relevante.</div>}
+                </div>
+              </div>
+
+              {/* top productos */}
+              {ficha.topProductos?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Lo que más compra (12m)</div>
+                  {ficha.topProductos.slice(0, 10).map((x, i) => (
+                    <div key={i} style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', borderBottom: '1px solid #f5f5f4' }}>
+                      <span style={{ color: '#374151' }}>{x.producto}</span>
+                      <span style={{ color: '#1a1a1a', fontWeight: 600, whiteSpace: 'nowrap' }}>{fmtMoney(x.importe)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

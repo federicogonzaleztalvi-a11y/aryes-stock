@@ -111,6 +111,31 @@ function rankingABC(rows, corte) {
   return arr;
 }
 
+// ── helpers de la ficha por cliente ──
+const MES_L = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const nfmt = (x) => Math.round(Number(x) || 0).toLocaleString('es-UY');
+const pctChange = (a, b) => { const r = a / b - 1; return (r >= 0 ? '+' : '') + Math.round(r * 100) + '%'; };
+
+// Unidad aproximada del producto (para los textos del análisis).
+function unidad(prod) {
+  const s = String(prod).toLowerCase();
+  if (/\b\d+([.,]\d+)?\s*(cc|ml)\b/.test(s)) return 'un.';
+  if (/\b\d+([.,]\d+)?\s*(l|lt|lts|litros?)\b\.?/.test(s)) return 'L';
+  return 'kg';
+}
+const qtyStr = (prod, q) => nfmt(q) + ' ' + unidad(prod);
+
+// Limpia el nombre de producto del ERP para mostrarlo lindo.
+function pretty(p) {
+  let s = String(p || '').trim();
+  s = s.replace(/RELLENO Y COBERT\.\s*SABOR/ig, 'RELLENO Y COBERTURA');
+  s = s.replace(/\s+/g, ' ').trim().toLowerCase();
+  s = s.replace(/grs\./g, 'g').replace(/gr\./g, 'g');
+  s = s.replace(/(\d),(\d)\s*kgs?\.?/g, '$1,$2 kg').replace(/(\d)\s*kgs?\.?/g, '$1 kg');
+  s = s.replace(/\s+/g, ' ').replace(/^[\s.]+|[\s.]+$/g, '');
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
 // Suma de importe por cliente en una ventana [desde, hasta].
 function sumByClient(rows, desde, hasta) {
   const m = new Map();
@@ -207,6 +232,168 @@ export default async function handler(req, res) {
         ranking: rk.map(x => ({ ...x, ventas0: v0.get(x.rs) || 0 })),
         meses, mesActual, mesPrev,
         familias,
+      });
+    }
+
+    // ── ficha: detalle de un cliente (análisis tipo vendedor) ──
+    if (action === 'ficha') {
+      const rs = String(req.query.rs || '').trim();
+      if (!rs) return res.status(400).json({ error: 'Falta razón social (rs)' });
+
+      const rows = await fetchAll(org, 'fecha,razon_social,nombre,familia,producto,importe,cantidad');
+      if (!rows.length) return res.status(200).json({ empty: true });
+
+      const maxIso = rows[rows.length - 1].fecha;
+      const corte = req.query.corte ? new Date(req.query.corte + 'T00:00:00Z') : cortePorDefecto(maxIso);
+      const a12 = addMonths(corte, -12), a24 = addMonths(corte, -24);
+
+      const rk = rankingABC(rows, corte);
+      const meInRk = rk.find(x => x.rs === rs);
+
+      const g = rows.filter(r => r.razon_social === rs);
+      if (!g.length) return res.status(404).json({ error: 'Cliente no encontrado' });
+      const nombre = meInRk?.nombre || g.find(r => r.nombre)?.nombre || '';
+
+      const inRange = (r, d1, d2) => { const f = new Date(r.fecha + 'T00:00:00Z'); return f > d1 && f <= d2; };
+      const p12 = g.filter(r => inRange(r, a12, corte));
+      const p0  = g.filter(r => inRange(r, a24, a12));
+      const v12 = p12.reduce((s, r) => s + Number(r.importe || 0), 0);
+      const v0  = p0.reduce((s, r) => s + Number(r.importe || 0), 0);
+
+      const fechasAll = g.map(r => r.fecha).sort();
+      const primera = fechasAll[0], ultima = fechasAll[fechasAll.length - 1];
+      const diasSinComprar = Math.floor((corte - new Date(ultima + 'T00:00:00Z')) / 86400000);
+
+      // meses del cliente (12m) y mismos meses del año anterior
+      const meses = [];
+      for (let i = 11; i >= 0; i--) {
+        const m = addMonths(corte, -i);
+        meses.push(`${m.getUTCFullYear()}-${String(m.getUTCMonth() + 1).padStart(2, '0')}`);
+      }
+      const mesActual = Object.fromEntries(meses.map(m => [m, 0]));
+      const mesPrev   = Object.fromEntries(meses.map(m => [m, 0]));
+      const prevMap = new Map(meses.map(m => {
+        const d = new Date(m + '-01T00:00:00Z'); return [monthKey(ymd(addMonths(d, -12))), m];
+      }));
+      for (const r of g) {
+        const mk = monthKey(r.fecha);
+        if (mk in mesActual) mesActual[mk] += Number(r.importe || 0);
+        if (prevMap.has(mk)) mesPrev[prevMap.get(mk)] += Number(r.importe || 0);
+      }
+
+      // top productos (12m)
+      const prodAgg = new Map();
+      for (const r of p12) {
+        const o = prodAgg.get(r.producto) || { cantidad: 0, importe: 0 };
+        o.cantidad += Number(r.cantidad || 0); o.importe += Number(r.importe || 0);
+        prodAgg.set(r.producto, o);
+      }
+      const topProductos = [...prodAgg.entries()]
+        .map(([producto, o]) => ({ producto: pretty(producto), cantidad: o.cantidad, importe: o.importe }))
+        .sort((a, b) => b.importe - a.importe).slice(0, 15);
+
+      // familias del cliente (12m vs 12m anteriores)
+      const famC = new Map(), famP = new Map();
+      for (const r of g) {
+        const fam = r.familia || '(sin familia)';
+        if (inRange(r, a12, corte)) famC.set(fam, (famC.get(fam) || 0) + Number(r.importe || 0));
+        else if (inRange(r, a24, a12)) famP.set(fam, (famP.get(fam) || 0) + Number(r.importe || 0));
+      }
+      const familias = [...new Set([...famC.keys(), ...famP.keys()])]
+        .map(f => ({ familia: f, actual: famC.get(f) || 0, previo: famP.get(f) || 0 }))
+        .sort((a, b) => (b.actual + b.previo) - (a.actual + a.previo));
+
+      // pivot producto × periodo → qué bajó / qué subió (excluye líneas sin familia)
+      const piv = new Map();
+      for (const r of g) {
+        if (!(r.familia || '').trim()) continue;
+        const f = new Date(r.fecha + 'T00:00:00Z');
+        if (!(f > a24 && f <= corte)) continue;
+        const o = piv.get(r.producto) || { cant0: 0, cant12: 0, imp0: 0, imp12: 0 };
+        if (f > a12) { o.cant12 += Number(r.cantidad || 0); o.imp12 += Number(r.importe || 0); }
+        else { o.cant0 += Number(r.cantidad || 0); o.imp0 += Number(r.importe || 0); }
+        piv.set(r.producto, o);
+      }
+      const um = Math.max(1500, Math.min(0.01 * Math.max(v12, v0), 10000));
+      const pivArr = [...piv.entries()].map(([producto, o]) => ({ producto, ...o, dif: o.imp12 - o.imp0 }));
+      const baja = pivArr
+        .filter(x => x.imp0 > 0 && (x.cant12 <= 0 || (x.cant0 > 0 && x.cant12 / x.cant0 - 1 <= -0.3)) && x.dif < -um)
+        .sort((a, b) => a.dif - b.dif);
+      const sube = pivArr
+        .filter(x => x.imp12 > 0 && (x.cant0 <= 0 || (x.cant0 > 0 && x.cant12 / x.cant0 - 1 >= 0.3)) && x.dif > um)
+        .sort((a, b) => b.dif - a.dif);
+      const perdidos = baja.slice(0, 8).map(x => ({ producto: pretty(x.producto), cant0: x.cant0, cant12: x.cant12, dif: x.dif }));
+      const crecidos = sube.slice(0, 8).map(x => ({ producto: pretty(x.producto), cant0: x.cant0, cant12: x.cant12, dif: x.dif }));
+
+      // ── análisis automático (5 líneas, como el vendedor) ──
+      const L = [];
+      // 1) Tendencia
+      let t = v0 > 0
+        ? `Tendencia: en los últimos 12 meses compró ${nfmt(v12)} contra ${nfmt(v0)} en los 12 meses anteriores (${pctChange(v12, v0)}).`
+        : `Tendencia: cliente nuevo; en los últimos 12 meses compró ${nfmt(v12)}.`;
+      const r3  = g.filter(r => inRange(r, addMonths(corte, -3), corte)).reduce((s, r) => s + Number(r.importe || 0), 0);
+      const r3a = g.filter(r => inRange(r, addMonths(a12, -3), a12)).reduce((s, r) => s + Number(r.importe || 0), 0);
+      if (r3a > 0 && v0 > 0) t += ` Último trimestre: ${nfmt(r3)} contra ${nfmt(r3a)} un año antes (${pctChange(r3, r3a)}).`;
+      L.push(t);
+      // 2) Frecuencia
+      const diasCompra = (arr) => new Set(arr.map(r => r.fecha)).size;
+      const d12 = diasCompra(p12), d0 = diasCompra(p0);
+      const mesesConCompra = new Set(p12.map(r => monthKey(r.fecha)));
+      const sinCompra = meses.filter(m => !mesesConCompra.has(m));
+      let fr = `Frecuencia: ${d12} días con compra en los últimos 12 meses` + (d0 ? ` contra ${d0} en el período anterior.` : '.');
+      if (sinCompra.length && sinCompra.length < 12) {
+        fr += ' Meses sin compras: ' + sinCompra.map(m => { const [y, mm] = m.split('-'); return MES_L[Number(mm) - 1] + ' ' + y; }).join(', ') + '.';
+      }
+      const [uy, umM, ud] = ultima.split('-'); fr += ` Última compra: ${ud}/${umM}/${uy}.`;
+      L.push(fr);
+      // 3) Lo que perdimos
+      if (baja.length) {
+        const it = baja.slice(0, 4).map(x => `${pretty(x.producto)} (` +
+          (x.cant12 <= 0 ? 'no volvió a comprar' : `de ${qtyStr(x.producto, x.cant0)} a ${qtyStr(x.producto, x.cant12)}`) +
+          `, −${nfmt(-x.dif)})`);
+        L.push(`Lo que perdimos (unos ${nfmt(-baja.reduce((s, x) => s + x.dif, 0))} al año): ` + it.join('; ') + '.');
+      } else L.push('Lo que perdimos: no dejó de comprar ni bajó fuerte ningún producto.');
+      // 4) Lo que creció
+      if (sube.length) {
+        const it = sube.slice(0, 4).map(x => `${pretty(x.producto)} (` +
+          (x.cant0 <= 0 ? 'nuevo' : `de ${qtyStr(x.producto, x.cant0)} a ${qtyStr(x.producto, x.cant12)}`) +
+          `, +${nfmt(x.dif)})`);
+        L.push(`Lo que creció (unos ${nfmt(sube.reduce((s, x) => s + x.dif, 0))} más al año): ` + it.join('; ') + '.');
+      } else L.push('Lo que creció: ningún producto con un aumento importante.');
+      // 5) Para la visita
+      const v = [];
+      if (diasSinComprar > 45) v.push(`no compra desde el ${ud}/${umM}/${uy} (${diasSinComprar} días): confirmar si sigue activo, cerró o cambió de proveedor`);
+      if (baja.length) v.push('preguntar qué pasó con ' + baja.slice(0, 2).map(x => pretty(x.producto).toLowerCase()).join(' y ') + ' (¿precio, otro proveedor, cambio de receta?)');
+      const tot12 = [...prodAgg.values()].reduce((s, o) => s + o.importe, 0);
+      if (tot12 > 0) {
+        const maxProd = [...prodAgg.entries()].sort((a, b) => b[1].importe - a[1].importe)[0];
+        if (maxProd && maxProd[1].importe / tot12 >= 0.6) {
+          v.push(`depende mucho de un solo producto (${pretty(maxProd[0]).toLowerCase()}, ${Math.round(maxProd[1].importe / tot12 * 100)}% de lo comprado en 12 m)`);
+        }
+      }
+      // Oportunidad GENÉRICA: familias top de la cartera que este cliente nunca compró.
+      const famsCliente = new Set(g.filter(r => new Date(r.fecha + 'T00:00:00Z') > a24).map(r => r.familia || '(sin familia)'));
+      const orgFam = new Map();
+      for (const r of rows) {
+        if (!inRange(r, a12, corte)) continue;
+        const fam = r.familia || '(sin familia)';
+        if (!fam || fam === '(sin familia)') continue;
+        orgFam.set(fam, (orgFam.get(fam) || 0) + Number(r.importe || 0));
+      }
+      const faltan = [...orgFam.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+        .map(([f]) => f).filter(f => !famsCliente.has(f)).slice(0, 3);
+      if (faltan.length) {
+        v.push('no compra ' + (faltan.length > 1 ? faltan.slice(0, -1).join(', ') + ' ni ' + faltan[faltan.length - 1] : faltan[0]) + ': oportunidad para ofrecer');
+      }
+      if (!v.length) v.push('cliente estable; mantener la frecuencia y ofrecer novedades de la lista');
+      const vs = v.join('; '); L.push('Para la visita: ' + vs[0].toUpperCase() + vs.slice(1) + '.');
+
+      return res.status(200).json({
+        rs, nombre,
+        clase: meInRk?.clase || 'C', puesto: meInRk?.puesto || null,
+        corte: ymd(corte), v12, v0, primera, ultima, diasSinComprar,
+        meses, mesActual, mesPrev, topProductos, familias, perdidos, crecidos,
+        analisis: L,
       });
     }
 
