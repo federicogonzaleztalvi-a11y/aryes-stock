@@ -18,3 +18,10 @@ Thumbs.db
 npm-debug.log*
 .vercel
 .env*.local
+
+# Archivos de referencia fichas (no versionar)
+movimientos_codigo_*.xls
+fichas_clientes_*.zip
+generar_fichas.py
+inventario.csv
+INSTRUCCIONES_fichas_clientes.md

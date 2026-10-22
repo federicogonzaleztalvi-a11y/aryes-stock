@@ -7,6 +7,7 @@ import { useConfirm } from '../components/ConfirmDialog.jsx';
 import { useNavigate } from 'react-router-dom';
 import ClienteImporter from '../components/ClienteImporter.jsx';
 import ClientInsights from '../components/ClientInsights.jsx';
+import SalesInsights from '../components/SalesInsights.jsx';
 const HORAS_DIA = Array.from({length:48},(_, i)=>String(Math.floor(i/2)).padStart(2,'0')+':'+(i%2?'30':'00'));
 
 // ── Panel de teléfonos adicionales ───────────────────────────────────────
@@ -1053,6 +1054,8 @@ function ClientesTab(){
           ))}
         </div>
       )}
+      {/* ── Inteligencia de clientes (ranking ABC + ventas) ────────────────────── */}
+      <SalesInsights isAdmin={isAdmin} />
       {/* ── Aging report ──────────────────────────────────────────────────────── */}
       <div style={{marginTop:24,background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
         <button onClick={()=>setAgingOpen(o=>!o)}
