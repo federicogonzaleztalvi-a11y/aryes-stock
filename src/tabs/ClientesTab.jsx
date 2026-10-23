@@ -1023,6 +1023,8 @@ function ClientesTab(){
         </select>
         <button onClick={()=>{setSeleccionados([]);setAccionMasiva({lista:'',vendedor:'',condPago:'',zona:'',tipo:''}); }} style={{padding:'6px 12px',background:'#444',color:'#ccc',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>Cancelar</button>
       </div>}
+      {/* ── Inteligencia de clientes (ranking ABC + ventas) — arriba de la grilla ── */}
+      <div style={{marginBottom:20}}><SalesInsights isAdmin={isAdmin} /></div>
       {filtered.length===0?(
         <div style={{textAlign:'center',padding:'60px 20px',color:'#888'}}>
           <div style={{fontSize:40,marginBottom:12}}>👥</div>
@@ -1054,8 +1056,6 @@ function ClientesTab(){
           ))}
         </div>
       )}
-      {/* ── Inteligencia de clientes (ranking ABC + ventas) ────────────────────── */}
-      <SalesInsights isAdmin={isAdmin} />
       {/* ── Aging report ──────────────────────────────────────────────────────── */}
       <div style={{marginTop:24,background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
         <button onClick={()=>setAgingOpen(o=>!o)}
