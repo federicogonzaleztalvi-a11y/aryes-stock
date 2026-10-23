@@ -132,7 +132,19 @@ async function fetchPortalRows(org) {
 // contar dos veces lo que el ERP ya incluye, descartamos las filas del portal con
 // fecha ≤ al último día del informe Mercado (se asume que a esa altura la venta ya
 // quedó facturada en el ERP). Las orgs sin informe Mercado cuentan todo el portal.
-async function loadRows(org) {
+//   canal='mercado' → sólo el informe del ERP
+//   canal='portal'  → sólo los pedidos del portal (sin dedup: dentro de un canal
+//                     no hay doble conteo)
+//   (sin canal)     → ambos, con el dedup anti-doble-conteo
+async function loadRows(org, canal = '') {
+  if (canal === 'mercado') {
+    return fetchAll(org, 'fecha,razon_social,nombre,familia,producto,importe,cantidad,canal');
+  }
+  if (canal === 'portal') {
+    const portal = await fetchPortalRows(org);
+    portal.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+    return portal;
+  }
   const mercado = await fetchAll(org, 'fecha,razon_social,nombre,familia,producto,importe,cantidad,canal');
   const portal = await fetchPortalRows(org);
   if (!portal.length) return mercado;
@@ -248,15 +260,19 @@ export default async function handler(req, res) {
       const rows = await loadRows(org);
       if (!rows.length) return res.status(200).json({ lines: 0, clientes: 0 });
       const clientes = new Set(rows.map(r => r.razon_social)).size;
+      let mercado = 0, portal = 0;
+      for (const r of rows) { if (r.canal === 'portal') portal++; else mercado++; }
       return res.status(200).json({
         lines: rows.length, clientes,
         desde: rows[0].fecha, hasta: rows[rows.length - 1].fecha,
+        canales: { mercado, portal },
       });
     }
 
     // ── overview: ranking + KPIs + mensual + familias ──
     if (action === 'overview') {
-      const rows = await loadRows(org);
+      const canal = ['mercado', 'portal'].includes(req.query.canal) ? req.query.canal : '';
+      const rows = await loadRows(org, canal);
       if (!rows.length) return res.status(200).json({ empty: true });
 
       const maxIso = rows[rows.length - 1].fecha;
@@ -324,7 +340,8 @@ export default async function handler(req, res) {
       const rs = String(req.query.rs || '').trim();
       if (!rs) return res.status(400).json({ error: 'Falta razón social (rs)' });
 
-      const rows = await loadRows(org);
+      const canal = ['mercado', 'portal'].includes(req.query.canal) ? req.query.canal : '';
+      const rows = await loadRows(org, canal);
       if (!rows.length) return res.status(200).json({ empty: true });
 
       const maxIso = rows[rows.length - 1].fecha;

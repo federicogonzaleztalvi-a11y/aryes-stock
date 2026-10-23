@@ -26,6 +26,24 @@ const fmtMes = (ym) => {
   return ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][Number(m) - 1] || ym;
 };
 
+// Opciones del selector de período: fin de cada mes entre 'desde' y 'hasta'
+// (más reciente primero). value = 'YYYY-MM-DD' (último día del mes) para ?corte=.
+function monthEndOptions(desde, hasta) {
+  if (!desde || !hasta) return [];
+  const start = new Date(desde + 'T00:00:00Z');
+  const end = new Date(hasta + 'T00:00:00Z');
+  const sy = start.getUTCFullYear(), sm = start.getUTCMonth();
+  let y = end.getUTCFullYear(), m = end.getUTCMonth();
+  const out = [];
+  while (y > sy || (y === sy && m >= sm)) {
+    const d = new Date(Date.UTC(y, m + 1, 0));
+    const ym = d.getUTCFullYear() + '-' + two(d.getUTCMonth() + 1);
+    out.push({ value: ym + '-' + two(d.getUTCDate()), label: fmtMes(ym) + ' ' + d.getUTCFullYear() });
+    m--; if (m < 0) { m = 11; y--; }
+  }
+  return out;
+}
+
 // ── Excel de la ficha (exceljs, estilo del script original) ──
 const BROWN = 'FF7A3E1D', GREY = 'FF595959';
 const NUMFMT = '#,##0;\\(#,##0\\);\\-';
@@ -228,6 +246,9 @@ export default function SalesInsights({ isAdmin }) {
   const [err, setErr] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [filtroClase, setFiltroClase] = useState('');
+  const [canal, setCanal] = useState('');              // '' = todos · 'mercado' · 'portal'
+  const [corte, setCorte] = useState('');              // '' = último mes completo
+  const [overviewLoading, setOverviewLoading] = useState(false);
   const [ficha, setFicha] = useState(null);           // detalle de cliente abierto
   const [fichaLoading, setFichaLoading] = useState(false);
   const fileRef = useRef(null);
@@ -235,10 +256,13 @@ export default function SalesInsights({ isAdmin }) {
   const abrirFicha = useCallback(async (rs) => {
     setFicha(null); setFichaLoading(true);
     try {
-      const r = await fetch('/api/sales-analytics?action=ficha&rs=' + encodeURIComponent(rs), { headers: getAuthHeaders() });
+      const qs = new URLSearchParams({ action: 'ficha', rs });
+      if (canal) qs.set('canal', canal);
+      if (corte) qs.set('corte', corte);
+      const r = await fetch('/api/sales-analytics?' + qs.toString(), { headers: getAuthHeaders() });
       if (r.ok) setFicha(await r.json());
     } catch { /* noop */ } finally { setFichaLoading(false); }
-  }, []);
+  }, [canal, corte]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -249,17 +273,21 @@ export default function SalesInsights({ isAdmin }) {
     } catch { setStatus(null); }
   }, []);
 
-  const loadOverview = useCallback(async () => {
+  const loadOverview = useCallback(async (canalArg = '', corteArg = '') => {
+    setOverviewLoading(true);
     try {
-      const r = await fetch('/api/sales-analytics?action=overview', { headers: getAuthHeaders() });
+      const qs = new URLSearchParams({ action: 'overview' });
+      if (canalArg) qs.set('canal', canalArg);
+      if (corteArg) qs.set('corte', corteArg);
+      const r = await fetch('/api/sales-analytics?' + qs.toString(), { headers: getAuthHeaders() });
       if (!r.ok) return;
       const d = await r.json();
-      if (!d.empty) setOverview(d);
-    } catch { /* noop */ }
+      setOverview(d.empty ? null : d);
+    } catch { /* noop */ } finally { setOverviewLoading(false); }
   }, []);
 
   useEffect(() => { loadStatus(); }, [loadStatus]);
-  useEffect(() => { if (status && status.lines > 0 && open && !overview) loadOverview(); }, [status, open, overview, loadOverview]);
+  useEffect(() => { if (status && status.lines > 0 && open) loadOverview(canal, corte); }, [status, open, canal, corte, loadOverview]);
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -303,9 +331,9 @@ export default function SalesInsights({ isAdmin }) {
       }
       setProg('Procesando…');
       setOverview(null);
+      setCanal(''); setCorte('');        // informe nuevo → vista completa por defecto
       await loadStatus();
-      await loadOverview();
-      setOpen(true);
+      setOpen(true);                     // el efecto recarga el overview
       setProg(`Listo: ${sent.toLocaleString('es-UY')} líneas importadas.`);
       setTimeout(() => setProg(''), 4000);
     } catch (e2) {
@@ -368,8 +396,43 @@ export default function SalesInsights({ isAdmin }) {
         </div>
       )}
 
+      {open && status && (
+        <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {status.canales?.portal > 0 && (
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['', 'Todos'], ['mercado', 'Mercado'], ['portal', 'Portal']].map(([v, lbl]) => (
+                <button key={v || 'all'} onClick={() => { setCanal(v); setShowAll(false); }}
+                  style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, cursor: 'pointer', border: '1px solid ' + (canal === v ? G : '#e5e7eb'), background: canal === v ? G : '#fff', color: canal === v ? '#fff' : '#6b7280' }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          )}
+          {(() => {
+            const opts = monthEndOptions(status.desde, status.hasta);
+            return opts.length > 1 ? (
+              <label style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Período hasta
+                <select value={corte} onChange={(e) => { setCorte(e.target.value); setShowAll(false); }}
+                  style={{ fontSize: 12, padding: '4px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', cursor: 'pointer' }}>
+                  <option value="">Último mes completo</option>
+                  {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </label>
+            ) : null;
+          })()}
+          {overviewLoading && <span style={{ fontSize: 11, color: '#9a9a98' }}>actualizando…</span>}
+        </div>
+      )}
+
+      {open && status && !overview && !overviewLoading && (
+        <div style={{ marginTop: 16, textAlign: 'center', color: '#9a9a98', fontSize: 13, padding: 20 }}>
+          Sin datos de ventas para este filtro.
+        </div>
+      )}
+
       {open && status && overview && (
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 14 }}>
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 18 }}>
             {card('Clientes activos (12m)', overview.totalClientes - kpi.perdidos, '#374151', `${overview.totalClientes} en total`)}
@@ -498,7 +561,11 @@ export default function SalesInsights({ isAdmin }) {
           )}
 
           <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', marginTop: 16 }}>
-            Corte: {overview.corte}. Importes netos (sin IVA) del informe de Mercado.
+            Corte: {overview.corte}. {canal === 'portal'
+              ? 'Pedidos del portal.'
+              : canal === 'mercado'
+                ? 'Informe de Mercado (importes netos, sin IVA).'
+                : 'Mercado (neto, sin IVA) + pedidos del portal.'}
           </div>
         </div>
       )}
