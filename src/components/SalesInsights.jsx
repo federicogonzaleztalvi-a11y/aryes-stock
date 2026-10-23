@@ -28,6 +28,14 @@ const KPI_DEF = {
   perdidos: { label: 'Dejaron de comprar', pred: (x) => x.ventas0 > 0 && x.ventas12 <= 0 },
   nuevos:   { label: 'Nuevos',             pred: (x) => x.ventas0 <= 0 && x.ventas12 > 0 },
 };
+// Qué significa cada bucket y qué hacer con esos clientes (se muestra al filtrar).
+const KPI_DESC = {
+  activos:  'Compraron al menos una vez en los últimos 12 meses.',
+  crecen:   'Compran 10%+ que el período anterior. Buen momento para ofrecerles más.',
+  decrecen: 'Compran 10%+ menos que antes. Conviene contactarlos antes de perderlos.',
+  perdidos: 'Venían comprando y este período no compraron nada. Entrá a cada uno para ver qué dejó de llevar.',
+  nuevos:   'Empezaron a comprar este período. Reforzá el vínculo para que repitan.',
+};
 
 const two = (v) => String(v).padStart(2, '0');
 const fmtMoney = (n) => '$ ' + Math.round(Number(n) || 0).toLocaleString('es-UY');
@@ -364,6 +372,9 @@ export default function SalesInsights({ isAdmin }) {
   const rankFiltered = ranking.filter((x) =>
     (!filtroClase || x.clase === filtroClase) &&
     (!filtroKpi || KPI_DEF[filtroKpi].pred(x)));
+  // "Dejaron de comprar" tienen ventas12=0 → el orden por ventas12 no dice nada.
+  // Los ordenamos por lo que compraban antes (mayor primero): primero el grande.
+  if (filtroKpi === 'perdidos') rankFiltered.sort((a, b) => b.ventas0 - a.ventas0);
   // Si filtramos por un KPI, mostramos TODOS los clientes de ese bucket (el punto
   // es ver quiénes son); si no, el top 12 con botón "ver más".
   const rankShown = (showAll || filtroKpi) ? rankFiltered : rankFiltered.slice(0, 12);
@@ -541,6 +552,9 @@ export default function SalesInsights({ isAdmin }) {
               </button>
             )}
           </div>
+          {filtroKpi && (
+            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8, lineHeight: 1.45 }}>{KPI_DESC[filtroKpi]}</div>
+          )}
           <div style={{ border: '1px solid #f0f0ef', borderRadius: 10, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
@@ -576,7 +590,7 @@ export default function SalesInsights({ isAdmin }) {
                   );
                 })}
                 {rankShown.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9a98' }}>Sin clientes en esta clase.</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 16, textAlign: 'center', color: '#9a9a98' }}>{filtroKpi ? 'Ningún cliente en este grupo.' : 'Sin clientes en esta clase.'}</td></tr>
                 )}
               </tbody>
             </table>
