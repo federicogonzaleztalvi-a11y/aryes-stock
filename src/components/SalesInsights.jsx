@@ -12,6 +12,7 @@
 // el script Python original). Las ventas figuran con cantidad NEGATIVA.
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { getAuthHeaders } from '../lib/constants.js';
 
 const G = '#3a7d1e';
@@ -24,6 +25,134 @@ const fmtMes = (ym) => {
   const [, m] = ym.split('-');
   return ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][Number(m) - 1] || ym;
 };
+
+// ── Excel de la ficha (exceljs, estilo del script original) ──
+const BROWN = 'FF7A3E1D', GREY = 'FF595959';
+const NUMFMT = '#,##0;\\(#,##0\\);\\-';
+async function descargarFichaExcel(ficha) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Pazque';
+  const titulo = ficha.nombre || ficha.rs;
+
+  const fillH = { type: 'pattern', pattern: 'solid', fgColor: { argb: BROWN } };
+  const border = { top: { style: 'thin', color: { argb: 'FFD9D9D9' } }, bottom: { style: 'thin', color: { argb: 'FFD9D9D9' } }, left: { style: 'thin', color: { argb: 'FFD9D9D9' } }, right: { style: 'thin', color: { argb: 'FFD9D9D9' } } };
+  const headerRow = (ws, cells, r) => {
+    const row = ws.getRow(r);
+    cells.forEach((v, i) => {
+      const c = row.getCell(i + 1);
+      c.value = v; c.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+      c.fill = fillH; c.border = border; c.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+    });
+    row.height = 24;
+  };
+
+  // ── Resumen ──
+  const R = wb.addWorksheet('Resumen', { views: [{ showGridLines: false }] });
+  R.columns = [{ width: 46 }, { width: 24 }, { width: 16 }, { width: 16 }, { width: 12 }];
+  R.getCell('A1').value = 'Ficha de cliente · ' + titulo;
+  R.getCell('A1').font = { name: 'Arial', size: 16, bold: true, color: { argb: BROWN } };
+  R.getCell('A2').value = `Clase ${ficha.clase}${ficha.puesto ? ' · puesto #' + ficha.puesto : ''} · corte ${ficha.corte}`;
+  R.getCell('A2').font = { name: 'Arial', size: 9, color: { argb: GREY } };
+  if (ficha.nombre && ficha.nombre !== ficha.rs) { R.getCell('A3').value = ficha.rs; R.getCell('A3').font = { name: 'Arial', size: 9, color: { argb: GREY } }; }
+
+  let r = 5;
+  const sec = (ws, title) => { headerRow(ws, [title], r); r++; };
+  const val = (label, value, money) => {
+    const row = R.getRow(r);
+    row.getCell(1).value = label; row.getCell(1).font = { name: 'Arial', size: 10, bold: true, color: { argb: GREY } };
+    const c = row.getCell(2); c.value = value;
+    if (money) c.numFmt = NUMFMT;
+    c.font = { name: 'Arial', size: 10 };
+    r++;
+  };
+  sec(R, 'Ventas');
+  val('Últimos 12 meses', Math.round(ficha.v12), true);
+  val('12 meses anteriores', Math.round(ficha.v0), true);
+  val('Variación', ficha.v0 > 0 ? Math.round((ficha.v12 / ficha.v0 - 1) * 100) + '%' : 'cliente nuevo');
+  val('Última compra', ficha.ultima);
+  val('Días sin comprar', ficha.diasSinComprar);
+  r++;
+
+  sec(R, 'Análisis');
+  ficha.analisis.forEach((line) => {
+    const row = R.getRow(r); const c = row.getCell(1);
+    c.value = line; c.font = { name: 'Arial', size: 9 }; c.alignment = { wrapText: true, vertical: 'top' };
+    R.mergeCells(r, 1, r, 5); row.height = Math.max(16, Math.ceil(line.length / 90) * 14);
+    r++;
+  });
+  r++;
+
+  const twoColTable = (title, rows, difLabel) => {
+    sec(R, title);
+    headerRow(R, ['Producto', difLabel], r); r++;
+    if (!rows.length) { R.getCell(r, 1).value = '(nada relevante)'; R.getCell(r, 1).font = { name: 'Arial', size: 9, color: { argb: GREY } }; r++; }
+    rows.forEach((x) => {
+      const row = R.getRow(r);
+      row.getCell(1).value = x.producto; row.getCell(1).font = { name: 'Arial', size: 10 }; row.getCell(1).border = border;
+      const c = row.getCell(2); c.value = Math.round(x.dif); c.numFmt = NUMFMT; c.border = border;
+      c.font = { name: 'Arial', size: 10, color: { argb: x.dif < 0 ? 'FFC00000' : 'FF00803C' } };
+      r++;
+    });
+    r++;
+  };
+  twoColTable('Lo que dejó de llevar', ficha.perdidos, 'Diferencia anual');
+  twoColTable('Lo que creció', ficha.crecidos, 'Diferencia anual');
+
+  sec(R, 'Lo que más compra (12m)');
+  headerRow(R, ['Producto', 'Importe 12m'], r); r++;
+  ficha.topProductos.forEach((x) => {
+    const row = R.getRow(r);
+    row.getCell(1).value = x.producto; row.getCell(1).font = { name: 'Arial', size: 10 }; row.getCell(1).border = border;
+    const c = row.getCell(2); c.value = Math.round(x.importe); c.numFmt = NUMFMT; c.border = border; c.font = { name: 'Arial', size: 10 };
+    r++;
+  });
+
+  // ── Compras por mes (12m vs año anterior) ──
+  const CO = wb.addWorksheet('Compras por mes', { views: [{ showGridLines: false }] });
+  CO.columns = [{ width: 14 }, { width: 18 }, { width: 18 }, { width: 12 }];
+  headerRow(CO, ['Mes', 'Este período', 'Año anterior', 'Variación'], 1);
+  ficha.meses.forEach((m, i) => {
+    const row = CO.getRow(i + 2);
+    row.getCell(1).value = fmtMes(m) + ' ' + m.slice(2, 4);
+    const a = Math.round(ficha.mesActual[m] || 0), p = Math.round(ficha.mesPrev[m] || 0);
+    row.getCell(2).value = a; row.getCell(2).numFmt = NUMFMT;
+    row.getCell(3).value = p; row.getCell(3).numFmt = NUMFMT;
+    row.getCell(4).value = p > 0 ? Math.round((a / p - 1) * 100) / 100 : null; row.getCell(4).numFmt = '0%';
+    [1, 2, 3, 4].forEach((j) => { row.getCell(j).border = border; row.getCell(j).font = { name: 'Arial', size: 10 }; });
+  });
+
+  // ── Familias ──
+  const FA = wb.addWorksheet('Familias', { views: [{ showGridLines: false }] });
+  FA.columns = [{ width: 36 }, { width: 16 }, { width: 16 }, { width: 12 }];
+  headerRow(FA, ['Familia', '12m', '12m ant.', 'Variación'], 1);
+  (ficha.familias || []).forEach((f, i) => {
+    const row = FA.getRow(i + 2);
+    row.getCell(1).value = f.familia || '(sin familia)';
+    row.getCell(2).value = Math.round(f.actual); row.getCell(2).numFmt = NUMFMT;
+    row.getCell(3).value = Math.round(f.previo); row.getCell(3).numFmt = NUMFMT;
+    row.getCell(4).value = f.previo > 0 ? Math.round((f.actual / f.previo - 1) * 100) / 100 : null; row.getCell(4).numFmt = '0%';
+    [1, 2, 3, 4].forEach((j) => { row.getCell(j).border = border; row.getCell(j).font = { name: 'Arial', size: 10 }; });
+  });
+
+  // ── Notas de visita (plantilla en blanco) ──
+  const NV = wb.addWorksheet('Notas de visita', { views: [{ showGridLines: false }] });
+  NV.columns = [{ width: 22 }, { width: 18 }, { width: 20 }, { width: 55 }, { width: 40 }];
+  NV.getCell('A1').value = 'Cliente y visitas · ' + titulo;
+  NV.getCell('A1').font = { name: 'Arial', size: 14, bold: true, color: { argb: BROWN } };
+  headerRow(NV, ['Fecha', 'Tipo (visita / llamada / WhatsApp)', 'Con quién', 'Qué se habló', 'Acuerdos / pedido'], 3);
+  for (let i = 4; i < 24; i++) for (let j = 1; j <= 5; j++) {
+    const c = NV.getRow(i).getCell(j); c.border = border; c.font = { name: 'Arial', size: 10 }; c.alignment = { wrapText: true, vertical: 'top' };
+  }
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Ficha_' + titulo.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 50) + '.xlsx';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
 
 // ── parse del informe Mercado (todo client-side) ──
 function dateYMD(v) {
@@ -406,6 +535,10 @@ function FichaModal({ ficha, loading, onClose }) {
                 <div style={{ fontFamily: 'Playfair Display,serif', fontSize: 22, color: '#1a1a1a', marginTop: 6 }}>{ficha.nombre || ficha.rs}</div>
                 {ficha.nombre && ficha.nombre !== ficha.rs && <div style={{ fontSize: 12, color: '#9a9a98' }}>{ficha.rs}</div>}
               </div>
+              <button onClick={() => descargarFichaExcel(ficha)} title="Descargar ficha en Excel"
+                style={{ background: '#fff', color: G, border: `1px solid ${G}`, padding: '7px 12px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
+                ↓ Excel
+              </button>
               <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, color: '#9a9a98', cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
 
