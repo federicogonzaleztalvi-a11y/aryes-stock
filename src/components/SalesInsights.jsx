@@ -19,6 +19,16 @@ const G = '#3a7d1e';
 const CHUNK = 2500;                       // filas por tanda (server tope 3000)
 const CLASE_COLOR = { A: '#059669', B: '#d97706', C: '#9ca3af' };
 
+// Buckets de los KPI: mismo criterio que el server (a=ventas12, b=ventas0), para
+// poder filtrar el ranking al clickear una tarjeta y mostrar QUIÉNES son.
+const KPI_DEF = {
+  activos:  { label: 'Clientes activos',   pred: (x) => x.ventas12 > 0 },
+  crecen:   { label: 'Creciendo',          pred: (x) => x.ventas0 > 0 && x.ventas12 > x.ventas0 * 1.1 },
+  decrecen: { label: 'Decreciendo',        pred: (x) => x.ventas0 > 0 && x.ventas12 < x.ventas0 * 0.9 },
+  perdidos: { label: 'Dejaron de comprar', pred: (x) => x.ventas0 > 0 && x.ventas12 <= 0 },
+  nuevos:   { label: 'Nuevos',             pred: (x) => x.ventas0 <= 0 && x.ventas12 > 0 },
+};
+
 const two = (v) => String(v).padStart(2, '0');
 const fmtMoney = (n) => '$ ' + Math.round(Number(n) || 0).toLocaleString('es-UY');
 const fmtMes = (ym) => {
@@ -246,12 +256,14 @@ export default function SalesInsights({ isAdmin }) {
   const [err, setErr] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [filtroClase, setFiltroClase] = useState('');
+  const [filtroKpi, setFiltroKpi] = useState('');       // '' | activos | crecen | decrecen | perdidos | nuevos
   const [canal, setCanal] = useState('');              // '' = todos · 'mercado' · 'portal'
   const [corte, setCorte] = useState('');              // '' = último mes completo
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [ficha, setFicha] = useState(null);           // detalle de cliente abierto
   const [fichaLoading, setFichaLoading] = useState(false);
   const fileRef = useRef(null);
+  const rankingRef = useRef(null);
 
   const abrirFicha = useCallback(async (rs) => {
     setFicha(null); setFichaLoading(true);
@@ -331,7 +343,7 @@ export default function SalesInsights({ isAdmin }) {
       }
       setProg('Procesando…');
       setOverview(null);
-      setCanal(''); setCorte('');        // informe nuevo → vista completa por defecto
+      setCanal(''); setCorte(''); setFiltroKpi('');   // informe nuevo → vista completa por defecto
       await loadStatus();
       setOpen(true);                     // el efecto recarga el overview
       setProg(`Listo: ${sent.toLocaleString('es-UY')} líneas importadas.`);
@@ -348,17 +360,43 @@ export default function SalesInsights({ isAdmin }) {
 
   const kpi = overview?.kpi;
   const ranking = overview?.ranking || [];
-  const rankFiltered = filtroClase ? ranking.filter((x) => x.clase === filtroClase) : ranking;
-  const rankShown = showAll ? rankFiltered : rankFiltered.slice(0, 12);
+  const activosCount = ranking.filter((x) => x.ventas12 > 0).length;
+  const rankFiltered = ranking.filter((x) =>
+    (!filtroClase || x.clase === filtroClase) &&
+    (!filtroKpi || KPI_DEF[filtroKpi].pred(x)));
+  // Si filtramos por un KPI, mostramos TODOS los clientes de ese bucket (el punto
+  // es ver quiénes son); si no, el top 12 con botón "ver más".
+  const rankShown = (showAll || filtroKpi) ? rankFiltered : rankFiltered.slice(0, 12);
   const maxMes = overview ? Math.max(1, ...overview.meses.map((m) => Math.max(overview.mesActual[m] || 0, overview.mesPrev[m] || 0))) : 1;
 
-  const card = (label, value, color, sub) => (
-    <div style={{ background: '#fff', borderRadius: 10, padding: '14px 16px', border: '1px solid #f0f0ef' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a1a' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: '#9a9a98', marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
+  // Clickear una tarjeta filtra el ranking al bucket correspondiente y baja la
+  // vista a la tabla → el dueño ve QUIÉNES son esos clientes (y entra a la ficha).
+  const verKpi = (key) => {
+    setFiltroKpi((prev) => {
+      const next = prev === key ? '' : key;
+      if (next) setTimeout(() => rankingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      return next;
+    });
+    setFiltroClase('');
+    setShowAll(false);
+  };
+  const card = (key, label, value, color, sub) => {
+    const active = filtroKpi === key;
+    const n = typeof value === 'number' ? value : 0;
+    return (
+      <div onClick={() => n > 0 && verKpi(key)}
+        style={{ background: active ? '#f8faf5' : '#fff', borderRadius: 10, padding: '14px 16px',
+          border: '1px solid ' + (active ? G : '#f0f0ef'), cursor: n > 0 ? 'pointer' : 'default',
+          transition: 'border-color .12s' }}
+        onMouseEnter={(e) => { if (n > 0 && !active) e.currentTarget.style.borderColor = '#d6d6d4'; }}
+        onMouseLeave={(e) => { if (!active) e.currentTarget.style.borderColor = '#f0f0ef'; }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color, marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, color: '#1a1a1a' }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: '#9a9a98', marginTop: 2 }}>{sub}</div>}
+        {n > 0 && <div style={{ fontSize: 11, fontWeight: 600, color: active ? G : '#c0c0be', marginTop: 6 }}>{active ? '✓ viendo abajo' : 'ver clientes ›'}</div>}
+      </div>
+    );
+  };
 
   return (
     <div style={{ marginTop: 24, background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
@@ -379,7 +417,7 @@ export default function SalesInsights({ isAdmin }) {
             <input ref={fileRef} type="file" accept=".xls,.xlsx,.htm,.html" onChange={onFile} style={{ display: 'none' }} />
             <button disabled={busy} onClick={() => fileRef.current?.click()}
               style={{ background: status ? '#fff' : G, color: status ? G : '#fff', border: `1px solid ${G}`, padding: '7px 14px', borderRadius: 8, cursor: busy ? 'wait' : 'pointer', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
-              {busy ? '⏳ Importando…' : status ? '↻ Actualizar informe' : '↑ Importar informe Mercado'}
+              {busy ? '⏳ Importando…' : status ? '↻ Actualizar historial' : '↑ Importar historial ERP'}
             </button>
           </>
         )}
@@ -391,8 +429,12 @@ export default function SalesInsights({ isAdmin }) {
       {open && !status && !busy && (
         <div style={{ marginTop: 16, textAlign: 'center', padding: '28px 20px', color: '#6b7280', fontSize: 13 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Todavía no hay datos de ventas</div>
-          Importá el informe <b>“Movimiento de productos”</b> que bajás de tu ERP (2 años de historia).<br />
-          Te arma el ranking ABC de la cartera, quién crece, quién dejó de comprar y las ventas mes a mes.
+          Se arma solo con los <b>pedidos del portal</b>: a medida que tus clientes compran, vas viendo
+          el ranking ABC de la cartera, quién crece, quién dejó de comprar y las ventas mes a mes.<br />
+          <span style={{ fontSize: 12, color: '#9a9a98' }}>
+            ¿Ya tenés historial en un ERP? Si bajás el informe <b>“Movimiento de productos”</b> lo sumás
+            de una (opcional).
+          </span>
         </div>
       )}
 
@@ -401,7 +443,7 @@ export default function SalesInsights({ isAdmin }) {
           {status.canales?.portal > 0 && (
             <div style={{ display: 'flex', gap: 4 }}>
               {[['', 'Todos'], ['mercado', 'Mercado'], ['portal', 'Portal']].map(([v, lbl]) => (
-                <button key={v || 'all'} onClick={() => { setCanal(v); setShowAll(false); }}
+                <button key={v || 'all'} onClick={() => { setCanal(v); setFiltroKpi(''); setShowAll(false); }}
                   style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, cursor: 'pointer', border: '1px solid ' + (canal === v ? G : '#e5e7eb'), background: canal === v ? G : '#fff', color: canal === v ? '#fff' : '#6b7280' }}>
                   {lbl}
                 </button>
@@ -413,7 +455,7 @@ export default function SalesInsights({ isAdmin }) {
             return opts.length > 1 ? (
               <label style={{ fontSize: 12, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 6 }}>
                 Período hasta
-                <select value={corte} onChange={(e) => { setCorte(e.target.value); setShowAll(false); }}
+                <select value={corte} onChange={(e) => { setCorte(e.target.value); setFiltroKpi(''); setShowAll(false); }}
                   style={{ fontSize: 12, padding: '4px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff', color: '#374151', cursor: 'pointer' }}>
                   <option value="">Último mes completo</option>
                   {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -435,11 +477,11 @@ export default function SalesInsights({ isAdmin }) {
         <div style={{ marginTop: 14 }}>
           {/* KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 18 }}>
-            {card('Clientes activos (12m)', overview.totalClientes - kpi.perdidos, '#374151', `${overview.totalClientes} en total`)}
-            {card('Creciendo', kpi.crecen, '#059669', '+10% vs año anterior')}
-            {card('Decreciendo', kpi.decrecen, '#d97706', '−10% vs año anterior')}
-            {card('Dejaron de comprar', kpi.perdidos, '#dc2626', 'compraban y pararon')}
-            {card('Nuevos', kpi.nuevos, G, 'empezaron este período')}
+            {card('activos', 'Clientes activos (12m)', activosCount, '#374151', `${overview.totalClientes} en total`)}
+            {card('crecen', 'Creciendo', kpi.crecen, '#059669', '+10% vs año anterior')}
+            {card('decrecen', 'Decreciendo', kpi.decrecen, '#d97706', '−10% vs año anterior')}
+            {card('perdidos', 'Dejaron de comprar', kpi.perdidos, '#dc2626', 'compraban y pararon')}
+            {card('nuevos', 'Nuevos', kpi.nuevos, G, 'empezaron este período')}
           </div>
 
           {/* Ventas 12m vs 12m anteriores */}
@@ -482,16 +524,22 @@ export default function SalesInsights({ isAdmin }) {
           </div>
 
           {/* Ranking ABC */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+          <div ref={rankingRef} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>Ranking ABC de la cartera</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {['', 'A', 'B', 'C'].map((c) => (
-                <button key={c || 'all'} onClick={() => { setFiltroClase(c); setShowAll(false); }}
+                <button key={c || 'all'} onClick={() => { setFiltroClase(c); setFiltroKpi(''); setShowAll(false); }}
                   style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, cursor: 'pointer', border: '1px solid ' + (filtroClase === c ? (CLASE_COLOR[c] || '#374151') : '#e5e7eb'), background: filtroClase === c ? (CLASE_COLOR[c] || '#374151') : '#fff', color: filtroClase === c ? '#fff' : '#6b7280' }}>
                   {c || 'Todos'}
                 </button>
               ))}
             </div>
+            {filtroKpi && (
+              <button onClick={() => setFiltroKpi('')}
+                style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px 3px 12px', borderRadius: 20, cursor: 'pointer', border: '1px solid ' + G, background: G, color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {KPI_DEF[filtroKpi].label} ({rankFiltered.length}) <span style={{ fontSize: 13, lineHeight: 1 }}>×</span>
+              </button>
+            )}
           </div>
           <div style={{ border: '1px solid #f0f0ef', borderRadius: 10, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -533,7 +581,7 @@ export default function SalesInsights({ isAdmin }) {
               </tbody>
             </table>
           </div>
-          {rankFiltered.length > 12 && (
+          {!filtroKpi && rankFiltered.length > 12 && (
             <button onClick={() => setShowAll((s) => !s)}
               style={{ marginTop: 10, background: 'none', border: 'none', color: G, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
               {showAll ? 'Ver menos' : `Ver los ${rankFiltered.length} clientes`}
