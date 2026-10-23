@@ -166,18 +166,18 @@ export default async function handler(req, res) {
       const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8 && waWithinHours();
       if (!usarWa && !email) { skipped++; continue; }   // sin canal posible
 
-      const dias = Math.round(diasDesdeUltimo);
       const productos = topProductos(pedidos.map(p => p.items), 4);
       const portalUrl = 'https://pazque.com/pedidos?org=' + encodeURIComponent(orgId);
 
       try {
         if (usarWa) {
-          // Plantilla pazque_reactivacion: {{1}}=días sin pedir, {{2}}=empresa;
+          // Plantilla pazque_reactivacion: {{1}}=empresa (ya NO mandamos los días
+          // sin pedir: no aportan y hacen sentir juzgado al comprador);
           // botón URL dinámico {{1}}=org_id.
           await sendWaTemplate({
             to: phone,
             template: WA_REACT_TEMPLATE,
-            bodyParams: [String(dias), org.name || 'tu proveedor'],
+            bodyParams: [org.name || 'tu proveedor'],
             urlButtonParam: orgId,
           });
         } else {
@@ -185,7 +185,6 @@ export default async function handler(req, res) {
             empresa: org.name,
             nombre,
             productos,
-            dias,
             portalUrl,
             logoUrl: org.logoUrl,
           });

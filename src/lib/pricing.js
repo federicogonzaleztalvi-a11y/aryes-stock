@@ -11,9 +11,12 @@
 //    completan cajas enteras; el resto va a precio normal. NO se suma al puntual:
 //    se usa el mayor de los dos. Sólo aplica si la lista del cliente lo habilitó
 //    (en ese caso el API expone unidades_por_caja y descuento_caja > 0).
-//  - Precios redondeados a 2 decimales en cada paso, igual que producción.
+//  - Precio UNITARIO redondeado a 3 decimales (wholesale: $/kg o $/u con 3
+//    decimales). Los totales de línea (neto/IVA) se redondean a 2 decimales,
+//    que es el estándar de moneda.
 
-const round2 = (n) => Math.round(n * 100) / 100;
+const round3 = (n) => Math.round(n * 1000) / 1000;   // precio unitario
+const round2 = (n) => Math.round(n * 100) / 100;     // montos (neto, IVA, total)
 
 // Descuento por volumen: % de la mejor escala cuyo mínimo alcanza qty.
 // item.volume_tiers = [{min,dto}] viene saneado y ordenado del API.
@@ -37,7 +40,7 @@ export function calcLinea(item, qty) {
   const base = item.reglasV2 ? (Number(item.precioBase) || 0) : item.precio;
   const volDto = volTierDto(item, qty);
   const descPct = Math.max(item.descGlobal || 0, volDto);
-  const precioReg = descPct > 0 ? round2(base * (1 - descPct / 100)) : base;
+  const precioReg = descPct > 0 ? round3(base * (1 - descPct / 100)) : base;
 
   const cajaUnid = Number(item.unidades_por_caja) || 0;
   const cajaDtoCfg = Number(item.descuento_caja) || 0;
@@ -53,9 +56,9 @@ export function calcLinea(item, qty) {
     const unidConCaja = cajas * cajaUnid;
     const unidResto = qty - unidConCaja;
     const descPctCaja = Math.max(cajaDtoCfg, descPct);
-    const precioCaja = round2(base * (1 - descPctCaja / 100));
+    const precioCaja = round3(base * (1 - descPctCaja / 100));
     netoLinea = unidConCaja * precioCaja + unidResto * precioReg;
-    precioConDto = qty > 0 ? round2(netoLinea / qty) : precioReg;
+    precioConDto = qty > 0 ? round3(netoLinea / qty) : precioReg;
     if (unidConCaja > 0 && precioCaja < precioReg) {
       tramos = [{ unidades: unidConCaja, precioUnit: precioCaja, dtoPct: descPctCaja, distribuidor: true }];
       if (unidResto > 0) tramos.push({ unidades: unidResto, precioUnit: precioReg, dtoPct: descPct, distribuidor: false });

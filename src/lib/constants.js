@@ -314,6 +314,15 @@ export const fmt = {
     return `${sym} ${num.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   },
 
+  // Precio UNITARIO — hasta 3 decimales ($ 12,50 · $ 12,345). Para precio por
+  // kg/unidad donde la precisión importa (wholesale). Los TOTALES siguen usando
+  // currency() (2 decimales, estándar de moneda). Sin 2º arg usa el símbolo org.
+  price: (n, currency) => {
+    const num = Number(n || 0);
+    const sym = currency == null ? _orgCurrencySym : _symFromCode(currency);
+    return `${sym} ${num.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}`;
+  },
+
   // Moneda compacta — $1.2k / US$34k
   currencyCompact: (n, currency) => {
     const num = Number(n || 0);

@@ -81,9 +81,11 @@ function reglasDelItem(item) {
   return reglas;
 }
 
-// Moneda con 2 decimales — solo para el editor (fmt.currency redondea a entero en toda la app).
+// Precio UNITARIO con hasta 3 decimales — solo para el editor. La precisión importa
+// en wholesale (ej: crema de limón en 250g → 4 u = 1 kg; con 2 decimales el precio
+// unitario no cuadraría con el precio por kg configurado). Los totales usan fmt.currency.
 function fmtPrecio(n) {
-  return `$ ${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$ ${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}`;
 }
 
 // Resumen corto de las reglas de un producto para la celda de la tabla.
@@ -148,7 +150,7 @@ function ModalReglas({ prod, item, onClose, onSave }) {
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: 14, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Precio especial fijo</span>
-            <input type="number" min={0} step="0.01" value={especial} onChange={e => setEspecial(e.target.value)} placeholder="opcional" style={{ ...inp, width: 120, textAlign: 'right', borderColor: '#fbbf24', background: '#fff' }} />
+            <input type="number" min={0} step="0.001" value={especial} onChange={e => setEspecial(e.target.value)} placeholder="opcional" style={{ ...inp, width: 120, textAlign: 'right', borderColor: '#fbbf24', background: '#fff' }} />
             {usaEspecial && <button onClick={() => setEspecial('')} style={{ background: 'none', border: 'none', color: '#b45309', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>quitar</button>}
           </div>
           <div style={{ fontSize: 11, color: '#b45309', marginTop: 6 }}>Si lo ponés, ese es el precio final para esta lista y <strong>no se aplican descuentos</strong>.</div>

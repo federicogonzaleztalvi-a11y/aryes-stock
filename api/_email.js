@@ -325,9 +325,9 @@ export const templates = {
   // Recordatorio de REACTIVACIÓN al comprador que dejó de comprar (churn, lo
   // dispara cron-reactivacion.js). Distinto de reposición (ése es por ritmo, a
   // un comprador activo que se atrasó): acá el comprador lleva MUCHO sin pedir y
-  // el objetivo es recuperarlo antes de perderlo. `dias` es cuántos hace que no
-  // pide; `productos` lo que solía pedir.
-  reactivacion: ({ empresa, nombre, productos = [], dias, portalUrl, logoUrl }) => {
+  // el objetivo es recuperarlo antes de perderlo. `productos` es lo que solía pedir.
+  // No detallamos cuántos días lleva sin pedir: no aporta y hace sentir juzgado.
+  reactivacion: ({ empresa, nombre, productos = [], portalUrl, logoUrl }) => {
     const lista = (productos || []).slice(0, 4);
     const itemsHtml = lista.length
       ? `<ul style="margin:0 0 20px;padding-left:18px;color:#4b4b48;font-size:15px;line-height:1.7">
@@ -341,8 +341,8 @@ export const templates = {
         ${logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(empresa || '')}" style="height:36px;max-width:180px;object-fit:contain;margin-bottom:24px" />` : ''}
         <h1 style="font-size:21px;font-weight:700;color:#1a1a18;margin:0 0 10px">¿Todo bien? Te extrañamos</h1>
         <p style="font-size:15px;color:#4b4b48;line-height:1.6;margin:0 0 ${itemsHtml ? '14px' : '20px'}">
-          Hola ${esc(nombre || '')}, ${dias ? `hace <strong>${esc(dias)} días</strong> que no hacés un pedido en ` : 'hace un tiempo que no te vemos por '}<strong>${esc(empresa || 'el portal')}</strong>.
-          Queríamos saber si está todo bien y recordarte que seguimos acá cuando necesites.${lista.length ? ' Lo que solías pedir:' : ''}
+          Hola ${esc(nombre || '')}, hace tiempo que no te vemos por <strong>${esc(empresa || 'el portal')}</strong>.
+          Mirá las novedades y pedí en un toque.${lista.length ? ' Lo que solías pedir:' : ''}
         </p>
         ${itemsHtml}
         <a href="${esc(portalUrl)}" style="display:inline-block;padding:13px 30px;background:#059669;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">

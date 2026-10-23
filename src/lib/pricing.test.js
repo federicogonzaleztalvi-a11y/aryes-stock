@@ -70,10 +70,16 @@ describe('calcLinea — descuento puntual y por volumen (se usa el mayor)', () =
     expect(r.netoLinea).toBe(800);
   });
 
-  it('redondea el precio con descuento a 2 decimales', () => {
+  it('redondea el precio UNITARIO a 3 decimales (wholesale)', () => {
     const r = calcLinea({ precio: 33.33, iva_rate: 22, descGlobal: 10 }, 3);
-    expect(r.precioConDto).toBe(30);    // round2(33.33 * 0.9) = round2(29.997) = 30
-    expect(r.netoLinea).toBe(90);
+    expect(r.precioConDto).toBe(29.997);          // round3(33.33 * 0.9) = 29.997
+    expect(r.netoLinea).toBeCloseTo(89.991, 5);   // 29.997 * 3
+  });
+
+  it('conserva un precio base con 3 decimales ($/kg)', () => {
+    const r = calcLinea({ precio: 12.345, iva_rate: 0 }, 4);
+    expect(r.precioConDto).toBe(12.345);
+    expect(r.netoLinea).toBeCloseTo(49.38, 5);    // 12.345 * 4
   });
 });
 

@@ -208,13 +208,13 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
             placeholder={f.category?"Elegí o escribí una subcategoría":"Elegí primero una categoría"} disabled={!f.category}/>
         </Field>
         <Field label={"Costo unitario (" + taxCfg.currency + ")"}>
-          <Inp type="number" step="0.01" min="0" placeholder="0.00" value={f.unitCost||""} onChange={e=>set("unitCost",e.target.value===""?0:+e.target.value)}/>
+          <Inp type="number" step="0.001" min="0" placeholder="0.000" value={f.unitCost||""} onChange={e=>set("unitCost",e.target.value===""?0:+e.target.value)}/>
           {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es',{day:'2-digit',month:'short'}):''}</div>}
         </Field>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Field label={"Precio de venta (" + taxCfg.currency + ")"}>
-          <Inp type="number" step="0.01" min="0" placeholder="0.00" value={f.precioVenta||f.precio_venta||""} onChange={e=>set("precioVenta",e.target.value===""?0:+e.target.value)}/>
+          <Inp type="number" step="0.001" min="0" placeholder="0.000" value={f.precioVenta||f.precio_venta||""} onChange={e=>set("precioVenta",e.target.value===""?0:+e.target.value)}/>
         </Field>
         <Field label={taxCfg.taxName} hint={"Tasa de " + taxCfg.taxName + " (" + taxCfg.country + ")"}>
           <Sel value={f.iva_rate!=null?f.iva_rate:taxCfg.defaultRate} onChange={e=>set("iva_rate",+e.target.value)}>
@@ -305,7 +305,7 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
             <div style={{fontFamily:T.sans,fontSize:12,color,fontWeight:600}}>Margen estimado</div>
             <div style={{display:'flex',gap:20,alignItems:'center'}}>
               <span style={{fontFamily:T.sans,fontSize:13,color,fontWeight:700}}>{margen.toFixed(1)}%</span>
-              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Ganancia: {taxCfg.currencySymbol}{(f.precioVenta-f.unitCost).toFixed(2)} / {f.unit||'u'}</span>
+              <span style={{fontFamily:T.sans,fontSize:12,color:T.textSm}}>Ganancia: {taxCfg.currencySymbol}{(f.precioVenta-f.unitCost).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:3})} / {f.unit||'u'}</span>
             </div>
           </div>
         );

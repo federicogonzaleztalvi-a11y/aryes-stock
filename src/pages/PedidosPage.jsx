@@ -780,7 +780,7 @@ function boxRule(item) {
 function PrecioAntes({ base, pct, size = 12 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: size, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(base)}</span>
+      <span style={{ fontSize: size, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.price(base)}</span>
       <span style={{ fontSize: size - 1, fontWeight: 700, color: '#dc2626', background: '#fef2f2',
         border: '1px solid #fecaca', borderRadius: 5, padding: '1px 5px', lineHeight: 1.5 }}>−{pct}%</span>
     </div>
@@ -813,14 +813,14 @@ function PrecioMixto({ calc, item, variant = 'card' }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-        <span style={{ fontSize: heroSize, fontWeight: 700, color: G }}>{fmt.currency(trDist.precioUnit)}</span>
+        <span style={{ fontSize: heroSize, fontWeight: 700, color: G }}>{fmt.price(trDist.precioUnit)}</span>
         {showUnid && <span style={{ fontSize: lblSize - 1, color: GRAY, fontWeight: 400 }}>/ {item.unidad}</span>}
         {trDist.dtoPct > 0 && <span style={{ fontSize: lblSize - 1, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 5, padding: '1px 5px' }}>{'\u2212'}{Math.round(trDist.dtoPct)}%</span>}
       </div>
       <div style={{ marginTop: variant === 'pdp' ? 6 : 0 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 3 }}>
         <div style={{ fontSize: lblSize, color: G, fontWeight: 600 }}>{'\u2713'} {trDist.unidades} {uLbl} a precio caja</div>
-        <div style={{ fontSize: lblSize, color: GRAY }}>{trSuelto.unidades} {uLbl} sueltas a {fmt.currency(trSuelto.precioUnit)}</div>
+        <div style={{ fontSize: lblSize, color: GRAY }}>{trSuelto.unidades} {uLbl} sueltas a {fmt.price(trSuelto.precioUnit)}</div>
         <div style={{ fontSize: lblSize, color: GRAY }}>Total {'\u00b7'} <span style={{ fontWeight: 700, color: '#1a1a18' }}>{fmt.currency(calc.netoLinea)}</span></div>
       </div>
     </>
@@ -993,7 +993,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           <>
             {mostrarDto && <div style={{ marginTop: 4 }}><PrecioAntes base={refBase} pct={pctEff} /></div>}
             <div style={{ fontSize: 16, fontWeight: 700, color: G, marginTop: mostrarDto ? 0 : 4 }}>
-              {item.precio > 0 ? fmt.currency(precioEff) : (
+              {item.precio > 0 ? fmt.price(precioEff) : (
                 <span style={{ fontSize: 11, fontWeight: 600, color: publico ? G : GRAY,
                   background: publico ? '#f0fdf4' : '#f0f0ec', border: publico ? '1px solid #bbf7d0' : 'none',
                   padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>
@@ -1030,14 +1030,14 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
-            Caja de {box.uxc}: {fmt.currency(precioTier(item, { dto: box.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{box.pct}%)</span>
+            Caja de {box.uxc}: {fmt.price(precioTier(item, { dto: box.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{box.pct}%)</span>
           </div>
         )}
         {item.precio > 0 && !mixed && tier && tier.dto > pctEff && (
           <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', background: '#f0fdf4',
             border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 6px', alignSelf: 'flex-start',
             marginTop: 2 }}>
-            Desde {tier.min} un.: {fmt.currency(precioTier(item, tier))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{tier.dto}%)</span>
+            Desde {tier.min} un.: {fmt.price(precioTier(item, tier))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{tier.dto}%)</span>
           </div>
         )}
         {variantOpts ? (
@@ -1135,8 +1135,8 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.25 }}>{item.nombre}</div>
             {item.precio > 0 && (
               <div style={{ marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: G }}>{fmt.currency(item.precio)}</span>
-                {(() => { const d = dtoSiempre(item); return d ? (<span style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(d.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{d.pct}%</span></span>) : null; })()}
+                <span style={{ fontSize: 13, fontWeight: 700, color: G }}>{fmt.price(item.precio)}</span>
+                {(() => { const d = dtoSiempre(item); return d ? (<span style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.price(d.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{d.pct}%</span></span>) : null; })()}
               </div>
             )}
           </div>
@@ -1569,7 +1569,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               {item.precio > 0 && dtoDetalle && <div style={{ marginBottom: 2 }}><PrecioAntes base={dtoDetalle.base} pct={dtoDetalle.pct} size={14} /></div>}
               {item.precio > 0 && (
                 <div style={{ fontSize: 24, fontWeight: 700, color: G, marginBottom: 4 }}>
-                  {fmt.currency(precioEffD)}
+                  {fmt.price(precioEffD)}
                   {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
                 </div>
               )}
@@ -1586,13 +1586,13 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               {boxD && boxD.pct > pctEffD && (
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#f0fdf4',
                   border: '1px solid #bbf7d0', borderRadius: 8, padding: '4px 10px' }}>
-                  Caja de {boxD.uxc}: {fmt.currency(precioTier(item, { dto: boxD.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{boxD.pct}%)</span>
+                  Caja de {boxD.uxc}: {fmt.price(precioTier(item, { dto: boxD.pct }))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{boxD.pct}%)</span>
                 </div>
               )}
               {tiersD.map((t, i) => (
                 <div key={i} style={{ fontSize: 12, fontWeight: 700, color: '#059669', background: '#f0fdf4',
                   border: '1px solid #bbf7d0', borderRadius: 8, padding: '4px 10px' }}>
-                  Desde {t.min} un.: {fmt.currency(precioTier(item, t))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{t.dto}%)</span>
+                  Desde {t.min} un.: {fmt.price(precioTier(item, t))} c/u <span style={{ fontWeight: 600, opacity: .8 }}>(−{t.dto}%)</span>
                 </div>
               ))}
             </div>
@@ -1721,7 +1721,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               {byBox && (
                 <div style={{ fontSize: 12, color: GRAY, marginTop: 8, fontFamily: SANS }}>
                   = {qty} {item.unidad && esUnidadVenta(item.unidad) ? item.unidad.replace(/^\//, '').trim() : 'unidades'}
-                  {boxD && boxD.pct > 0 && <> {'\u00b7'} <span style={{ color: G, fontWeight: 700 }}>{fmt.currency(precioTier(item, { dto: boxD.pct }))} c/u ({'\u2212'}{boxD.pct}%)</span></>}
+                  {boxD && boxD.pct > 0 && <> {'\u00b7'} <span style={{ color: G, fontWeight: 700 }}>{fmt.price(precioTier(item, { dto: boxD.pct }))} c/u ({'\u2212'}{boxD.pct}%)</span></>}
                 </div>
               )}
               </>
@@ -1734,7 +1734,7 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
               </button>
               {byBox && boxD && boxD.pct > 0 && (
                 <div style={{ fontSize: 12, color: GRAY, marginTop: 8, fontFamily: SANS }}>
-                  {uxcD} {item.unidad && esUnidadVenta(item.unidad) ? item.unidad.replace(/^\//, '').trim() : 'unidades'} {'\u00b7'} <span style={{ color: G, fontWeight: 700 }}>{fmt.currency(precioTier(item, { dto: boxD.pct }))} c/u ({'\u2212'}{boxD.pct}%)</span>
+                  {uxcD} {item.unidad && esUnidadVenta(item.unidad) ? item.unidad.replace(/^\//, '').trim() : 'unidades'} {'\u00b7'} <span style={{ color: G, fontWeight: 700 }}>{fmt.price(precioTier(item, { dto: boxD.pct }))} c/u ({'\u2212'}{boxD.pct}%)</span>
                 </div>
               )}
               </>
@@ -1823,15 +1823,15 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
                   const trDist = calcD.tramos.find(t => t.distribuidor);
                   return trDist ? (
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: G }}>{fmt.currency(trDist.precioUnit)}</span>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: G }}>{fmt.price(trDist.precioUnit)}</span>
                       {trDist.dtoPct > 0 && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>{'\u2212'}{Math.round(trDist.dtoPct)}%</span>}
                     </div>
                   ) : null;
                 })() : (
                   <>
-                    {dtoDetalle && <div style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.currency(dtoDetalle.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{dtoDetalle.pct}%</span></div>}
+                    {dtoDetalle && <div style={{ fontSize: 11, color: GRAY, fontWeight: 500, textDecoration: 'line-through' }}>{fmt.price(dtoDetalle.base)} <span style={{ color: '#dc2626', fontWeight: 700, textDecoration: 'none' }}>−{dtoDetalle.pct}%</span></div>}
                     <div style={{ fontSize: 18, fontWeight: 700, color: G }}>
-                      {fmt.currency(precioEffD)}
+                      {fmt.price(precioEffD)}
                       {showUnidad && <span style={{ fontSize: 11, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
                     </div>
                   </>
@@ -2619,7 +2619,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                   <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
                     {qty} {item.unidad || ''}
-                    {(!tramos || tramos.length <= 1) && <> × {fmt.currency(precioConDto)}</>}
+                    {(!tramos || tramos.length <= 1) && <> × {fmt.price(precioConDto)}</>}
                     {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                   </div>
@@ -2629,7 +2629,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                     <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {tramos.map((t, i) => (
                         <div key={i} style={{ fontSize: 11, color: t.distribuidor ? G : '#6a6a68', fontWeight: t.distribuidor ? 600 : 400 }}>
-                          {t.distribuidor ? '✓ ' : '• '}{t.unidades} {item.unidad || 'u'} × {fmt.currency(t.precioUnit)}
+                          {t.distribuidor ? '✓ ' : '• '}{t.unidades} {item.unidad || 'u'} × {fmt.price(t.precioUnit)}
                           {t.dtoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{Math.round(t.dtoPct)}%</span>}
                           {t.distribuidor && <span style={{ marginLeft: 4 }}>(precio distribuidor)</span>}
                         </div>
@@ -2781,8 +2781,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
               <div style={{ flex: 1, paddingRight: 12 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a18' }}>{item.nombre}</div>
                 <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 2 }}>
-                  {qty} × {fmt.currency(precioConDto)}
-                  {descEfectivoPct > 0 && <span style={{ color: '#b0b0a8', marginLeft: 4, textDecoration: 'line-through' }}>{fmt.currency(precioRef)}</span>}
+                  {qty} × {fmt.price(precioConDto)}
+                  {descEfectivoPct > 0 && <span style={{ color: '#b0b0a8', marginLeft: 4, textDecoration: 'line-through' }}>{fmt.price(precioRef)}</span>}
                   {descEfectivoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{descEfectivoPct}%</span>}
                   <span style={{ color: '#c0c0b8', marginLeft: 4 }}>IVA {ivaRate}%</span>
                 </div>
@@ -2991,7 +2991,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                       overflow: 'hidden', minHeight: 27 }}>
                       {p.nombre}
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: G }}>{fmt.currency(p.precio)}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: G }}>{fmt.price(p.precio)}</div>
                     <button onClick={() => onAddSugerido && onAddSugerido(p)} aria-label={`Agregar ${p.nombre}`} style={{
                       marginTop: 'auto', padding: '6px 0', background: G, color: '#fff', border: 'none',
                       borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
@@ -3041,8 +3041,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                         precio "de siempre" (dto chico adentro); si además aplica un tramo
                         mayor, el unitario real es más bajo. Mostrar item.precio + "-X%"
                         del tramo parecía un descuento apilado. Referencia tachada al lado. */}
-                    {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#b0b0a8', textDecoration: 'line-through' }}>{fmt.currency(precioRef)}</span>}
-                    <span>{fmt.currency((!tramos || tramos.length <= 1) ? precioConDto : item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
+                    {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#b0b0a8', textDecoration: 'line-through' }}>{fmt.price(precioRef)}</span>}
+                    <span>{fmt.price((!tramos || tramos.length <= 1) ? precioConDto : item.precio)}{item.unidad ? ` / ${item.unidad}` : ''}</span>
                     {(!tramos || tramos.length <= 1) && descEfectivoPct > 0 && <span style={{ color: '#dc2626' }}>-{descEfectivoPct}%</span>}
                     <span style={{ color: '#c0c0b8' }}>IVA {ivaRate}%</span>
                   </div>
@@ -3053,7 +3053,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                     <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {tramos.map((t, i) => (
                         <div key={i} style={{ fontSize: 11, color: t.distribuidor ? G : '#6a6a68', fontWeight: t.distribuidor ? 600 : 400 }}>
-                          {t.distribuidor ? '✓ ' : '• '}{t.unidades} {item.unidad || 'u'} × {fmt.currency(t.precioUnit)}
+                          {t.distribuidor ? '✓ ' : '• '}{t.unidades} {item.unidad || 'u'} × {fmt.price(t.precioUnit)}
                           {t.dtoPct > 0 && <span style={{ color: '#dc2626', marginLeft: 4 }}>-{Math.round(t.dtoPct)}%</span>}
                           {t.distribuidor && <span style={{ marginLeft: 4 }}>(precio distribuidor)</span>}
                         </div>
@@ -4899,7 +4899,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                             )}
                           </div>
                           {s.precio > 0 && (
-                            <div style={{ fontSize: 13, fontWeight: 700, color: G, flexShrink: 0 }}>{fmt.currency(s.precio)}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: G, flexShrink: 0 }}>{fmt.price(s.precio)}</div>
                           )}
                         </div>
                       );

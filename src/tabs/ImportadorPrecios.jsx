@@ -453,7 +453,7 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
                     : <span style={{ color: '#f59e0b', fontSize: 11 }}>⚠ Sin match</span>}
                 </td>
                 <td style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>
-                  <input type="number" value={row.precioFinal} min="0" step="0.01"
+                  <input type="number" value={row.precioFinal} min="0" step="0.001"
                     onChange={e => updateRow(i, 'precioFinal', parseFloat(e.target.value) || 0)}
                     style={{ width: 90, padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: 12 }} />
                 </td>
