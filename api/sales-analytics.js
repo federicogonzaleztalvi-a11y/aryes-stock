@@ -59,6 +59,90 @@ async function fetchAll(org, select, extra = '') {
   return out;
 }
 
+// Explota los pedidos del portal (tabla `ventas`) a filas con la misma forma que
+// sales_lines, marcadas canal='portal'. Es el "Caño B": la segunda fuente del
+// panel, junto al informe de Mercado (canal='mercado'). No hace falta migración
+// ni trigger — leemos `ventas` en vivo cada vez.
+//   razon_social ← cliente_nombre   fecha ← creado_en (día)
+//   producto ← item.nombre          familia ← products.category (por productoId)
+//   cantidad ← item.cantidad        importe ← cantidad × precioUnit
+// Se excluyen las ventas canceladas. (El importe del portal puede traer IVA según
+// cómo guarde la org sus precios; Mercado es neto. La diferencia es menor.)
+async function fetchPortalRows(org) {
+  const svcH = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' };
+
+  // Mapa productoId → familia (category) para clasificar cada ítem.
+  const prodMap = new Map();
+  {
+    let from = 0;
+    for (;;) {
+      const r = await fetch(
+        `${SB_URL}/rest/v1/products?org_id=eq.${encodeURIComponent(org)}&select=uuid,category`,
+        { headers: { ...svcH, Range: `${from}-${from + PAGE - 1}`, 'Range-Unit': 'items' } }
+      );
+      if (!r.ok) break;              // sin productos no es fatal: familia queda vacía
+      const rows = await r.json();
+      for (const p of rows) prodMap.set(p.uuid, p.category || '');
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+
+  // Ventas no canceladas de la org.
+  const ventas = [];
+  {
+    let from = 0;
+    for (;;) {
+      const r = await fetch(
+        `${SB_URL}/rest/v1/ventas?org_id=eq.${encodeURIComponent(org)}` +
+          `&estado=neq.cancelada&select=cliente_nombre,items,creado_en&order=creado_en.asc`,
+        { headers: { ...svcH, Range: `${from}-${from + PAGE - 1}`, 'Range-Unit': 'items' } }
+      );
+      if (!r.ok) return [];          // sin tabla/permiso: el panel sigue con Mercado
+      const rows = await r.json();
+      ventas.push(...rows);
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+
+  const out = [];
+  for (const v of ventas) {
+    const rs = String(v.cliente_nombre || '').trim();
+    if (!rs) continue;
+    const fecha = String(v.creado_en || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) continue;
+    const items = Array.isArray(v.items) ? v.items : [];
+    for (const it of items) {
+      const cantidad = Number(it.cantidad) || 0;
+      if (cantidad <= 0) continue;
+      const precio = Number(it.precioUnit) || 0;
+      out.push({
+        fecha, razon_social: rs, nombre: '',
+        producto: String(it.nombre || '').trim(),
+        familia: prodMap.get(it.productoId) || '',
+        cantidad, importe: cantidad * precio, canal: 'portal',
+      });
+    }
+  }
+  return out;
+}
+
+// Capa de ventas unificada: sales_lines (Mercado) + pedidos del portal. Para no
+// contar dos veces lo que el ERP ya incluye, descartamos las filas del portal con
+// fecha ≤ al último día del informe Mercado (se asume que a esa altura la venta ya
+// quedó facturada en el ERP). Las orgs sin informe Mercado cuentan todo el portal.
+async function loadRows(org) {
+  const mercado = await fetchAll(org, 'fecha,razon_social,nombre,familia,producto,importe,cantidad,canal');
+  const portal = await fetchPortalRows(org);
+  if (!portal.length) return mercado;
+  const mercadoMax = mercado.reduce((m, r) => (r.fecha > m ? r.fecha : m), '');
+  const extra = mercadoMax ? portal.filter(r => r.fecha > mercadoMax) : portal;
+  const all = mercado.concat(extra);
+  all.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+  return all;
+}
+
 // ── helpers de fecha (todo en UTC, fechas 'YYYY-MM-DD') ──
 const ymd  = (d) => d.toISOString().slice(0, 10);
 const addMonths = (d, n) => { const x = new Date(d); x.setUTCMonth(x.getUTCMonth() + n); return x; };
@@ -161,7 +245,7 @@ export default async function handler(req, res) {
   try {
     // ── status: ¿hay datos importados? (para mostrar u ocultar el panel) ──
     if (action === 'status') {
-      const rows = await fetchAll(org, 'fecha,razon_social');
+      const rows = await loadRows(org);
       if (!rows.length) return res.status(200).json({ lines: 0, clientes: 0 });
       const clientes = new Set(rows.map(r => r.razon_social)).size;
       return res.status(200).json({
@@ -172,7 +256,7 @@ export default async function handler(req, res) {
 
     // ── overview: ranking + KPIs + mensual + familias ──
     if (action === 'overview') {
-      const rows = await fetchAll(org, 'fecha,razon_social,nombre,familia,importe,cantidad');
+      const rows = await loadRows(org);
       if (!rows.length) return res.status(200).json({ empty: true });
 
       const maxIso = rows[rows.length - 1].fecha;
@@ -240,7 +324,7 @@ export default async function handler(req, res) {
       const rs = String(req.query.rs || '').trim();
       if (!rs) return res.status(400).json({ error: 'Falta razón social (rs)' });
 
-      const rows = await fetchAll(org, 'fecha,razon_social,nombre,familia,producto,importe,cantidad');
+      const rows = await loadRows(org);
       if (!rows.length) return res.status(200).json({ empty: true });
 
       const maxIso = rows[rows.length - 1].fecha;
