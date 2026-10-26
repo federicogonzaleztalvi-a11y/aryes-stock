@@ -1,11 +1,15 @@
 // api/cron-jefe-gabinete.js — EL JEFE DE GABINETE · parte operativo diario.
 //
-// El chief of staff de Federico. Corre todas las mañanas y colapsa la foto del
-// negocio + los loops abiertos (que persigue día a día) + la prioridad del
-// Directorio/CFO en UN solo parte: "hoy, la única cosa que mueve la aguja es
+// El chief of staff de Federico y la VOZ ÚNICA diaria. Corre todas las mañanas y
+// colapsa el pulso del día (salud + ventas + demos de ayer, antes el "Parte Diario")
+// + la foto del negocio + los loops abiertos (que persigue día a día) + la prioridad
+// del Directorio/CFO en UN solo parte: "hoy, la única cosa que mueve la aguja es
 // esto; después, estas 3; esto se está enfriando; esto se cerró". El motor vive
 // en api/_cabinet.js; este archivo orquesta: junta datos, reconcilia loops,
 // convoca la síntesis, arma el email y guarda el parte para pedir cuentas mañana.
+//
+// Plegó al Parte Diario (cron-parte-diario) y al digest del Agente de Ventas, que
+// ya NO mandan mail propio, para que Federico reciba un solo correo por día.
 //
 // REGLAS (mismas que el resto de la Torre de Control):
 //   • SOLO LECTURA del negocio + email a Federico. No escribe a clientes, no toca
@@ -53,6 +57,60 @@ async function sbGet(path) {
   catch { return []; }
 }
 const enc = (v) => encodeURIComponent(v);
+
+const DEMO_ORG = process.env.DEMO_ORG || 'aryes-ltda';
+const DAY_MS = 86_400_000, UY_OFFSET_MS = 3 * 60 * 60 * 1000;  // Uruguay = UTC-3
+
+// Rango [inicio, fin) del día de AYER en hora Uruguay, expresado en UTC real.
+function rangoAyerUruguay(now) {
+  const nowUy = new Date(now - UY_OFFSET_MS);
+  const y = nowUy.getUTCFullYear(), m = nowUy.getUTCMonth(), d = nowUy.getUTCDate();
+  const todayStart = new Date(Date.UTC(y, m, d, 0, 0, 0) + UY_OFFSET_MS);
+  const yesterdayStart = new Date(todayStart.getTime() - DAY_MS);
+  return { from: yesterdayStart.toISOString(), to: todayStart.toISOString() };
+}
+
+// fetch con timeout: un endpoint colgado no cuelga el parte.
+async function ping(url, opts = {}) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try { const r = await fetch(url, { ...opts, signal: ctrl.signal }); return r.ok; }
+  catch { return false; } finally { clearTimeout(timer); }
+}
+
+// ── Pulso del día (lo que antes mandaba el Parte Diario, ahora plegado acá) ───
+// Lean a propósito: salud del sitio (confianza matutina) + ventas de ayer de los
+// clientes (señal de uso de la plataforma) + demos nuevas de ayer (embudo propio).
+// El detalle de churn por-org ya vive en los loops (categoría salud_cliente).
+async function gatherPulse(now) {
+  const { from, to } = rangoAyerUruguay(now);
+  const [dbOk, siteOk, ventas, demos] = await Promise.all([
+    ping(`${SB_URL}/rest/v1/organizations?select=id&limit=1`, { headers: HJSON }),
+    ping(`${SITE}/`),
+    sbGet(`b2b_orders?org_id=neq.${enc(DEMO_ORG)}&creado_en=gte.${enc(from)}&creado_en=lt.${enc(to)}&estado=neq.cancelada&select=total`),
+    sbGet(`pazque_leads?created_at=gte.${enc(from)}&created_at=lt.${enc(to)}&select=id`),
+  ]);
+  const monto = (ventas || []).reduce((s, o) => s + (Number(o.total) || 0), 0);
+  return {
+    salud_ok: dbOk && siteOk, db_ok: dbOk, site_ok: siteOk,
+    pedidos_ayer: (ventas || []).length, monto_ayer: monto,
+    demos_ayer: (demos || []).length,
+  };
+}
+
+function pulseBlock(p) {
+  if (!p) return '';
+  const salud = p.salud_ok
+    ? `<span style="color:#059669;font-weight:700">🟢 Todo operativo</span>`
+    : `<span style="color:#b91c1c;font-weight:700">🔴 Revisar: ${p.db_ok ? '' : 'base de datos '}${p.site_ok ? '' : 'sitio'}</span>`;
+  const monto = '$' + (Number(p.monto_ayer) || 0).toLocaleString('es-UY', { maximumFractionDigits: 0 });
+  return `
+    <div style="margin:0 0 20px;padding:12px 15px;background:#f7f7f4;border-radius:11px;font-size:13px;color:#4a4a48;line-height:1.85">
+      ${salud}<br/>
+      📦 <b style="color:#1a1a18">${p.pedidos_ayer}</b> pedido${p.pedidos_ayer === 1 ? '' : 's'} de clientes ayer · <b style="color:#059669">${monto}</b>
+      &nbsp;·&nbsp; 🎯 <b style="color:#1a1a18">${p.demos_ayer}</b> demo${p.demos_ayer === 1 ? '' : 's'} nueva${p.demos_ayer === 1 ? '' : 's'}
+    </div>`;
+}
 
 // ── Materializar acciones de un clic (determinístico, desde datos reales) ────
 // Convierte las señales más accionables en acciones concretas que Federico aprueba
@@ -135,7 +193,7 @@ function actionsBlock(actions) {
     ${cards}`;
 }
 
-function buildEmail(metrics, loops, brief, actions) {
+function buildEmail(metrics, loops, brief, actions, pulse) {
   const o = metrics.orgs, em = metrics.embudo;
   const grid = `
     <table style="width:100%;border-collapse:separate;border-spacing:8px;margin:0 -8px 8px">
@@ -211,6 +269,7 @@ function buildEmail(metrics, loops, brief, actions) {
       <h1 style="font-size:18px;font-weight:700;margin:0 0 4px;line-height:1.35">${esc(titular)}</h1>
       <p style="font-size:12px;color:#9a9a98;margin:0 0 20px">${esc(metrics.fecha)} · consultivo — vos decidís y ejecutás</p>
       ${grid}
+      ${pulseBlock(pulse)}
       ${cuerpo}
       <p style="font-size:11px;color:#b5b5b2;margin-top:26px;line-height:1.5;padding-top:14px;border-top:1px solid #f0ede8">
         El Jefe de Gabinete de Pazque · chief of staff. Persigue los loops abiertos hasta cerrarlos y te propone acciones que aprobás con un clic (siempre las confirmás vos; son internas y reversibles, nunca manda mensajes solo).
@@ -247,8 +306,13 @@ export default async function handler(req, res) {
   try { actions = await buildActions(metrics, loops, now); }
   catch (e) { console.error('[cron-jefe-gabinete] buildActions falló:', e.message); }
 
+  // Pulso del día (salud + ventas + demos de ayer). Best-effort: si falla, el parte sale igual.
+  let pulse = null;
+  try { pulse = await gatherPulse(now); }
+  catch (e) { console.error('[cron-jefe-gabinete] gatherPulse falló:', e.message); }
+
   try {
-    await sendEmail({ to: TO_EMAIL, ...buildEmail(metrics, loops, brief, actions) });
+    await sendEmail({ to: TO_EMAIL, ...buildEmail(metrics, loops, brief, actions, pulse) });
   } catch (e) {
     console.error('[cron-jefe-gabinete] email falló:', e.message);
   }

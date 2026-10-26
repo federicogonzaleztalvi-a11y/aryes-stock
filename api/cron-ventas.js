@@ -172,9 +172,12 @@ export default async function handler(req, res) {
   const plan = { query, sourced, enriched, seguimientos, listos: listos.length, followUps: followUps.length,
                  errores, ms: Date.now() - started };
 
-  // 4) PROPONE — email del plan (solo si hay algo accionable o hubo errores) + bitácora.
+  // 4) PROPONE — el plan lo surge el Jefe de Gabinete (voz única diaria). El digest
+  // propio de Ventas queda SILENCIADO por defecto para no duplicar mails; se puede
+  // reactivar con VENTAS_AGENT_EMAIL=true. El sourcing/enrich de arriba corre igual.
+  const DIGEST_ON = process.env.VENTAS_AGENT_EMAIL === 'true';
   const hayAlgo = listos.length > 0 || followUps.length > 0 || sourced.added > 0 || errores.length > 0;
-  if (hayAlgo) {
+  if (DIGEST_ON && hayAlgo) {
     try {
       await sendEmail({
         to: OWNER_EMAIL,
