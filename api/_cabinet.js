@@ -266,6 +266,8 @@ export async function reconcileLoops(signals, now = Date.now()) {
   }
 
   const abiertos = [...nuevos, ...continua]
+    // Silenciados (loop_silenciar): siguen abiertos pero no se muestran hasta la fecha.
+    .filter(l => !l.silenciado_hasta || new Date(l.silenciado_hasta).getTime() <= now)
     .map(l => ({
       clave: l.clave, titulo: l.titulo, detalle: l.detalle, categoria: l.categoria,
       severidad: l.severidad, org_id: l.org_id ?? null,

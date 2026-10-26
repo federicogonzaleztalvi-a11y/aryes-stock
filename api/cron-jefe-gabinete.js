@@ -11,7 +11,9 @@
 //   • SOLO LECTURA del negocio + email a Federico. No escribe a clientes, no toca
 //     sus datos. Lo único que escribe es su memoria (cabinet_loops + su parte).
 //   • Auth por CRON_SECRET. Solo Pazque (el negocio del dueño), no la op de Eric.
-//   • Consultivo: propone; Federico decide y ejecuta. No auto-ejecuta nada.
+//   • Aprobación con un clic: propone acciones concretas y Federico las aprueba
+//     desde el email (se ejecutan por POST, recién cuando él confirma). Nunca
+//     auto-ejecuta ni manda mensajes solo; las acciones son internas y reversibles.
 //   • PRENDIDO por defecto (solo te escribe a vos → riesgo cero). Kill-switch:
 //     CABINET_ENABLED=false.
 //   • Sin ANTHROPIC_KEY manda igual el parte con los loops crudos.
@@ -20,6 +22,7 @@
 import { sendEmail } from './_email.js';
 import { gatherMetrics } from './_board.js';
 import { gatherSignals, reconcileLoops, consultCabinet } from './_cabinet.js';
+import { proposeAction } from './_cabinet-actions.js';
 
 const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC      = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -45,6 +48,65 @@ async function readMem(key) {
   return null;
 }
 
+async function sbGet(path) {
+  try { const r = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: HJSON }); return r.ok ? await r.json() : []; }
+  catch { return []; }
+}
+const enc = (v) => encodeURIComponent(v);
+
+// ── Materializar acciones de un clic (determinístico, desde datos reales) ────
+// Convierte las señales más accionables en acciones concretas que Federico aprueba
+// con un clic desde el email. Todo best-effort: si algo falla, el parte igual sale.
+async function buildActions(metrics, loops, now) {
+  const out = [];
+  const push = async (spec) => { try { out.push(await proposeAction(spec)); } catch (e) { console.warn('[cabinet] acción falló:', e.message); } };
+
+  // 1) Prospectos propios listos para contactar (enriquecidos, mensaje redactado).
+  //    Los 3 más viejos: son los que más esperaron. El envío lo hace Federico a
+  //    mano (deep-link a WhatsApp en la confirmación); esto agenda el seguimiento.
+  const listos = await sbGet(
+    'pazque_leads?estado=eq.nuevo&enriquecimiento=not.is.null' +
+    '&select=id,nombre,empresa,tel,mensaje_final,enriquecimiento&order=created_at.asc&limit=3'
+  );
+  for (const l of listos) {
+    const mensaje = l.mensaje_final || l.enriquecimiento?.mensaje_wa || l.enriquecimiento?.mensaje || '';
+    await push({
+      tipo: 'lead_marcar_contactado',
+      titulo: `Contactar a ${l.empresa || l.nombre || 'un prospecto'}`,
+      payload: { lead_id: l.id, nombre: l.nombre, empresa: l.empresa, tel: l.tel, mensaje },
+      dedup_clave: `contactar:${l.id}`,
+    });
+  }
+
+  // 2) Pruebas por vencer (≤3 días): opción de extender con un clic.
+  const in3d = new Date(now + 3 * 86400000).toISOString();
+  const nowISO = new Date(now).toISOString();
+  const trials = await sbGet(
+    `organizations?subscription_status=eq.trial&trial_ends_at=gt.${enc(nowISO)}&trial_ends_at=lte.${enc(in3d)}` +
+    '&select=id,name&limit=5'
+  );
+  for (const o of trials) {
+    await push({
+      tipo: 'trial_extender',
+      titulo: `Extender la prueba de ${o.name || 'una distribuidora'}`,
+      payload: { org_id: o.id, nombre: o.name, dias: 7 },
+      dedup_clave: `trial:${o.id}`,
+    });
+  }
+
+  // 3) Loops de salud de cliente (agregado): poder silenciarlos una semana.
+  for (const l of loops.abiertos.filter(x => x.categoria === 'salud_cliente').slice(0, 2)) {
+    await push({
+      tipo: 'loop_silenciar',
+      titulo: `Silenciar: ${l.titulo}`,
+      payload: { clave: l.clave, titulo: l.titulo, dias: 7 },
+      dedup_clave: `silenciar:${l.clave}`,
+    });
+  }
+
+  return out.filter(Boolean);
+}
+
 const SEV_COLOR = { 3: '#b91c1c', 2: '#9a7b2e', 1: '#6a6a68' };
 const SEV_TXT   = { 3: 'alta', 2: 'media', 1: 'baja' };
 
@@ -57,7 +119,23 @@ function num(label, value, sub) {
     </td>`;
 }
 
-function buildEmail(metrics, loops, brief) {
+// Sección "Acciones de un clic": cada acción linkea a la página de confirmación.
+// El link NO ejecuta (es GET → muestra); recién el botón de esa página ejecuta (POST).
+function actionsBlock(actions) {
+  if (!actions || !actions.length) return '';
+  const cards = actions.map(a => `
+    <a href="${SITE}/api/cabinet-action?t=${esc(a.token)}" style="display:block;text-decoration:none;margin:0 0 10px;padding:13px 15px;background:#052e24;border-radius:11px">
+      <span style="font-size:13px;font-weight:700;color:#fff">${esc(a.titulo)}</span>
+      <span style="display:block;font-size:12px;color:#a7f3d0;margin-top:3px">${esc(a.resumen || '')}</span>
+      <span style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:#6ee7b7">Revisar y aprobar →</span>
+    </a>`).join('');
+  return `
+    <h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:24px 0 4px">Acciones de un clic</h2>
+    <p style="font-size:11px;color:#9a9a98;margin:0 0 10px">Abrís, revisás y confirmás. Nada se ejecuta hasta que apretás el botón en la página.</p>
+    ${cards}`;
+}
+
+function buildEmail(metrics, loops, brief, actions) {
   const o = metrics.orgs, em = metrics.embudo;
   const grid = `
     <table style="width:100%;border-collapse:separate;border-spacing:8px;margin:0 -8px 8px">
@@ -109,6 +187,7 @@ function buildEmail(metrics, loops, brief) {
         ${brief.la_unica_cosa?.donde ? `<div style="font-size:11px;color:#6ee7b7;margin-top:4px">${esc(brief.la_unica_cosa.donde)}</div>` : ''}
       </div>
       ${acciones ? `<h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:22px 0 10px">Después, estas</h2>${acciones}` : ''}
+      ${actionsBlock(actions)}
       <h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:22px 0 6px">Se está enfriando</h2>
       ${enfria}
       ${wins ? `<h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:22px 0 6px">Se cerró</h2>${wins}` : ''}
@@ -119,6 +198,7 @@ function buildEmail(metrics, loops, brief) {
       <p style="font-size:13px;color:#6a6a68;line-height:1.6;margin:0 0 8px">
       (La síntesis del Jefe de Gabinete no está disponible — falta ANTHROPIC_KEY o la llamada falló.
       Te dejo igual los loops abiertos para que decidas.)</p>
+      ${actionsBlock(actions)}
       ${loopsTable}`;
   }
 
@@ -133,7 +213,7 @@ function buildEmail(metrics, loops, brief) {
       ${grid}
       ${cuerpo}
       <p style="font-size:11px;color:#b5b5b2;margin-top:26px;line-height:1.5;padding-top:14px;border-top:1px solid #f0ede8">
-        El Jefe de Gabinete de Pazque · chief of staff. Persigue los loops abiertos hasta cerrarlos; solo lee el negocio y te aconseja, no ejecuta ni toca datos de clientes.
+        El Jefe de Gabinete de Pazque · chief of staff. Persigue los loops abiertos hasta cerrarlos y te propone acciones que aprobás con un clic (siempre las confirmás vos; son internas y reversibles, nunca manda mensajes solo).
         <a href="${SITE}/owner" style="color:#059669;text-decoration:none">Abrir consola</a>
       </p>
     </div>`;
@@ -162,8 +242,13 @@ export default async function handler(req, res) {
 
   const brief = await consultCabinet(metrics, loops, { director, cfo }, prev);
 
+  // Materializar las acciones de un clic (best-effort; nunca rompe el parte).
+  let actions = [];
+  try { actions = await buildActions(metrics, loops, now); }
+  catch (e) { console.error('[cron-jefe-gabinete] buildActions falló:', e.message); }
+
   try {
-    await sendEmail({ to: TO_EMAIL, ...buildEmail(metrics, loops, brief) });
+    await sendEmail({ to: TO_EMAIL, ...buildEmail(metrics, loops, brief, actions) });
   } catch (e) {
     console.error('[cron-jefe-gabinete] email falló:', e.message);
   }
@@ -182,6 +267,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     ok: true,
     loops: { abiertos: loops.abiertos.length, nuevos: loops.nuevos.length, resueltos: loops.resueltos.length },
+    acciones: actions.length,
     analizado: !!brief,
   });
 }

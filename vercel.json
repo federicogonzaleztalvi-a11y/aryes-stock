@@ -63,6 +63,9 @@
     },
     "api/cron-jefe-gabinete.js": {
       "maxDuration": 120
+    },
+    "api/cabinet-action.js": {
+      "maxDuration": 15
     }
   },
   "rewrites": [
