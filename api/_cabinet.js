@@ -5,12 +5,19 @@
 // agentes y de la foto cruda del negocio, y la colapsa en UNA sola señal diaria:
 // "hoy lo único que mueve la aguja es esto, hacé esto".
 //
+// FOCO (lo que mira): el ÉXITO COMERCIAL de Pazque COMO PLATAFORMA — salir a
+// venderla, sumar distribuidoras, convertir prueba en pago, facturar. NO opera el
+// negocio de ningún cliente: trabajarle el embudo o los pedidos a Eric es el
+// negocio de ERIC, no el de Federico. La única excepción es la SALUD de una cuenta
+// (un cliente que no usa la plataforma) y entra como AGREGADO secundario, enmarcada
+// como riesgo para Pazque (perder ingreso/referencia), nunca como "andá a operarle".
+//
 // Tres cosas que lo hacen distinto a un digest:
 //   1. LOOPS ABIERTOS CON MEMORIA. No te manda una foto nueva y se olvida.
-//      Detecta temas abiertos (ej. prospectos sin trabajar, org callada, ingreso
-//      en $0), los guarda en cabinet_loops y los PERSIGUE día a día: cada loop
-//      envejece ("abierto hace 5 días") hasta que se cierra solo cuando la señal
-//      deja de reproducirse. Eso es accountability real, no ruido.
+//      Detecta temas abiertos (ej. prospectos propios sin contactar, demos
+//      calientes sin cerrar, ingreso en $0), los guarda en cabinet_loops y los
+//      PERSIGUE día a día: cada loop envejece ("abierto hace 5 días") hasta que se
+//      cierra solo cuando la señal deja de reproducirse. Accountability real, no ruido.
 //   2. ANCLA A LA ESTRATEGIA. Lee la última prioridad del Directorio y del CFO y
 //      alinea las acciones operativas del día a esa prioridad semanal/mensual.
 //   3. CAPA DE RAZONAMIENTO. Claude sintetiza métricas + loops + estrategia en un
@@ -43,9 +50,11 @@ const DAY   = 24 * 60 * 60 * 1000;
 
 const BIZ = `Pazque: SaaS B2B multi-tenant para distribuidoras mayoristas (HORECA, food, cosmética) en LATAM.
 Modelo tipo Shopify (white-label por-org); UX benchmark Amazon. Lo construye Federico, fundador SOLO y NO-técnico, bootstrapeando de su bolsillo (sin caja ni runway: lo que importa es costo sostenible + validar el primer ingreso).
-NORTE ABSOLUTO DE HOY: conseguir el PRIMER cliente que pague. Ingreso real = 0 (nadie paga todavía).
-Cliente ancla: Eric, una distribuidora en Uruguay (depósito grande, 400+ compradores), hoy GRATIS como design-partner — mantenerlo feliz es prioridad, NO se le spamea a él ni a sus compradores. aryes-ltda es la org demo interna, no cuenta.
-Ya corren solos ~12 agentes (ventas, activación, reactivación, carrito, cobranzas, Torre de Control, El Directorio, El CFO). Tu trabajo NO es duplicarlos: es mirar lo que ellos dejan abierto y decirle a Federico qué hacer HOY.`;
+NORTE ABSOLUTO DE HOY: VENDER PAZQUE — conseguir el PRIMER cliente que pague y sumar distribuidoras. Ingreso real = 0 (nadie paga todavía).
+QUÉ MIRÁS: el negocio de Pazque COMO PLATAFORMA/EMPRESA — su embudo PROPIO de adquisición (pazque_leads: prospectos sin contactar, demos calientes sin cerrar, seguimientos vencidos), trials por vencer / sin activar, altas de distribuidoras, conversión a pago, MRR real.
+QUÉ NO MIRÁS: la operación interna de un cliente. Trabajarle sus prospectos (portal_leads) o sus pedidos a Eric es el negocio de ERIC, no de Federico; Eric tiene sus propias herramientas para eso. NO le armes la agenda operativa a un cliente.
+Cliente ancla: Eric, una distribuidora en Uruguay (depósito grande, 400+ compradores), hoy GRATIS como design-partner. Importa SOLO como (a) caso de referencia para vender, y (b) riesgo de churn si no usa la plataforma — nunca como un negocio para operarle. NO se le spamea a él ni a sus compradores. aryes-ltda es la org demo interna, no cuenta.
+Ya corren solos ~12 agentes (ventas, activación, reactivación, carrito, cobranzas, Torre de Control, El Directorio, El CFO). Tu trabajo NO es duplicarlos: es mirar lo que ellos dejan abierto DEL LADO COMERCIAL DE PAZQUE y decirle a Federico qué hacer HOY para vender.`;
 
 function enc(v) { return encodeURIComponent(v); }
 
@@ -83,6 +92,8 @@ async function listRealOrgs() {
 
 // ── 1) Detectar señales (solo lectura, datos reales) ────────────────────────
 // Cada señal es un loop POTENCIAL con una `clave` estable para deduplicar.
+// FOCO: vender Pazque (embudo propio + trials + altas + ingreso). La salud de un
+// cliente que no usa la plataforma entra al final como AGREGADO secundario.
 export async function gatherSignals(metrics, now = Date.now()) {
   const signals = [];
 
@@ -96,45 +107,67 @@ export async function gatherSignals(metrics, now = Date.now()) {
     });
   }
 
-  const orgs = await listRealOrgs();
-  for (const [orgId, nombre] of orgs) {
-    // Prospectos del portal sin trabajar (portal_leads en estado 'nuevo').
-    const leads = (await getJSON(
-      `portal_leads?org_id=eq.${enc(orgId)}&estado=eq.nuevo&select=created_at&order=created_at.asc&limit=1000`
-    )) || [];
-    if (leads.length > 0) {
-      const dias = Math.floor((now - new Date(leads[0].created_at).getTime()) / DAY);
-      const sev = (leads.length >= 10 || dias >= 21) ? 3 : 2;
-      signals.push({
-        clave: `leads_sin_trabajar:${orgId}`, categoria: 'ventas', severidad: sev, org_id: orgId,
-        titulo: `${nombre}: ${leads.length} prospecto(s) del portal sin trabajar`,
-        detalle: `El más viejo espera hace ${dias} día(s). Son comercios que pidieron acceso y nadie contactó — plata sobre la mesa.`,
-        evidencia: { org: orgId, nuevos: leads.length, dias_mas_viejo: dias },
-      });
-    }
+  // ── EMBUDO PROPIO DE PAZQUE (adquisición de distribuidoras = el core) ──────
+  const leads = (await getJSON(
+    'pazque_leads?select=id,estado,respondio,ultimo_contacto_at,seguir_desde,created_at&limit=2000'
+  )) || [];
 
-    // Actividad de pedidos: ¿la org está callada?
-    const ult = (await getJSON(
-      `b2b_orders?org_id=eq.${enc(orgId)}&estado=neq.cancelada&select=creado_en&order=creado_en.desc&limit=1`
-    )) || [];
-    if (ult[0]?.creado_en) {
-      const dias = Math.floor((now - new Date(ult[0].creado_en).getTime()) / DAY);
-      if (dias >= QUIET_DAYS) {
-        signals.push({
-          clave: `org_callada:${orgId}`, categoria: 'retencion', severidad: dias >= 30 ? 3 : 2, org_id: orgId,
-          titulo: `${nombre}: ${dias} días sin pedidos`,
-          detalle: `La última venta por el portal fue hace ${dias} días. Riesgo de que la cuenta se enfríe.`,
-          evidencia: { org: orgId, dias_sin_vender: dias },
-        });
-      }
-    } else {
-      signals.push({
-        clave: `org_sin_ventas:${orgId}`, categoria: 'activacion', severidad: 2, org_id: orgId,
-        titulo: `${nombre}: todavía sin ningún pedido por el portal`,
-        detalle: `La cuenta existe pero nunca registró una venta. Cuenta vacía no retiene ni paga.`,
-        evidencia: { org: orgId },
-      });
-    }
+  // Prospectos propios nuevos que nadie contactó → es de donde sale la próxima venta.
+  const sinContactar = leads.filter(l => (l.estado || 'nuevo') === 'nuevo' && !l.ultimo_contacto_at);
+  if (sinContactar.length > 0) {
+    const oldest = sinContactar.reduce((min, l) => Math.min(min, new Date(l.created_at).getTime()), Infinity);
+    const dias = Number.isFinite(oldest) ? Math.floor((now - oldest) / DAY) : 0;
+    signals.push({
+      clave: 'leads_propios_sin_contactar', categoria: 'adquisicion',
+      severidad: (sinContactar.length >= 5 || dias >= 7) ? 3 : 2, org_id: null,
+      titulo: `${sinContactar.length} prospecto(s) de Pazque sin contactar`,
+      detalle: `Distribuidoras que entraron al embudo PROPIO y nadie tocó. El más viejo espera hace ${dias} día(s). Es de dónde sale la próxima que pague.`,
+      evidencia: { sin_contactar: sinContactar.length, dias_mas_viejo: dias },
+    });
+  }
+
+  // Prospectos calientes: contestaron pero no están cerrados. Lo más cerca de pagar.
+  const calientes = leads.filter(l => l.respondio === true && l.estado !== 'convertido' && l.estado !== 'descartado');
+  if (calientes.length > 0) {
+    signals.push({
+      clave: 'demos_calientes_sin_cerrar', categoria: 'ventas', severidad: 3, org_id: null,
+      titulo: `${calientes.length} prospecto(s) caliente(s) sin cerrar`,
+      detalle: `Contestaron y mostraron interés pero no están convertidos ni descartados. Es la plata más cerca de entrar — avanzá a demo o cierre antes de que se enfríe.`,
+      evidencia: { calientes: calientes.length },
+    });
+  }
+
+  // Seguimientos vencidos: contactados, sin respuesta, con fecha de re-toque pasada.
+  const seguimientos = leads.filter(l =>
+    l.ultimo_contacto_at && l.respondio === false && l.seguir_desde &&
+    new Date(l.seguir_desde).getTime() <= now);
+  if (seguimientos.length > 0) {
+    signals.push({
+      clave: 'seguimientos_vencidos', categoria: 'ventas', severidad: 2, org_id: null,
+      titulo: `${seguimientos.length} seguimiento(s) de prospectos vencido(s)`,
+      detalle: `Los contactaste, no respondieron y la fecha de volver a tocar ya pasó. Follow-up hoy o descartá para despejar el pipeline.`,
+      evidencia: { vencidos: seguimientos.length },
+    });
+  }
+
+  // Pipeline seco: ningún prospecto nuevo esta semana → sin leads no hay próxima venta.
+  if ((metrics.embudo?.nuevos_ultimos_7d || 0) === 0) {
+    signals.push({
+      clave: 'pipeline_sin_leads_nuevos', categoria: 'adquisicion', severidad: 2, org_id: null,
+      titulo: 'Ningún prospecto nuevo en 7 días',
+      detalle: `El embudo propio no sumó leads esta semana. Sin leads nuevos no hay próxima distribuidora: prendé un canal (outbound del agente de ventas, demo en la landing, marca personal en IG).`,
+      evidencia: { nuevos_7d: 0 },
+    });
+  }
+
+  // Sin altas de distribuidoras en 7 días → crecimiento plano del lado de adquisición.
+  if ((metrics.orgs?.nuevas_ultimos_7d || 0) === 0) {
+    signals.push({
+      clave: 'sin_altas_distribuidoras_7d', categoria: 'adquisicion', severidad: 2, org_id: null,
+      titulo: 'Ninguna distribuidora nueva se dio de alta en 7 días',
+      detalle: `No entró ninguna org nueva esta semana. El crecimiento está plano: la próxima distribuidora no se va a dar de alta sola.`,
+      evidencia: { altas_7d: 0 },
+    });
   }
 
   // Trials que vencen en ≤3 días (momento de cerrar o extender).
@@ -164,6 +197,30 @@ export async function gatherSignals(metrics, now = Date.now()) {
       detalle: `Prospectos de Pazque contactados hace +7 días sin respuesta registrada. Follow-up o descartá para despejar el pipeline.`,
       evidencia: { estancados: metrics.embudo.estancados_mas_7d },
     });
+  }
+
+  // ── AGREGADO (secundario): salud de clientes de Pazque ─────────────────────
+  // Un cliente que NO usa la plataforma es RIESGO para Pazque (perdés el caso de
+  // referencia y el ingreso futuro de esa cuenta). NO es "operarle el negocio":
+  // es vigilar que la plataforma le sirva. Por eso va con severidad baja (1-2) y
+  // categoría salud_cliente — nunca compite con una señal de venta.
+  const orgs = await listRealOrgs();
+  for (const [orgId, nombre] of orgs) {
+    const ult = (await getJSON(
+      `b2b_orders?org_id=eq.${enc(orgId)}&estado=neq.cancelada&select=creado_en&order=creado_en.desc&limit=1`
+    )) || [];
+    if (ult[0]?.creado_en) {
+      const dias = Math.floor((now - new Date(ult[0].creado_en).getTime()) / DAY);
+      if (dias >= QUIET_DAYS) {
+        signals.push({
+          clave: `cliente_enfriandose:${orgId}`, categoria: 'salud_cliente',
+          severidad: dias >= 45 ? 2 : 1, org_id: orgId,
+          titulo: `${nombre}: ${dias} días sin usar la plataforma`,
+          detalle: `(Agregado — salud de cuenta, no prioridad de venta.) Este cliente de Pazque no mueve un pedido hace ${dias} días. Riesgo para Pazque: si se enfría perdés el caso de referencia y el ingreso futuro de la cuenta. Vigilá que la plataforma le esté sirviendo; no es operarle el negocio.`,
+          evidencia: { org: orgId, dias_sin_uso: dias },
+        });
+      }
+    }
   }
 
   return signals;
@@ -224,12 +281,17 @@ const CHIEF_SYSTEM = `Sos EL JEFE DE GABINETE de Pazque: el chief of staff de Fe
 
 ${BIZ}
 
-Tu trabajo: mirar la foto del negocio + los LOOPS ABIERTOS (temas que vienen arrastrándose, con su antigüedad en días) + la prioridad estratégica vigente del Directorio y el CFO, y entregar UN parte operativo para HOY. Tu valor nº1 es el FOCO y el CIERRE: que Federico cierre loops en vez de abrir features nuevas.
+Tu trabajo: mirar la foto del negocio + los LOOPS ABIERTOS (temas que vienen arrastrándose, con su antigüedad en días) + la prioridad estratégica vigente del Directorio y el CFO, y entregar UN parte operativo para HOY sobre cómo VENDER Pazque. Tu valor nº1 es el FOCO y el CIERRE: que Federico avance el embudo de Pazque y cierre loops comerciales, en vez de abrir features nuevas o perder el día operándole el negocio a un cliente.
+
+ESTO ES CLAVE — el parte es sobre PAZQUE COMO EMPRESA, no sobre la operación de un cliente:
+- SÍ van: el embudo PROPIO de Pazque (prospectos sin contactar, calientes sin cerrar, seguimientos vencidos, pipeline seco), trials por vencer/sin activar, altas de distribuidoras, conversión a pago, MRR real.
+- NO van como acción para Federico: trabajarle los prospectos, los pedidos o el catálogo a un cliente (ej. Eric). Eso es el negocio de ESE cliente, tiene sus propias herramientas. Nunca le armes a Federico la agenda operativa de un cliente.
+- Señales con categoría "salud_cliente" son un AGREGADO secundario: un cliente que no usa la plataforma = riesgo de churn/perder la referencia. Mencionalo como RIESGO para Pazque si es relevante, NUNCA como "andá a operarle el negocio". Jamás debe ser la "única cosa del día" salvo que sea el único cliente y esté por irse.
 
 Principios:
-- UNA sola cosa primero. La "única cosa de hoy" es la acción de mayor palanca hacia el norte (primer cliente que pague) o el loop más caro que se está enfriando. Nada de listas largas.
+- UNA sola cosa primero. La "única cosa de hoy" es la acción de mayor palanca para VENDER Pazque (acercar el primer cliente que pague / sumar una distribuidora) o el loop comercial más caro que se está enfriando. Nada de listas largas.
 - Perseguí lo que se enfría. Un loop abierto hace muchos días pesa más que uno nuevo: nombralo y decí por qué ya no se puede ignorar.
-- Acciones concretas y chicas. Cada acción = un paso que Federico puede dar hoy en <30 min, con el lugar donde hacerlo. Si una acción implicaría escribirle a clientes/compradores, NO la auto-ejecutes: proponéla para que él la apruebe.
+- Acciones concretas y chicas. Cada acción = un paso que Federico puede dar hoy en <30 min, con el lugar donde hacerlo. Si una acción implicaría escribirle a clientes/prospectos, NO la auto-ejecutes: proponéla para que él la apruebe.
 - Honestidad brutal: cero humo, no inventes números ni señales que no estén en los datos. Si algo no se puede saber con lo que hay, decilo.
 - Español rioplatense (voseo), de igual a igual, directo.
 
