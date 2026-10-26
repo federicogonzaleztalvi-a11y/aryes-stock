@@ -919,11 +919,17 @@ export async function sourceDistributors(query) {
     // "Argentina", así que queda correctamente descartada. Si no podemos confirmar el país,
     // descartamos: mejor perder un lead que meter uno equivocado.
     // SOURCING_COUNTRY vacío desactiva el filtro (toda América).
-    if (SOURCING_COUNTRY) {
-      const countryComp = (p.addressComponents || []).find(c => (c.types || []).includes('country'));
-      const country = (countryComp?.longText || countryComp?.shortText || '').trim().toLowerCase();
-      if (country !== SOURCING_COUNTRY.toLowerCase()) continue;
-    }
+    // El país también se GUARDA en el lead (columna pais) para distinguir mercados
+    // en /owner — así se puede probar Argentina sin mezclarlo con los de Uruguay.
+    const countryComp = (p.addressComponents || []).find(c => (c.types || []).includes('country'));
+    const pais = (countryComp?.longText || countryComp?.shortText || '').trim();
+    if (SOURCING_COUNTRY && pais.toLowerCase() !== SOURCING_COUNTRY.toLowerCase()) continue;
+    // La CIUDAD sale del mismo componente estructurado de Google (locality; si no hay,
+    // caemos a la división administrativa de 2º nivel, ej. partido/departamento). Se guarda
+    // aparte (columna ciudad) para poder filtrar por zona dentro de un mismo país en /owner.
+    const cityComp = (p.addressComponents || []).find(c => (c.types || []).includes('locality'))
+      || (p.addressComponents || []).find(c => (c.types || []).includes('administrative_area_level_2'));
+    const ciudad = (cityComp?.longText || cityComp?.shortText || '').trim();
     // Guardamos dirección + señal de tamaño (rating y reseñas) como contexto del lead.
     const rating = typeof p.rating === 'number'
       ? `${p.rating}★ (${resenas} reseñas)` : '';
@@ -936,6 +942,8 @@ export async function sourceDistributors(query) {
       mensaje: clean(contexto, 300) || null,   // dirección + rating como contexto
       landing_url: webRaw || null,
       place_id: pid,
+      pais: pais || null,                       // país del prospecto (distinguir mercados)
+      ciudad: ciudad || null,                   // ciudad/zona (filtrar dentro de un país)
       origen: 'sourcing',
       utm_source: 'sourcing-google',
       estado: 'nuevo',

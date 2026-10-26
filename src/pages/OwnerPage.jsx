@@ -56,6 +56,20 @@ const PRIORIDAD = {
   baja:  { label: 'Fit bajo',  bg: '#f3f4f6', fg: C.faint },
 };
 
+// Bandera del país del prospecto (lo setea el sourcing de Google). Permite
+// distinguir mercados de un vistazo en la lista — ej: probar Argentina sin
+// mezclarla con Uruguay. Sin país conocido → globo (inbound o país no mapeado).
+const PAIS_FLAG = {
+  uruguay: '🇺🇾', argentina: '🇦🇷', chile: '🇨🇱', mexico: '🇲🇽',
+  colombia: '🇨🇴', peru: '🇵🇪', paraguay: '🇵🇾', bolivia: '🇧🇴',
+  ecuador: '🇪🇨', brasil: '🇧🇷', brazil: '🇧🇷',
+};
+function banderaPais(pais) {
+  const k = String(pais || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');   // saca acentos (perú→peru)
+  return PAIS_FLAG[k] || '🌎';
+}
+
 function fuenteOf(l) {
   if (l.utm_source || l.utm_campaign) return [l.utm_source, l.utm_campaign].filter(Boolean).join(' · ');
   if (l.fbclid) return 'Meta Ads';
@@ -323,7 +337,9 @@ function LeadCard({ l, onUpdate, onEnrich, onFollowUp, onReply, busy, enriching,
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 240px', minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {l.pais && <span title={[l.ciudad, l.pais].filter(Boolean).join(', ')} style={{ fontSize: 15 }}>{banderaPais(l.pais)}</span>}
             <span style={{ fontWeight: 700, fontSize: 15 }}>{l.nombre}</span>
+            {l.ciudad && <span style={{ fontSize: 11.5, color: C.sub }}>· {l.ciudad}</span>}
             <span style={{ background: est.bg, color: est.fg, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50 }}>{est.label}</span>
             {seguir && (
               <span style={{ background: C.amberBg, color: C.amber, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 50 }}>⏰ Seguí hoy</span>
@@ -1016,6 +1032,8 @@ function Inbox({ token, onLogout }) {
   const [drafting, setDrafting] = React.useState(''); // redactando seguimiento
   const [replying, setReplying] = React.useState(''); // redactando respuesta a objeción
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
+  const [paisSel, setPaisSel] = React.useState('');        // '' = todos los países
+  const [ciudadSel, setCiudadSel] = React.useState('');    // '' = todas las ciudades
   const [sourcing, setSourcing] = React.useState(false);
   const [srcMsg,   setSrcMsg]   = React.useState('');
 
@@ -1126,10 +1144,20 @@ function Inbox({ token, onLogout }) {
   // Inició prueba y todavía no es cliente pago: están en la ventana de onboarding.
   const paraPruebas = leads.filter(l => l.inicio_prueba_at && l.estado !== 'convertido')
     .sort((a, b) => new Date(b.inicio_prueba_at || 0) - new Date(a.inicio_prueba_at || 0)); // más reciente primero
-  const visibles = filtro === 'todos' ? leads
+  const visiblesEstado = filtro === 'todos' ? leads
     : filtro === 'seguir' ? paraSeguir
     : filtro === 'pruebas' ? paraPruebas
     : activos;
+  // Segundo eje de filtro: país (para distinguir mercados sin mezclar). Solo se
+  // ofrece si hay más de un país entre los leads (si todo es UY, no agrega ruido).
+  const paises = [...new Set(leads.map(l => l.pais).filter(Boolean))].sort();
+  const visiblesPais = paisSel ? visiblesEstado.filter(l => l.pais === paisSel) : visiblesEstado;
+  // Tercer eje: ciudad, anidado dentro del país elegido (zona dentro de un mercado).
+  // Solo tiene sentido cuando hay un país seleccionado y >1 ciudad en ese país.
+  const ciudades = paisSel
+    ? [...new Set(visiblesPais.map(l => l.ciudad).filter(Boolean))].sort()
+    : [];
+  const visibles = ciudadSel ? visiblesPais.filter(l => l.ciudad === ciudadSel) : visiblesPais;
   const nuevos = leads.filter(l => l.estado === 'nuevo').length;
 
   // Foco de hoy (punto 3): qué mover primero, calculado en el cliente.
@@ -1223,6 +1251,40 @@ function Inbox({ token, onLogout }) {
             );
           })}
         </div>
+
+        {/* Filtro por país — solo si hay más de un mercado (ej: UY + AR al probar afuera) */}
+        {paises.length > 1 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, color: C.sub }}>País:</span>
+            {[['', `🌎 Todos`], ...paises.map(p => [p, `${banderaPais(p)} ${p}`])].map(([id, lbl]) => {
+              const sel = paisSel === id;
+              return (
+                <button key={id || 'all'} onClick={() => { setPaisSel(id); setCiudadSel(''); }} style={{
+                  padding: '5px 12px', borderRadius: 50, fontSize: 12.5, fontFamily: C.sans, cursor: 'pointer', fontWeight: 500,
+                  border: `1px solid ${sel ? C.ink : C.line}`, background: sel ? C.ink : C.card, color: sel ? '#fff' : C.sub }}>
+                  {lbl}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Filtro por ciudad — anidado dentro del país elegido; solo si ese país tiene >1 ciudad */}
+        {ciudades.length > 1 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12.5, color: C.sub }}>Ciudad:</span>
+            {[['', 'Todas'], ...ciudades.map(c => [c, c])].map(([id, lbl]) => {
+              const sel = ciudadSel === id;
+              return (
+                <button key={id || 'all'} onClick={() => setCiudadSel(id)} style={{
+                  padding: '5px 12px', borderRadius: 50, fontSize: 12.5, fontFamily: C.sans, cursor: 'pointer', fontWeight: 500,
+                  border: `1px solid ${sel ? C.ink : C.line}`, background: sel ? C.ink : C.card, color: sel ? '#fff' : C.sub }}>
+                  {lbl}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: C.faint, fontSize: 14 }}>Cargando…</div>
