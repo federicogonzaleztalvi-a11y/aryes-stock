@@ -28,6 +28,10 @@ const HJSON = { ...H, 'Content-Type': 'application/json', Prefer: 'return=minima
 const FOUR_HOURS = 4 * 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+// Mínimo entre dos avisos al mismo carrito, pase lo que pase. Red de seguridad
+// anti-spam: aunque el cliente re-edite el carrito y reinicie el ciclo, nunca le
+// llega un aviso nuevo si ya le mandamos uno hace menos de 20h (→ nunca 2 en un día).
+const REMIND_COOLDOWN = 20 * 60 * 60 * 1000;
 
 export default async function handler(req, res) {
   // Auth: Vercel manda Authorization: Bearer {CRON_SECRET}
@@ -97,11 +101,15 @@ export default async function handler(req, res) {
       : Infinity;
 
     // Etapa objetivo:
-    //   stage 0 + ≥4h sin tocar el carrito          → mandar aviso 1
-    //   stage 1 + ≥24h desde el aviso 1             → mandar aviso 2
-    //   resto                                       → todavía no toca
+    //   stage 0 + ≥4h sin tocar el carrito + ≥20h del último aviso → mandar aviso 1
+    //   stage 1 + ≥24h desde el aviso 1                             → mandar aviso 2
+    //   resto                                                       → todavía no toca
+    // El cooldown en el aviso 1 evita que un carrito re-editado (que vuelve a
+    // stage 0) reciba otro "aviso 1" el mismo día. reminded_at sobrevive al reinicio
+    // del ciclo (cart.js sólo resetea reminder_stage), así que acá tenemos la fecha
+    // del último mensaje real. Carrito nuevo → reminded_at null → sinceRemind=∞ → pasa.
     let targetStage = 0;
-    if (cart.reminder_stage === 0 && age >= FOUR_HOURS) targetStage = 1;
+    if (cart.reminder_stage === 0 && age >= FOUR_HOURS && sinceRemind >= REMIND_COOLDOWN) targetStage = 1;
     else if (cart.reminder_stage === 1 && sinceRemind >= TWENTY_FOUR_HOURS) targetStage = 2;
     if (targetStage === 0) { skipped++; continue; }
 

@@ -48,6 +48,18 @@ function sanitizeItems(raw) {
   return out;
 }
 
+// ¿Dos carritos tienen exactamente el mismo contenido? Ambos son objetos planos
+// { clave: cantidad } ya saneados (enteros). Lo usamos para distinguir un cambio
+// real del cliente de un re-guardado pasivo (ej. al adoptar el carrito de otro
+// dispositivo al abrir el portal), que NO debe reiniciar los recordatorios.
+function sameItems(a, b) {
+  const ka = Object.keys(a || {});
+  const kb = Object.keys(b || {});
+  if (ka.length !== kb.length) return false;
+  for (const k of ka) if (a[k] !== b[k]) return false;
+  return true;
+}
+
 async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -101,14 +113,38 @@ async function handler(req, res) {
 
   // ── POST: upsert del carrito ──
   const items = sanitizeItems(req.body?.items);
+
+  // ¿El cliente REALMENTE cambió el carrito, o es un re-guardado pasivo? El portal
+  // re-guarda el carrito también al ADOPTARLO de otro dispositivo (sin que el
+  // cliente toque nada). Si reiniciáramos el ciclo de recordatorios en cada POST,
+  // con sólo abrir el portal se re-armaba "aviso 1" cada 4h → spam (hasta 5
+  // mensajes al mismo cliente). Por eso leemos el carrito guardado y, si es
+  // idéntico, no tocamos nada (ni updated_at ni reminder_stage): un no-op no es
+  // "tocar el carrito". (Ver cron-carrito-abandonado.js)
+  let prevItems = null;
+  try {
+    const prevRes = await fetch(
+      `${SB_URL}/rest/v1/portal_carts?org_id=eq.${encodeURIComponent(org)}&client_id=eq.${encodeURIComponent(clienteId)}&select=items&limit=1`,
+      { headers: svcH }
+    );
+    if (prevRes.ok) {
+      const prevRows = await prevRes.json();
+      prevItems = Array.isArray(prevRows) && prevRows[0] ? (prevRows[0].items || {}) : {};
+    }
+  } catch { /* si falla la lectura, seguimos y tratamos como cambio (lado seguro) */ }
+
+  if (prevItems !== null && sameItems(prevItems, items)) {
+    return res.status(200).json({ ok: true, unchanged: true });
+  }
+
   const row = {
     org_id: org,
     client_id: clienteId,
     items,
     updated_at: new Date().toISOString(),
-    // El cliente tocó el carrito → reinicia el ciclo de recordatorios de carrito
-    // abandonado. Sin esto, un carrito ya "avisado" que el cliente vuelve a
-    // editar nunca recibiría un recordatorio nuevo. (Ver cron-carrito-abandonado.js)
+    // El cliente cambió el carrito de verdad → reinicia el ciclo de recordatorios
+    // de carrito abandonado. Sin esto, un carrito ya "avisado" que el cliente
+    // vuelve a editar nunca recibiría un recordatorio nuevo.
     reminder_stage: 0,
   };
 
