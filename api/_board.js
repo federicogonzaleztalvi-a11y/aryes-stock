@@ -22,6 +22,9 @@ const SB_URL        = process.env.SUPABASE_URL;
 const SB_SVC        = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY;
 const PRICE_USD     = Number(process.env.PAZQUE_PRICE_USD || 199);
+// Orgs internas/demo a excluir del ingreso real (mismo criterio que el CFO en _cfo.js).
+const INTERNAL      = (process.env.PAZQUE_INTERNAL_ORGS || 'aryes-ltda')
+  .split(',').map(s => s.trim()).filter(Boolean);
 
 const H   = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC, Accept: 'application/json' };
 const DAY = 24 * 60 * 60 * 1000;
@@ -29,8 +32,8 @@ const DAY = 24 * 60 * 60 * 1000;
 // Contexto del negocio que comparten todas las sillas (para que opinen situadas).
 const BIZ = `Pazque: SaaS B2B multi-tenant para distribuidoras mayoristas (HORECA, food, cosmética) en LATAM.
 Modelo tipo Shopify (white-label por-org); UX benchmark Amazon. Lo construye Federico, fundador solo y NO-técnico.
-Precio de lista USD ${PRICE_USD}/mes por org. Primer y único cliente pago hoy: Eric, una distribuidora en Uruguay (depósito grande, 400+ compradores).
-Etapa: pre-escala, el objetivo es conseguir las distribuidoras 2..N y que los trials activen (carguen catálogo) y paguen.
+Precio de lista USD ${PRICE_USD}/mes por org. Etapa: PRE-INGRESO — hoy NO paga nadie. Cliente ancla: Eric, una distribuidora en Uruguay (depósito grande, 400+ compradores), hoy GRATIS como design-partner. aryes-ltda es la org demo interna de Federico, no cuenta.
+Etapa: pre-escala, el objetivo es conseguir las distribuidoras 2..N, que los trials activen (carguen catálogo) y empezar a COBRAR (ingreso real = 0 todavía).
 Agentes ya vivos: ventas (prospección), activación, cobranzas, reactivación, captación de leads inbound, Torre de Control (salud + auto-fix).`;
 
 const OUTPUT = `Devolvé SOLO un JSON con esta forma exacta (sin texto afuera):
@@ -75,14 +78,17 @@ export async function gatherMetrics(now = Date.now()) {
   const nowISO  = new Date(now).toISOString();
 
   const orgs  = (await getJSON(
-    'organizations?select=id,name,created_at,subscription_status,active,trial_ends_at,activation&limit=1000'
+    'organizations?select=id,name,created_at,subscription_status,active,trial_ends_at,activation,stripe_subscription_id,mp_payment_id,plan,plan_name&limit=1000'
   )) || [];
   const leads = (await getJSON(
     'pazque_leads?select=id,estado,respondio,toques,created_at&limit=2000'
   )) || [];
 
-  const isTrial  = (o) => (o.subscription_status || '').toLowerCase() === 'trial';
-  const isPaying = (o) => o.active === true && !isTrial(o);
+  const isInternal = (o) => INTERNAL.includes(o.id);
+  // Paga = cobro REAL vía procesador (Stripe/MercadoPago), nunca por flags de la org.
+  // Mismo criterio que el CFO (_cfo.js): logos, design-partners y la demo NO son ingreso.
+  const isPaying = (o) => !isInternal(o) && (!!o.stripe_subscription_id || !!o.mp_payment_id);
+  const isTrial  = (o) => !isInternal(o) && !isPaying(o) && (o.subscription_status || '').toLowerCase() === 'trial';
   const trialVivo = (o) => isTrial(o) && o.active !== false && (!o.trial_ends_at || o.trial_ends_at > nowISO);
 
   const pagas          = orgs.filter(isPaying);

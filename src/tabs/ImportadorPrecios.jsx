@@ -112,54 +112,60 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
   const parseExcel = (arrayBuffer) => {
     const wb = XLSX.read(arrayBuffer, { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    // Leemos primero como matriz de filas para ubicar el encabezado REAL. El template
+    // de Pazque trae una fila de instrucciones ARRIBA del encabezado (celda combinada),
+    // así que no se puede asumir que los headers están en la fila 1: buscamos la fila
+    // que contiene "Nombre Pazque". Si no, sheet_to_json tomaría las instrucciones como
+    // encabezado y no reconocería el template → "No se encontraron productos".
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const headerIdx = aoa.findIndex(r => r.some(c => {
+      const t = String(c).toLowerCase();
+      return t.includes('nombre pazque') || t.includes('nombre_pazque');
+    }));
 
-    // Detect template format: has 'Nombre Pazque' column
-    if (raw.length > 0) {
-      const keys = Object.keys(raw[0]).map(k => k.toLowerCase());
-      const hasNombrePazque = keys.some(k => k.includes('nombre pazque') || k.includes('nombre_pazque'));
-      if (hasNombrePazque) {
-        // New template format — match by exact name
-        const items = [];
-        for (const row of raw) {
-          const lc = k => k.toLowerCase();
-          const nombreKey = Object.keys(row).find(k => lc(k).includes('nombre pazque') || lc(k).includes('nombre_pazque'));
-          const operKey = Object.keys(row).find(k => lc(k).includes('operaci'));
-          const factorKey = Object.keys(row).find(k => lc(k).includes('factor'));
-          const finalKey = Object.keys(row).find(k => lc(k).includes('precio final') || lc(k).includes('precio_final'));
-          const precioKey = Object.keys(row).find(k => !lc(k).includes('final') && (lc(k) === 'precio' || lc(k).includes('precio/kg') || lc(k).includes('precio_kg') || lc(k).includes('precio base')));
-          const dtoKey = Object.keys(row).find(k => lc(k).includes('descuento') || lc(k).includes('dto'));
-          const unidadKey = Object.keys(row).find(k => lc(k) === 'unidad');
+    // Formato template Pazque: tiene columna 'Nombre Pazque' (en la fila headerIdx) →
+    // match por nombre exacto. range: headerIdx hace que esa fila sea el encabezado y
+    // los datos arranquen justo debajo (salta la fila de instrucciones de arriba).
+    if (headerIdx !== -1) {
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: '', range: headerIdx });
+      const items = [];
+      for (const row of raw) {
+        const lc = k => k.toLowerCase();
+        const nombreKey = Object.keys(row).find(k => lc(k).includes('nombre pazque') || lc(k).includes('nombre_pazque'));
+        const operKey = Object.keys(row).find(k => lc(k).includes('operaci'));
+        const factorKey = Object.keys(row).find(k => lc(k).includes('factor'));
+        const finalKey = Object.keys(row).find(k => lc(k).includes('precio final') || lc(k).includes('precio_final'));
+        const precioKey = Object.keys(row).find(k => !lc(k).includes('final') && (lc(k) === 'precio' || lc(k).includes('precio/kg') || lc(k).includes('precio_kg') || lc(k).includes('precio base')));
+        const dtoKey = Object.keys(row).find(k => lc(k).includes('descuento') || lc(k).includes('dto'));
+        const unidadKey = Object.keys(row).find(k => lc(k) === 'unidad');
 
-          if (!nombreKey) continue;
-          const nombre = String(row[nombreKey] || '').trim();
-          if (!nombre || nombre.includes('NO EDITAR') || nombre.includes('INSTRUCCIONES')) continue;
+        if (!nombreKey) continue;
+        const nombre = String(row[nombreKey] || '').trim();
+        if (!nombre || nombre.includes('NO EDITAR') || nombre.includes('INSTRUCCIONES')) continue;
 
-          const precioFinal = finalKey ? parseFloat(String(row[finalKey]).replace(',','.')) || 0 : 0;
-          const precio = precioKey ? parseFloat(String(row[precioKey]).replace(',','.')) || 0 : 0;
-          const factor = factorKey ? (parseFloat(String(row[factorKey]).replace(',','.')) || 0) : 0;
-          const oper = operKey ? String(row[operKey]).trim() : '';
-          const descuento = dtoKey ? parseFloat(String(row[dtoKey]).replace(',','.')) || 0 : 0;
-          const unidad = unidadKey ? String(row[unidadKey]).trim() : '';
+        const precioFinal = finalKey ? parseFloat(String(row[finalKey]).replace(',','.')) || 0 : 0;
+        const precio = precioKey ? parseFloat(String(row[precioKey]).replace(',','.')) || 0 : 0;
+        const factor = factorKey ? (parseFloat(String(row[factorKey]).replace(',','.')) || 0) : 0;
+        const oper = operKey ? String(row[operKey]).trim() : '';
+        const descuento = dtoKey ? parseFloat(String(row[dtoKey]).replace(',','.')) || 0 : 0;
+        const unidad = unidadKey ? String(row[unidadKey]).trim() : '';
 
-          if (precioFinal <= 0 && precio <= 0) continue;
+        if (precioFinal <= 0 && precio <= 0) continue;
 
-          // Si la fórmula del Excel ya dejó un Precio Final cacheado, se usa tal cual.
-          // Si no, se aplica la regla guardada (× factor, ÷ factor o directo).
-          const precioUnit = precioFinal > 0 ? precioFinal : calcFromRule(precio, oper, factor, nombre);
+        // Si la fórmula del Excel ya dejó un Precio Final cacheado, se usa tal cual.
+        // Si no, se aplica la regla guardada (× factor, ÷ factor o directo).
+        const precioUnit = precioFinal > 0 ? precioFinal : calcFromRule(precio, oper, factor, nombre);
 
-          items.push({ nombreExcel: nombre, precioKg: precio, unidad, descuento, precioUnit, exactMatch: true });
-        }
-        return items;
+        items.push({ nombreExcel: nombre, precioKg: precio, unidad, descuento, precioUnit, exactMatch: true });
       }
+      return items;
     }
 
     // Formato nativo del distribuidor (ej. lista de Eric): Nombre … $ Precio /unidad
     // Se ancla en la celda "$" en vez de la posición de columna, porque puede haber
     // notas intermedias (ej. "dosif. 60 grs./lt.") que corren las columnas.
-    const rawArr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
     const items = [];
-    for (const rowArr of rawArr) {
+    for (const rowArr of aoa) {
       const dollarIdx = rowArr.findIndex(c => String(c).trim() === '$');
       if (dollarIdx === -1) continue;
       const nombre = String(rowArr[0] || '').trim();
