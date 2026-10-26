@@ -119,6 +119,6 @@ export default async function handler(req, res) {
         ${act('do', def?.verbo || 'Confirmar', ACCENT, true)}
         ${act('cancel', 'No, cancelar', '#9a9a98', false)}
       </div>
-      <p style="color:#b5b5b2;font-size:11px;line-height:1.5;margin-top:16px">Nada pasa hasta que apretás un botón. Esta acción es reversible desde la consola.</p>`,
+      <p style="color:#b5b5b2;font-size:11px;line-height:1.5;margin-top:16px">Nada pasa hasta que apretás un botón. ${esc(def?.nota || 'Esta acción es reversible desde la consola.')}</p>`,
   }));
 }

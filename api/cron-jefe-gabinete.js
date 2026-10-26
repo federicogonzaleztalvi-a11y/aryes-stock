@@ -162,7 +162,50 @@ async function buildActions(metrics, loops, now) {
     });
   }
 
+  // 4) Fixes del DESARROLLADOR listos para aplicar (PRs auto-fix/* en verde).
+  //    Federico aprueba desde el email en vez de leer un diff en GitHub.
+  try {
+    for (const pr of (await listAutofixPRs()).slice(0, 3)) {
+      await push({
+        tipo: 'dev_merge_pr',
+        titulo: `Aplicar el fix: ${String(pr.title || '').replace(/^\[auto-fix\]\s*/i, '') || `PR #${pr.number}`}`,
+        resumen: resumenPR(pr),
+        payload: { pr: pr.number, titulo: String(pr.title || '').replace(/^\[auto-fix\]\s*/i, '').slice(0, 80) },
+        dedup_clave: `merge-pr:${pr.number}`,
+      });
+    }
+  } catch (e) { console.warn('[cabinet] PRs auto-fix:', e.message); }
+
   return out.filter(Boolean);
+}
+
+// PRs abiertos del desarrollador (rama auto-fix/*) que están 'clean' = sin
+// conflictos y con los tests automáticos en verde. Best-effort: sin token de
+// GitHub devuelve [] y la sección simplemente no aparece.
+async function listAutofixPRs() {
+  const GH_TOKEN = process.env.GH_AUTOFIX_TOKEN;
+  if (!GH_TOKEN) return [];
+  const GH_REPO = process.env.GH_AUTOFIX_REPO || 'federicogonzaleztalvi-a11y/aryes-stock';
+  const H = { Authorization: 'Bearer ' + GH_TOKEN, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  const r = await fetch(`https://api.github.com/repos/${GH_REPO}/pulls?state=open&per_page=20`, { headers: H });
+  if (!r.ok) return [];
+  const auto = (await r.json()).filter(p => /^auto-fix\//.test(p.head?.ref || ''));
+  const out = [];
+  for (const p of auto.slice(0, 5)) {
+    const d = await fetch(`https://api.github.com/repos/${GH_REPO}/pulls/${p.number}`, { headers: H });
+    if (!d.ok) continue;
+    const full = await d.json();
+    if (full.mergeable_state === 'clean') out.push(full);  // solo los realmente listos
+  }
+  return out;
+}
+
+// Resumen en castellano del PR (lo que el agente escribió: qué se rompía / qué
+// cambia). Limpia marcadores y markdown para que entre lindo en el email.
+function resumenPR(pr) {
+  const body = String(pr.body || '')
+    .replace(/<!--[\s\S]*?-->/g, '').replace(/[#*`>]/g, '').replace(/\s+/g, ' ').trim();
+  return body ? body.slice(0, 300) : `El desarrollador propone un arreglo (PR #${pr.number}).`;
 }
 
 const SEV_COLOR = { 3: '#b91c1c', 2: '#9a7b2e', 1: '#6a6a68' };

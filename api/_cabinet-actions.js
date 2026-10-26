@@ -43,6 +43,18 @@ async function sbPatch(path, body) {
 }
 function nowISO(ms = Date.now()) { return new Date(ms).toISOString(); }
 
+// ── GitHub (para aprobar con un clic los PRs del desarrollador) ───────────────
+const GH_TOKEN = process.env.GH_AUTOFIX_TOKEN || '';
+const GH_REPO  = process.env.GH_AUTOFIX_REPO || 'federicogonzaleztalvi-a11y/aryes-stock';
+const GH_H = () => ({
+  Authorization: 'Bearer ' + GH_TOKEN, Accept: 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json',
+});
+async function ghGet(path) {
+  const r = await fetch(`https://api.github.com/repos/${GH_REPO}/${path}`, { headers: GH_H() });
+  return r.ok ? await r.json() : null;
+}
+
 // ── EL REGISTRY ──────────────────────────────────────────────────────────────
 // tipo → { verbo (botón), resumen(payload) (qué pasará), wa(payload) (deep-link
 // opcional para enviar a mano), execute(payload) (el efecto, server-side) }.
@@ -95,6 +107,33 @@ export const ACTION_TYPES = {
       const dias = Math.max(1, Math.min(60, Number(p.dias) || 7));
       await sbPatch(`organizations?id=eq.${encodeURIComponent(p.org_id)}`, { trial_ends_at: nowISO(Date.now() + dias * DAY) });
       return { mensaje: `Prueba de ${p.nombre || 'la distribuidora'} extendida ${dias} días.` };
+    },
+  },
+
+  // Aplicar con un clic un fix que propuso el DESARROLLADOR (agente auto-fix). El
+  // agente abre un PR en rama auto-fix/*; esto lo mergea a main (Vercel publica
+  // solo). Doble red de seguridad: (1) solo PRs de rama auto-fix/* — jamás toca
+  // otra cosa; (2) re-chequea en el momento que esté 'clean' (sin conflictos y con
+  // los tests automáticos en verde) antes de mergear. Es la aprobación que Federico
+  // da desde el email en vez de ir a leer un diff en GitHub (él no programa).
+  dev_merge_pr: {
+    verbo: 'Aplicar el fix',
+    nota: 'Esto publica el arreglo en pazque.com. Ya pasó los tests automáticos antes de aparecer acá; si algo saliera mal, se revierte en un clic desde Vercel (rollback).',
+    resumen: (p) => `Vas a aplicar el fix del PR #${p.pr}${p.titulo ? ` (${p.titulo})` : ''}: se integra a la rama principal y Vercel publica la nueva versión solo.`,
+    async execute(p) {
+      if (!GH_TOKEN) throw new Error('falta el token de GitHub (GH_AUTOFIX_TOKEN) para aplicar el PR.');
+      const pr = await ghGet(`pulls/${p.pr}`);
+      if (!pr) throw new Error(`no encontré el PR #${p.pr}.`);
+      if (pr.merged) return { mensaje: `El PR #${p.pr} ya estaba aplicado.` };
+      if (pr.state !== 'open') throw new Error(`el PR #${p.pr} está ${pr.state}; no se puede aplicar.`);
+      if (!/^auto-fix\//.test(pr.head?.ref || '')) throw new Error('por seguridad solo aplico PRs del desarrollador (rama auto-fix/*).');
+      if (pr.mergeable_state && pr.mergeable_state !== 'clean')
+        throw new Error(`el PR #${p.pr} todavía no está listo (${pr.mergeable_state}); esperá a que terminen los chequeos.`);
+      const r = await fetch(`https://api.github.com/repos/${GH_REPO}/pulls/${p.pr}/merge`, {
+        method: 'PUT', headers: GH_H(), body: JSON.stringify({ merge_method: 'squash' }),
+      });
+      if (!r.ok) throw new Error(`GitHub rechazó el merge (${r.status} ${await r.text().catch(() => '')}).`.slice(0, 200));
+      return { mensaje: `Fix del PR #${p.pr} aplicado. Vercel publica la nueva versión en unos minutos.` };
     },
   },
 
