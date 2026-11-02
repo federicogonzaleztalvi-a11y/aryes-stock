@@ -33,6 +33,90 @@ async function apiCall(action, method, body) {
 
 const CUSTOM_COLORS = ['#0891b2', '#db2777', '#65a30d', '#9333ea', '#ea580c', '#0d9488'];
 
+// Requisitos de contraseña, estilo Amazon: se muestran SIEMPRE, en vivo, para que
+// el admin sepa qué necesita ANTES de enviar (en vez de rebotar después). La red
+// final sigue siendo el server: Supabase además rechaza contraseñas que aparecen en
+// filtraciones conocidas, algo que no podemos saber acá — de ahí la nota de abajo.
+const PW_RULES = [
+  { id: 'len',    label: 'Al menos 8 caracteres', test: v => v.length >= 8 },
+  { id: 'letter', label: 'Una letra',             test: v => /[a-zA-Z]/.test(v) },
+  { id: 'number', label: 'Un número',             test: v => /[0-9]/.test(v) },
+];
+const pwOk = (v) => PW_RULES.every(r => r.test(v || ''));
+
+// Chequeo de "contraseña filtrada" contra HaveIBeenPwned, estilo 1Password: sin
+// mandar la contraseña a ningún lado. k-anonymity: hasheamos con SHA-1 en el
+// navegador y SOLO enviamos los primeros 5 caracteres del hash; la API devuelve
+// todos los sufijos que empiezan así y nosotros comparamos localmente. Supabase
+// igual rechaza estas contraseñas del lado del server — esto es para avisar ANTES.
+async function sha1Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+async function pwnedCount(password) {
+  const hash = await sha1Hex(password);
+  const prefix = hash.slice(0, 5), suffix = hash.slice(5);
+  const res = await fetch('https://api.pwnedpasswords.com/range/' + prefix, { headers: { 'Add-Padding': 'true' } });
+  if (!res.ok) throw new Error('hibp ' + res.status);
+  const text = await res.text();
+  for (const line of text.split('\n')) {
+    const [suf, count] = line.trim().split(':');
+    if (suf === suffix) return parseInt(count, 10) || 0;
+  }
+  return 0;
+}
+
+function PasswordRules({ value = '' }) {
+  // breach: idle | checking | ok | pwned | error. Solo consultamos la API cuando ya
+  // cumple lo básico (no tiene sentido pegarle con 2 letras) y con debounce de 500ms
+  // para no consultar en cada tecla.
+  const [breach, setBreach] = useState('idle');
+  useEffect(() => {
+    const v = value || '';
+    if (!pwOk(v)) { setBreach('idle'); return; }
+    let cancelled = false;
+    setBreach('checking');
+    const t = setTimeout(async () => {
+      try {
+        const n = await pwnedCount(v);
+        if (!cancelled) setBreach(n > 0 ? 'pwned' : 'ok');
+      } catch {
+        if (!cancelled) setBreach('error');
+      }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [value]);
+
+  const breachLine = {
+    checking: ['#9a9a98', '○', 'Revisando si apareció en filtraciones…'],
+    ok:       [G,         '✓', 'No aparece en filtraciones conocidas'],
+    pwned:    ['#dc2626', '✕', 'Esta contraseña apareció en filtraciones — elegí otra'],
+  }[breach];
+
+  return (
+    <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>
+      {PW_RULES.map(r => {
+        const ok = r.test(value);
+        return (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: ok ? G : '#9a9a98', transition: 'color .15s' }}>
+            <span style={{ width: 14, textAlign: 'center', fontWeight: 700 }}>{ok ? '✓' : '○'}</span>
+            {r.label}
+          </div>
+        );
+      })}
+      {breachLine && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: breachLine[0], transition: 'color .15s' }}>
+          <span style={{ width: 14, textAlign: 'center', fontWeight: 700 }}>{breachLine[1]}</span>
+          {breachLine[2]}
+        </div>
+      )}
+      <div style={{ fontSize: 10.5, color: '#9a9a98', marginTop: 2, lineHeight: 1.45 }}>
+        Evitá contraseñas comunes (123456, tu nombre, el de la empresa): el sistema rechaza las que aparecen en filtraciones conocidas.
+      </div>
+    </div>
+  );
+}
+
 export default function UsersTab({ session, brandCfg }) {
   const { confirm } = useConfirm();
 
@@ -88,8 +172,8 @@ export default function UsersTab({ session, brandCfg }) {
     if (!form.email || !form.password || !form.name) {
       showMsg('Todos los campos son requeridos', 'err'); return;
     }
-    if (form.password.length < 6) {
-      showMsg('La contraseña debe tener al menos 6 caracteres', 'err'); return;
+    if (!pwOk(form.password)) {
+      showMsg('La contraseña no cumple los requisitos (mirá la lista debajo del campo)', 'err'); return;
     }
     setSaving(true);
     try {
@@ -130,8 +214,8 @@ export default function UsersTab({ session, brandCfg }) {
   };
 
   const handleResetPassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      showMsg('La contraseña debe tener al menos 6 caracteres', 'err'); return;
+    if (!pwOk(newPassword)) {
+      showMsg('La contraseña no cumple los requisitos (mirá la lista debajo del campo)', 'err'); return;
     }
     setSaving(true);
     try {
@@ -189,12 +273,13 @@ export default function UsersTab({ session, brandCfg }) {
           { label: 'Nombre completo', key: 'name', type: 'text', placeholder: 'Juan García' },
           { label: 'Código vendedor', key: 'codigo', type: 'text', placeholder: 'VEN-01' },
           { label: 'Email', key: 'email', type: 'email', placeholder: 'juan@empresa.com' },
-          { label: 'Contraseña inicial', key: 'password', type: 'password', placeholder: 'Mínimo 6 caracteres' },
+          { label: 'Contraseña inicial', key: 'password', type: 'password', placeholder: 'Elegí una contraseña segura' },
         ].map(f => (
           <div key={f.key}>
             <label style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 5 }}>{f.label}</label>
             <input type={f.type} value={form[f.key]} onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
               placeholder={f.placeholder} style={inp} />
+            {f.key === 'password' && <PasswordRules value={form.password} />}
           </div>
         ))}
         <div>
@@ -238,12 +323,13 @@ export default function UsersTab({ session, brandCfg }) {
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6a6a68', textTransform: 'uppercase', letterSpacing: .5, display: 'block', marginBottom: 5 }}>Nueva contraseña</label>
           <div style={{ position: 'relative' }}>
             <input type={showPass ? 'text' : 'password'} value={newPassword}
-              onChange={e => setNewPassword(e.target.value)} placeholder='Mínimo 6 caracteres'
+              onChange={e => setNewPassword(e.target.value)} placeholder='Elegí una contraseña segura'
               style={{ ...inp, paddingRight: 44 }} />
             <button onClick={() => setShowPass(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9a9a98', fontSize: 14 }}>
               {showPass ? '🙈' : '👁'}
             </button>
           </div>
+          <PasswordRules value={newPassword} />
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid #f0f0ee' }}>
           <button onClick={() => { setView('list'); setSelected(null); setNewPassword(''); }}
