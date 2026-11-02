@@ -131,10 +131,16 @@ export default async function handler(req, res) {
       });
       const authData = await authRes.json().catch(() => ({}));
       if (!authRes.ok || !authData?.id) {
+        // GoTrue devuelve varios 422 distintos (email repetido, contraseña débil, etc.).
+        // NO mapear todo 422 a "ya existe" — eso escondía el motivo real y confundía
+        // (una contraseña filtrada se leía como "el email ya está usado").
+        const code = authData?.error_code || authData?.code || '';
         const raw = authData?.msg || authData?.message || authData?.error_description || authData?.error || '';
-        if (authRes.status === 422 || /already|registered|exists|duplicate/i.test(raw))
+        if (code === 'email_exists' || /already|registered|exists|duplicate/i.test(raw))
           return res.status(400).json({ error: 'Ya existe un usuario con ese email' });
-        console.log(`[CREATE] auth admin create failed (${authRes.status}): ${raw}`);
+        if (code === 'weak_password' || /weak|pwned|leaked|easy to guess/i.test(raw))
+          return res.status(400).json({ error: 'Esa contraseña es muy débil o aparece en filtraciones conocidas. Elegí una más segura: mezclá mayúsculas, números y algún símbolo, y evitá claves comunes.' });
+        console.log(`[CREATE] auth admin create failed (${authRes.status})[${code}]: ${raw}`);
         return res.status(400).json({ error: raw || 'Error al crear el usuario' });
       }
       const newAuthId = authData.id;

@@ -26,7 +26,6 @@ const H = { apikey: SB_SVC, Authorization: 'Bearer ' + SB_SVC };
 const HJSON = { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
 
 const FOUR_HOURS = 4 * 60 * 60 * 1000;
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 // Mínimo entre dos avisos al mismo carrito, pase lo que pase. Red de seguridad
 // anti-spam: aunque el cliente re-edite el carrito y reinicie el ciclo, nunca le
@@ -100,17 +99,16 @@ export default async function handler(req, res) {
       ? now - new Date(cart.reminded_at).getTime()
       : Infinity;
 
-    // Etapa objetivo:
-    //   stage 0 + ≥4h sin tocar el carrito + ≥20h del último aviso → mandar aviso 1
-    //   stage 1 + ≥24h desde el aviso 1                             → mandar aviso 2
-    //   resto                                                       → todavía no toca
-    // El cooldown en el aviso 1 evita que un carrito re-editado (que vuelve a
-    // stage 0) reciba otro "aviso 1" el mismo día. reminded_at sobrevive al reinicio
-    // del ciclo (cart.js sólo resetea reminder_stage), así que acá tenemos la fecha
-    // del último mensaje real. Carrito nuevo → reminded_at null → sinceRemind=∞ → pasa.
+    // UN SOLO aviso por carrito, pase lo que pase (decisión de Federico):
+    //   stage 0 + ≥4h sin tocar el carrito + ≥20h del último aviso → mandar el aviso
+    //   resto                                                       → no toca
+    // Ya no hay 2da etapa: ni email ni WhatsApp reciben un segundo aviso. El cooldown
+    // evita que un carrito re-editado (que vuelve a stage 0) reciba otro aviso el mismo
+    // día. reminded_at sobrevive al reinicio del ciclo (cart.js sólo resetea
+    // reminder_stage), así que acá tenemos la fecha del último mensaje real. Carrito
+    // nuevo → reminded_at null → sinceRemind=∞ → pasa.
     let targetStage = 0;
     if (cart.reminder_stage === 0 && age >= FOUR_HOURS && sinceRemind >= REMIND_COOLDOWN) targetStage = 1;
-    else if (cart.reminder_stage === 1 && sinceRemind >= TWENTY_FOUR_HOURS) targetStage = 2;
     if (targetStage === 0) { skipped++; continue; }
 
     // Safety: si el cliente YA confirmó un pedido después de tocar el carrito,
@@ -152,12 +150,38 @@ export default async function handler(req, res) {
       }
     } catch { /* sin ficha → no avisamos */ }
 
-    // WhatsApp solo si está prendido, hay sender, el cliente tiene teléfono Y
-    // estamos en horario hábil (no de madrugada). Fuera de hora cae a email.
-    const usarWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8 && waWithinHours();
-    if (!usarWa && !email) { skipped++; continue; }   // sin canal posible
+    // ── Canal del aviso ──────────────────────────────────────────────────────
+    // Un solo aviso por carrito (ver arriba): si el cliente tiene teléfono y el canal
+    // WhatsApp está prendido, va por WhatsApp (donde vive el comprador mayorista —
+    // mismo número del login por OTP, que Meta penaliza si se repite); si no, por
+    // email. En cualquier caso es el ÚNICO mensaje: no hay segundo aviso por ningún
+    // canal.
+    const esClienteWa = WA_REMINDERS_ON && WA_READY && phone.length >= 8;
+    const usarWa = esClienteWa && waWithinHours();
+    if (esClienteWa && !usarWa) { skipped++; continue; }           // es WhatsApp pero fuera de hora → el único aviso espera a la próxima corrida en hora
+    if (!usarWa && !email) { skipped++; continue; }                // sin canal posible
 
     const portalUrl = 'https://pazque.com/pedidos?org=' + encodeURIComponent(cart.org_id);
+
+    // Anti-spam a prueba de fallos: MARCAMOS el aviso ANTES de mandarlo. Si el
+    // update no persiste (RLS, red, etc.) NO mandamos — preferimos un aviso de
+    // menos que uno de más. Antes era al revés (mandar y después marcar): si el
+    // marcado fallaba, el carrito volvía a calificar y se reenviaba en cada
+    // corrida. Esa era la causa real de que llegara "insistente".
+    const patchRes = await fetch(
+      SB_URL + '/rest/v1/portal_carts?org_id=eq.' + encodeURIComponent(cart.org_id) +
+        '&client_id=eq.' + encodeURIComponent(cart.client_id),
+      {
+        method: 'PATCH',
+        headers: HJSON,
+        body: JSON.stringify({ reminder_stage: targetStage, reminded_at: new Date().toISOString() }),
+      }
+    );
+    if (!patchRes.ok) {
+      console.error('[cron-carrito-abandonado] no se pudo marcar el aviso, no mando:', cart.org_id, cart.client_id, patchRes.status);
+      skipped++;
+      continue;
+    }
 
     try {
       if (usarWa) {
@@ -180,17 +204,6 @@ export default async function handler(req, res) {
         });
         await sendEmail({ to: email, ...tpl });
       }
-
-      // Avanzar la etapa para no repetir el mismo aviso.
-      await fetch(
-        SB_URL + '/rest/v1/portal_carts?org_id=eq.' + encodeURIComponent(cart.org_id) +
-          '&client_id=eq.' + encodeURIComponent(cart.client_id),
-        {
-          method: 'PATCH',
-          headers: HJSON,
-          body: JSON.stringify({ reminder_stage: targetStage, reminded_at: new Date().toISOString() }),
-        }
-      );
       sent++;
     } catch (e) {
       console.error('[cron-carrito-abandonado] envío falló:', cart.org_id, cart.client_id, e.message);
