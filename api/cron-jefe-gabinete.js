@@ -27,6 +27,7 @@ import { sendEmail } from './_email.js';
 import { gatherMetrics } from './_board.js';
 import { gatherSignals, reconcileLoops, consultCabinet } from './_cabinet.js';
 import { proposeAction } from './_cabinet-actions.js';
+import { gatherScorecard } from './_cabinet-learn.js';
 
 const SB_URL      = process.env.SUPABASE_URL;
 const SB_SVC      = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -236,7 +237,31 @@ function actionsBlock(actions) {
     ${cards}`;
 }
 
-function buildEmail(metrics, loops, brief, actions, pulse) {
+// Sección "Lo que rindió de tus aprobaciones" (Fase A del loop de aprendizaje).
+// Pura rendición de cuentas: cruza lo que Federico aprobó contra lo que pasó
+// después. Todavía no cambia nada — es para que vea qué está funcionando.
+function learnBlock(sc) {
+  if (!sc || !sc.total) return '';
+  const L = sc.por_tipo || {};
+  const lines = [];
+  const rate = (w, m) => (w + m) > 0 ? Math.round((100 * w) / (w + m)) : 0;
+
+  const c = L.lead_marcar_contactado;
+  if (c && (c.win + c.miss) > 0) {
+    lines.push(`📨 Contactaste <b style="color:#1a1a18">${c.win + c.miss}</b> prospecto${c.win + c.miss === 1 ? '' : 's'} → <b style="color:#059669">${c.win} respondió</b> (${rate(c.win, c.miss)}%)${c.pending ? ` · ${c.pending} aún esperando` : ''}`);
+  }
+  const t = L.trial_extender;
+  if (t && (t.win + t.miss) > 0) {
+    lines.push(`⏳ Extendiste <b style="color:#1a1a18">${t.win + t.miss}</b> prueba${t.win + t.miss === 1 ? '' : 's'} → <b style="color:#059669">${t.win} volvió a usar la plataforma</b> (${rate(t.win, t.miss)}%)${t.pending ? ` · ${t.pending} aún esperando` : ''}`);
+  }
+  if (!lines.length) return '';
+  return `
+    <h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:24px 0 8px">Lo que rindió de tus aprobaciones</h2>
+    <div style="padding:12px 15px;background:#f7f7f4;border-radius:11px;font-size:13px;color:#4a4a48;line-height:1.9">${lines.join('<br/>')}</div>
+    <p style="font-size:11px;color:#9a9a98;margin:6px 0 0">Mido lo que aprobaste (últimos ${sc.lookback_dias} días) contra lo que pasó después. Todavía no cambio nada con esto — es para que veas qué funciona.</p>`;
+}
+
+function buildEmail(metrics, loops, brief, actions, pulse, scorecard) {
   const o = metrics.orgs, em = metrics.embudo;
   const grid = `
     <table style="width:100%;border-collapse:separate;border-spacing:8px;margin:0 -8px 8px">
@@ -292,6 +317,7 @@ function buildEmail(metrics, loops, brief, actions, pulse) {
       <h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:22px 0 6px">Se está enfriando</h2>
       ${enfria}
       ${wins ? `<h2 style="font-size:14px;font-weight:700;color:#1a1a18;margin:22px 0 6px">Se cerró</h2>${wins}` : ''}
+      ${learnBlock(scorecard)}
       ${loopsTable}
       ${brief.cierre ? `<p style="font-size:14px;color:#1a1a18;font-style:italic;margin:22px 0 0;padding-top:16px;border-top:1px solid #efece7">${esc(brief.cierre)}</p>` : ''}`;
   } else {
@@ -300,6 +326,7 @@ function buildEmail(metrics, loops, brief, actions, pulse) {
       (La síntesis del Jefe de Gabinete no está disponible — falta ANTHROPIC_KEY o la llamada falló.
       Te dejo igual los loops abiertos para que decidas.)</p>
       ${actionsBlock(actions)}
+      ${learnBlock(scorecard)}
       ${loopsTable}`;
   }
 
@@ -354,10 +381,27 @@ export default async function handler(req, res) {
   try { pulse = await gatherPulse(now); }
   catch (e) { console.error('[cron-jefe-gabinete] gatherPulse falló:', e.message); }
 
+  // Loop de aprendizaje (Fase A): medir si las acciones aprobadas funcionaron.
+  // Best-effort: si falla, el parte sale igual sin la sección.
+  let scorecard = null;
+  try { scorecard = await gatherScorecard(now); }
+  catch (e) { console.error('[cron-jefe-gabinete] gatherScorecard falló:', e.message); }
+
   try {
-    await sendEmail({ to: TO_EMAIL, ...buildEmail(metrics, loops, brief, actions, pulse) });
+    await sendEmail({ to: TO_EMAIL, ...buildEmail(metrics, loops, brief, actions, pulse, scorecard) });
   } catch (e) {
     console.error('[cron-jefe-gabinete] email falló:', e.message);
+  }
+
+  // Guardar el scorecard como memoria (sustrato de la Fase B: re-priorización).
+  if (scorecard) {
+    try {
+      await fetch(`${SB_URL}/rest/v1/app_config?on_conflict=key,org_id`, {
+        method: 'POST',
+        headers: { ...HJSON, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ key: 'cabinet_learning', org_id: MEM_ORG, value: { ...scorecard, fecha: metrics.fecha } }),
+      });
+    } catch (e) { console.error('[cron-jefe-gabinete] no se pudo guardar el scorecard:', e.message); }
   }
 
   // Guardar el parte de HOY como memoria para la accountability de mañana.
