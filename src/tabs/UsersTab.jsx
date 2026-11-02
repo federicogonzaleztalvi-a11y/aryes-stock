@@ -44,55 +44,7 @@ const PW_RULES = [
 ];
 const pwOk = (v) => PW_RULES.every(r => r.test(v || ''));
 
-// Chequeo de "contraseña filtrada" contra HaveIBeenPwned, estilo 1Password: sin
-// mandar la contraseña a ningún lado. k-anonymity: hasheamos con SHA-1 en el
-// navegador y SOLO enviamos los primeros 5 caracteres del hash; la API devuelve
-// todos los sufijos que empiezan así y nosotros comparamos localmente. Supabase
-// igual rechaza estas contraseñas del lado del server — esto es para avisar ANTES.
-async function sha1Hex(str) {
-  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-}
-async function pwnedCount(password) {
-  const hash = await sha1Hex(password);
-  const prefix = hash.slice(0, 5), suffix = hash.slice(5);
-  const res = await fetch('https://api.pwnedpasswords.com/range/' + prefix, { headers: { 'Add-Padding': 'true' } });
-  if (!res.ok) throw new Error('hibp ' + res.status);
-  const text = await res.text();
-  for (const line of text.split('\n')) {
-    const [suf, count] = line.trim().split(':');
-    if (suf === suffix) return parseInt(count, 10) || 0;
-  }
-  return 0;
-}
-
 function PasswordRules({ value = '' }) {
-  // breach: idle | checking | ok | pwned | error. Solo consultamos la API cuando ya
-  // cumple lo básico (no tiene sentido pegarle con 2 letras) y con debounce de 500ms
-  // para no consultar en cada tecla.
-  const [breach, setBreach] = useState('idle');
-  useEffect(() => {
-    const v = value || '';
-    if (!pwOk(v)) { setBreach('idle'); return; }
-    let cancelled = false;
-    setBreach('checking');
-    const t = setTimeout(async () => {
-      try {
-        const n = await pwnedCount(v);
-        if (!cancelled) setBreach(n > 0 ? 'pwned' : 'ok');
-      } catch {
-        if (!cancelled) setBreach('error');
-      }
-    }, 500);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [value]);
-
-  const breachLine = {
-    checking: ['#9a9a98', '○', 'Revisando si apareció en filtraciones…'],
-    ok:       [G,         '✓', 'No aparece en filtraciones conocidas'],
-    pwned:    ['#dc2626', '✕', 'Esta contraseña apareció en filtraciones — elegí otra'],
-  }[breach];
-
   return (
     <div style={{ marginTop: 8, display: 'grid', gap: 4 }}>
       {PW_RULES.map(r => {
@@ -104,15 +56,6 @@ function PasswordRules({ value = '' }) {
           </div>
         );
       })}
-      {breachLine && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: breachLine[0], transition: 'color .15s' }}>
-          <span style={{ width: 14, textAlign: 'center', fontWeight: 700 }}>{breachLine[1]}</span>
-          {breachLine[2]}
-        </div>
-      )}
-      <div style={{ fontSize: 10.5, color: '#9a9a98', marginTop: 2, lineHeight: 1.45 }}>
-        Evitá contraseñas comunes (123456, tu nombre, el de la empresa): el sistema rechaza las que aparecen en filtraciones conocidas.
-      </div>
     </div>
   );
 }
