@@ -44,6 +44,27 @@ const API  = import.meta.env.VITE_API_BASE || '';
 const SB_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const SB_URL_BASE  = import.meta.env.VITE_SUPABASE_URL;
 
+// ── Miniaturas de producto (optimización de carga, estilo Amazon/Shopify) ─────
+// Las fotos subidas por el distribuidor viven en Supabase Storage como PNG/JPG
+// originales (hasta 5 MB). En la grilla se ven a ~200px pero el navegador bajaba
+// el original completo → el portal "tardaba en mostrar todas las fotos". Supabase
+// tiene un CDN de transformación (/render/image/...) que devuelve la misma foto
+// redimensionada y en WebP: un PNG de 1.6 MB baja a ~10 KB a width=300 (≈160x más
+// liviano). thumb() reescribe SOLO las URLs de Supabase Storage al endpoint de
+// render con el ancho pedido; cualquier otra URL (ej. aryes-catalogo.vercel.app,
+// ya optimizada) se devuelve intacta. El navegador manda Accept: image/webp solo,
+// así que el CDN sirve WebP automáticamente cuando puede.
+function thumb(url, w) {
+  if (!url || typeof url !== 'string') return url;
+  const marker = '/storage/v1/object/public/';
+  const i = url.indexOf(marker);
+  if (i === -1) return url;                                   // no es Supabase Storage → intacta
+  if (url.indexOf('/render/image/') !== -1) return url;       // ya transformada
+  const rendered = url.slice(0, i) + '/storage/v1/render/image/public/' + url.slice(i + marker.length);
+  const sep = rendered.indexOf('?') === -1 ? '?' : '&';
+  return `${rendered}${sep}width=${w}&quality=72`;
+}
+
 async function resolveOrgFromDomain(host) {
   // Consultar la tabla domain_orgs en Supabase
   try {
@@ -956,7 +977,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
           </div>
         )}
         {hasImg
-          ? <img src={item.imagen_url} alt={item.nombre} onError={() => setImgErr(true)}
+          ? <img src={thumb(item.imagen_url, 400)} alt={item.nombre} onError={() => setImgErr(true)}
               loading="lazy" decoding="async"
               style={{ maxHeight: isMobile ? imgH - 28 : '100%', maxWidth: '100%', objectFit: 'contain',
                 transform: hov && canHover && open ? 'scale(1.06)' : 'none', transition: 'transform .25s cubic-bezier(.23,1,.32,1)' }} />
@@ -1130,7 +1151,7 @@ function VariantSheet({ item, carrito, onAdd, onRemove, onClose, isMobile }) {
         borderRadius: isMobile ? '16px 16px 0 0' : 16, boxShadow: '0 -4px 30px rgba(0,0,0,.18)', overflow: 'hidden' }}>
         {/* Encabezado: producto + precio + cerrar */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid #f0f0ec' }}>
-          {item.imagen_url && <img src={item.imagen_url} alt="" decoding="async" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
+          {item.imagen_url && <img src={thumb(item.imagen_url, 100)} alt="" decoding="async" style={{ width: 44, height: 44, borderRadius: 8, objectFit: 'contain', background: '#fafaf7', flexShrink: 0 }} />}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', lineHeight: 1.25 }}>{item.nombre}</div>
             {item.precio > 0 && (
@@ -1291,7 +1312,7 @@ function ProductGallery({ item, isMobile }) {
           minHeight: isMobile ? 260 : 460, display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 24, overflow: 'hidden', cursor: hasImg ? 'zoom-in' : 'default' }}>
         {hasImg
-          ? <img src={cur} alt={item.nombre} onError={() => setImgErr(m => ({ ...m, [active]: true }))}
+          ? <img src={thumb(cur, 700)} alt={item.nombre} onError={() => setImgErr(m => ({ ...m, [active]: true }))}
               decoding="async"
               style={{ maxWidth: '100%', maxHeight: isMobile ? 240 : 420, objectFit: 'contain' }} />
           : placeholder}
@@ -1312,7 +1333,7 @@ function ProductGallery({ item, isMobile }) {
           panel al costado, sobre la columna de info — nunca agranda encima de sí misma. */}
       {!isMobile && zoom && hasImg && (
         <div style={{ position: 'absolute', top: 0, left: 'calc(100% + 48px)', width: '100%', height: 460,
-          background: `#fff url(${cur}) no-repeat`, backgroundSize: '210%',
+          background: `#fff url(${thumb(cur, 1000)}) no-repeat`, backgroundSize: '210%',
           backgroundPosition: `${pos.x}% ${pos.y}%`, border: '1px solid #efefeb', borderRadius: 16,
           boxShadow: '0 12px 44px rgba(0,0,0,.16)', zIndex: 5, pointerEvents: 'none' }} />
       )}
@@ -1327,7 +1348,7 @@ function ProductGallery({ item, isMobile }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {imgErr[i]
                 ? <span style={{ fontSize: 10, color: GRAY }}>{i + 1}</span>
-                : <img src={src} alt="" onError={() => setImgErr(m => ({ ...m, [i]: true }))}
+                : <img src={thumb(src, 120)} alt="" onError={() => setImgErr(m => ({ ...m, [i]: true }))}
                     loading="lazy" decoding="async"
                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />}
             </button>
@@ -1345,7 +1366,7 @@ function ProductGallery({ item, isMobile }) {
             background: 'rgba(250,250,248,.98)', display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', gap: isMobile ? 12 : 16,
             padding: isMobile ? 16 : 40, cursor: 'zoom-out', animation: 'pzFade .15s ease both' }}>
-          <img src={cur} alt={item.nombre} onClick={(e) => e.stopPropagation()}
+          <img src={thumb(cur, 1400)} alt={item.nombre} onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '100%', maxHeight: imgs.length > 1 ? '80%' : '100%', objectFit: 'contain',
               touchAction: 'pinch-zoom', cursor: 'default' }} />
           {imgs.length > 1 && (
@@ -1356,7 +1377,7 @@ function ProductGallery({ item, isMobile }) {
                   style={{ width: 56, height: 56, borderRadius: 10, padding: 4, cursor: 'pointer', background: '#fff',
                     border: i === active ? `2px solid ${G}` : '1px solid #e3e0d6',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <img src={src} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  <img src={thumb(src, 120)} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 </button>
               ))}
             </div>
@@ -3485,7 +3506,7 @@ function CategoryTile({ cat, imgs, coverOverride, featured, isMobile, onClick })
           Faire) — sin mosaicos apretados ni recortes. Si no hay foto, la inicial en serif. */}
       <div style={{ position:'relative', flex:1, minHeight:0, overflow:'hidden', background: cover ? '#fff' : '#efe9dd' }}>
         {cover ? (
-          <img src={cover} alt="" loading="lazy" style={{ position:'absolute', inset:0, width:'100%', height:'100%',
+          <img src={thumb(cover, 500)} alt="" loading="lazy" style={{ position:'absolute', inset:0, width:'100%', height:'100%',
             boxSizing:'border-box', objectFit:'contain', padding: featured ? (isMobile?20:30) : (isMobile?14:20), display:'block' }} />
         ) : (
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center',
@@ -4887,7 +4908,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                           <div style={{ width: 38, height: 38, borderRadius: 8, flexShrink: 0, background: '#f7f7f4',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                             {s.imagen_url
-                              ? <img src={s.imagen_url} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                              ? <img src={thumb(s.imagen_url, 100)} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                               : <span style={{ color: GRAY }}>{Icon.search}</span>}
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
