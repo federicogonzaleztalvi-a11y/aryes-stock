@@ -62,7 +62,12 @@ function thumb(url, w) {
   if (url.indexOf('/render/image/') !== -1) return url;       // ya transformada
   const rendered = url.slice(0, i) + '/storage/v1/render/image/public/' + url.slice(i + marker.length);
   const sep = rendered.indexOf('?') === -1 ? '?' : '&';
-  return `${rendered}${sep}width=${w}&quality=72`;
+  // resize=contain + width y height IGUALES → encaja la foto dentro de un cuadro
+  // w×w RESPETANDO la proporción. Sin esto, Supabase fuerza el ancho pedido pero
+  // deja el alto original → una foto casi cuadrada (3965×4010) salía 400×4010, una
+  // tira alargada (el bug que rompió las tarjetas). Las cards usan objectFit:contain,
+  // así que un recuadro cuadrado es el molde correcto para cualquier relación de aspecto.
+  return `${rendered}${sep}width=${w}&height=${w}&resize=contain&quality=72`;
 }
 
 async function resolveOrgFromDomain(host) {
