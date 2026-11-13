@@ -1087,13 +1087,19 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
             }}>+</button>
           </div>
         ) : publico ? (
-          <button className="pz-press" onClick={() => onAdd(item)} style={{
-            marginTop: 4, padding: '11px 0', background: G, color: '#fff',
-            border: 'none', borderRadius: 8, cursor: 'pointer',
-            fontSize: 12, fontWeight: 600, fontFamily: SANS,
-          }}>
-            Ingresá para comprar
-          </button>
+          item.variants?.options?.length ? (
+            /* Público con variantes: mismo CTA que logueado ("Elegir opciones · N"),
+               abre la ficha/hoja donde ve las alternativas; el "+" cae en el login. */
+            <VariantCta item={item} options={item.variants.options} carrito={carrito || {}} label={item.variants.label} isMobile={isMobile} onPick={() => (onPickVariants ? onPickVariants(item) : open?.())} />
+          ) : (
+            <button className="pz-press" onClick={() => onAdd(item)} style={{
+              marginTop: 4, padding: '11px 0', background: G, color: '#fff',
+              border: 'none', borderRadius: 8, cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, fontFamily: SANS,
+            }}>
+              Ingresá para comprar
+            </button>
+          )
         ) : (
           <button className="pz-press" onClick={() => onAdd(item)} disabled={item.precio === 0} style={{
             marginTop: 4, padding: '11px 0',
@@ -1418,6 +1424,10 @@ function FichaRow({ label, value, last }) {
 function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isMobile, onBack,
                          items, coBuy, social, socialOn, onOpen, onPickVariants, demo, zona, entregaCorta, publico }) {
   const variantOpts = item.precio > 0 && item.variants?.options?.length ? item.variants.options : null;
+  // Variantes visibles al PÚBLICO (sin precio): mostramos las alternativas aunque no
+  // haya precio, para que el no-logueado vea qué opciones hay "dentro del producto".
+  // El "+" de cada opción cae en addItem, que en modo público abre el login.
+  const variantOptsVis = variantOpts || (publico && item.variants?.options?.length ? item.variants.options : null);
   const qty = carrito[item.id] || 0;
   // Precio grande CONSCIENTE de la cantidad ya en el carrito (igual que la card):
   // si la cantidad alcanza un tramo, el precio pasa a ser el unitario CON descuento
@@ -1700,9 +1710,14 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
             </div>
           )}
 
-          {variantOpts ? (
+          {variantOptsVis ? (
             <div style={{ maxWidth: 420 }}>
-              <VariantPicker item={item} options={variantOpts} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH={300} />
+              <VariantPicker item={item} options={variantOptsVis} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH={300} />
+              {publico && !variantOpts && (
+                <div style={{ textAlign: 'center', fontSize: 12, color: GRAY, marginTop: 10 }}>
+                  Ingresá para ver precios y comprar
+                </div>
+              )}
             </div>
           ) : item.precio > 0 ? (
             qty > 0 ? (
