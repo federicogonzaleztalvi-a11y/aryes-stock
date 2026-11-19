@@ -513,7 +513,15 @@ const describeAction = (action: string, detail: string): string => {
           const server = serverMap[local.id];
           if (!server) return local;
           const serverStock = Number(server.stock) || 0;
-          if (serverStock !== local.stock) { hasChanges = true; return { ...local, stock: serverStock }; }
+          const serverCat = server.category || '';
+          const serverSub = server.subcategoria || '';
+          // Reconciliar stock + taxonomía (category/subcategoria). Antes solo stock, y
+          // por eso una subcategoría asignada en otro dispositivo nunca llegaba a esta
+          // copia local; al re-guardar el producto, la copia vieja la borraba.
+          if (serverStock !== local.stock || serverCat !== (local.category || '') || serverSub !== (local.subcategoria || '')) {
+            hasChanges = true;
+            return { ...local, stock: serverStock, category: serverCat, subcategoria: serverSub };
+          }
           return local;
         });
         if (hasChanges) {
@@ -558,6 +566,12 @@ const describeAction = (action: string, detail: string): string => {
             // un precio/costo actualizado a 0 (valor legítimo) caía al fallback y la
             // actualización se perdía silenciosamente.
             ? { ...p, stock: Number(row.stock)||0, nombre: row.nombre||row.name||p.nombre,
+                // Taxonomía: mantener category/subcategoria al día desde el server.
+                // Si no se refrescan acá, una copia local vieja (otra pestaña/dispositivo)
+                // conserva la subcategoría vacía y al re-guardar el producto la pisa en la
+                // base. Por eso "se borraba sola" a algunos productos ya creados.
+                category: row.category != null ? row.category : p.category,
+                subcategoria: row.subcategoria != null ? row.subcategoria : p.subcategoria,
                 unitCost: row.unit_cost != null ? Number(row.unit_cost) : p.unitCost,
                 precioVenta: row.precio_venta != null ? Number(row.precio_venta) : p.precioVenta, imagen_url: row.imagen_url||p.imagen_url||'',
                 descuento_posible: row.descuento_posible != null ? Number(row.descuento_posible) : p.descuento_posible,
