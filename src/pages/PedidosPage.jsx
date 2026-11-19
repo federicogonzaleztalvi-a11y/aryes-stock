@@ -4047,10 +4047,12 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     return false;
   });
 
-  // Al abrir la ficha de un producto (PDP) o cambiar de vista, la pantalla debe
-  // arrancar ARRIBA. Sin esto quedaba en el scroll del catálogo y el cliente
-  // entraba "por el medio/fondo" del producto y tenía que subir a mano.
-  useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [detalle, vista]);
+  // Al abrir la ficha de un producto (PDP), cambiar de vista o cambiar de
+  // categoría/subcategoría, la pantalla debe arrancar ARRIBA. Sin incluir el
+  // filtro, al elegir otra categoría desde el menú (misma vista 'catalogo') la
+  // página se quedaba a la misma altura del scroll anterior → en una lista más
+  // corta eso caía al final y el cliente "entraba por abajo".
+  useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [detalle, vista, catFil, subFil, verTodoCatalogo]);
 
   useEffect(() => {
     if (!reorderMsg) return;
