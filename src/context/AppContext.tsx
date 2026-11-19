@@ -301,6 +301,7 @@ const describeAction = (action: string, detail: string): string => {
             notasEntrega: r.notas_entrega || '',
             notas: r.notas||'', creado: r.created_at||'',
             vendedorId: r.vendedor_id||null,
+            envioMetodos: Array.isArray(r.envio_metodos) ? r.envio_metodos : [],
           }));
           setClientes(mappedClientes);
         }

@@ -512,7 +512,7 @@ function ClientesTab(){
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:''};
+  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:'',envioMetodos:[]};
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
@@ -561,6 +561,9 @@ function ClientesTab(){
       notas_entrega:     client.notasEntrega      || '',
       vendedor_id:       client.vendedorId        || null,
       zona_entrega:      client.zonaEntrega       || '',
+      // Métodos de envío habilitados para este cliente (ids de brandcfg.envio.metodos).
+      // null/vacío = ve todos los métodos de la org (compat. con clientes viejos).
+      envio_metodos:     Array.isArray(client.envioMetodos) && client.envioMetodos.length ? client.envioMetodos : null,
       pais:              client.pais              || '',
       created_at:        client.creado            || new Date().toISOString(),
     }, 'id').catch(e=>{
@@ -606,7 +609,7 @@ function ClientesTab(){
     setVista('lista');
   };
 
-  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||''});setEditId(x.id);setVista('form');};
+  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||'',envioMetodos:Array.isArray(x.envioMetodos)?x.envioMetodos:[]});setEditId(x.id);setVista('form');};
   const filtered=items.filter(x=>
     (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase()))
     &&(filtro==='Todos'||x.tipo===filtro)
@@ -684,6 +687,24 @@ function ClientesTab(){
             {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.email||u.username||u.name)).map(u=><option key={u.email||u.username||u.name} value={u.email||u.username||u.name}>{u.name||u.username} ({u.role})</option>)}
           </select>
         </div>}
+        {/* Métodos de envío habilitados para este cliente (de brandcfg.envio.metodos) */}
+        {Array.isArray(brandCfg?.envio?.metodos) && brandCfg.envio.metodos.length > 0 && (
+          <div style={{gridColumn:'1/-1'}}>
+            <label style={{fontSize:11,fontWeight:600,color:'#888',display:'block',marginBottom:4}}>MÉTODOS DE ENVÍO HABILITADOS</label>
+            <div style={{fontSize:12,color:'#6a6a68',marginBottom:8}}>Marcá cómo puede recibir este cliente (ej: al del interior solo agencia). Si no marcás ninguno, ve todos.</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+              {brandCfg.envio.metodos.filter(m=>m&&m.id&&String(m.nombre||'').trim()).map(m=>{
+                const on=Array.isArray(form.envioMetodos)&&form.envioMetodos.includes(m.id);
+                return (
+                  <label key={m.id} style={{display:'flex',alignItems:'center',gap:7,padding:'8px 12px',borderRadius:8,cursor:'pointer',border:on?`1px solid ${G}`:'1px solid #e5e7eb',background:on?'#f0fdf4':'#fff',fontSize:13,color:'#374151',userSelect:'none'}}>
+                    <input type="checkbox" checked={on} onChange={e=>setForm(p=>{const cur=Array.isArray(p.envioMetodos)?p.envioMetodos:[];return {...p,envioMetodos:e.target.checked?[...cur,m.id]:cur.filter(x=>x!==m.id)};})} style={{width:16,height:16,cursor:'pointer',accentColor:G}} />
+                    {m.nombre}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div style={{gridColumn:'1/-1',display:'flex',gap:10,justifyContent:'flex-end',marginTop:8,borderTop:'1px solid #f0f0ed',paddingTop:16}}>
           <button onClick={()=>{setVista('lista');setEditId(null);}} style={{padding:'10px 20px',border:'1px solid #e5e7eb',borderRadius:8,background:'#fff',color:'#666',cursor:'pointer',fontSize:13,fontWeight:500}}>Cancelar</button>
           <button onClick={save} style={{padding:'10px 24px',background:G,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:600,fontSize:13}}>{editId?'Guardar cambios':'Agregar cliente'}</button>

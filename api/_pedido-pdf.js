@@ -115,6 +115,7 @@ export function generarOrdenPDF(data) {
       totRow('Subtotal', data.subtotal);
       if (Number(data.descuentoTotal) > 0) totRow('Descuento', data.descuentoTotal, { color: VERDE, prefix: '-' });
       totRow('IVA (22%)', data.iva);
+      if (Number(data.envioCosto) > 0) totRow('Envío' + (data.envioMetodo ? ' (' + data.envioMetodo + ')' : ''), data.envioCosto);
       doc.moveTo(labelX, y + 2).lineTo(right, y + 2).strokeColor(VERDE).lineWidth(1.5).stroke();
       y += 10;
       totRow('TOTAL', data.total, { bold: true });

@@ -799,6 +799,94 @@ function RepartoPanel({ brandCfg, setBrandCfg }) {
   );
 }
 
+// ── Métodos de envío (genérico por-org) ───────────────────────────────────
+// El distribuidor define CÓMO entrega: reparto propio, retiro en depósito, o
+// por agencia (DAC/Depunta/UES/…). Cada método tiene NOMBRE editable. Una
+// agencia puede cobrar el flete en la factura (monto fijo que se suma al total
+// del pedido) o a destino (lo paga el cliente al retirar; no suma al total).
+// Qué métodos ve cada cliente se define en su ficha (ClientesTab). Se guarda
+// en brandcfg.envio.metodos con el mismo patrón de merge que el resto.
+function EnvioPanel({ brandCfg, setBrandCfg }) {
+  const G = '#059669';
+  const envio = brandCfg?.envio || {};
+  const metodos = Array.isArray(envio.metodos) ? envio.metodos : [];
+
+  const persist = (nextMetodos) => {
+    const updated = { ...(brandCfg || {}), envio: { ...envio, metodos: nextMetodos } };
+    setBrandCfg(updated);
+    db.upsert('app_config', { key: 'brandcfg', value: updated, org_id: getOrgId() }, 'key,org_id');
+  };
+  const setMetodo = (i, patch) => persist(metodos.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+  const addMetodo = () => persist([...metodos, { id: 'e' + Math.random().toString(36).slice(2, 9), nombre: '', tipo: 'agencia', cobro: 'factura', costo: 0 }]);
+  const delMetodo = (i) => persist(metodos.filter((_, j) => j !== i));
+
+  const card = { background: '#fff', border: '1px solid #e8e4de', borderRadius: 10, padding: '16px 20px' };
+  const inputStyle = { padding: '8px 11px', borderRadius: 6, border: '1px solid #e8e4de', fontSize: 14, background: '#fafaf7', color: '#1a1a18' };
+  const tipos = [
+    { k: 'propio', l: 'Reparto propio' },
+    { k: 'retiro', l: 'Retiro en depósito' },
+    { k: 'agencia', l: 'Por agencia' },
+  ];
+
+  return (
+    <div style={card}>
+      <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Métodos de envío</div>
+      <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, marginBottom: 16, maxWidth: 560 }}>
+        Definí cómo entregás los pedidos. El cliente elige uno al confirmar. En la ficha de cada cliente marcás cuáles puede usar (ej: al del interior solo agencia). Si una agencia cobra el flete en la factura, el monto fijo se suma al total del pedido.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {metodos.length === 0 && (
+          <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#9a9a98', padding: '8px 0' }}>
+            Todavía no cargaste métodos de envío. Agregá al menos uno para que el cliente pueda elegir cómo recibir el pedido.
+          </div>
+        )}
+        {metodos.map((m, i) => (
+          <div key={m.id || i} style={{ border: '1px solid #e8e4de', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                value={m.nombre || ''}
+                onChange={e => setMetodo(i, { nombre: e.target.value })}
+                placeholder="Nombre (ej: DAC, Reparto propio…)"
+                style={{ ...inputStyle, flex: 1, minWidth: 160 }} />
+              <select value={m.tipo || 'agencia'} onChange={e => setMetodo(i, { tipo: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                {tipos.map(t => <option key={t.k} value={t.k}>{t.l}</option>)}
+              </select>
+              <button type="button" onClick={() => delMetodo(i)}
+                style={{ border: '1px solid #e8e4de', background: '#fff', color: '#b91c1c', borderRadius: 6, cursor: 'pointer', padding: '7px 11px', fontSize: 13, fontFamily: 'Inter,sans-serif' }}>Quitar</button>
+            </div>
+            {m.tipo === 'agencia' && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', paddingLeft: 2 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48' }}>
+                  <span>Flete:</span>
+                  <select value={m.cobro || 'factura'} onChange={e => setMetodo(i, { cobro: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                    <option value="factura">Se suma a la factura</option>
+                    <option value="destino">Lo paga el cliente al retirar</option>
+                  </select>
+                </label>
+                {(m.cobro || 'factura') === 'factura' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48' }}>
+                    <span>Monto fijo:</span>
+                    <input type="number" min="0" step="1"
+                      value={m.costo ?? 0}
+                      onChange={e => setMetodo(i, { costo: Math.max(0, Number(e.target.value) || 0) })}
+                      style={{ ...inputStyle, width: 110 }} />
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={addMetodo}
+        style={{ marginTop: 12, border: `1px dashed ${G}`, background: '#f6fdf9', color: G, borderRadius: 8, cursor: 'pointer', padding: '9px 14px', fontSize: 13, fontWeight: 600, fontFamily: 'Inter,sans-serif' }}>
+        + Agregar método de envío
+      </button>
+    </div>
+  );
+}
+
 // ── Tarjeta de integración con SimpliRoute (self-service) ─────────────────
 // El distribuidor pega su API token de SimpliRoute. Pazque lo valida, lo guarda
 // server-side (api/simpliroute) y registra el webhook de entregas. Una vez
@@ -1929,6 +2017,9 @@ export default function ConfigInline({
 
                 {/* Días de entrega / Reparto (fecha estimada en el checkout) */}
                 <RepartoPanel brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
+
+                {/* Métodos de envío (reparto / retiro / agencia con flete) */}
+                <EnvioPanel brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
 
                 {/* Toggle: Recordatorio de carrito abandonado */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>

@@ -57,7 +57,12 @@ export async function createB2BOrder({
   notas = '',
   idempotencyKey = null,
   fechaEntrega = null,
+  envioMetodo = null,
+  envioTipo = null,
+  envioDestino = null,
+  envioCosto = 0,
 }) {
+  const envioCostoNum = Math.max(0, Number(envioCosto) || 0);
   // El RPC tipa p_cliente_id como UUID. Un cliente con id no-UUID (filas legacy o
   // de test cuyo clients.id es string) hace que Postgres tire 22P02, que antes
   // emergía como un 502 opaco. Lo detectamos acá y devolvemos un código claro.
@@ -142,7 +147,10 @@ export async function createB2BOrder({
     // Solo evaluamos si TODOS los items matchearon el catálogo. Si falta alguno,
     // no podemos afirmar divergencia con certeza → lo dejamos pasar sin flaguear.
     if (lineas.length && faltantes === 0) {
-      const totalReal = calcTotales(lineas).total;
+      // El costo de envío (flete fijo de agencia) es parte del total cobrado pero
+      // NO sale del catálogo, así que lo sumamos acá antes de comparar. Si no, cada
+      // pedido con envío quedaría marcado como total que no coincide.
+      const totalReal = calcTotales(lineas).total + envioCostoNum;
       const totalBody = Number(total) || 0;
       const tol = Math.max(1, totalReal * 0.005);   // $1 o 0.5%, el mayor
       if (Math.abs(totalReal - totalBody) > tol) {
@@ -317,10 +325,31 @@ export async function createB2BOrder({
     }
   }
 
+  // ── Envío (best-effort, no fatal) ─────────────────────────────────────────
+  // Método / destino / costo elegidos en el checkout. El RPC no los conoce; los
+  // guardamos con un PATCH aparte para que Eric sepa cómo despachar y el flete ya
+  // quede reflejado (el costo además está sumado en el total del pedido).
+  if (envioMetodo || envioDestino || envioCostoNum > 0) {
+    try {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + finalOrderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          envio_metodo:  envioMetodo || null,
+          envio_destino: envioDestino || null,
+          envio_costo:   envioCostoNum,
+        }),
+      });
+    } catch (envErr) {
+      log.warn('create-order', 'envio patch failed (non-fatal)', { error: envErr.message });
+    }
+  }
+
   // ── Notificaciones (no fatales) — se hace best-effort, no afecta el ok ─────
   await notifyOrder({
     org, clienteId, clienteNombre, items, total, notas,
     orderId: finalOrderId, requiere_revision, anomaly_reasons,
+    envioCosto: envioCostoNum, envioMetodo,
   });
 
   return { ok: true, orderId: finalOrderId };
@@ -331,7 +360,7 @@ export async function createB2BOrder({
  * PDF a la casilla de la org. Todo best-effort; un fallo acá nunca invalida el
  * pedido ya commiteado.
  */
-async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas, orderId, requiere_revision, anomaly_reasons }) {
+async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas, orderId, requiere_revision, anomaly_reasons, envioCosto = 0, envioMetodo = '' }) {
   // Patch de flags de anomalía si se detectaron
   if (requiere_revision) {
     await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
@@ -384,7 +413,7 @@ async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas,
   //    usa la pestaña Ventas (api/notify-venta), para que ambos flujos no se
   //    desincronicen en formato de mail / PDF.
   try {
-    await sendOrderEmail({ org, clienteId, clienteNombre, items, total, notas, orderId });
+    await sendOrderEmail({ org, clienteId, clienteNombre, items, total, notas, orderId, envioCosto, envioMetodo });
   } catch (mailErr) {
     log.warn('create-order', 'order email failed (non-fatal)', { error: mailErr.message });
   }
@@ -398,7 +427,8 @@ async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas,
  *
  * @returns {{ ok: boolean, to?: string, reason?: string }}
  */
-export async function sendOrderEmail({ org, clienteId, clienteNombre, items, total, notas, orderId, toOverride }) {
+export async function sendOrderEmail({ org, clienteId, clienteNombre, items, total, notas, orderId, toOverride, envioCosto = 0, envioMetodo = '' }) {
+  const envioCostoE = Math.max(0, Number(envioCosto) || 0);
   const k = SB_SVC || SB_ANON;
   const hdr = { headers: { apikey: k, Authorization: 'Bearer ' + k, Accept: 'application/json' } };
 
@@ -450,13 +480,14 @@ export async function sendOrderEmail({ org, clienteId, clienteNombre, items, tot
     }
     const lineas = buildLineas(items, baseMap);
     const { subtotal, descuentoTotal } = sumLineas(lineas);
-    const iva = Math.round(Number(total) - subtotal);
+    const iva = Math.round(Number(total) - envioCostoE - subtotal);
     const pdfBuf = await generarOrdenPDF({
       nroOrden: 'OC-' + String(orderId).slice(0, 8).toUpperCase(),
       fecha: new Date().toISOString(),
       empresa, currencySymbol,
       cliente: mapClienteFiscal(cli, clienteNombre),
       lineas, subtotal, descuentoTotal, iva, total: Number(total) || 0,
+      envioCosto: envioCostoE, envioMetodo: envioMetodo || '',
       notas: notas || '',
     });
     const nombreLimpio = (clienteNombre || 'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,30);

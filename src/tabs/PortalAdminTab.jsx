@@ -82,7 +82,16 @@ export default function PortalAdminTab() {
         total: Number(order.total || 0),
         descuento: 0, estado: 'pendiente',
         fecha: new Date().toISOString().slice(0, 10),
-        notas: order.notas || '',
+        // El envío (método/destino/flete) se arrastra a la nota de la venta para que
+        // quede a la vista al facturar. El flete ya está incluido en order.total.
+        notas: [
+          order.notas || '',
+          order.envio_metodo
+            ? 'Envío: ' + order.envio_metodo
+              + (order.envio_destino ? ' → ' + order.envio_destino : '')
+              + (Number(order.envio_costo) > 0 ? ' (flete $' + Number(order.envio_costo).toFixed(2) + ')' : '')
+            : '',
+        ].filter(Boolean).join(' · '),
         origenPortal: true, orderId: order.id,
         creadoEn: new Date().toISOString(), estadoLog: [],
       };
@@ -303,6 +312,16 @@ export default function PortalAdminTab() {
                 Total: ${Number(pedidoSel.total || 0).toFixed(2)}
               </div>
             </div>
+
+            {/* Envío — cómo despachar este pedido */}
+            {(pedidoSel.envio_metodo || pedidoSel.envio_destino || Number(pedidoSel.envio_costo) > 0) && (
+              <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8, padding:'12px 16px', marginBottom:16 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#1e40af', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>Envío</div>
+                <div style={{ fontSize:14, fontWeight:700, color:T.text }}>{pedidoSel.envio_metodo || '—'}</div>
+                {pedidoSel.envio_destino && <div style={{ fontSize:13, color:T.textSm, marginTop:2 }}>Destino: {pedidoSel.envio_destino}</div>}
+                {Number(pedidoSel.envio_costo) > 0 && <div style={{ fontSize:12, color:T.textSm, marginTop:2 }}>Flete (ya sumado al total): ${Number(pedidoSel.envio_costo).toFixed(2)}</div>}
+              </div>
+            )}
 
             {/* Notas */}
             {pedidoSel.notas && (

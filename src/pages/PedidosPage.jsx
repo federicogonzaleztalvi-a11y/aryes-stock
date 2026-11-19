@@ -2203,6 +2203,10 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
+  // Envío: método elegido + destino. Los métodos salen de brandcfg.envio.metodos,
+  // filtrados por los habilitados para este cliente (session.envioMetodos).
+  const [envioMetodoId, setEnvioMetodoId] = useState('');
+  const [envioDestino,  setEnvioDestino]  = useState('');
   // Vista previa de la orden (antes de confirmar) + acciones post-confirmación
   // (descargar PDF / enviar por mail). lastOrderId es el id real devuelto por el
   // endpoint, necesario para pedir el comprobante; en demo queda null.
@@ -2257,6 +2261,39 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
     return { key, item, qty, variantId, variantSku, ...c, descEfectivoPct, unidEnCaja, precioRef: refUnit };
   });
   const { subtotalNeto, ivaTotal, total } = calcTotales(lineasConCalc);
+
+  // ── Envío ──────────────────────────────────────────────────────────────────
+  // Métodos disponibles para ESTE cliente: los de la org (brandcfg.envio.metodos)
+  // intersectados con los habilitados en su ficha. Lista vacía en la ficha = ve
+  // todos (compat. con clientes viejos). Una agencia con cobro 'factura' suma su
+  // monto fijo al total; con cobro 'destino' lo paga el cliente al retirar.
+  const metodosEnvio = useMemo(() => {
+    const all = Array.isArray(brandCfg?.envio?.metodos)
+      ? brandCfg.envio.metodos.filter(m => m && m.id && String(m.nombre || '').trim())
+      : [];
+    const permit = Array.isArray(session?.envioMetodos) ? session.envioMetodos : [];
+    return permit.length ? all.filter(m => permit.includes(m.id)) : all;
+  }, [brandCfg?.envio, session?.envioMetodos]);
+  const metodoSelEnvio = metodosEnvio.find(m => m.id === envioMetodoId) || null;
+  const esAgenciaEnvio = metodoSelEnvio?.tipo === 'agencia';
+  const pagaEnDestino  = esAgenciaEnvio && (metodoSelEnvio.cobro || 'factura') === 'destino';
+  const envioCosto     = (esAgenciaEnvio && !pagaEnDestino) ? (Number(metodoSelEnvio.costo) || 0) : 0;
+  const totalConEnvio  = total + envioCosto;
+  // Falta elegir método (si la org configuró alguno) o completar el destino de agencia.
+  const envioIncompleto = metodosEnvio.length > 0 && (!metodoSelEnvio || (esAgenciaEnvio && !envioDestino.trim()));
+  // Recordar la última elección del cliente (patrón Amazon/Meli): la próxima compra
+  // ya viene con su método precargado. Por org+cliente, en el navegador.
+  const envioLSKey = `pz-envio-${(brandCfg?.orgId) || ''}-${(session?.clienteId) || ''}`;
+  useEffect(() => {
+    if (envioMetodoId || metodosEnvio.length === 0) return;
+    let saved = '';
+    try { saved = localStorage.getItem(envioLSKey) || ''; } catch { /* sin storage */ }
+    if (saved && metodosEnvio.find(m => m.id === saved)) setEnvioMetodoId(saved);
+    else if (metodosEnvio.length === 1) setEnvioMetodoId(metodosEnvio[0].id);
+  }, [metodosEnvio]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (envioMetodoId) { try { localStorage.setItem(envioLSKey, envioMetodoId); } catch { /* sin storage */ } }
+  }, [envioMetodoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cross-sell: productos que suelen pedirse JUNTO con lo que ya hay en el carrito.
   // Se arma desde la co-ocurrencia real de pedidos (coBuy). Si no alcanza para
@@ -2390,7 +2427,13 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
             })) } : {}),
             ...(l.variantId ? { variantId: l.variantId, variantSku: l.variantSku || '' } : {}),
           })),
-          total, notas,
+          total: totalConEnvio, notas,
+          // Envío: lo que eligió el cliente. El costo (si lo hay) ya está sumado en
+          // totalConEnvio; el server revalida sumándolo también, así no se marca.
+          envioMetodo: metodoSelEnvio ? metodoSelEnvio.nombre : null,
+          envioTipo: metodoSelEnvio ? (metodoSelEnvio.tipo || null) : null,
+          envioDestino: esAgenciaEnvio ? (envioDestino.trim() || null) : null,
+          envioCosto,
           direccion_entrega: addresses.find(a => a.id === selectedAddress)?.direccion || null,
           fecha_entrega_estimada: fechaEntregaISO || null,
           idempotencyKey,
@@ -2462,7 +2505,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
               unidades: t.unidades, precioUnit: t.precioUnit, distribuidor: !!t.distribuidor,
             })) } : {}),
           })),
-          notas, total,
+          notas, total: totalConEnvio,
+          envioCosto, envioMetodo: metodoSelEnvio ? metodoSelEnvio.nombre : '',
         }),
       });
       if (!r.ok) throw new Error();
@@ -2688,6 +2732,57 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
             <TotalesResumen lineasConCalc={lineasConCalc} subtotalNeto={subtotalNeto} total={total} boxed totalSize={20} />
           </div>
 
+          {/* Envío: cómo recibir el pedido (genérico por-org; solo si hay métodos) */}
+          {metodosEnvio.length > 0 && (
+            <div style={{ padding: '0 24px 16px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 8 }}>¿CÓMO QUERÉS RECIBIR EL PEDIDO?</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {metodosEnvio.map(m => {
+                  const on = m.id === envioMetodoId;
+                  const costoM = (m.tipo === 'agencia' && (m.cobro || 'factura') === 'factura') ? (Number(m.costo) || 0) : 0;
+                  const destM = m.tipo === 'agencia' && (m.cobro || 'factura') === 'destino';
+                  return (
+                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px',
+                      border: on ? `1.5px solid ${G}` : '1px solid #e0e0d8', borderRadius: 10, cursor: 'pointer',
+                      background: on ? '#f6fdf9' : '#fff' }}>
+                      <input type="radio" name="pz-envio" checked={on} onChange={() => setEnvioMetodoId(m.id)}
+                        style={{ accentColor: G, cursor: 'pointer', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1a1a18', fontFamily: SANS }}>{m.nombre}</span>
+                      {costoM > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: G, fontFamily: SANS }}>+{fmt.price(costoM)}</span>}
+                      {destM && <span style={{ fontSize: 11, color: GRAY, fontFamily: SANS }}>abonás al retirar</span>}
+                    </label>
+                  );
+                })}
+              </div>
+              {esAgenciaEnvio && (
+                <div style={{ marginTop: 10 }}>
+                  <input value={envioDestino} onChange={e => setEnvioDestino(e.target.value)}
+                    placeholder="Localidad / sucursal de destino"
+                    aria-label="Datos de envío: localidad o sucursal de destino"
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                      fontSize: 16, fontFamily: SANS, boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
+                  {pagaEnDestino && (
+                    <div style={{ fontSize: 12, color: GRAY, marginTop: 6, fontFamily: SANS }}>
+                      El envío por {metodoSelEnvio.nombre} lo abonás al retirar en la agencia.
+                    </div>
+                  )}
+                </div>
+              )}
+              {envioCosto > 0 && (
+                <div style={{ marginTop: 12, borderTop: '1px solid #ececec', paddingTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span style={{ fontSize: 13, color: '#1a1a18', fontFamily: SANS }}>Envío ({metodoSelEnvio.nombre})</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', fontFamily: SANS }}>{fmt.price(envioCosto)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', fontFamily: SANS }}>Total a pagar</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: G, fontFamily: SANS }}>{fmt.price(totalConEnvio)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Nota del pedido — editable acá, en la confirmación (se movió del
               carrito para no recargarlo). Siempre visible para que el cliente
               pueda agregar indicaciones antes de confirmar. */}
@@ -2740,12 +2835,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                 cursor: 'pointer', fontFamily: SANS }}>
                 ← Editar
               </button>
-              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo} style={{
+              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto} style={{
                 flex: 1, padding: '12px 0',
-                background: loading || lineas.length === 0 || !cumpleMinimo ? '#c8c8c0' : G,
+                background: loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto ? '#c8c8c0' : G,
                 color: '#fff', border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 600,
-                cursor: (loading || !cumpleMinimo) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
-                {loading ? 'Enviando…' : 'Confirmar pedido'}
+                cursor: (loading || !cumpleMinimo || envioIncompleto) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
+                {loading ? 'Enviando…' : (envioIncompleto ? (metodoSelEnvio ? 'Completá el destino' : 'Elegí cómo recibir') : 'Confirmar pedido')}
               </button>
             </div>
           </div>

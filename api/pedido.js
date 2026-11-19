@@ -92,7 +92,10 @@ async function buildComprobantePdf(session, orderId) {
   const lineas = buildLineas(orderItems, baseMap);
   const { subtotal, descuentoTotal } = sumLineas(lineas);
   const total = Number(pedido.total) || subtotal;
-  const iva = Math.round(total - subtotal);
+  // El envío es parte del total pero NO es mercadería ni IVA: se descuenta antes de
+  // derivar el IVA (si no, el flete inflaría el IVA) y se muestra como línea aparte.
+  const envioCosto = Number(pedido.envio_costo) || 0;
+  const iva = Math.round(total - envioCosto - subtotal);
   const ref = 'OC-' + String(orderId).slice(0, 8).toUpperCase();
   const currencySymbol = await orgCurrencySymbol(session.org_id, hdr);
   const pdfBuf = await generarOrdenPDF({
@@ -104,6 +107,7 @@ async function buildComprobantePdf(session, orderId) {
     cliente: mapClienteFiscal(cli),
     entregaEstimada: fechaEntregaLabel(pedido.fecha_entrega_estimada),
     lineas, subtotal, descuentoTotal, iva, total,
+    envioCosto, envioMetodo: pedido.envio_metodo || '', envioDestino: pedido.envio_destino || '',
     notas: pedido.notas || '',
   });
   return { pdfBuf, ref, empresa, total, filename: 'comprobante-' + ref + '.pdf' };
@@ -113,7 +117,7 @@ async function buildComprobantePdf(session, orderId) {
 // antes de confirmar). Enriquece los items del carrito con precios base + datos
 // fiscales del cliente, igual que el mail de pedido. No persiste nada.
 // SECURITY: usa cliente_id/org_id de la sesión, nunca del body.
-async function buildPreviewPdf(session, items, notas, total) {
+async function buildPreviewPdf(session, items, notas, total, envioCosto = 0, envioMetodo = '') {
   const key = SB_SVC || SB_ANON;
   const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
   const orgRes = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.org_id) + '&select=name', hdr);
@@ -129,7 +133,8 @@ async function buildPreviewPdf(session, items, notas, total) {
   const lineas = buildLineas(items, baseMap);
   const { subtotal, descuentoTotal } = sumLineas(lineas);
   const tot = Number(total) || subtotal;
-  const iva = Math.round(tot - subtotal);
+  const envioC = Math.max(0, Number(envioCosto) || 0);
+  const iva = Math.round(tot - envioC - subtotal);
   const currencySymbol = await orgCurrencySymbol(session.org_id, hdr);
   const pdfBuf = await generarOrdenPDF({
     titulo: 'Orden de compra (vista previa)',
@@ -139,6 +144,7 @@ async function buildPreviewPdf(session, items, notas, total) {
     empresa, currencySymbol,
     cliente: mapClienteFiscal(cli),
     lineas, subtotal, descuentoTotal, iva, total: tot,
+    envioCosto: envioC, envioMetodo: envioMetodo || '',
     notas: notas || '',
   });
   return { pdfBuf, empresa, filename: 'orden-vista-previa.pdf' };
@@ -228,10 +234,10 @@ async function handler(req, res) {
     const tokenP = authHeaderP.startsWith('Bearer ') ? authHeaderP.slice(7) : null;
     const sessionP = await validatePortalSession(tokenP);
     if (!sessionP) return res.status(401).json({ error: 'Sesión inválida' });
-    const { items = [], notas = '', total = 0 } = req.body || {};
+    const { items = [], notas = '', total = 0, envioCosto = 0, envioMetodo = '' } = req.body || {};
     if (!items.length) return res.status(400).json({ error: 'El pedido no tiene productos' });
     try {
-      const built = await buildPreviewPdf(sessionP, items, notas, total);
+      const built = await buildPreviewPdf(sessionP, items, notas, total, envioCosto, String(envioMetodo || '').slice(0, 80));
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', 'attachment; filename="' + built.filename + '"');
       return res.status(200).send(built.pdfBuf);
@@ -387,6 +393,14 @@ async function handler(req, res) {
   const _fe = String(req.body?.fecha_entrega_estimada || '').trim();
   const fechaEntrega = /^\d{4}-\d{2}-\d{2}$/.test(_fe) ? _fe : null;
 
+  // Envío (opcional): método elegido + destino + costo. Saneamos: strings con tope
+  // de largo y costo numérico >= 0. El costo se REVALIDA en _create-order (se suma
+  // al total del catálogo antes de comparar), así no se puede inflar desde el body.
+  const envioMetodo  = String(req.body?.envioMetodo  || '').slice(0, 80)  || null;
+  const envioTipo    = String(req.body?.envioTipo    || '').slice(0, 24)  || null;
+  const envioDestino = String(req.body?.envioDestino || '').slice(0, 200) || null;
+  const envioCosto   = Math.max(0, Number(req.body?.envioCosto) || 0);
+
   // Identity from validated server-side session — never trust the body
   const org           = portalSession.org_id;
   const clienteId     = portalSession.cliente_id;
@@ -413,6 +427,7 @@ async function handler(req, res) {
   const result = await createB2BOrder({
     org, clienteId, clienteNombre, clienteTel,
     items, total, notas, idempotencyKey, fechaEntrega,
+    envioMetodo, envioTipo, envioDestino, envioCosto,
   });
 
   if (!result.ok) {

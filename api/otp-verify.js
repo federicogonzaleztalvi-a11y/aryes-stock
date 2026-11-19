@@ -115,6 +115,8 @@ export default async function handler(req, res) {
       contacto:  cliente.contacto || null,
       listaId:   cliente.lista_id || null,
       zona:      cliente.zona_entrega || null,
+      // Métodos de envío habilitados para este cliente (ids). Vacío = ve todos.
+      envioMetodos: Array.isArray(cliente.envio_metodos) ? cliente.envio_metodos : [],
       tel:       telClean,
       org,
     },
