@@ -816,7 +816,10 @@ const describeAction = (action: string, detail: string): string => {
         id: crypto.randomUUID(), timestamp: now,
         user: (() => { try { return JSON.parse(localStorage.getItem('aryes-session') || 'null')?.email || 'unknown'; } catch { return 'unknown'; } })(),
         action: 'producto_guardado',
-        detail: JSON.stringify({ isEdit, id, nombre: productData.name, stock: productData.stock }),
+        // Guardamos también category/subcategoria: si alguna vez se "borran solas"
+        // de nuevo, queda el rastro exacto (quién, cuándo, con qué valor) en vez de
+        // tener que inferirlo. Clave para diagnosticar escrituras con copia vieja.
+        detail: JSON.stringify({ isEdit, id, nombre: productData.name, stock: productData.stock, category: productData.category, subcategoria: productData.subcategoria }),
       });
     } catch { /* non-critical */ }
   };
