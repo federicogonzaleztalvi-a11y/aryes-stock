@@ -127,7 +127,7 @@ export const Spark = ({history, color=T.textXs}) => {
   );
 };
 
-const inp = {width:"100%",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4};
+const inp = {width:"100%",boxSizing:"border-box",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4};
 
 export const Inp = ({value,onChange,type="text",placeholder,min,step,style:sx,inputRef,onKeyDown,autoFocus,disabled}) => (
   <input ref={inputRef} type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} step={step} onKeyDown={onKeyDown} autoFocus={autoFocus} disabled={disabled} style={{...inp,...(disabled?{background:T.muted,color:T.textSm,cursor:"not-allowed"}:{}),...sx}}/>
@@ -138,7 +138,9 @@ export const Sel = ({value,onChange,children,style:sx}) => (
 );
 
 export const Field = ({label,hint,children}) => (
-  <div>
+  // minWidth:0 permite que la columna se encoja por debajo de su contenido; sin esto,
+  // en un grid las celdas mantienen su ancho mínimo y empujan scroll horizontal.
+  <div style={{minWidth:0}}>
     <div style={{marginBottom:5}}><Cap>{label}</Cap></div>
     {children}
     {hint&&<p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:4,lineHeight:1.5}}>{hint}</p>}
