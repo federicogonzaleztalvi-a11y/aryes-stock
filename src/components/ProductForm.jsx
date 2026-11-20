@@ -205,7 +205,14 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
           </Sel>
           {!suppliers.length && <p style={{fontFamily:T.sans,fontSize:11,color:T.textXs,marginTop:4}}>Aún no cargaste proveedores. Creá uno desde la sección Proveedores.</p>}
         </Field>
-        <Field label="Unidad"><Inp value={f.unit} onChange={e=>set("unit",e.target.value)} placeholder="kg, lt, u..."/></Field>
+        <Field label="Unidad">
+          <Sel value={f.unit||'kg'} onChange={e=>set("unit",e.target.value)}>
+            <option value="kg">kg</option>
+            <option value="lt">lt</option>
+            <option value="un">un</option>
+            {f.unit&&!['kg','lt','un'].includes(f.unit)&&<option value={f.unit}>{f.unit}</option>}
+          </Sel>
+        </Field>
         <Field label="Categoría" hint="Agrupa el producto en el portal. Elegí una existente o escribí una nueva. Vacío = sin categoría.">
           <Combobox value={f.category||""} onChange={v=>set("category",v)} options={cats} placeholder="Elegí o escribí una categoría"/>
         </Field>
