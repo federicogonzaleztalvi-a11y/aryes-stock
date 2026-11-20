@@ -16,9 +16,11 @@
 const ANTHROPIC_KEY     = process.env.ANTHROPIC_KEY;
 const GOOGLE_PLACES_KEY = process.env.GOOGLE_PLACES_KEY;
 const APIFY_TOKEN       = process.env.APIFY_TOKEN;   // opcional: lee IG/FB pasando el muro de login
+const PERPLEXITY_KEY    = process.env.PERPLEXITY_KEY; // opcional: web EN VIVO con citas (Sonar)
 
-export const placesConfigured    = () => !!GOOGLE_PLACES_KEY;
-export const anthropicConfigured = () => !!ANTHROPIC_KEY;
+export const placesConfigured     = () => !!GOOGLE_PLACES_KEY;
+export const anthropicConfigured  = () => !!ANTHROPIC_KEY;
+export const perplexityConfigured = () => !!PERPLEXITY_KEY;
 
 export function clean(v, max = 500) {
   return String(v == null ? '' : v).trim().slice(0, max);
@@ -254,4 +256,36 @@ export async function anthropicJSON({ system, user, model = 'claude-sonnet-4-6',
     if (s >= 0 && e > s) text = text.slice(s, e + 1);
     return JSON.parse(text);
   } catch (e) { console.warn('[prospecting] anthropic parse error:', e.message); return null; }
+}
+
+// ── Perplexity Sonar → web EN VIVO con citas ────────────────────────────────
+// Claude razona de su memoria; Sonar trae lo que dice internet HOY, con fuente.
+// Sirve para enriquecer un prospecto cuando no tiene web/redes propias (ahí las
+// fuentes gratis fallan). Devuelve { text, sources } o null (no configurado /
+// error / sin datos). El prompt le exige datos reales: si no hay, "sin datos".
+export async function perplexitySonar({ query, maxTokens = 300, model = 'sonar' }) {
+  if (!PERPLEXITY_KEY || !query) return null;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 9000);
+    const r = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${PERPLEXITY_KEY}` },
+      body: JSON.stringify({
+        model, max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: 'Respondé en español rioplatense, en 2 o 3 frases, SOLO con datos reales que surjan de las fuentes. Si no encontrás información confiable, respondé exactamente "sin datos". Nunca inventes.' },
+          { role: 'user', content: query },
+        ],
+      }),
+    });
+    clearTimeout(t);
+    if (!r.ok) { console.warn('[prospecting] perplexity error:', r.status); return null; }
+    const d = await r.json();
+    const text = (d?.choices?.[0]?.message?.content || '').trim();
+    const sources = Array.isArray(d?.citations) ? d.citations.slice(0, 5) : [];
+    if (!text || /^sin datos\.?$/i.test(text)) return null;
+    return { text, sources };
+  } catch (e) { console.warn('[prospecting] perplexity error:', e.message); return null; }
 }

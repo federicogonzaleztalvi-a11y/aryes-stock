@@ -17,7 +17,7 @@
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { sendEmail, templates } from './_email.js';
-import { readWeb, findSocial, placesSearch, placesConfigured, anthropicJSON, anthropicConfigured } from './_prospecting.js';
+import { readWeb, findSocial, placesSearch, placesConfigured, anthropicJSON, anthropicConfigured, perplexitySonar, perplexityConfigured } from './_prospecting.js';
 import crypto from 'node:crypto';
 
 // Los scrapers de redes (Apify) del enriquecimiento tardan; le damos aire a la
@@ -345,6 +345,19 @@ async function enrichPortalLead(lead, orgName) {
   // (ni web ni red en Google), buscamos su IG por nombre y lo verificamos.
   let web = await readWeb(lead.landing_url);
   if (!web) web = await findSocial(lead.nombre, lead.ciudad);
+
+  // Perplexity Sonar (opcional): si el comercio no tiene web/redes propias —o muy
+  // poco— buscamos en la web EN VIVO qué se sabe de él (datos actuales, con fuente).
+  // Rellena el hueco justo donde las fuentes gratis fallan, sin gastar cuando ya
+  // hay web. Es dato REAL (citado); si no hay, devuelve null y seguimos igual.
+  let webActual = '';
+  if (perplexityConfigured() && (!web || web.length < 140)) {
+    const son = await perplexitySonar({
+      query: `Comercio "${lead.nombre || ''}"${lead.ciudad ? ' en ' + lead.ciudad : ''}, Uruguay. ¿Qué vende u ofrece y qué señales de tamaño o movimiento tiene (sucursales, reseñas, actividad reciente)? Solo datos reales; si no hay, respondé "sin datos".`,
+    });
+    if (son?.text) webActual = son.text;
+  }
+
   const compact = {
     comercio: lead.nombre || lead.comercio || '',
     tipo:     lead.comercio || '',      // rubro/tipo del comercio (de Google)
@@ -352,6 +365,7 @@ async function enrichPortalLead(lead, orgName) {
     contexto: lead.mensaje || '',       // dirección + rating
     sitio:    lead.landing_url || '',
     web:      web || '',
+    web_actual: webActual,              // Perplexity Sonar: web en vivo con fuente (si hubo)
   };
 
   const system = `Sos el comercial de ${orgName}, una distribuidora mayorista. Tu trabajo es conseguir nuevos COMPRADORES: comercios (cafeterías, restaurantes, hoteles, almacenes, etc.) que le compren mercadería a ${orgName} para su operación.
@@ -376,7 +390,8 @@ Reglas:
     · Cerrá con una pregunta breve de bajo compromiso, SIN prometer nada fijo. Ej: "¿Te paso el catálogo con precios para que veas?".
     · Que suene a un proveedor serio escribiéndole a un comercio, no a spam. Nada de relleno.
     ${VARIANTS[variante]}
-- Usá SOLO lo que te paso (incluido "web"). Nunca inventes datos que no estén ahí.` + learning;
+- Si viene "web_actual", es información de la web EN VIVO (buscada con fuentes). Es dato REAL: usala igual que "web" para entender el comercio y para las señales.
+- Usá SOLO lo que te paso (incluido "web" y "web_actual"). Nunca inventes datos que no estén ahí.` + learning;
 
   const parsed = await anthropicJSON({ system, user: 'Comercio:\n' + JSON.stringify(compact, null, 2) });
   if (!parsed) return { error: 'enrich_failed' };
