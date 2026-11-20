@@ -459,7 +459,7 @@ const describeAction = (action: string, detail: string): string => {
       try {
         const prods = await db.get<Record<string, any>[]>('products', `org_id=eq.${getOrgId()}&order=id.asc&limit=1000`);
         if (prods?.length > 0) {
-          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', subcategoria:p.subcategoria||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null, codigo:p.codigo||'', volume_tiers:Array.isArray(p.volume_tiers)?p.volume_tiers:[], descuento_posible:Number(p.descuento_posible)||0, unidades_por_caja:Number(p.unidades_por_caja)||0, descuento_caja:Number(p.descuento_caja)||0, variants:(p.variants&&typeof p.variants==='object'&&!Array.isArray(p.variants))?p.variants:{} }));
+          const mapped = prods.map(p => ({ id:p.uuid, name:p.name, nombre:p.name||'', barcode:p.barcode||'', supplierId:p.supplier_id||'', unit:p.unit||'kg', stock:Number(p.stock)||0, unitCost:Number(p.unit_cost)||0, precioVenta:Number(p.precio_venta)||0, precioKg:p.precio_kg!=null?Number(p.precio_kg):null, pesoKg:p.peso_kg!=null?Number(p.peso_kg):null, imagen_url:p.imagen_url||'', descripcion:p.descripcion||'', minStock:Number(p.min_stock)||5, dailyUsage:Number(p.daily_usage)||0.5, category:p.category||'', subcategoria:p.subcategoria||'', brand:p.brand||'', history:p.history||[], costSource:p.cost_source||null, costUpdatedAt:p.cost_updated_at||null, codigo:p.codigo||'', volume_tiers:Array.isArray(p.volume_tiers)?p.volume_tiers:[], descuento_posible:Number(p.descuento_posible)||0, unidades_por_caja:Number(p.unidades_por_caja)||0, descuento_caja:Number(p.descuento_caja)||0, variants:(p.variants&&typeof p.variants==='object'&&!Array.isArray(p.variants))?p.variants:{} }));
           setProducts(mapped);
         }
         const sups = await db.get<Record<string, any>[]>('suppliers', `org_id=eq.${getOrgId()}&order=name.asc`);
@@ -552,7 +552,7 @@ const describeAction = (action: string, detail: string): string => {
             rut:row.rut||'', telefono:row.telefono||row.phone||'', stock:Number(row.stock)||0,
             minStock:Number(row.min_stock)||0, unitCost:Number(row.unit_cost)||0, unit:row.unit||'',
             supplierId:row.supplier_id||'', name:row.name||row.nombre||'', brand:row.brand||'',
-            category:row.category||'', subcategoria:row.subcategoria||'', precioVenta:Number(row.precio_venta)||0, imagen_url:row.imagen_url||'', descripcion:row.descripcion||'',
+            category:row.category||'', subcategoria:row.subcategoria||'', precioVenta:Number(row.precio_venta)||0, precioKg:row.precio_kg!=null?Number(row.precio_kg):null, pesoKg:row.peso_kg!=null?Number(row.peso_kg):null, imagen_url:row.imagen_url||'', descripcion:row.descripcion||'',
             volume_tiers:Array.isArray(row.volume_tiers)?row.volume_tiers:[],
             descuento_posible:Number(row.descuento_posible)||0,
             unidades_por_caja:Number(row.unidades_por_caja)||0, descuento_caja:Number(row.descuento_caja)||0,
@@ -574,7 +574,9 @@ const describeAction = (action: string, detail: string): string => {
                 category: row.category != null ? row.category : p.category,
                 subcategoria: row.subcategoria != null ? row.subcategoria : p.subcategoria,
                 unitCost: row.unit_cost != null ? Number(row.unit_cost) : p.unitCost,
-                precioVenta: row.precio_venta != null ? Number(row.precio_venta) : p.precioVenta, imagen_url: row.imagen_url||p.imagen_url||'',
+                precioVenta: row.precio_venta != null ? Number(row.precio_venta) : p.precioVenta,
+                precioKg: row.precio_kg != null ? Number(row.precio_kg) : p.precioKg,
+                pesoKg: row.peso_kg != null ? Number(row.peso_kg) : p.pesoKg, imagen_url: row.imagen_url||p.imagen_url||'',
                 descuento_posible: row.descuento_posible != null ? Number(row.descuento_posible) : p.descuento_posible,
                 unidades_por_caja: row.unidades_por_caja != null ? Number(row.unidades_por_caja) : p.unidades_por_caja,
                 descuento_caja: row.descuento_caja != null ? Number(row.descuento_caja) : p.descuento_caja,
@@ -767,7 +769,14 @@ const describeAction = (action: string, detail: string): string => {
       subcategoria: (f.subcategoria || '') as string,
       brand: (f.brand || '') as string,
       history: (f.history || []) as unknown[],
-      precio_venta: Math.max(0, Number(f.precioVenta) || 0),
+      // Precio por kg + peso del envase: si ambos están cargados, el precio de venta
+      // se deriva (precio/kg × peso). Si no, se usa el precio de venta manual. Esto
+      // permite actualizar por kilo sin rehacer la cuenta de cada envase a mano.
+      precio_kg: Number(f.precioKg) > 0 ? Math.max(0, Number(f.precioKg)) : null,
+      peso_kg: Number(f.pesoKg) > 0 ? Math.max(0, Number(f.pesoKg)) : null,
+      precio_venta: (Number(f.precioKg) > 0 && Number(f.pesoKg) > 0)
+        ? Math.round(Number(f.precioKg) * Number(f.pesoKg) * 100) / 100
+        : Math.max(0, Number(f.precioVenta) || 0),
       iva_rate: Number(f.iva_rate) ?? 22,
       imagen_url: (f.imagen_url || '') as string,
       descripcion: (f.descripcion || '') as string,

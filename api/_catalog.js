@@ -148,7 +148,7 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
 
   // ── 1. Productos + reservas activas (ATP) + overrides del cliente ──────────
   const prodQuery = [
-    'select=uuid,name,unit,category,subcategoria,brand,precio_venta,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja,atributos',
+    'select=uuid,name,unit,category,subcategoria,brand,precio_venta,peso_kg,stock,min_stock,imagen_url,descripcion,iva_rate,min_order_qty,volume_tiers,variants,unidades_por_caja,descuento_caja,atributos',
     `org_id=eq.${org}`,
     'order=category.asc,name.asc',
     'limit=500',
@@ -368,6 +368,9 @@ export async function getCatalogoCliente({ org, clienteId = '' }) {
       // unidades" en el portal (no un número inventado). 0/ausente = no marca escasez.
       min_stock: p.min_stock != null ? Number(p.min_stock) : 0,
       iva_rate: p.iva_rate != null ? Number(p.iva_rate) : null,
+      // Peso del envase (kg): habilita mostrar el precio por kg en el portal cuando la
+      // org lo configura (precioDisplay 'kg' o 'ambos'). Null = producto sin peso cargado.
+      peso_kg: p.peso_kg != null ? Number(p.peso_kg) : null,
       imagen_url: p.imagen_url || null,
       min_order_qty: p.min_order_qty != null ? Number(p.min_order_qty) : 1,
       descripcion: p.descripcion || '',

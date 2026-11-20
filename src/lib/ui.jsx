@@ -129,8 +129,8 @@ export const Spark = ({history, color=T.textXs}) => {
 
 const inp = {width:"100%",fontFamily:T.sans,fontSize:13,color:T.text,background:T.card,border:`1px solid ${T.border}`,padding:"9px 11px",borderRadius:4};
 
-export const Inp = ({value,onChange,type="text",placeholder,min,step,style:sx,inputRef,onKeyDown,autoFocus}) => (
-  <input ref={inputRef} type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} step={step} onKeyDown={onKeyDown} autoFocus={autoFocus} style={{...inp,...sx}}/>
+export const Inp = ({value,onChange,type="text",placeholder,min,step,style:sx,inputRef,onKeyDown,autoFocus,disabled}) => (
+  <input ref={inputRef} type={type} value={value} onChange={onChange} placeholder={placeholder} min={min} step={step} onKeyDown={onKeyDown} autoFocus={autoFocus} disabled={disabled} style={{...inp,...(disabled?{background:T.muted,color:T.textSm,cursor:"not-allowed"}:{}),...sx}}/>
 );
 
 export const Sel = ({value,onChange,children,style:sx}) => (

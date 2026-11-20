@@ -116,6 +116,12 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
   // wa template — read from localStorage, not used in current form UI
   const [_csvMsg, setCsvMsg] = useState('');
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  // Precio por kg + peso del envase → el precio de venta se calcula solo (precio/kg × peso).
+  // Si el distribuidor se mueve por kilo, carga el kilo una vez y todos los envases quedan
+  // coherentes. Queda price-neutral para los productos que ya tienen total manual (precioKg vacío).
+  const setPrecioKg=(v)=>{const pk=v===""?0:+v;setF(p=>{const peso=Number(p.pesoKg)||0;return{...p,precioKg:pk,precioVenta:pk>0&&peso>0?Math.round(pk*peso*100)/100:p.precioVenta};});};
+  const setPeso=(v)=>{const pz=v===""?0:+v;setF(p=>{const pk=Number(p.precioKg)||0;return{...p,pesoKg:pz,precioVenta:pk>0&&pz>0?Math.round(pk*pz*100)/100:p.precioVenta};});};
+  const perKgMode=Number(f.precioKg)>0&&Number(f.pesoKg)>0;
   const [csv,setCsv]=useState(product?.history?.map(h=>`${h.month},${h.consumed}`).join("\n")||"");
   const bRef=useRef();
   const parseCSV=()=>{
@@ -213,8 +219,17 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
         </Field>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-        <Field label={"Precio de venta (" + taxCfg.currency + ")"}>
-          <Inp type="number" step="0.001" min="0" placeholder="0.000" value={f.precioVenta||f.precio_venta||""} onChange={e=>set("precioVenta",e.target.value===""?0:+e.target.value)}/>
+        <Field label={"Precio por kg (" + taxCfg.currency + ")"} hint="Opcional. Si lo cargás junto con el peso, el precio de venta se calcula solo. Ideal si tu costo se mueve por kilo.">
+          <Inp type="number" step="0.001" min="0" placeholder="0.000" value={f.precioKg||""} onChange={e=>setPrecioKg(e.target.value)}/>
+        </Field>
+        <Field label="Peso del envase (kg)" hint="Ej: envase de 4 kg → 4. Pote de 500 g → 0.5.">
+          <Inp type="number" step="0.001" min="0" placeholder="Ej: 4" value={f.pesoKg||""} onChange={e=>setPeso(e.target.value)}/>
+        </Field>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <Field label={"Precio de venta (" + taxCfg.currency + ")"} hint={perKgMode?"Calculado desde precio/kg × peso. Para editarlo a mano, borrá el precio por kg.":undefined}>
+          <Inp type="number" step="0.001" min="0" placeholder="0.000" value={f.precioVenta||f.precio_venta||""} onChange={e=>set("precioVenta",e.target.value===""?0:+e.target.value)} disabled={perKgMode}/>
+          {perKgMode&&<div style={{fontFamily:T.sans,fontSize:11,color:T.green,marginTop:4,fontWeight:600}}>= {taxCfg.currencySymbol}{(Number(f.precioKg)*Number(f.pesoKg)).toLocaleString('es',{minimumFractionDigits:2,maximumFractionDigits:2})} · {taxCfg.currencySymbol}{Number(f.precioKg).toLocaleString('es')}/kg × {Number(f.pesoKg)} kg</div>}
         </Field>
         <Field label={taxCfg.taxName} hint={"Tasa de " + taxCfg.taxName + " (" + taxCfg.country + ")"}>
           <Sel value={f.iva_rate!=null?f.iva_rate:taxCfg.defaultRate} onChange={e=>set("iva_rate",+e.target.value)}>

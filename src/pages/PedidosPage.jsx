@@ -813,6 +813,23 @@ function PrecioAntes({ base, pct, size = 12 }) {
   );
 }
 
+// Precio por kg de referencia (estilo supermercado). Sólo aparece cuando la org lo
+// configura (brandCfg.precioDisplay 'ambos' | 'kg') y el producto tiene peso cargado.
+// El /kg se deriva del precio neto resuelto ÷ peso, así respeta descuentos de lista.
+// 'ambos' = chico y gris bajo el total; 'kg' = más marcado (el /kg es el protagonista).
+function PorKgRef({ item, brandCfg, precio }) {
+  const modo = brandCfg?.precioDisplay || 'total';
+  const peso = Number(item?.peso_kg) || 0;
+  const p = Number(precio != null ? precio : item?.precio) || 0;
+  if (modo === 'total' || peso <= 0 || p <= 0) return null;
+  const fuerte = modo === 'kg';
+  return (
+    <div style={{ fontSize: fuerte ? 13 : 11, color: fuerte ? '#1a1a18' : GRAY, fontWeight: fuerte ? 700 : 500, marginTop: 1 }}>
+      {fmt.price(p / peso)}<span style={{ fontWeight: 400, color: GRAY }}> /kg</span>
+    </div>
+  );
+}
+
 // ¿La "unidad" del producto es una unidad de venta real (un/caja) y no un sufijo
 // de peso/volumen (kg/lt/...)? Los precios ya vienen normalizados al bulto, así que
 // mostrar "/kg" confundiría. Sólo mostramos el sufijo cuando es unidad de venta.
@@ -1032,6 +1049,7 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
               {item.precio > 0 && esUnidadVenta(item.unidad) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
             </div>
             {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
+            {item.precio > 0 && <PorKgRef item={item} brandCfg={brandCfg} precio={precioEff} />}
           </>
         )}
         {/* Entrega estimada compacta (criterio Amazon: "Llega mañana" en la card).
@@ -1609,7 +1627,8 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
                   {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
                 </div>
               )}
-              {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+              {item.precio > 0 && <div style={{ marginBottom: 4 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
+              {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><PorKgRef item={item} brandCfg={brandCfg} precio={precioEffD} /></div>}
             </>
           )}
           {/* Reglas disponibles (caja / por cantidad): cada una muestra el PRECIO

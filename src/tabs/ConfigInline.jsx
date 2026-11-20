@@ -1963,6 +1963,26 @@ export default function ConfigInline({
                     style={{width:'100%',padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,background:'#fafaf7',color:'#1a1a18'}}/>
                 </div>
 
+                {/* Cómo mostrar los precios en el portal (total / por kg / ambos) */}
+                <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
+                  <div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:14,fontWeight:600,color:'#1a1a18'}}>Cómo mostrar los precios</div>
+                    <div style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginTop:2}}>Cómo ve el comprador el precio en el portal. “Por kg” y “Ambos” sólo aplican a productos con peso cargado.</div>
+                  </div>
+                  <select
+                    value={brandCfg?.precioDisplay||'total'}
+                    onChange={e=>{
+                      const updated={...(brandCfg||{}),precioDisplay:e.target.value};
+                      setBrandCfg(updated);
+                      db.upsert('app_config',{key:'brandcfg',value:updated,org_id:getOrgId()},'key,org_id');
+                    }}
+                    style={{flexShrink:0,padding:'8px 11px',borderRadius:6,border:'1px solid #e8e4de',fontSize:14,background:'#fafaf7',color:'#1a1a18',cursor:'pointer'}}>
+                    <option value="total">Precio total del envase</option>
+                    <option value="kg">Precio por kg</option>
+                    <option value="ambos">Ambos (total + $/kg)</option>
+                  </select>
+                </div>
+
                 {/* Pedido mínimo */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16}}>
                   <div>
