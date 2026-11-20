@@ -33,6 +33,7 @@
 import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { sendEmail, templates } from './_email.js';
+import { perplexitySonar, perplexityConfigured } from './_prospecting.js';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 
 const SB_URL  = process.env.SUPABASE_URL;
@@ -545,6 +546,18 @@ export async function enrichLead(lead) {
   let web = web0;
   if (!web) web = await findSocial(lead.empresa || lead.nombre, '');
 
+  // Perplexity Sonar: si la distribuidora no tiene web/redes propias (o muy poco),
+  // buscamos en la web EN VIVO qué se sabe de ella (con fuente). Rellena el hueco
+  // donde las fuentes gratis fallan; no gasta cuando ya hay web. Dato REAL (citado).
+  let webActual = '';
+  if (perplexityConfigured() && (!web || web.length < 140)) {
+    const nombreP = lead.empresa || lead.nombre || '';
+    const son = await perplexitySonar({
+      query: `Distribuidora o empresa "${nombreP}" en Uruguay. ¿Qué distribuye, a qué tipo de clientes, y qué señales de tamaño tiene (sucursales, flota, años, líneas de producto)? Solo datos reales; si no hay, respondé "sin datos".`,
+    });
+    if (son?.text) webActual = son.text;
+  }
+
   // Texto del e-commerce para el contexto de la IA (hecho verificado, no inferencia).
   const ecomCtx = ecom
     ? (ecom.tiene
@@ -559,6 +572,7 @@ export async function enrichLead(lead) {
     mensaje:  lead.mensaje || '',
     sitio:    lead.landing_url || '',
     web:      web || '',
+    web_actual: webActual,           // Perplexity Sonar: web en vivo con fuente (si hubo)
     ecommerce: ecomCtx,
     llegó_por: [lead.utm_source, lead.utm_campaign].filter(Boolean).join(' / ') || 'directo',
   };
@@ -593,7 +607,8 @@ Reglas:
       En ambos casos: SIN prometer duración fija (nada de "en 20 minutos") y SIN prometer que vos le armás nada (es auto-servicio: lo prueba él).
     · Que suene a un fundador seguro escribiéndole a un par, no a un vendedor. Nada de relleno, nada de "espero que estés bien", nada de folleto.
     ${VARIANTS[variante]}
-- Usá SOLO lo que te paso (incluido el contenido de "web" si viene). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
+- Si viene "web_actual", es información de la web EN VIVO (buscada con fuentes). Es dato REAL: usala igual que "web" para entender la distribuidora y para las señales (aplicando igual la regla de coherencia geográfica y de identidad de abajo).
+- Usá SOLO lo que te paso (incluido "web" y "web_actual" si vienen). Nunca inventes datos que no estén ahí: si algo no lo sabés, no lo afirmes.
 - COHERENCIA GEOGRÁFICA Y DE IDENTIDAD: el prospecto opera donde indica su dirección/mensaje (mercado objetivo actual: Uruguay). Si el contenido de "web" claramente pertenece a OTRO país, o a una empresa con un nombre distinto al del prospecto, es un match equivocado: ignoralo por completo y NO le atribuyas esas señales (seguidores, flota, sucursales, cobertura). Ante la duda, tratá el "web" como no disponible y hacé un análisis más neutro pero honesto.
 - HECHOS vs. CÓMO OPERAN HOY (clave): lo que ves en "web" son HECHOS (años, premios, flota, zonas, seguidores, líneas de producto) y los podés afirmar. Pero CÓMO toman hoy los pedidos —si sus clientes dependen del asesor, si los pedidos entran por WhatsApp uno por uno, si ya pide solo el cliente, si usan un ERP/call center— NO lo sabés: casi nunca está en los datos, y una distribuidora con flota/ERP/asesores puede tener un proceso que no imaginás. NUNCA lo afirmes como si lo supieras. En el "angulo" planteralo como hipótesis EXPLÍCITA ("probablemente", "en operaciones así suele pasar que", "si hoy..."). En el "mensaje_wa" NO lo afirmes: convertilo en PREGUNTA sobre su operación ("¿cómo están tomando hoy los pedidos entre visita y visita?"). Afirmar cómo trabajan y errarle te quema la credibilidad en la primera línea; preguntarlo abre la conversación.
 

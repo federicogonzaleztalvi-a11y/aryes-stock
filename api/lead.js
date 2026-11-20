@@ -350,8 +350,11 @@ async function enrichPortalLead(lead, orgName) {
   // poco— buscamos en la web EN VIVO qué se sabe de él (datos actuales, con fuente).
   // Rellena el hueco justo donde las fuentes gratis fallan, sin gastar cuando ya
   // hay web. Es dato REAL (citado); si no hay, devuelve null y seguimos igual.
+  // OFF por defecto para los clientes (es la key/factura del dueño de Pazque): el
+  // funnel propio (owner.js) sí lo usa. Se prende con PERPLEXITY_FOR_CLIENTS=true.
   let webActual = '';
-  if (perplexityConfigured() && (!web || web.length < 140)) {
+  const sonarClientes = perplexityConfigured() && process.env.PERPLEXITY_FOR_CLIENTS === 'true';
+  if (sonarClientes && (!web || web.length < 140)) {
     const son = await perplexitySonar({
       query: `Comercio "${lead.nombre || ''}"${lead.ciudad ? ' en ' + lead.ciudad : ''}, Uruguay. ¿Qué vende u ofrece y qué señales de tamaño o movimiento tiene (sucursales, reseñas, actividad reciente)? Solo datos reales; si no hay, respondé "sin datos".`,
     });
