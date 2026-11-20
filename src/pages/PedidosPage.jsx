@@ -2277,8 +2277,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   const metodoSelEnvio = metodosEnvio.find(m => m.id === envioMetodoId) || null;
   const esAgenciaEnvio = metodoSelEnvio?.tipo === 'agencia';
   const pagaEnDestino  = esAgenciaEnvio && (metodoSelEnvio.cobro || 'factura') === 'destino';
+  // El flete de agencia es NETO: lleva IVA 22% (criterio UY), que se suma al total y
+  // a la línea de IVA de la factura. `envioCosto` es el neto que configuró la org y se
+  // muestra como "Envío"; `envioIva` es su IVA; `totalConEnvio` incluye ambos. Aguas
+  // abajo, el comprobante deriva IVA = total − subtotal − envío, así que al venir el IVA
+  // del flete dentro de `total`, la línea de IVA ya lo incluye sin tocar nada más.
   const envioCosto     = (esAgenciaEnvio && !pagaEnDestino) ? (Number(metodoSelEnvio.costo) || 0) : 0;
-  const totalConEnvio  = total + envioCosto;
+  const envioIva       = Math.round(envioCosto * 22) / 100;
+  const totalConEnvio  = total + envioCosto + envioIva;
   // Falta elegir método (si la org configuró alguno) o completar el destino de agencia.
   const envioIncompleto = metodosEnvio.length > 0 && (!metodoSelEnvio || (esAgenciaEnvio && !envioDestino.trim()));
   // Recordar la última elección del cliente (patrón Amazon/Meli): la próxima compra
@@ -2748,7 +2754,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                       <input type="radio" name="pz-envio" checked={on} onChange={() => setEnvioMetodoId(m.id)}
                         style={{ accentColor: G, cursor: 'pointer', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1a1a18', fontFamily: SANS }}>{m.nombre}</span>
-                      {costoM > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: G, fontFamily: SANS }}>+{fmt.price(costoM)}</span>}
+                      {costoM > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: G, fontFamily: SANS }}>+{fmt.price(costoM)} + IVA</span>}
                       {destM && <span style={{ fontSize: 11, color: GRAY, fontFamily: SANS }}>abonás al retirar</span>}
                     </label>
                   );
@@ -2775,6 +2781,10 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', fontFamily: SANS }}>{fmt.price(envioCosto)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 4 }}>
+                    <span style={{ fontSize: 12, color: GRAY, fontFamily: SANS }}>IVA envío (22%)</span>
+                    <span style={{ fontSize: 12, color: GRAY, fontFamily: SANS }}>{fmt.price(envioIva)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 6 }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18', fontFamily: SANS }}>Total a pagar</span>
                     <span style={{ fontSize: 18, fontWeight: 800, color: G, fontFamily: SANS }}>{fmt.price(totalConEnvio)}</span>
                   </div>

@@ -832,7 +832,7 @@ function EnvioPanel({ brandCfg, setBrandCfg }) {
     <div style={card}>
       <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Métodos de envío</div>
       <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, marginBottom: 16, maxWidth: 560 }}>
-        Definí cómo entregás los pedidos. El cliente elige uno al confirmar. En la ficha de cada cliente marcás cuáles puede usar (ej: al del interior solo agencia). Si una agencia cobra el flete en la factura, el monto fijo se suma al total del pedido.
+        Definí cómo entregás los pedidos. El cliente elige uno al confirmar. En la ficha de cada cliente marcás cuáles puede usar (ej: al del interior solo agencia). Si una agencia cobra el flete en la factura, el monto fijo (sin IVA) se suma al total del pedido con su IVA 22%.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -866,11 +866,12 @@ function EnvioPanel({ brandCfg, setBrandCfg }) {
                 </label>
                 {(m.cobro || 'factura') === 'factura' && (
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48' }}>
-                    <span>Monto fijo:</span>
+                    <span>Monto fijo (sin IVA):</span>
                     <input type="number" min="0" step="1"
                       value={m.costo ?? 0}
                       onChange={e => setMetodo(i, { costo: Math.max(0, Number(e.target.value) || 0) })}
                       style={{ ...inputStyle, width: 110 }} />
+                    <span style={{ fontSize: 12, color: '#6a6a68' }}>el portal le suma IVA 22%</span>
                   </label>
                 )}
               </div>

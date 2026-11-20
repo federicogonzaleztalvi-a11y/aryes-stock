@@ -148,9 +148,11 @@ export async function createB2BOrder({
     // no podemos afirmar divergencia con certeza → lo dejamos pasar sin flaguear.
     if (lineas.length && faltantes === 0) {
       // El costo de envío (flete fijo de agencia) es parte del total cobrado pero
-      // NO sale del catálogo, así que lo sumamos acá antes de comparar. Si no, cada
-      // pedido con envío quedaría marcado como total que no coincide.
-      const totalReal = calcTotales(lineas).total + envioCostoNum;
+      // NO sale del catálogo, así que lo sumamos acá antes de comparar. Es NETO y lleva
+      // IVA 22% (mismo criterio que el carrito), así que sumamos flete + su IVA. Si no,
+      // cada pedido con envío quedaría marcado como total que no coincide.
+      const envioIvaNum = Math.round(envioCostoNum * 22) / 100;
+      const totalReal = calcTotales(lineas).total + envioCostoNum + envioIvaNum;
       const totalBody = Number(total) || 0;
       const tol = Math.max(1, totalReal * 0.005);   // $1 o 0.5%, el mayor
       if (Math.abs(totalReal - totalBody) > tol) {

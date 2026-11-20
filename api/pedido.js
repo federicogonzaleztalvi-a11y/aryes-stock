@@ -92,8 +92,9 @@ async function buildComprobantePdf(session, orderId) {
   const lineas = buildLineas(orderItems, baseMap);
   const { subtotal, descuentoTotal } = sumLineas(lineas);
   const total = Number(pedido.total) || subtotal;
-  // El envío es parte del total pero NO es mercadería ni IVA: se descuenta antes de
-  // derivar el IVA (si no, el flete inflaría el IVA) y se muestra como línea aparte.
+  // El envío (flete de agencia) es NETO: su IVA 22% forma parte del total y debe quedar
+  // dentro de la línea de IVA. Restamos solo el neto del flete, así IVA = IVA mercadería
+  // + IVA flete; el flete neto se muestra como línea aparte.
   const envioCosto = Number(pedido.envio_costo) || 0;
   const iva = Math.round(total - envioCosto - subtotal);
   const ref = 'OC-' + String(orderId).slice(0, 8).toUpperCase();
