@@ -359,11 +359,11 @@ function EditorPrecios({ lista, onBack, listas }) {
                   ) : badges.length > 0 ? (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{badges.map((b, k) => <span key={k} style={{ fontSize: 11, fontWeight: 700, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: 20, padding: '2px 10px' }}>{b}</span>)}</div>
                   ) : (
-                    <span style={{ fontSize: 12, color: '#c8c4bc' }}>precio base</span>
+                    <span style={{ fontSize: 12, color: '#c8c4bc' }}>usa el precio base</span>
                   )}
                 </td>
                 <td style={{ padding: '6px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button onClick={() => setEditUuid(uuid)} style={{ padding: '6px 14px', background: tiene ? '#fff' : G, color: tiene ? G : '#fff', border: `1.5px solid ${G}`, borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>{tiene ? 'Editar' : 'Poner precio'}</button>
+                  <button onClick={() => setEditUuid(uuid)} style={{ padding: '6px 14px', background: tiene ? '#fff' : G, color: tiene ? G : '#fff', border: `1.5px solid ${G}`, borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>{tiene ? 'Editar' : 'Precio especial'}</button>
                   {tiene && <button title="Quitar de esta lista" onClick={() => clearItem(uuid)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 14, padding: '2px 6px' }}>✕</button>}
                 </td>
               </tr>);
