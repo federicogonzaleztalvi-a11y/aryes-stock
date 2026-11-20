@@ -218,6 +218,9 @@ const ProductForm=({product,suppliers,onSave,onClose,brandCfg,categories=[],subc
           {f.costSource&&<div style={{fontFamily:T.sans,fontSize:10,color:T.green,marginTop:4,fontWeight:600}}>⚡ {f.costSource}{f.costUpdatedAt?' · '+new Date(f.costUpdatedAt).toLocaleDateString('es',{day:'2-digit',month:'short'}):''}</div>}
         </Field>
       </div>
+      <div style={{fontFamily:T.sans,fontSize:12,color:'#166534',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'8px 11px'}}>
+        Este es el <strong>precio base</strong> — lo ven <strong>todos</strong> los clientes. ¿Un precio especial para un cliente puntual? Se hace en la ficha de ese cliente.
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <Field label={"Precio por kg (" + taxCfg.currency + ")"} hint="Opcional. Si lo cargás junto con el peso, el precio de venta se calcula solo. Ideal si tu costo se mueve por kilo.">
           <Inp type="number" step="0.001" min="0" placeholder="0.000" value={f.precioKg||""} onChange={e=>setPrecioKg(e.target.value)}/>

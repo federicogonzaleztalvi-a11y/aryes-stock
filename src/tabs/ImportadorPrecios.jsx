@@ -107,6 +107,9 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
   const [msg, setMsg] = useState('');
   const [step, setStep] = useState('upload');
   const [listaId, setListaId] = useState('');
+  // Destino de la carga: 'fichas' = actualiza el precio base de cada producto (el master,
+  // lo ven todos los clientes); 'lista' = sólo una lista puntual (un grupo de clientes).
+  const [destino, setDestino] = useState('fichas');
   const fileRef = useRef();
 
   const parseExcel = (arrayBuffer) => {
@@ -245,25 +248,41 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
   const guardar = async () => {
     const toSave = rows.filter(r => r.incluir && r.productoId);
     if (toSave.length === 0) { setMsg('No hay productos seleccionados.'); return; }
-    if (!listaId) { setMsg('Seleccioná una lista de precios primero.'); return; }
+    if (destino === 'lista' && !listaId) { setMsg('Seleccioná una lista de precios primero.'); return; }
     setSaving(true);
     let ok = 0, err = 0, firstErr = '';
     const SB_URL = import.meta.env.VITE_SUPABASE_URL;
-    const headers = getAuthHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' });
+    const org = getOrgId();
     for (const row of toSave) {
       try {
-        const res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ lista_id: listaId, org_id: getOrgId(), product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: 0 }),
-        });
+        let res;
+        if (destino === 'fichas') {
+          // Master: actualiza el precio base del producto. El total de la ficha es el
+          // precio SIN el descuento por producto (ese vive en listas/cliente). Guardamos
+          // también precio_kg (columna Precio) y el peso derivado, para editar por kilo.
+          const pk = Number(row.precioKg) || 0;
+          const total = Number(row.precioBase ?? row.precioUnit ?? row.precioFinal) || 0;
+          const peso = pk > 0 && total > 0 ? Math.round((total / pk) * 10000) / 10000 : null;
+          res = await fetch(`${SB_URL}/rest/v1/products?uuid=eq.${encodeURIComponent(row.productoId)}&org_id=eq.${encodeURIComponent(org)}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders({ Prefer: 'return=minimal' }),
+            body: JSON.stringify({ precio_kg: pk > 0 ? pk : null, peso_kg: peso, precio_venta: total, updated_at: new Date().toISOString() }),
+          });
+        } else {
+          res = await fetch(`${SB_URL}/rest/v1/price_list_items`, {
+            method: 'POST',
+            headers: getAuthHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+            body: JSON.stringify({ lista_id: listaId, org_id: org, product_uuid: row.productoId, precio: Number(row.precioFinal), descuento: 0 }),
+          });
+        }
         if (!res.ok) throw new Error(await res.text());
         ok++;
       } catch(e) { console.warn(e); err++; if (!firstErr) firstErr = String(e.message || e).slice(0, 160); }
     }
     setSaving(false);
     setStep('done');
-    setMsg(`${ok} precios guardados en la lista${err > 0 ? `, ${err} errores — ${firstErr}` : ''}.`);
+    const lugar = destino === 'fichas' ? 'las fichas (todos los clientes)' : 'la lista';
+    setMsg(`${ok} precios guardados en ${lugar}${err > 0 ? `, ${err} errores — ${firstErr}` : ''}.`);
     if (onPreciosGuardados) onPreciosGuardados();
   };
 
@@ -367,12 +386,30 @@ export default function ImportadorPrecios({ products = [], listas = [], onPrecio
         calcula el precio por bulto automáticamente y muestra los matches para confirmar.
       </p>
       <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Lista de precios destino</label>
-        <select value={listaId} onChange={e => setListaId(e.target.value)}
-          style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, width: '100%', maxWidth: 320 }}>
-          <option value="">— Seleccioná una lista —</option>
-          {listas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-        </select>
+        <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>¿Dónde aplicar estos precios?</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 480 }}>
+          <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '10px 12px', border: destino === 'fichas' ? `1.5px solid ${G}` : '1px solid #e0e0d8', borderRadius: 8, cursor: 'pointer', background: destino === 'fichas' ? '#f6fdf9' : '#fff' }}>
+            <input type="radio" name="imp-destino" checked={destino === 'fichas'} onChange={() => setDestino('fichas')} style={{ accentColor: G, marginTop: 2 }} />
+            <span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>Las fichas de los productos (para todos)</span>
+              <span style={{ display: 'block', fontSize: 12, color: '#6b7280', marginTop: 1 }}>Actualiza el precio base de cada producto. Lo ven todos los clientes. Es lo habitual.</span>
+            </span>
+          </label>
+          <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '10px 12px', border: destino === 'lista' ? `1.5px solid ${G}` : '1px solid #e0e0d8', borderRadius: 8, cursor: 'pointer', background: destino === 'lista' ? '#f6fdf9' : '#fff' }}>
+            <input type="radio" name="imp-destino" checked={destino === 'lista'} onChange={() => setDestino('lista')} style={{ accentColor: G, marginTop: 2 }} />
+            <span style={{ flex: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1a18' }}>Una lista puntual (un grupo de clientes)</span>
+              <span style={{ display: 'block', fontSize: 12, color: '#6b7280', marginTop: 1, marginBottom: destino === 'lista' ? 8 : 0 }}>Sólo para los clientes asignados a esa lista.</span>
+              {destino === 'lista' && (
+                <select value={listaId} onChange={e => setListaId(e.target.value)}
+                  style={{ padding: '7px 11px', border: '1px solid #d1d5db', borderRadius: 7, fontSize: 13, width: '100%', maxWidth: 320 }}>
+                  <option value="">— Seleccioná una lista —</option>
+                  {listas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+                </select>
+              )}
+            </span>
+          </label>
+        </div>
       </div>
       {msg && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 16px', marginBottom: 16, color: '#dc2626', fontSize: 13 }}>{msg}</div>}
       <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 16, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
