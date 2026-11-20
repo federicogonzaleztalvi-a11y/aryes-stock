@@ -775,10 +775,12 @@ function precioRefBase(item) {
 // null cuando no hay descuento (el precio se muestra tal cual, sin tachado).
 function dtoSiempre(item) {
   const precio = Number(item?.precio) || 0;
-  if (!item?.reglasV2) return null;
-  const base = Number(item.precioBase) || 0;
-  const pct = Math.round(Number(item.descGlobal) || 0);
-  return pct > 0 && base > precio ? { base, pct, precio } : null;
+  const base = Number(item?.precioBase) || 0;
+  // Modelo-agnóstico: si hay un precio base mayor al final, hay dto que mostrar
+  // (sirve tanto para v2 como para el dto% por lista del camino viejo).
+  if (!(precio > 0 && base > precio)) return null;
+  const pct = Math.round((base - precio) / base * 100);
+  return pct > 0 ? { base, pct, precio } : null;
 }
 
 // Precio unitario resultante en un tramo por cantidad, calculado sobre el precio
@@ -948,7 +950,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
   const calc = qty > 0 ? calcLinea(item, qty) : null;
   const mixed = !!(calc && calc.tramos && calc.tramos.length > 1);
   const precioEff = (calc && !mixed) ? calc.precioConDto : item.precio; // unitario efectivo (sólo si uniforme)
-  const refBase = precioRefBase(item);                         // v2: precioBase; viejo: item.precio
+  // Precio tachado = el mayor entre el base de la ficha y el precio final. Antes el
+  // camino viejo (dto% por lista) no tachaba nada (devolvía el precio ya rebajado);
+  // ahora el catálogo manda precioBase, así que el descuento de lista se MUESTRA
+  // explícito (precio base tachado − % → final), igual que en v2.
+  const refBase = Math.max(Number(item.precioBase) || 0, Number(item.precio) || 0);
   const pctEff = refBase > 0 && refBase > precioEff ? Math.round(100 * (1 - precioEff / refBase)) : 0;
   const mostrarDto = item.precio > 0 && pctEff > 0;            // hay precio base que tachar
   const tier = primerTier(item);                               // primera escala por cantidad (si hay)
@@ -1458,7 +1464,9 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
   const calcD = qty > 0 ? calcLinea(item, qty) : null;
   const mixedD = !!(calcD && calcD.tramos && calcD.tramos.length > 1);
   const precioEffD = (calcD && !mixedD) ? calcD.precioConDto : item.precio;
-  const refBaseD = precioRefBase(item);
+  // Igual que en la card: tachamos el precio base de la ficha, así el dto de lista
+  // se muestra explícito (camino viejo incluido, no solo v2).
+  const refBaseD = Math.max(Number(item.precioBase) || 0, Number(item.precio) || 0);
   const pctEffD = refBaseD > 0 && refBaseD > precioEffD ? Math.round(100 * (1 - precioEffD / refBaseD)) : 0;
   const dtoDetalle = item.precio > 0 && pctEffD > 0 ? { base: refBaseD, pct: pctEffD } : null;
   const boxD = boxRule(item);                                  // regla de caja cerrada (si hay)
@@ -2269,11 +2277,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
     // descPct es solo el descuento por unidad SUELTA (Siempre/cantidad). Cuando hay
     // caja cerrada, las unidades de caja pagan menos, así que el ahorro real de la
     // línea es mayor. descEfectivoPct = ahorro real vs el precio de lista mostrado.
-    // Referencia para el % de ahorro y el precio tachado. En v2 el precio de lista
-    // REAL es precioBase (sin descontar); item.precio ya trae el dto "siempre"
-    // adentro, así que usarlo escondía ese ahorro (mostraba 0%). En el camino viejo
-    // no hay base separada confiable, así que se mantiene item.precio como referencia.
-    const refUnit = item.reglasV2 ? (Number(item.precioBase) || 0) : (Number(item.precio) || 0);
+    // Referencia para el % de ahorro y el precio tachado = el mayor entre el precio
+    // base de la ficha (precioBase) y el precio final. Así el ahorro de la lista (dto%
+    // del camino viejo) también se refleja, no solo el de v2. Si no hay base mayor,
+    // queda item.precio y el ahorro da 0 (sin dto que mostrar).
+    const refUnit = Math.max(Number(item.precioBase) || 0, Number(item.precio) || 0);
     const descEfectivoPct = refUnit > 0 ? Math.max(0, Math.round(100 * (1 - c.netoLinea / (refUnit * qty)))) : 0;
     // Unidades que efectivamente pagan precio distribuidor (completan cajas).
     const unidEnCaja = c.cajaUnid > 0 ? Math.floor(qty / c.cajaUnid) * c.cajaUnid : 0;
