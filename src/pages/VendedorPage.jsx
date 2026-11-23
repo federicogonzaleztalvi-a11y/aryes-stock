@@ -921,19 +921,27 @@ export default function VendedorPage() {
   // instalar, sea una app PROPIA (start_url=/vendedor → abre el login del
   // vendedor), separada de la app del cliente. También actualizamos el título que
   // iOS usa para "Agregar a inicio".
+  const orgId = session?.org || null;
   useEffect(() => {
-    // El script inline de index.html ya apunta el manifest a la variante vendedor en
-    // la carga inicial (clave para iOS). Esto cubre la navegación interna (SPA) hacia
-    // /vendedor sin recarga. Al salir, restauramos el manifest del cliente por defecto.
+    // La app instalada desde /vendedor debe ser la del VENDEDOR (start_url=/vendedor,
+    // nombre "Ventas") y con el logo de la ORG. En pazque.com no hay dominio ni ?org=
+    // que resuelva la marca, así que una vez logueado le pasamos el org del vendedor
+    // tanto al manifest (ícono + start_url) como al apple-touch-icon (ícono en iOS).
+    // Sin el org, el ícono instalado caía en el logo genérico de Pazque.
     const link = document.querySelector('link[rel="manifest"]');
-    if (link) link.setAttribute('href', '/api/manifest?app=vendedor');
     const titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    const touch = document.querySelector('link[rel="apple-touch-icon"]');
+    const prevTouch = touch ? touch.getAttribute('href') : null;
+    const q = orgId ? '&org=' + encodeURIComponent(orgId) : '';
+    if (link) link.setAttribute('href', '/api/manifest?app=vendedor' + q);
     if (titleMeta) titleMeta.setAttribute('content', 'Ventas');
+    if (touch && orgId) touch.setAttribute('href', '/api/touch-icon?org=' + encodeURIComponent(orgId));
     return () => {
       if (link) link.setAttribute('href', '/api/manifest');
       if (titleMeta) titleMeta.setAttribute('content', 'Pazque');
+      if (touch && prevTouch) touch.setAttribute('href', prevTouch);
     };
-  }, []);
+  }, [orgId]);
 
   const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
