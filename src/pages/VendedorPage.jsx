@@ -40,12 +40,18 @@ function VendedorLogin({ onLogin }) {
     let cancelled = false;
     (async () => {
       try {
-        const m = await fetch('/api/manifest').then(r => r.json());
+        // Logo de la org en el login: antes de loguearse no sabemos la org, pero si
+        // el vendedor ya entró alguna vez la guardamos (pazque-vendedor-org) y la
+        // reusamos para traer su marca. Primera vez / sin dato → ícono genérico.
+        let storedOrg = null;
+        try { storedOrg = localStorage.getItem('pazque-vendedor-org'); } catch { /* bloqueado */ }
+        const m = await fetch('/api/manifest?app=vendedor' + (storedOrg ? '&org=' + encodeURIComponent(storedOrg) : '')).then(r => r.json());
         if (cancelled) return;
         const icons = m?.icons || [];
         const src = icons[icons.length - 1]?.src || icons[0]?.src || null;
         if (src && !src.includes('pazque-logo')) setBrandLogo(src);
-        if (m?.name && m.name !== 'Pazque') setBrandName(m.name);
+        const baseName = (m?.name || '').split(' · ')[0];
+        if (baseName && baseName !== 'Pazque') setBrandName(baseName);
       } catch { /* sin red → queda el ícono genérico */ }
     })();
     return () => { cancelled = true; };
@@ -77,6 +83,7 @@ function VendedorLogin({ onLogin }) {
         setLoading(false); return;
       }
       const { vendedor } = await meRes.json();
+      try { localStorage.setItem('pazque-vendedor-org', vendedor.org); } catch { /* bloqueado */ }
       const expiresIn = (data.expires_in || 3600) * 1000;
       const session = {
         access_token: data.access_token,
@@ -116,7 +123,7 @@ function VendedorLogin({ onLogin }) {
             </div>
           )}
           <div style={{ fontSize: 20, fontWeight: 700, color: '#1a1a18' }}>{brandName || 'Portal de vendedores'}</div>
-          <div style={{ fontSize: 13, color: '#6a6a68', marginTop: 4 }}>{brandName ? 'Portal de vendedores · pasá pedidos de tus clientes' : 'Ingresá para pasar pedidos de tus clientes'}</div>
+          <div style={{ fontSize: 13, color: '#6a6a68', marginTop: 4 }}>{brandName ? 'Portal de vendedores' : 'Ingresá con tu usuario'}</div>
         </div>
         <div style={{ display: 'grid', gap: 14 }}>
           <div>
@@ -260,7 +267,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
+    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS, overflowX: 'hidden' }}>
       <InstallVendedorBanner brandNombre={brand.name} />
 
       {/* Barra de marca */}
@@ -665,7 +672,7 @@ function MisPedidos({ session, onLogout, onVer }) {
   const PILLS = [['todos', 'Todos'], ['nuevos', 'Nuevos'], ['entregar', 'Por entregar']];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
+    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS, overflowX: 'hidden' }}>
       <InstallVendedorBanner brandNombre={brand.name} />
       <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
@@ -812,7 +819,7 @@ function PedidoDetalle({ session, pedido, onBack, onCargar }) {
   const sect = { fontSize: 11, color: '#9a9a96', textTransform: 'uppercase', letterSpacing: '.5px', padding: '12px 15px 6px', fontWeight: 700 };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
+    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS, overflowX: 'hidden' }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 10 }}>
         <button onClick={onBack} aria-label="Volver" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#1a1a18', padding: 2, display: 'inline-flex' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
