@@ -101,7 +101,9 @@ async function buildComprobantePdf(session, orderId) {
   const currencySymbol = await orgCurrencySymbol(session.org_id, hdr);
   const pdfBuf = await generarOrdenPDF({
     titulo: 'Comprobante de pedido',
-    footer: 'Comprobante generado por ' + empresa + ' vía Pazque',
+    footerPre: 'Comprobante generado con ',
+    footerLink: 'Pazque',
+    footerUrl: 'https://pazque.com/?utm_source=comprobante&utm_medium=pdf&utm_campaign=' + encodeURIComponent(session.org_id || 'portal'),
     nroOrden: ref,
     fecha: pedido.creado_en || new Date().toISOString(),
     empresa, currencySymbol,
@@ -139,7 +141,9 @@ async function buildPreviewPdf(session, items, notas, total, envioCosto = 0, env
   const currencySymbol = await orgCurrencySymbol(session.org_id, hdr);
   const pdfBuf = await generarOrdenPDF({
     titulo: 'Orden de compra (vista previa)',
-    footer: 'Vista previa generada por ' + empresa + ' vía Pazque',
+    footerPre: 'Vista previa generada con ',
+    footerLink: 'Pazque',
+    footerUrl: 'https://pazque.com/?utm_source=comprobante&utm_medium=pdf&utm_campaign=' + encodeURIComponent(session.org_id || 'portal'),
     nroOrden: 'VISTA PREVIA',
     fecha: new Date().toISOString(),
     empresa, currencySymbol,

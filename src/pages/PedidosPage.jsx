@@ -3114,6 +3114,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </button>
+
+          {/* Atribución al pie del comprobante en pantalla (estilo Shopify, Opción A
+              minimalista): el comprador que acaba de hacer un pedido ve "Powered by
+              Pazque". Sin anzuelo de distribuidor acá — sólo marca. Mismo componente
+              que login y footer del portal → consistente y con UTM de atribución. */}
+          <PoweredByPazque style={{ paddingBottom: 0, marginTop: 20 }} />
         </div>
       </div>
     </div>

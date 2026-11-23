@@ -127,8 +127,24 @@ export function generarOrdenPDF(data) {
         doc.font('Helvetica').fillColor(OSCURO).text(data.notas, left, y, { width: pageW });
       }
 
-      doc.fontSize(8).font('Helvetica').fillColor('#9a9a98')
-         .text((data.footer || 'Documento interno generado por Pazque') + ' - ' + fecha(data.fecha), left, doc.page.height - 60, { width: pageW, align: 'center' });
+      // Footer / atribución Pazque. Si viene footerLink + footerUrl, "Pazque" se
+      // renderiza como link clickeable (verde de marca, subrayado) — el comprador que
+      // abre el PDF puede tocar y llegar a pazque.com. Se centra a mano porque es una
+      // línea con tramos de distinto color/estilo (continued no centra bien un mix).
+      const fy = doc.page.height - 60;
+      doc.fontSize(8).font('Helvetica');
+      if (data.footerLink && data.footerUrl) {
+        const pre = data.footerPre || '';
+        const post = ' · ' + fecha(data.fecha);
+        const totalW = doc.widthOfString(pre) + doc.widthOfString(data.footerLink) + doc.widthOfString(post);
+        const startX = left + (pageW - totalW) / 2;
+        doc.fillColor('#9a9a98').text(pre, startX, fy, { continued: true, lineBreak: false });
+        doc.fillColor(VERDE).text(data.footerLink, { continued: true, link: data.footerUrl, underline: false });
+        doc.fillColor('#9a9a98').text(post, { continued: false, link: null, underline: false });
+      } else {
+        doc.fillColor('#9a9a98')
+           .text((data.footer || 'Documento interno generado por Pazque') + ' - ' + fecha(data.fecha), left, fy, { width: pageW, align: 'center' });
+      }
 
       doc.end();
     } catch (err) { reject(err); }
