@@ -52,9 +52,11 @@
       (function () {
         try {
           var esVendedor = location.pathname.indexOf('/vendedor') === 0;
+          var org = '';
+          try { org = new URLSearchParams(location.search).get('org') || ''; } catch (e2) {}
           var link = document.createElement('link');
           link.rel = 'manifest';
-          link.href = esVendedor ? '/api/manifest?app=vendedor' : '/api/manifest';
+          link.href = esVendedor ? ('/api/manifest?app=vendedor' + (org ? '&org=' + encodeURIComponent(org) : '')) : '/api/manifest';
           document.head.appendChild(link);
           if (esVendedor) {
             var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');

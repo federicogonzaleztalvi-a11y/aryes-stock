@@ -40,12 +40,12 @@ function VendedorLogin({ onLogin }) {
     let cancelled = false;
     (async () => {
       try {
-        // Logo de la org en el login: antes de loguearse no sabemos la org, pero si
-        // el vendedor ya entró alguna vez la guardamos (pazque-vendedor-org) y la
-        // reusamos para traer su marca. Primera vez / sin dato → ícono genérico.
-        let storedOrg = null;
-        try { storedOrg = localStorage.getItem('pazque-vendedor-org'); } catch { /* bloqueado */ }
-        const m = await fetch('/api/manifest?app=vendedor' + (storedOrg ? '&org=' + encodeURIComponent(storedOrg) : '')).then(r => r.json());
+        // Org para el logo en el login: 1) ?org= del link (el que comparte la
+        // distribuidora a sus vendedores), 2) la guardada de un login anterior.
+        // Primera vez y sin ninguna de las dos → ícono genérico.
+        let org = null;
+        try { org = new URLSearchParams(window.location.search).get('org') || localStorage.getItem('pazque-vendedor-org'); } catch { /* bloqueado */ }
+        const m = await fetch('/api/manifest?app=vendedor' + (org ? '&org=' + encodeURIComponent(org) : '')).then(r => r.json());
         if (cancelled) return;
         const icons = m?.icons || [];
         const src = icons[icons.length - 1]?.src || icons[0]?.src || null;
@@ -109,23 +109,23 @@ function VendedorLogin({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: SANS }}>
-      <div style={{ background: '#fff', border: '1px solid #e2e2de', borderRadius: 14, padding: '36px 32px', width: '100%', maxWidth: 400, boxShadow: '0 8px 40px rgba(0,0,0,.06)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 26 }}>
+    <div style={{ minHeight: '100dvh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: SANS }}>
+      <div style={{ width: '100%', maxWidth: 380 }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           {brandLogo ? (
             <img src={brandLogo} alt={brandName || 'Logo'}
-              style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'contain', background: '#fff', marginBottom: 14, display: 'inline-block' }} />
+              style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'contain', background: '#fff', margin: '0 auto 14px', display: 'block' }} />
           ) : (
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: G, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: G, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h18M3 12h18M3 18h12" />
               </svg>
             </div>
           )}
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#1a1a18' }}>{brandName || 'Portal de vendedores'}</div>
-          <div style={{ fontSize: 13, color: '#6a6a68', marginTop: 4 }}>{brandName ? 'Portal de vendedores' : 'Ingresá con tu usuario'}</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: '#1a1a18', marginBottom: 4 }}>{brandName || 'Portal de vendedores'}</div>
+          <div style={{ fontSize: 13, color: '#6a6a68' }}>{brandName ? 'Portal de vendedores' : 'Ingresá con tu usuario'}</div>
         </div>
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ maxWidth: 340, margin: '0 auto', width: '100%', display: 'grid', gap: 14 }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: '#6a6a68', display: 'block', marginBottom: 5 }}>Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com"
@@ -138,7 +138,7 @@ function VendedorLogin({ onLogin }) {
           </div>
           {err && <p style={{ fontSize: 12.5, color: '#dc2626', textAlign: 'center', margin: 0 }}>{err}</p>}
           <button onClick={handle} disabled={loading}
-            style={{ background: G, color: '#fff', border: 'none', fontFamily: SANS, fontSize: 14, fontWeight: 700, padding: '12px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.5 : 1, borderRadius: 10, marginTop: 4 }}>
+            style={{ background: G, color: '#fff', border: 'none', fontFamily: SANS, fontSize: 14, fontWeight: 700, padding: '12px 22px', cursor: loading ? 'default' : 'pointer', width: '100%', opacity: loading ? 0.5 : 1, borderRadius: 50, marginTop: 4 }}>
             {loading ? 'Ingresando…' : 'Ingresar'}
           </button>
         </div>
@@ -928,7 +928,8 @@ export default function VendedorPage() {
   // instalar, sea una app PROPIA (start_url=/vendedor → abre el login del
   // vendedor), separada de la app del cliente. También actualizamos el título que
   // iOS usa para "Agregar a inicio".
-  const orgId = session?.org || null;
+  const urlOrg = (() => { try { return new URLSearchParams(window.location.search).get('org'); } catch { return null; } })();
+  const orgId = session?.org || urlOrg || null;
   useEffect(() => {
     // La app instalada desde /vendedor debe ser la del VENDEDOR (start_url=/vendedor,
     // nombre "Ventas") y con el logo de la ORG. En pazque.com no hay dominio ni ?org=

@@ -73,7 +73,10 @@ export default async function handler(req, res) {
     name: isVendedor ? `${name} · Ventas` : name,
     short_name: shortName,
     description: FALLBACK.description,
-    start_url: isVendedor ? '/vendedor' : '/pedidos',
+    // El start_url del vendedor lleva ?org cuando se conoce (del ?org= o del
+    // dominio): así la app instalada abre /vendedor?org=... y el LOGIN ya muestra
+    // el logo de la org desde la primera vez (antes no había forma de saberla).
+    start_url: isVendedor ? ('/vendedor' + (org ? '?org=' + encodeURIComponent(org) : '')) : '/pedidos',
     scope: '/',
     display: 'standalone',
     background_color: '#f5f5f7',
