@@ -109,7 +109,7 @@ function VendedorLogin({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: SANS }}>
+    <div style={{ minHeight: '100dvh', background: '#f9f9f7', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, boxSizing: 'border-box', fontFamily: SANS }}>
       <div style={{ width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           {brandLogo ? (
