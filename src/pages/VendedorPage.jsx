@@ -104,7 +104,7 @@ function VendedorLogin({ onLogin }) {
   };
 
   const inp = {
-    width: '100%', fontFamily: SANS, fontSize: 14, color: '#1a1a18', background: '#fff',
+    width: '100%', fontFamily: SANS, fontSize: 16, color: '#1a1a18', background: '#fff',
     border: '1px solid #e2e2de', padding: '11px 12px', borderRadius: 8, boxSizing: 'border-box',
   };
 
@@ -313,7 +313,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
           </span>
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar cliente por nombre o código…"
-            style={{ width: '100%', fontFamily: SANS, fontSize: 15, color: '#1a1a18', background: '#fff', border: '1.5px solid #e6e6e2', padding: '12px 14px 12px 40px', borderRadius: 12, boxSizing: 'border-box', outline: 'none', transition: 'border-color .12s' }}
+            style={{ width: '100%', fontFamily: SANS, fontSize: 16, color: '#1a1a18', background: '#fff', border: '1.5px solid #e6e6e2', padding: '12px 14px 12px 40px', borderRadius: 12, boxSizing: 'border-box', outline: 'none', transition: 'border-color .12s' }}
             onFocus={e => e.target.style.borderColor = G}
             onBlur={e => e.target.style.borderColor = '#e6e6e2'} />
         </div>
@@ -390,7 +390,7 @@ function NuevoClienteModal({ session, onClose, onCreated }) {
   const [err, setErr] = useState('');
   const set = (k) => (e) => setF(prev => ({ ...prev, [k]: e.target.value }));
 
-  const inputStyle = { width: '100%', fontFamily: SANS, fontSize: 15, color: '#1a1a18', background: '#fff', border: '1.5px solid #e6e6e2', padding: '11px 13px', borderRadius: 10, boxSizing: 'border-box', outline: 'none' };
+  const inputStyle = { width: '100%', fontFamily: SANS, fontSize: 16, color: '#1a1a18', background: '#fff', border: '1.5px solid #e6e6e2', padding: '11px 13px', borderRadius: 10, boxSizing: 'border-box', outline: 'none' };
   const labelStyle = { fontSize: 12.5, fontWeight: 600, color: '#4a4a48', marginBottom: 5, display: 'block' };
 
   const guardar = async () => {
