@@ -25,8 +25,12 @@
       });
     </script>
     <!-- PWA — manifest dinámico por-org: la app instalada toma nombre+logo de la
-         distribuidora del dominio (ej. "Aryes" en pedidos.aryes.com.uy). -->
-    <link rel="manifest" href="/api/manifest">
+         distribuidora del dominio (ej. "Aryes" en pedidos.aryes.com.uy). El <link>
+         del manifest NO está fijo acá a propósito: lo crea el script de abajo con el
+         href correcto según la ruta. Con un <link href="/api/manifest"> fijo, en
+         iPhone Safari lo prefetcheaba (start_url /pedidos) antes de que el script lo
+         cambiara a la variante vendedor → la app del vendedor abría el portal del
+         cliente. Creándolo una sola vez con el href bueno, iOS fetchea el correcto. -->
     <meta name="theme-color" content="#1a8a3c">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <!-- "default" (no "black-translucent"): en la app instalada iOS RESERVA el
@@ -39,16 +43,20 @@
          baja el logo de Aryes, no el de Pazque. -->
     <link rel="apple-touch-icon" href="/api/touch-icon">
     <!-- En /vendedor la app instalada debe ser la del VENDEDOR (nombre "Ventas",
-         start_url /vendedor), no la del cliente. iOS toma el manifest y el título del
-         HTML INICIAL y no ve los cambios que React hace después → hay que decidirlo
-         acá, en el parse, antes de que termine de cargar. Si no, instalar desde el
-         iPhone bajaba la app del cliente ("Aryes", abre /pedidos). -->
+         start_url /vendedor), no la del cliente. iOS toma el manifest del HTML INICIAL
+         y no ve los cambios que React hace después → se decide acá, en el parse. Se
+         CREA el <link rel=manifest> una sola vez con el href correcto (en /vendedor,
+         app=vendedor → start_url /vendedor). Así no existe un manifest por defecto que
+         Safari pueda prefetchear antes y clavar start_url /pedidos en el ícono. -->
     <script>
       (function () {
         try {
-          if (location.pathname.indexOf('/vendedor') === 0) {
-            var link = document.querySelector('link[rel="manifest"]');
-            if (link) link.setAttribute('href', '/api/manifest?app=vendedor');
+          var esVendedor = location.pathname.indexOf('/vendedor') === 0;
+          var link = document.createElement('link');
+          link.rel = 'manifest';
+          link.href = esVendedor ? '/api/manifest?app=vendedor' : '/api/manifest';
+          document.head.appendChild(link);
+          if (esVendedor) {
             var t = document.querySelector('meta[name="apple-mobile-web-app-title"]');
             if (t) t.setAttribute('content', 'Ventas');
           }
