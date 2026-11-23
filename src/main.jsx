@@ -417,6 +417,26 @@ function Root() {
   );
 }
 
+// Fallback de arranque del PWA del vendedor: algunos navegadores (sobre todo iOS)
+// hornean mal el start_url al instalar y la app abre en "/" o "/pedidos" (portal
+// del cliente) en vez de "/vendedor". Si la app corre instalada (standalone) y hay
+// una sesión de vendedor guardada válida, la reencaminamos a /vendedor ANTES de
+// montar el router (así BrowserRouter arranca ya en la ruta correcta).
+(function redirigirVendedorInstalado() {
+  try {
+    const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    if (!standalone) return;
+    const p = window.location.pathname;
+    if (p.indexOf('/vendedor') === 0) return;
+    if (p !== '/' && p !== '/pedidos') return;
+    const raw = localStorage.getItem('pazque-vendedor-session');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s && s.expiresAt != null && Date.now() > s.expiresAt) return; // sesión vencida → no tocar
+    window.history.replaceState({}, '', '/vendedor');
+  } catch (e) { /* noop */ }
+})();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <RootErrorBoundary>
     <BrowserRouter>
