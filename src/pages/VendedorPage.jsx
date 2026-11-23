@@ -279,7 +279,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
         </button>
       </div>
 
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '22px 16px 48px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '22px 16px 96px' }}>
         {/* Saludo */}
         <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ minWidth: 0 }}>
@@ -526,9 +526,301 @@ function PedidoCliente({ session, cliente, onBack }) {
   return <PedidosPage vendorSession={portalSession} onVendorExit={onBack} vendorName={session.name} />;
 }
 
+// ── Helpers del feed de pedidos ─────────────────────────────────────────────
+function money(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('es-AR'); }
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const d = new Date(iso); const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  if (diffMin < 1) return 'recién';
+  if (diffMin < 60) return 'hace ' + diffMin + ' min';
+  const hh = String(d.getHours()).padStart(2, '0'); const mm = String(d.getMinutes()).padStart(2, '0');
+  if (d.toDateString() === now.toDateString()) return 'hoy ' + hh + ':' + mm;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'ayer ' + hh + ':' + mm;
+  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+}
+
+const ESTADOS_NUEVO = ['pendiente', 'confirmada', 'importada'];
+function estadoMeta(e) {
+  if (e === 'entregada') return { label: 'Entregado', tone: 'mut' };
+  if (e === 'en_ruta')   return { label: 'En camino', tone: 'mut' };
+  if (e === 'preparada') return { label: 'Preparando', tone: 'mut' };
+  if (e === 'cancelada') return { label: 'Cancelado', tone: 'mut' };
+  return { label: 'Nuevo', tone: 'new' };
+}
+function itemsPreview(items) {
+  const parts = (items || []).map(i => (i.nombre || i.name || '') + ' ×' + (i.qty || i.cantidad || 0)).filter(p => p.trim() !== '×0' && p.trim());
+  const head = parts.slice(0, 3).join(' · ');
+  return parts.length > 3 ? head + ' …' : head;
+}
+
+// ── Mis pedidos — feed de lectura de lo que piden sus clientes ───────────────
+// Lee /api/vendedor?action=pedidos (ya filtrado por el servidor a sus clientes).
+// Resumen arriba + filtros + lista. Tocar una tarjeta abre el detalle.
+function MisPedidos({ session, onLogout, onVer }) {
+  const [pedidos, setPedidos] = useState(null); // null = cargando
+  const [error, setError]     = useState('');
+  const [filtro, setFiltro]   = useState('todos');
+  const brand = useBrand();
+  const firstName = String(session.name || '').trim().split(/\s+/)[0] || 'vendedor';
+
+  const fetchPedidos = useCallback(async () => {
+    setError('');
+    try {
+      const r = await fetch('/api/vendedor?action=pedidos', { headers: { Authorization: 'Bearer ' + session.access_token } });
+      if (r.status === 401) { onLogout(); return; }
+      if (!r.ok) { setError('No pudimos cargar tus pedidos.'); setPedidos([]); return; }
+      const d = await r.json();
+      setPedidos(Array.isArray(d.pedidos) ? d.pedidos : []);
+    } catch { setError('Error de conexión.'); setPedidos([]); }
+  }, [session.access_token, onLogout]);
+  useEffect(() => { fetchPedidos(); }, [fetchPedidos]);
+
+  const lista = pedidos || [];
+  const now = new Date();
+  const hoyCount = lista.filter(p => { const d = new Date(p.creadoEn); return d.toDateString() === now.toDateString(); }).length;
+  const factMes = lista
+    .filter(p => { const d = new Date(p.creadoEn); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
+    .reduce((s, p) => s + (p.total || 0), 0);
+
+  const filtered = lista.filter(p => {
+    if (filtro === 'nuevos')   return ESTADOS_NUEVO.includes(p.estado);
+    if (filtro === 'entregar') return p.estado !== 'entregada' && p.estado !== 'cancelada';
+    return true;
+  });
+
+  const PILLS = [['todos', 'Todos'], ['nuevos', 'Nuevos'], ['entregar', 'Por entregar']];
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
+      <InstallVendedorBanner />
+      <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+          {brand.logo ? (
+            <img src={brand.logo} alt={brand.name || 'Logo'} style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'contain', background: '#fff' }} />
+          ) : (
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: G, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
+            </div>
+          )}
+          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand.name || 'Portal de vendedores'}</span>
+        </div>
+        <button onClick={onLogout} style={{ fontSize: 12.5, color: '#6a6a68', background: 'transparent', border: '1px solid #e2e2de', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>Salir</button>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px 96px' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em', marginBottom: 14 }}>Hola, {firstName}</div>
+
+        {/* Resumen */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ background: '#fff', border: '1px solid #ececea', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 11.5, color: '#8a8a86' }}>Pedidos hoy</div>
+            <div style={{ fontSize: 23, fontWeight: 800, color: '#1a1a18', marginTop: 2 }}>{pedidos === null ? '—' : hoyCount}</div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #ececea', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 11.5, color: '#8a8a86' }}>Facturación del mes</div>
+            <div style={{ fontSize: 23, fontWeight: 800, color: '#1a1a18', marginTop: 2 }}>{pedidos === null ? '—' : money(factMes)}</div>
+          </div>
+        </div>
+
+        {/* Filtros */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {PILLS.map(([id, label]) => (
+            <button key={id} onClick={() => setFiltro(id)}
+              style={{ fontSize: 12.5, fontWeight: 600, padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontFamily: SANS,
+                background: filtro === id ? G : '#fff', color: filtro === id ? '#fff' : '#6a6a68',
+                border: filtro === id ? '1px solid ' + G : '1px solid #e2e2de' }}>{label}</button>
+          ))}
+        </div>
+
+        {pedidos === null && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #ececea', borderRadius: 14, padding: 15 }}>
+                <div style={{ height: 13, width: '55%', background: '#f0f0ec', borderRadius: 5, marginBottom: 9 }} />
+                <div style={{ height: 10, width: '80%', background: '#f4f4f0', borderRadius: 5, marginBottom: 9 }} />
+                <div style={{ height: 10, width: '30%', background: '#f4f4f0', borderRadius: 5 }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 12, padding: 14, fontSize: 13, marginBottom: 14 }}>{error}</div>}
+
+        {pedidos !== null && lista.length === 0 && !error && (
+          <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', border: '1px solid #ececea', borderRadius: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#1a1a18', marginBottom: 6 }}>Todavía no hay pedidos</div>
+            <div style={{ fontSize: 13, color: '#6a6a68', lineHeight: 1.5 }}>Cuando tus clientes hagan un pedido, lo vas a ver acá.</div>
+          </div>
+        )}
+
+        {pedidos !== null && lista.length > 0 && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 34, color: '#6a6a68', fontSize: 14, background: '#fff', border: '1px solid #ececea', borderRadius: 14 }}>Sin pedidos en este filtro.</div>
+        )}
+
+        <div style={{ display: 'grid', gap: 10 }}>
+          {filtered.map(p => {
+            const meta = estadoMeta(p.estado);
+            return (
+              <button key={p.id} onClick={() => onVer(p)}
+                style={{ textAlign: 'left', background: '#fff', border: '1px solid #ececea', borderRadius: 14, padding: '13px 15px', cursor: 'pointer', fontFamily: SANS }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.clienteNombre}</span>
+                  {meta.tone === 'new'
+                    ? <span style={{ fontSize: 10.5, fontWeight: 700, background: '#e5efe8', color: '#166534', padding: '2px 9px', borderRadius: 20, flexShrink: 0 }}>{meta.label}</span>
+                    : <span style={{ fontSize: 10.5, fontWeight: 600, color: '#9a9a96', flexShrink: 0 }}>{meta.label}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: '#6a6a68', margin: '5px 0 2px', lineHeight: 1.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemsPreview(p.items) || 'Sin detalle'}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                  <span style={{ fontSize: 12, color: '#9a9a96' }}>{timeAgo(p.creadoEn)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18' }}>{money(p.total)}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Detalle de un pedido + acciones (WhatsApp, repetir, marcar entregado) ────
+function PedidoDetalle({ session, pedido, onBack, onCargar }) {
+  const [estado, setEstado] = useState(pedido.estado);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+  const meta = estadoMeta(estado);
+  const tel = (pedido.tel || '').replace(/\D/g, '');
+  const primerNombre = String(pedido.clienteNombre || '').trim().split(/\s+/)[0] || '';
+  const waLink = tel ? 'https://wa.me/' + tel + '?text=' + encodeURIComponent('Hola ' + primerNombre + ', te escribo por tu pedido.') : null;
+  const horario = (pedido.horarioDesde || pedido.horarioHasta) ? [pedido.horarioDesde, pedido.horarioHasta].filter(Boolean).join(' – ') : '';
+
+  const marcarEntregado = async () => {
+    if (!window.confirm('¿Marcar este pedido como entregado?')) return;
+    setSaving(true); setErr('');
+    try {
+      const r = await fetch('/api/vendedor?action=estado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+        body: JSON.stringify({ orderId: pedido.id, estado: 'entregada' }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) setEstado('entregada');
+      else setErr(d.error || 'No se pudo actualizar el pedido.');
+    } catch { setErr('Error de conexión.'); }
+    setSaving(false);
+  };
+
+  const card = { background: '#fff', border: '1px solid #ececea', borderRadius: 14, overflow: 'hidden', marginBottom: 12 };
+  const sect = { fontSize: 11, color: '#9a9a96', textTransform: 'uppercase', letterSpacing: '.5px', padding: '12px 15px 6px', fontWeight: 700 };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 10 }}>
+        <button onClick={onBack} aria-label="Volver" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#1a1a18', padding: 2, display: 'inline-flex' }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+        <span style={{ fontSize: 15.5, fontWeight: 700, color: '#1a1a18', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pedido.clienteNombre}</span>
+        {meta.tone === 'new'
+          ? <span style={{ fontSize: 10.5, fontWeight: 700, background: '#e5efe8', color: '#166534', padding: '3px 10px', borderRadius: 20 }}>{meta.label}</span>
+          : <span style={{ fontSize: 11, fontWeight: 600, color: '#9a9a96' }}>{meta.label}</span>}
+      </div>
+
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '12px 16px 40px' }}>
+        <div style={{ fontSize: 12, color: '#9a9a96', padding: '2px 2px 10px' }}>{timeAgo(pedido.creadoEn)}</div>
+
+        <div style={card}>
+          <div style={sect}>Productos</div>
+          {(pedido.items || []).map((it, i) => {
+            const qty = Number(it.qty || it.cantidad || 0);
+            const unit = Number(it.precio || it.precioUnit || 0);
+            return (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '7px 15px' }}>
+                <span style={{ fontSize: 14, color: '#1a1a18' }}>{it.nombre || it.name || 'Producto'}<span style={{ fontSize: 12, color: '#9a9a96', marginLeft: 6 }}>×{qty}</span></span>
+                {unit > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: '#1a1a18' }}>{money(unit * qty)}</span>}
+              </div>
+            );
+          })}
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 15px', borderTop: '1px solid #ececea', marginTop: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18' }}>Total</span>
+            <span style={{ fontSize: 17, fontWeight: 800, color: '#1a1a18' }}>{money(pedido.total)}</span>
+          </div>
+        </div>
+
+        {(pedido.direccion || pedido.ciudad || horario) && (
+          <div style={card}>
+            <div style={sect}>Entrega</div>
+            {(pedido.direccion || pedido.ciudad) && (
+              <div style={{ fontSize: 13, color: '#4a4a48', padding: '2px 15px 8px' }}>{[pedido.direccion, pedido.ciudad].filter(Boolean).join(', ')}</div>
+            )}
+            {horario && <div style={{ fontSize: 13, color: '#4a4a48', padding: '0 15px 10px' }}>Recibe {horario}</div>}
+          </div>
+        )}
+
+        {err && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 12px', fontSize: 13, marginBottom: 12 }}>{err}</div>}
+
+        <div style={{ display: 'grid', gap: 9 }}>
+          {waLink && (
+            <a href={waLink} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: G, color: '#fff', padding: '13px', borderRadius: 12, fontSize: 14.5, fontWeight: 700, textDecoration: 'none' }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.1 14.9l-.4-.2-2.6.7.7-2.5-.3-.4A8 8 0 0 1 12 4zm4.3 10.5c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.1-.5 0a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.5.5 0 0 0 0-.5l-.8-1.9c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1c0 1.3.9 2.5 1 2.7s1.8 2.9 4.5 4c1.6.6 2.2.7 3 .6a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .1-1.2c0-.1-.2-.2-.4-.3z"/></svg>
+              Escribir por WhatsApp
+            </a>
+          )}
+          <button onClick={() => onCargar({ id: pedido.clienteId, name: pedido.clienteNombre })}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#fff', color: G, border: '1px solid ' + G, padding: '13px', borderRadius: 12, fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            Hacer pedido a este cliente
+          </button>
+          {estado !== 'entregada' && estado !== 'cancelada' && (
+            <button onClick={marcarEntregado} disabled={saving}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'transparent', color: '#4a4a48', border: '1px solid #e2e2de', padding: '13px', borderRadius: 12, fontSize: 14.5, fontWeight: 600, cursor: saving ? 'default' : 'pointer', fontFamily: SANS, opacity: saving ? 0.5 : 1 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4a4a48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+              {saving ? 'Guardando…' : 'Marcar entregado'}
+            </button>
+          )}
+          {estado === 'entregada' && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#166534', background: '#e5efe8', padding: '13px', borderRadius: 12, fontSize: 14, fontWeight: 600 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+              Entregado
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Nav inferior: Pedidos · Clientes ────────────────────────────────────────
+function BottomNav({ tab, setTab }) {
+  const item = (id, label, draw) => {
+    const on = tab === id;
+    return (
+      <button onClick={() => setTab(id)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 0', fontFamily: SANS }}>
+        {draw(on ? G : '#9a9a96')}
+        <span style={{ fontSize: 11, fontWeight: on ? 700 : 500, color: on ? G : '#9a9a96' }}>{label}</span>
+      </button>
+    );
+  };
+  return (
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #ececea', display: 'flex', zIndex: 20, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {item('pedidos', 'Pedidos', c => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6M9 16h4" /></svg>
+      ))}
+      {item('clientes', 'Clientes', c => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+      ))}
+    </div>
+  );
+}
+
 export default function VendedorPage() {
   const [session, setSession] = useState(() => loadSession());
   const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState('pedidos');
+  const [verPedido, setVerPedido] = useState(null);
 
   // PWA: en /vendedor apuntamos el manifest a la variante "vendedor" para que, al
   // instalar, sea una app PROPIA (start_url=/vendedor → abre el login del
@@ -556,5 +848,17 @@ export default function VendedorPage() {
 
   if (!session) return <VendedorLogin onLogin={setSession} />;
   if (selected) return <PedidoCliente session={session} cliente={selected} onBack={() => setSelected(null)} />;
-  return <ClientesAsignados session={session} onLogout={logout} onSelect={setSelected} />;
+  if (verPedido) return (
+    <PedidoDetalle session={session} pedido={verPedido}
+      onBack={() => setVerPedido(null)}
+      onCargar={(cli) => { setVerPedido(null); setSelected(cli); }} />
+  );
+  return (
+    <>
+      {tab === 'pedidos'
+        ? <MisPedidos session={session} onLogout={logout} onVer={setVerPedido} />
+        : <ClientesAsignados session={session} onLogout={logout} onSelect={setSelected} />}
+      <BottomNav tab={tab} setTab={setTab} />
+    </>
+  );
 }

@@ -86,6 +86,22 @@ function vendedorIdFilter(vendedor) {
   return 'in.(' + list + ')';
 }
 
+// Trae los clientes asignados a ESTE vendedor (id + datos útiles para el feed y el
+// detalle: teléfono para WhatsApp, dirección y horario de entrega). Es la misma
+// fuente de verdad que action=clients, reusada por action=pedidos y action=estado
+// para no confiar nunca en lo que mande el navegador. Devuelve null si falla.
+async function fetchVendedorClients(vendedor, svcKey) {
+  const r = await fetch(
+    `${SB_URL}/rest/v1/clients?org_id=eq.${encodeURIComponent(vendedor.org)}` +
+    `&vendedor_id=${encodeURIComponent(vendedorIdFilter(vendedor))}` +
+    `&select=id,name,phone,address,ciudad,horario_desde,horario_hasta&limit=2000`,
+    { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
+  );
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return Array.isArray(rows) ? rows : [];
+}
+
 async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -210,6 +226,61 @@ async function handler(req, res) {
     });
   }
 
+  // ── POST ?action=estado — el vendedor cambia el estado de un pedido suyo ──────
+  // Hoy sólo habilitamos "entregada" (el vendedor que hace la entrega la marca
+  // desde el cel). SECURITY: se valida que el pedido sea de un cliente de ESTE
+  // vendedor y de su org antes de tocar nada. Se espeja a la venta (si existe)
+  // para que el admin y el portal del cliente queden sincronizados.
+  if (action === 'estado') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const ESTADOS_PERMITIDOS = ['entregada'];
+    const orderId = req.body?.orderId;
+    const nuevo   = String(req.body?.estado || '').trim();
+    if (!orderId) return res.status(400).json({ error: 'orderId requerido' });
+    if (!ESTADOS_PERMITIDOS.includes(nuevo)) return res.status(400).json({ error: 'Estado no permitido' });
+
+    const oRes = await fetch(
+      `${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(orderId)}` +
+      `&org_id=eq.${encodeURIComponent(vendedor.org)}&select=id,cliente_id,venta_id&limit=1`,
+      { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
+    );
+    if (!oRes.ok) {
+      const err = await oRes.text();
+      log.error('vendedor', 'estado order lookup error', { status: oRes.status, body: err.substring(0, 200) });
+      return res.status(502).json({ error: 'No se pudo actualizar el pedido' });
+    }
+    const order = (await oRes.json())?.[0];
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+    const clients = await fetchVendedorClients(vendedor, svcKey);
+    if (clients === null) return res.status(502).json({ error: 'No se pudo validar el pedido' });
+    if (!clients.some(c => c.id === order.cliente_id))
+      return res.status(403).json({ error: 'Ese pedido no es de un cliente tuyo.' });
+
+    const pRes = await fetch(`${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(orderId)}`, {
+      method: 'PATCH',
+      headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ estado: nuevo }),
+    });
+    if (!pRes.ok) {
+      const err = await pRes.text();
+      log.error('vendedor', 'estado patch error', { status: pRes.status, body: err.substring(0, 200) });
+      return res.status(502).json({ error: 'No se pudo actualizar el pedido' });
+    }
+
+    // Espejar a la venta (si el pedido ya fue importado) → admin y portal en sync.
+    if (order.venta_id) {
+      fetch(`${SB_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(order.venta_id)}`, {
+        method: 'PATCH',
+        headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ estado: nuevo }),
+      }).catch(() => {});
+    }
+
+    log.info('vendedor', 'estado cambiado por vendedor', { vendedor: vendedor.username, order: orderId, estado: nuevo });
+    return res.status(200).json({ ok: true, estado: nuevo });
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── ?action=me — datos del vendedor logueado ──
@@ -234,6 +305,53 @@ async function handler(req, res) {
     }
     const clients = await r.json();
     return res.status(200).json({ clients: Array.isArray(clients) ? clients : [] });
+  }
+
+  // ── ?action=pedidos — los pedidos de los clientes de ESTE vendedor ───────────
+  // Feed de lectura para el portal mobile: trae los pedidos (b2b_orders) de todos
+  // sus clientes asignados, con el teléfono y los datos de entrega del cliente
+  // adjuntos (para WhatsApp y el detalle). Sin costo ni margen: el item sólo lleva
+  // el precio de venta. Mismo filtro de seguridad que el resto (org + sus clientes).
+  if (action === 'pedidos') {
+    const clients = await fetchVendedorClients(vendedor, svcKey);
+    if (clients === null) {
+      log.error('vendedor', 'pedidos clients db error', { org: vendedor.org });
+      return res.status(502).json({ error: 'Error al cargar tus pedidos' });
+    }
+    if (!clients.length) return res.status(200).json({ pedidos: [] });
+
+    const byId = new Map(clients.map(c => [c.id, c]));
+    const inList = 'in.(' + clients.map(c => c.id).join(',') + ')';
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_orders?org_id=eq.${encodeURIComponent(vendedor.org)}` +
+      `&cliente_id=${encodeURIComponent(inList)}&order=creado_en.desc&limit=100`,
+      { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
+    );
+    if (!r.ok) {
+      const err = await r.text();
+      log.error('vendedor', 'pedidos db error', { status: r.status, org: vendedor.org, body: err.substring(0, 200) });
+      return res.status(502).json({ error: 'Error al cargar tus pedidos' });
+    }
+    const orders = await r.json();
+    const pedidos = (Array.isArray(orders) ? orders : []).map(o => {
+      const c = byId.get(o.cliente_id) || {};
+      return {
+        id:            o.id,
+        clienteId:     o.cliente_id,
+        clienteNombre: o.cliente_nombre || c.name || 'Cliente',
+        total:         Number(o.total || 0),
+        estado:        o.estado || 'pendiente',
+        creadoEn:      o.creado_en,
+        items:         Array.isArray(o.items) ? o.items : [],
+        notas:         o.notas || '',
+        tel:           c.phone || '',
+        direccion:     c.address || '',
+        ciudad:        c.ciudad || '',
+        horarioDesde:  c.horario_desde || '',
+        horarioHasta:  c.horario_hasta || '',
+      };
+    });
+    return res.status(200).json({ pedidos });
   }
 
   return res.status(400).json({ error: 'action inválida' });
