@@ -930,6 +930,14 @@ export default function VendedorPage() {
   // iOS usa para "Agregar a inicio".
   const urlOrg = (() => { try { return new URLSearchParams(window.location.search).get('org'); } catch { return null; } })();
   const orgId = session?.org || urlOrg || null;
+
+  // Quita el margen por defecto del body mientras estamos en /vendedor: con él, el
+  // contenedor 100dvh del login sumaba 16px y quedaba un pelo desplazado + scroll.
+  useEffect(() => {
+    const prev = document.body.style.margin;
+    document.body.style.margin = '0';
+    return () => { document.body.style.margin = prev; };
+  }, []);
   useEffect(() => {
     // La app instalada desde /vendedor debe ser la del VENDEDOR (start_url=/vendedor,
     // nombre "Ventas") y con el logo de la ORG. En pazque.com no hay dominio ni ?org=
