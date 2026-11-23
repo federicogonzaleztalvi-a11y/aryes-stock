@@ -124,6 +124,10 @@ export default async function handler(req, res) {
         id:           subscription.endpoint.slice(-40), // stable ID from endpoint
         org_id:       orgId,
         role:         role || 'admin',
+        // Si es un vendedor, lo etiquetamos con su email para poder mandarle push
+        // sólo a ÉL (los pedidos de SUS clientes), no a toda la org. Para admin/otros
+        // queda null → siguen recibiendo el push org-level de "nuevo pedido".
+        vendedor_id:  role === 'vendedor' ? userData.email : null,
         endpoint:     subscription.endpoint,
         p256dh:       subscription.keys?.p256dh,
         auth:         subscription.keys?.auth,

@@ -61,6 +61,7 @@ export async function createB2BOrder({
   envioTipo = null,
   envioDestino = null,
   envioCosto = 0,
+  viaVendedor = false,
 }) {
   const envioCostoNum = Math.max(0, Number(envioCosto) || 0);
   // El RPC tipa p_cliente_id como UUID. Un cliente con id no-UUID (filas legacy o
@@ -351,7 +352,7 @@ export async function createB2BOrder({
   await notifyOrder({
     org, clienteId, clienteNombre, items, total, notas,
     orderId: finalOrderId, requiere_revision, anomaly_reasons,
-    envioCosto: envioCostoNum, envioMetodo,
+    envioCosto: envioCostoNum, envioMetodo, viaVendedor,
   });
 
   return { ok: true, orderId: finalOrderId };
@@ -362,7 +363,7 @@ export async function createB2BOrder({
  * PDF a la casilla de la org. Todo best-effort; un fallo acá nunca invalida el
  * pedido ya commiteado.
  */
-async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas, orderId, requiere_revision, anomaly_reasons, envioCosto = 0, envioMetodo = '' }) {
+async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas, orderId, requiere_revision, anomaly_reasons, envioCosto = 0, envioMetodo = '', viaVendedor = false }) {
   // Patch de flags de anomalía si se detectaron
   if (requiere_revision) {
     await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + orderId, {
@@ -376,7 +377,9 @@ async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas,
   // ── Push al admin de la org ───────────────────────────────────────────────
   try {
     const pushSubs = await fetch(
-      SB_URL + '/rest/v1/push_subscriptions?org_id=eq.' + encodeURIComponent(org) + '&limit=20',
+      // vendedor_id=is.null → sólo staff/admin (y compradores), NO los vendedores:
+      // ellos reciben su propio push dirigido (abajo), no el genérico de la org.
+      SB_URL + '/rest/v1/push_subscriptions?org_id=eq.' + encodeURIComponent(org) + '&vendedor_id=is.null&limit=20',
       { headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' } }
     );
     if (pushSubs.ok) {
@@ -409,6 +412,59 @@ async function notifyOrder({ org, clienteId, clienteNombre, items, total, notas,
     }
   } catch (pushErr) {
     log.warn('create-order', 'push notification failed (non-fatal)', { error: pushErr.message });
+  }
+
+  // ── Push al VENDEDOR del cliente ──────────────────────────────────────────
+  // Sólo cuando el pedido lo hizo el CLIENTE por su cuenta (viaVendedor=false):
+  // le avisamos al vendedor que atiende a ese cliente. Resolvemos el vendedor por
+  // clients.vendedor_id y lo normalizamos a su email (los clientes pueden quedar
+  // asignados por email/username/nombre). Best-effort total: nunca invalida el pedido.
+  if (!viaVendedor && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    try {
+      const H = { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), Accept: 'application/json' };
+      const cvRes = await fetch(
+        SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(clienteId) + '&select=vendedor_id&limit=1', { headers: H }
+      );
+      const vendRaw = cvRes.ok ? (await cvRes.json())?.[0]?.vendedor_id : null;
+      if (vendRaw) {
+        const keys = new Set([String(vendRaw)]);
+        if (!String(vendRaw).includes('@')) {
+          const q = '"' + String(vendRaw).replace(/"/g, '""') + '"';
+          const uRes = await fetch(
+            SB_URL + '/rest/v1/users?or=(username.eq.' + encodeURIComponent(q) + ',name.eq.' + encodeURIComponent(q) + ')&select=email&limit=1',
+            { headers: H }
+          );
+          const em = uRes.ok ? (await uRes.json())?.[0]?.email : null;
+          if (em) keys.add(em);
+        }
+        const inList = 'in.(' + [...keys].map(k => '"' + String(k).replace(/"/g, '""') + '"').join(',') + ')';
+        const vsRes = await fetch(
+          SB_URL + '/rest/v1/push_subscriptions?org_id=eq.' + encodeURIComponent(org) +
+          '&vendedor_id=' + encodeURIComponent(inList) + '&limit=20', { headers: H }
+        );
+        const vsubs = vsRes.ok ? await vsRes.json() : [];
+        if (Array.isArray(vsubs) && vsubs.length) {
+          webpush.setVapidDetails(
+            process.env.VAPID_SUBJECT || 'mailto:hola@pazque.com',
+            process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY
+          );
+          const vpayload = JSON.stringify({
+            title: 'Nuevo pedido de ' + (clienteNombre || 'un cliente'),
+            body: 'Pedido por $' + Number(total).toFixed(0) + ' · tocá para verlo',
+            icon: '/pazque-logo.png',
+            tag: 'vend-order-' + orderId,
+            url: '/vendedor',
+          });
+          await Promise.allSettled(vsubs.map(sub => {
+            try { return webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, vpayload); }
+            catch { return Promise.resolve(); }
+          }));
+          log.info('create-order', 'vendor push sent', { org, orderId, subs: vsubs.length });
+        }
+      }
+    } catch (vErr) {
+      log.warn('create-order', 'vendor push failed (non-fatal)', { error: vErr.message });
+    }
   }
 
   // ── Mail a la org (best-effort) — reusa sendOrderEmail, la misma lógica que

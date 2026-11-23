@@ -157,7 +157,10 @@ async function handler(req, res) {
     const sRes = await fetch(`${SB_URL}/rest/v1/portal_sessions`, {
       method: 'POST',
       headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ token, cliente_id: cli.id, tel, org_id: vendedor.org, expires_at: expiresAt }),
+      // via_vendedor: marca que este pedido lo va a cargar el vendedor EN NOMBRE
+      // del cliente → el motor NO le manda push al vendedor por su propio pedido
+      // (sólo le avisa cuando el cliente pide SOLO, desde su sesión de OTP).
+      body: JSON.stringify({ token, cliente_id: cli.id, tel, org_id: vendedor.org, expires_at: expiresAt, via_vendedor: true }),
     });
     if (!sRes.ok) {
       const err = await sRes.text();

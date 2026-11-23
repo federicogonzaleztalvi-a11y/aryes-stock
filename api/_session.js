@@ -25,7 +25,7 @@ export async function validatePortalSession(token) {
     `?token=eq.${encodeURIComponent(token)}` +
     `&expires_at=gte.${new Date().toISOString()}` +
     `&revoked=eq.false` +
-    `&select=token,cliente_id,org_id,tel,expires_at` +
+    `&select=token,cliente_id,org_id,tel,expires_at,via_vendedor` +
     `&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
   );

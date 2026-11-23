@@ -556,6 +556,73 @@ function itemsPreview(items) {
   return parts.length > 3 ? head + ' …' : head;
 }
 
+// ── Web Push del vendedor ───────────────────────────────────────────────────
+// Reusa la infra existente (/api/push). La suscripción se guarda etiquetada con
+// el email del vendedor (vendedor_id) para que el motor le mande push SÓLO de los
+// pedidos de SUS clientes. El SW es el mismo de toda la PWA (/sw.js).
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function subscribeVendedorPush(session) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('unsupported');
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('denied');
+  const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  await navigator.serviceWorker.ready;
+  const keyRes = await fetch('/api/push?action=vapid-key');
+  if (!keyRes.ok) throw new Error('not-configured');
+  const { publicKey } = await keyRes.json();
+  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(publicKey) });
+  const save = await fetch('/api/push?action=subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+    body: JSON.stringify({ subscription: sub.toJSON() }),
+  });
+  if (!save.ok) throw new Error('save-failed');
+}
+
+// Banner para activar los avisos. Si ya están concedidos, re-suscribe en silencio
+// (mantiene la sub fresca). Si están en 'default', ofrece el botón. Si 'denied' o
+// sin soporte, no muestra nada (no se puede hacer desde la web).
+function NotifVendedorBanner({ session }) {
+  const supported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const [perm, setPerm] = useState(() => (supported ? Notification.permission : 'unsupported'));
+  const [busy, setBusy] = useState(false);
+  const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem('pazque-vendedor-notif-dismissed') === '1'; } catch { return false; } });
+
+  useEffect(() => {
+    if (supported && Notification.permission === 'granted') {
+      subscribeVendedorPush(session).catch(() => {});
+    }
+  }, [supported, session]);
+
+  if (!supported || perm === 'granted' || perm === 'denied' || dismissed) return null;
+
+  const activar = async () => {
+    setBusy(true);
+    try { await subscribeVendedorPush(session); setPerm('granted'); }
+    catch { setPerm(typeof Notification !== 'undefined' ? Notification.permission : 'default'); }
+    setBusy(false);
+  };
+  const cerrar = () => { setDismissed(true); try { localStorage.setItem('pazque-vendedor-notif-dismissed', '1'); } catch { /* bloqueado */ } };
+
+  return (
+    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>Activá los avisos</div>
+        <div style={{ fontSize: 12, color: '#3f6b4e', marginTop: 1 }}>Te avisamos cuando un cliente tuyo haga un pedido.</div>
+      </div>
+      <button onClick={activar} disabled={busy} style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: '#fff', background: G, border: 'none', borderRadius: 8, padding: '7px 14px', cursor: busy ? 'default' : 'pointer', fontFamily: SANS, opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Activar'}</button>
+      <button onClick={cerrar} aria-label="Cerrar" style={{ flexShrink: 0, fontSize: 18, lineHeight: 1, color: '#6a8a74', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
+    </div>
+  );
+}
+
 // ── Mis pedidos — feed de lectura de lo que piden sus clientes ───────────────
 // Lee /api/vendedor?action=pedidos (ya filtrado por el servidor a sus clientes).
 // Resumen arriba + filtros + lista. Tocar una tarjeta abre el detalle.
@@ -563,6 +630,7 @@ function MisPedidos({ session, onLogout, onVer }) {
   const [pedidos, setPedidos] = useState(null); // null = cargando
   const [error, setError]     = useState('');
   const [filtro, setFiltro]   = useState('todos');
+  const [showAvisos, setShowAvisos] = useState(false);
   const brand = useBrand();
   const firstName = String(session.name || '').trim().split(/\s+/)[0] || 'vendedor';
 
@@ -607,11 +675,35 @@ function MisPedidos({ session, onLogout, onVer }) {
           )}
           <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand.name || 'Portal de vendedores'}</span>
         </div>
-        <button onClick={onLogout} style={{ fontSize: 12.5, color: '#6a6a68', background: 'transparent', border: '1px solid #e2e2de', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>Salir</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowAvisos(v => !v)} aria-label="Avisos" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, display: 'inline-flex', position: 'relative', color: '#3f5344' }}>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
+              {lista.some(p => ESTADOS_NUEVO.includes(p.estado)) && <span style={{ position: 'absolute', top: 4, right: 5, width: 8, height: 8, borderRadius: '50%', background: G, border: '1.5px solid #fff' }} />}
+            </button>
+            {showAvisos && (
+              <>
+                <div onClick={() => setShowAvisos(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', width: 290, maxHeight: 360, overflowY: 'auto', background: '#fff', border: '1px solid #e2e2de', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,.14)', zIndex: 50 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#6a6a68', padding: '11px 14px 6px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Avisos</div>
+                  {lista.length === 0 && <div style={{ padding: '10px 14px 16px', fontSize: 13, color: '#9a9a96' }}>Sin avisos todavía.</div>}
+                  {lista.slice(0, 10).map(p => (
+                    <button key={p.id} onClick={() => { setShowAvisos(false); onVer(p); }} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: '1px solid #f2f2ee', padding: '10px 14px', cursor: 'pointer', fontFamily: SANS }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.clienteNombre}</div>
+                      <div style={{ fontSize: 11.5, color: '#9a9a96', marginTop: 1 }}>{timeAgo(p.creadoEn)} · {money(p.total)}</div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button onClick={onLogout} style={{ fontSize: 12.5, color: '#6a6a68', background: 'transparent', border: '1px solid #e2e2de', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>Salir</button>
+        </div>
       </div>
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px 96px' }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em', marginBottom: 14 }}>Hola, {firstName}</div>
+        <NotifVendedorBanner session={session} />
 
         {/* Resumen */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>

@@ -433,6 +433,7 @@ async function handler(req, res) {
     org, clienteId, clienteNombre, clienteTel,
     items, total, notas, idempotencyKey, fechaEntrega,
     envioMetodo, envioTipo, envioDestino, envioCosto,
+    viaVendedor: portalSession.via_vendedor === true,
   });
 
   if (!result.ok) {
