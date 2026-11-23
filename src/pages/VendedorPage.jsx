@@ -141,13 +141,17 @@ function VendedorLogin({ onLogin }) {
 }
 
 // Marca de la distribuidora (logo + nombre), genérico por org vía /api/manifest.
-function useBrand() {
+function useBrand(org) {
   const [brand, setBrand] = useState({ logo: null, name: '' });
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const m = await fetch('/api/manifest?app=vendedor').then(r => r.json());
+        // Pasamos el org del vendedor logueado: en pazque.com/vendedor no hay ?org=
+        // ni dominio de la distribuidora, así que sin esto el manifest cae en el
+        // branding genérico de Pazque y no aparece el logo de la org.
+        const url = '/api/manifest?app=vendedor' + (org ? '&org=' + encodeURIComponent(org) : '');
+        const m = await fetch(url).then(r => r.json());
         if (cancelled) return;
         const icons = m?.icons || [];
         const src = icons[icons.length - 1]?.src || icons[0]?.src || null;
@@ -160,7 +164,7 @@ function useBrand() {
       } catch { /* sin red → marca genérica */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [org]);
   return brand;
 }
 
@@ -175,7 +179,7 @@ function iniciales(name) {
 // Mismo patrón que el portal del cliente: Android dispara beforeinstallprompt;
 // iPhone es manual (Compartir → Agregar a inicio). La app se instala apuntando a
 // /vendedor (manifest ?app=vendedor) → el ícono abre el login del vendedor.
-function InstallVendedorBanner() {
+function InstallVendedorBanner({ brandNombre }) {
   // Arranca con el evento que ya pudo haberse disparado antes del login (capturado
   // temprano en index.html → window.__pwaInstallEvt). Si no, espera a que llegue.
   const [deferred, setDeferred]   = useState(() => (typeof window !== 'undefined' ? window.__pwaInstallEvt : null) || null);
@@ -199,10 +203,9 @@ function InstallVendedorBanner() {
   if (!deferred && !isIOS) return null; // sólo donde realmente se puede instalar (cel)
   return (
     <>
-      <div style={{ background: '#ecfdf3', borderBottom: '1px solid #bbf7d0', padding: '8px 14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: SANS }}>
-        <span style={{ fontSize: 12.5, color: '#166534', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
-          Instalá el portal en tu celular
+      <div style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, fontFamily: SANS }}>
+        <span style={{ fontSize: 13, color: '#166534', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 15 }}>📲</span> Instalá la app {brandNombre ? 'de ' + brandNombre : 'de ventas'} en tu celular
         </span>
         <button onClick={instalar} style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: G, border: 'none', borderRadius: 7, padding: '5px 14px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>Instalar</button>
         <button onClick={cerrar} aria-label="Cerrar" style={{ fontSize: 18, lineHeight: 1, color: '#6a6a68', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>×</button>
@@ -230,7 +233,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
   const [error, setError]     = useState('');
   const [q, setQ]             = useState('');
   const [showNuevo, setShowNuevo] = useState(false);
-  const brand = useBrand();
+  const brand = useBrand(session.org);
   const firstName = String(session.name || '').trim().split(/\s+/)[0] || 'vendedor';
 
   const fetchClients = useCallback(async () => {
@@ -258,7 +261,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
-      <InstallVendedorBanner />
+      <InstallVendedorBanner brandNombre={brand.name} />
 
       {/* Barra de marca */}
       <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
@@ -271,7 +274,7 @@ function ClientesAsignados({ session, onLogout, onSelect }) {
             </div>
           )}
           <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {brand.name || 'Portal de vendedores'}
+            Portal de vendedores
           </span>
         </div>
         <button onClick={onLogout} style={{ fontSize: 12.5, color: '#6a6a68', background: 'transparent', border: '1px solid #e2e2de', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>
@@ -631,7 +634,7 @@ function MisPedidos({ session, onLogout, onVer }) {
   const [error, setError]     = useState('');
   const [filtro, setFiltro]   = useState('todos');
   const [showAvisos, setShowAvisos] = useState(false);
-  const brand = useBrand();
+  const brand = useBrand(session.org);
   const firstName = String(session.name || '').trim().split(/\s+/)[0] || 'vendedor';
 
   const fetchPedidos = useCallback(async () => {
@@ -663,7 +666,7 @@ function MisPedidos({ session, onLogout, onVer }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS }}>
-      <InstallVendedorBanner />
+      <InstallVendedorBanner brandNombre={brand.name} />
       <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
           {brand.logo ? (
@@ -673,7 +676,7 @@ function MisPedidos({ session, onLogout, onVer }) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
             </div>
           )}
-          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{brand.name || 'Portal de vendedores'}</span>
+          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Portal de vendedores</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <div style={{ position: 'relative' }}>
