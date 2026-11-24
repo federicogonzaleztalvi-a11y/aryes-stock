@@ -611,7 +611,7 @@ function ClientesTab(){
 
   const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||'',envioMetodos:Array.isArray(x.envioMetodos)?x.envioMetodos:[]});setEditId(x.id);setVista('form');};
   const filtered=items.filter(x=>
-    (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase()))
+    (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase())||(x.contacto||'').toLowerCase().includes(q.toLowerCase()))
     &&(filtro==='Todos'||x.tipo===filtro)
     &&(!filtroVendedor||(filtroVendedor==='sin-asignar'?!x.vendedorId:x.vendedorId===filtroVendedor))
     &&(!filtroLista||(filtroLista==='sin-lista'?!x.listaId:x.listaId===filtroLista))

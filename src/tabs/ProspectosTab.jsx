@@ -1,5 +1,6 @@
 import React from 'react';
-import { getAuthHeaders } from '../lib/constants.js';
+import { getAuthHeaders, LS } from '../lib/constants.js';
+import { useApp } from '../context/AppContext.tsx';
 
 // ProspectosTab — Bandeja de prospectos captados por el portal (Camino B).
 // ----------------------------------------------------------------------------
@@ -184,6 +185,9 @@ export default function ProspectosTab() {
   const [savedEm, setSavedEm] = React.useState('');
   const [busy,    setBusy]    = React.useState('');   // id en proceso
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
+  const [approveModal, setApproveModal] = React.useState(null); // { lead, lista, vendedor } al aprobar
+  const { priceListas = [] } = useApp();
+  const vendedores = (LS.get('aryes-users', []) || []).filter(u => (u.active !== false) && (u.role === 'vendedor' || u.role === 'admin') && (u.email || u.username || u.name));
 
   // Sourcing por-org: buscar comercios reales del rubro del cliente.
   const [srcCfg,     setSrcCfg]     = React.useState({ rubros: [], ciudad: '', tope: 20, usadas: 0 });
@@ -264,15 +268,22 @@ export default function ProspectosTab() {
     } catch { /* noop */ }
   };
 
-  const approve = async (l) => {
-    if (!window.confirm(`¿Crear a "${l.nombre}" como cliente? Después le asignás lista de precios y stock en Clientes.`)) return;
-    setBusy(l.id);
+  // Aprobar abre un mini-formulario para asignar vendedor + lista en el acto
+  // (ambos opcionales) y así ganar pasos: el cliente queda listo sin pasar por
+  // Clientes a completarlo. El backend (api/lead.js) acepta lista_id y vendedor_id.
+  const approve = (l) => setApproveModal({ lead: l, lista: '', vendedor: '' });
+
+  const confirmApprove = async () => {
+    const m = approveModal;
+    if (!m) return;
+    setBusy(m.lead.id);
     try {
       const r = await fetch('/api/lead', {
         method: 'POST', headers: getAuthHeaders(),
-        body: JSON.stringify({ action: 'approve', id: l.id }),
+        body: JSON.stringify({ action: 'approve', id: m.lead.id, lista_id: m.lista || undefined, vendedor_id: m.vendedor || undefined }),
       });
       if (!r.ok) { const d = await r.json().catch(()=>({})); alert(d.error || 'No se pudo crear el cliente'); return; }
+      setApproveModal(null);
       await load();
     } catch { alert('Error de conexión'); }
     finally { setBusy(''); }
@@ -699,6 +710,44 @@ export default function ProspectosTab() {
               </div>
             );
           })}
+        </div>
+      )}
+      {approveModal && (
+        <div onClick={() => !busy && setApproveModal(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: C.card, borderRadius: 14, width: '100%', maxWidth: 420, padding: 24, fontFamily: C.sans, boxShadow: '0 20px 50px rgba(0,0,0,0.25)' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.ink }}>Aprobar como cliente</div>
+            <div style={{ fontSize: 13, color: C.sub, marginTop: 4, marginBottom: 18 }}>
+              {approveModal.lead.nombre}{approveModal.lead.comercio ? ' · ' + approveModal.lead.comercio : ''}
+            </div>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 6 }}>Vendedor asignado</label>
+            <select value={approveModal.vendedor} onChange={e => setApproveModal(m => ({ ...m, vendedor: e.target.value }))}
+              style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 14, background: '#fff', fontFamily: C.sans, marginBottom: 16 }}>
+              <option value="">Sin asignar (lo ven todos)</option>
+              {vendedores.map(u => { const v = u.email || u.username || u.name; return <option key={v} value={v}>{u.name || u.username} ({u.role})</option>; })}
+            </select>
+
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 6 }}>Lista de precios</label>
+            <select value={approveModal.lista} onChange={e => setApproveModal(m => ({ ...m, lista: e.target.value }))}
+              style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.line}`, borderRadius: 8, fontSize: 14, background: '#fff', fontFamily: C.sans, marginBottom: 8 }}>
+              <option value="">Sin lista (precio de la ficha)</option>
+              {priceListas.filter(l => l.activa !== false).map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+            </select>
+            <div style={{ fontSize: 11.5, color: C.faint, marginBottom: 20 }}>Podés dejarlos vacíos y asignarlos después en Clientes.</div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setApproveModal(null)} disabled={!!busy}
+                style={{ fontSize: 13, color: C.sub, background: 'transparent', border: `1px solid ${C.line}`, borderRadius: 50, padding: '9px 18px', cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+                Cancelar
+              </button>
+              <button onClick={confirmApprove} disabled={!!busy}
+                style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: busy ? '#b0b0a8' : C.green, border: 'none', borderRadius: 50, padding: '9px 18px', cursor: busy ? 'default' : 'pointer', fontFamily: C.sans }}>
+                {busy ? 'Creando…' : 'Crear cliente'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

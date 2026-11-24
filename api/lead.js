@@ -601,6 +601,8 @@ export default async function handler(req, res) {
       };
       const lista_id = clean(req.body?.lista_id, 60);
       if (lista_id) row.lista_id = lista_id;
+      const vendedor_id = clean(req.body?.vendedor_id, 120);
+      if (vendedor_id) row.vendedor_id = vendedor_id;
 
       const ins = await fetch(`${SB_URL}/rest/v1/clients`, {
         method: 'POST',
