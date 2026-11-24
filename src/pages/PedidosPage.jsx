@@ -4201,6 +4201,32 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // `sugOpen` = dropdown visible; `sugIdx` = opción resaltada (nav con flechas, -1 = ninguna).
   const [sugOpen,  setSugOpen]  = useState(false);
   const [sugIdx,   setSugIdx]   = useState(-1);
+  const searchBoxRef = useRef(null);
+  const [sugMaxH,  setSugMaxH]  = useState(320); // alto máximo del desplegable, consciente del teclado
+  // El desplegable de sugerencias no debe quedar tapado por el teclado del celular.
+  // Medimos el espacio real entre el input y el borde visible (visualViewport achica
+  // con el teclado abierto) y lo usamos como maxHeight → el resto scrollea adentro.
+  useEffect(() => {
+    if (!sugOpen) return;
+    const vv = window.visualViewport;
+    const recompute = () => {
+      const el = searchBoxRef.current;
+      if (!el) return;
+      const bottom = el.getBoundingClientRect().bottom;
+      const vh = vv ? vv.height : window.innerHeight;
+      const avail = vh - bottom - 16;
+      setSugMaxH(Math.max(160, Math.min(avail, 520)));
+    };
+    recompute();
+    vv?.addEventListener('resize', recompute);
+    vv?.addEventListener('scroll', recompute);
+    window.addEventListener('resize', recompute);
+    return () => {
+      vv?.removeEventListener('resize', recompute);
+      vv?.removeEventListener('scroll', recompute);
+      window.removeEventListener('resize', recompute);
+    };
+  }, [sugOpen]);
   // Orden + filtros facetados (patrón Amazon: barra de "Ordenar/Filtrar" sobre los
   // resultados). Genéricos por-rubro: las marcas y el rango de precio se derivan del
   // catálogo, no se hardcodean. Todo vive en el cliente (no toca API).
@@ -4908,7 +4934,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
     for (const i of items) {
       const doc = searchDocs.get(i.id);
       if (!doc) continue;
-      const hay = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc}`;
+      const hay = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc} ${doc.vars}`;
       let all = true;
       for (let t = 0; t < tokens.length; t++) {
         if (!tokenMatchesDoc(tokens[t], hay, doc.words)) { all = false; break; }
@@ -4917,7 +4943,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       scored.push({ i, r: scoreDoc(doc, tokens) + (doc.hasImg ? 0.5 : 0) });
     }
     scored.sort((a, b) => b.r - a.r);
-    return scored.slice(0, 6).map(s => s.i);
+    return scored.slice(0, 8).map(s => s.i);
   }, [items, busq, searchDocs]);
 
   // Datos derivados para los facetas (genéricos, salen del catálogo del org):
@@ -5152,7 +5178,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           </div>
           {vista === 'catalogo' ? (
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: isMobile ? '4px 0' : '0 16px', ...(isMobile ? { order: 10, flex: '1 1 100%' } : {}) }}>
-              <div style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
+              <div ref={searchBoxRef} style={{ position: 'relative', width: '100%', maxWidth: 560 }}>
                 <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: GRAY }}>{Icon.search}</div>
                 <input value={busq}
                   onChange={e => { setBusq(e.target.value); if (detalle) setDetalle(null); setSugOpen(true); setSugIdx(-1); }}
@@ -5177,8 +5203,12 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                 {/* Dropdown de autocompletar (criterio Amazon). onMouseDown+preventDefault
                     evita que el blur del input cierre el panel antes del click. */}
                 {sugOpen && sugerencias.length > 0 && (
-                  <div role="listbox" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 50,
-                    background: '#fff', border: '1px solid #ececE6', borderRadius: 14, overflow: 'hidden',
+                  <div role="listbox"
+                    onMouseDown={e => e.preventDefault()}
+                    style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 50,
+                    background: '#fff', border: '1px solid #ececE6', borderRadius: 14,
+                    maxHeight: sugMaxH, overflowY: 'auto', overflowX: 'hidden',
+                    WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
                     boxShadow: '0 12px 34px rgba(0,0,0,.14)' }}>
                     {sugerencias.map((s, i) => {
                       const on = i === sugIdx;
