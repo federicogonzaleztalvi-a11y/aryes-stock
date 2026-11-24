@@ -5260,6 +5260,18 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                         </div>
                       );
                     })}
+                    {/* Pie: el dropdown es un adelanto (hasta 8). La grilla de atrás
+                        ya tiene TODOS los resultados (incluidos los que matchean por
+                        variante y no entraron acá). Este botón cierra el adelanto y
+                        los muestra. */}
+                    {filtered.length > sugerencias.length && (
+                      <div role="option"
+                        onMouseDown={e => { e.preventDefault(); setSugOpen(false); setSugIdx(-1); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }}
+                        style={{ padding: '11px 12px', textAlign: 'center', fontSize: 12.5, fontWeight: 700,
+                          color: G, cursor: 'pointer', borderTop: '1px solid #ececE6', background: '#fafbfa' }}>
+                        Ver los {filtered.length} resultados de “{busq.trim()}”
+                      </div>
+                    )}
                   </div>
                 )}
                 {brandCfg?.portalVoz !== false && (
