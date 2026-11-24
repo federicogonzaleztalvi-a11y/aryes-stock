@@ -185,6 +185,7 @@ export default function ProspectosTab() {
   const [savedEm, setSavedEm] = React.useState('');
   const [busy,    setBusy]    = React.useState('');   // id en proceso
   const [filtro,  setFiltro]  = React.useState('activos'); // activos | todos
+  const [grupo,   setGrupo]   = React.useState('inbound'); // inbound (pidió acceso) | sourcing (buscador)
   const [approveModal, setApproveModal] = React.useState(null); // { lead, lista, vendedor } al aprobar
   const { priceListas = [] } = useApp();
   const vendedores = (LS.get('aryes-users', []) || []).filter(u => (u.active !== false) && (u.role === 'vendedor' || u.role === 'admin') && (u.email || u.username || u.name));
@@ -404,11 +405,18 @@ export default function ProspectosTab() {
     finally { setSavingMsg(''); }
   };
 
-  const visibles = filtro === 'todos'
-    ? leads
-    : leads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado');
+  // Dos orígenes distintos que NO deben mezclarse: inbound (pidió acceso desde el
+  // portal, caliente) vs sourcing (lo trajo el buscador, frío). El dato viene en
+  // l.origen ('sourcing' = buscador; null/otro = pidió acceso).
+  const inboundLeads = leads.filter(l => l.origen !== 'sourcing');
+  const sourcedLeads = leads.filter(l => l.origen === 'sourcing');
+  const grupoLeads   = grupo === 'sourcing' ? sourcedLeads : inboundLeads;
 
-  const nuevos = leads.filter(l => l.estado === 'nuevo').length;
+  const visibles = filtro === 'todos'
+    ? grupoLeads
+    : grupoLeads.filter(l => l.estado === 'nuevo' || l.estado === 'contactado');
+
+  const nuevos = grupoLeads.filter(l => l.estado === 'nuevo').length;
 
   return (
     <div style={{ padding: '24px clamp(16px,4vw,32px)', fontFamily: C.sans, color: C.ink, maxWidth: 1000, margin: '0 auto' }}>
@@ -529,6 +537,30 @@ export default function ProspectosTab() {
         {srcMsg && <div style={{ fontSize: 12.5, color: C.sub, marginTop: 12 }}>{srcMsg}</div>}
       </div>
 
+      {/* Grupo: pidió acceso (inbound caliente) vs sugeridos por el buscador (outbound frío) */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        {[
+          ['inbound',  'Pidió acceso',  inboundLeads.length, true],
+          ['sourcing', 'Sugeridos',     sourcedLeads.length, false],
+        ].map(([id, lbl, n, hot]) => {
+          const on = grupo === id;
+          return (
+            <button key={id} onClick={() => { setGrupo(id); setFiltro('activos'); }} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '9px 16px', borderRadius: 10, fontSize: 13.5, fontFamily: C.sans, cursor: 'pointer', fontWeight: 600,
+              border: `1px solid ${on ? (hot ? C.green : C.ink) : C.line}`,
+              background: on ? (hot ? C.green : C.ink) : C.card, color: on ? '#fff' : C.sub }}>
+              {hot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: on ? '#fff' : C.green }} />}
+              {lbl}
+              <span style={{ fontSize: 12, fontWeight: 700, opacity: on ? 0.9 : 0.7 }}>{n}</span>
+            </button>
+          );
+        })}
+        <span style={{ fontSize: 12, color: C.faint, marginLeft: 4 }}>
+          {grupo === 'inbound' ? 'Te encontraron y quieren comprar — aprobalos.' : 'Los trajo el buscador — enriquecé y escribiles.'}
+        </span>
+      </div>
+
       {/* Filtro */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
         {[['activos', `Activos${nuevos ? ` (${nuevos})` : ''}`], ['todos', 'Todos']].map(([id, lbl]) => (
@@ -541,7 +573,7 @@ export default function ProspectosTab() {
         ))}
       </div>
 
-      {!loading && !error && <FunnelPanel leads={leads} />}
+      {!loading && !error && <FunnelPanel leads={grupoLeads} />}
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: C.faint, fontSize: 14 }}>Cargando…</div>
@@ -551,11 +583,15 @@ export default function ProspectosTab() {
         </div>
       ) : visibles.length === 0 ? (
         <div style={{ background: C.card, border: `1px dashed ${C.line}`, borderRadius: 14, padding: '48px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Todavía no hay prospectos</div>
-          <div style={{ fontSize: 13, color: C.sub, maxWidth: 420, margin: '0 auto' }}>
-            {activa
-              ? 'Cuando alguien deje sus datos desde tu portal, va a aparecer acá con la campaña de la que vino.'
-              : 'Activá la captación (arriba) para que los visitantes que aún no son clientes puedan pedir acceso desde tu portal.'}
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
+            {grupo === 'sourcing' ? 'Todavía no buscaste comercios' : 'Todavía nadie pidió acceso'}
+          </div>
+          <div style={{ fontSize: 13, color: C.sub, maxWidth: 440, margin: '0 auto' }}>
+            {grupo === 'sourcing'
+              ? 'Usá “Buscar comercios” (arriba) para traer prospectos de tu rubro desde Google. Aparecen acá para enriquecer y contactar.'
+              : (activa
+                ? 'Cuando alguien deje sus datos desde tu portal, va a aparecer acá con la campaña de la que vino.'
+                : 'Activá la captación (arriba) para que los visitantes que aún no son clientes puedan pedir acceso desde tu portal.')}
           </div>
         </div>
       ) : (
