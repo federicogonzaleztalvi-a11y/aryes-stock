@@ -2226,8 +2226,8 @@ const DIAS_SEMANA = [['Lun','Lun'],['Mar','Mar'],['Mié','Mié'],['Jue','Jue'],[
 
 // Formulario de datos de facturación/entrega (self-service) dentro del checkout.
 // Núcleo obligatorio: razón social, RUT, dirección de entrega, ciudad y contacto.
-function DatosClienteBlock({ perfil, onCampo, nucleoCompleto }) {
-  const [abierto, setAbierto] = useState(!nucleoCompleto);
+function DatosClienteBlock({ perfil, onCampo, nucleoCompleto, autoAbrir }) {
+  const [abierto, setAbierto] = useState(!!autoAbrir);
   const [verMas, setVerMas] = useState(false);
   const p = perfil || {};
   const inp = { width: '100%', padding: '11px 12px', border: '1px solid #e0e0d8', borderRadius: 10, fontSize: 16, fontFamily: SANS, boxSizing: 'border-box', background: '#fff', color: '#1a1a18' };
@@ -2309,6 +2309,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   // Datos de facturación/entrega del cliente (self-service). null = cargando.
   const [perfil, setPerfil] = useState(null);
   const [perfilDirty, setPerfilDirty] = useState(false);
+  const [tienePedidos, setTienePedidos] = useState(true); // default: no bloquear hasta saber
   const setPerfilCampo = (k, v) => { setPerfil(p => ({ ...(p || {}), [k]: v })); setPerfilDirty(true); };
   // Envío: método elegido + destino. Los métodos salen de brandcfg.envio.metodos,
   // filtrados por los habilitados para este cliente (session.envioMetodos).
@@ -2339,12 +2340,15 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
     let vivo = true;
     fetch(`${window.location.origin}/api/perfil`, { headers: { Authorization: `Bearer ${session.token}` } })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (vivo) setPerfil((d && d.perfil) ? d.perfil : {}); })
+      .then(d => { if (vivo) { setPerfil((d && d.perfil) ? d.perfil : {}); setTienePedidos(!(d && d.tienePedidos === false)); } })
       .catch(() => { if (vivo) setPerfil({}); });
     return () => { vivo = false; };
   }, [session, isDemo]);
   const nucleoCompleto = !!(perfil && perfil.razon_social && perfil.rut && perfil.address && perfil.ciudad && perfil.contacto);
   const datosIncompletos = !isDemo && !!session?.token && !nucleoCompleto;
+  // Sólo BLOQUEAMOS a clientes nuevos (sin pedidos previos). Los establecidos ven
+  // el formulario como opcional pero nunca se les bloquea el pedido.
+  const bloqueaDatos = datosIncompletos && !tienePedidos;
 
   // La clave puede ser "id" (producto simple) o "id::variantId" (con variante).
   // Resolvemos el producto base y, si hay variante, anexamos su etiqueta al nombre
@@ -2534,7 +2538,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
       }
 
       // Núcleo obligatorio + guardado del perfil del cliente antes de enviar.
-      if (datosIncompletos) { setShowPreview(true); setErr('Completá tus datos obligatorios (marcados con *) para confirmar.'); return; }
+      if (bloqueaDatos) { setShowPreview(true); setErr('Completá tus datos obligatorios (marcados con *) para confirmar.'); return; }
       if (session?.token && perfilDirty && perfil) {
         setLoading(true); setErr('');
         try {
@@ -2872,8 +2876,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
           </div>
 
           {/* Datos de facturación y entrega (self-service, núcleo obligatorio) */}
-          {!isDemo && session?.token && perfil !== null && (
-            <DatosClienteBlock perfil={perfil} onCampo={setPerfilCampo} nucleoCompleto={nucleoCompleto} />
+          {!isDemo && session?.token && perfil !== null && !nucleoCompleto && (
+            <DatosClienteBlock perfil={perfil} onCampo={setPerfilCampo} nucleoCompleto={nucleoCompleto} autoAbrir={!tienePedidos} />
           )}
 
           {/* Envío: cómo recibir el pedido (genérico por-org; solo si hay métodos) */}
@@ -2983,12 +2987,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                 cursor: 'pointer', fontFamily: SANS }}>
                 ← Editar
               </button>
-              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto || datosIncompletos} style={{
+              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto || bloqueaDatos} style={{
                 flex: 1, padding: '12px 0',
-                background: loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto || datosIncompletos ? '#c8c8c0' : G,
+                background: loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto || bloqueaDatos ? '#c8c8c0' : G,
                 color: '#fff', border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 600,
-                cursor: (loading || !cumpleMinimo || envioIncompleto || datosIncompletos) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
-                {loading ? 'Enviando…' : (datosIncompletos ? 'Completá tus datos' : (envioIncompleto ? (metodoSelEnvio ? 'Completá el destino' : 'Elegí cómo recibir') : 'Confirmar pedido'))}
+                cursor: (loading || !cumpleMinimo || envioIncompleto || bloqueaDatos) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
+                {loading ? 'Enviando…' : (bloqueaDatos ? 'Completá tus datos' : (envioIncompleto ? (metodoSelEnvio ? 'Completá el destino' : 'Elegí cómo recibir') : 'Confirmar pedido'))}
               </button>
             </div>
           </div>

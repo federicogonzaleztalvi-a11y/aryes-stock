@@ -54,7 +54,16 @@ export default async function handler(req, res) {
         { headers: H }
       );
       const rows = r.ok ? await r.json() : [];
-      return res.status(200).json({ perfil: rows?.[0] || {} });
+      // ¿El cliente ya hizo pedidos? Si sí, es un cliente establecido: el checkout
+      // NO lo bloquea por datos faltantes (no rompemos la operación en curso). El
+      // bloqueo del núcleo sólo aplica a clientes nuevos (primer pedido).
+      let tienePedidos = false;
+      try {
+        const orows = await fetch(`${SB_URL}/rest/v1/b2b_orders?cliente_id=eq.${cid}&org_id=eq.${org}&select=id&limit=1`, { headers: H });
+        const oj = orows.ok ? await orows.json() : [];
+        tienePedidos = Array.isArray(oj) && oj.length > 0;
+      } catch { /* best-effort: ante la duda no bloqueamos */ tienePedidos = true; }
+      return res.status(200).json({ perfil: rows?.[0] || {}, tienePedidos });
     } catch { return res.status(502).json({ error: 'Database error' }); }
   }
 
