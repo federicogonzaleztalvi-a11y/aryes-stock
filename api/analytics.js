@@ -181,11 +181,22 @@ export default async function handler(req, res) {
     k: v, v: pageCount[v], seg: Math.round((pageTime[v] || 0) / 1000),
   })).sort((a, b) => b.v - a.v).slice(0, 10);
 
+  // Embudo por SESIONES ÚNICAS (no eventos crudos): cuántas visitas distintas
+  // llegaron a cada paso. Es la conversión honesta (estilo Shopify): el % de un
+  // paso se lee sobre las sesiones del paso anterior. Sólo sesiones identificadas
+  // (las que no traen session_id no se cuentan, para no inflar).
+  const funnelSets = {
+    catalogo_visto: new Set(), producto_visto: new Set(),
+    producto_agregado: new Set(), pedido_confirmado: new Set(),
+  };
+  for (const e of rows) {
+    if (e.session_id && funnelSets[e.event]) funnelSets[e.event].add(e.session_id);
+  }
   const embudo = {
-    catalogo: evCount['catalogo_visto'] || 0,
-    productoVisto: evCount['producto_visto'] || 0,
-    agregado: evCount['producto_agregado'] || 0,
-    pedido: evCount['pedido_confirmado'] || 0,
+    catalogo: funnelSets.catalogo_visto.size,
+    productoVisto: funnelSets.producto_visto.size,
+    agregado: funnelSets.producto_agregado.size,
+    pedido: funnelSets.pedido_confirmado.size,
   };
 
   // ¿Vende el vendedor digital? Adds que empujó el portal (recomendaciones)

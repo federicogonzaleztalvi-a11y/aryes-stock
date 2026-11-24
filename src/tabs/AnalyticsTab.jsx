@@ -124,7 +124,8 @@ export default function AnalyticsTab() {
 
           {/* Embudo de pedido */}
           <div style={{ background: T.card, padding: '18px 20px', borderRadius: 14, border: '1px solid ' + T.border, boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 14 }}>Embudo de pedido</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 2 }}>Embudo de pedido</div>
+            <div style={{ fontSize: 12, color: T.textSm, marginBottom: 14 }}>Visitas distintas que llegaron a cada paso. El % es sobre las del paso anterior.</div>
             {(() => {
               const f = data.embudo || {};
               const steps = [
