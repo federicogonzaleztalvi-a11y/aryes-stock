@@ -318,6 +318,7 @@ export interface Cliente {
   geocodedAt:       string | null;   // ISO — when geocoding ran
   horarioDesde:     string | null;   // reception window start HH:MM
   horarioHasta:     string | null;   // reception window end   HH:MM
+  diasRecepcion?:   string;           // días que recibe mercadería (ej "Lun, Mié, Vie")
   notas:            string;
   creado:           string;
 }
