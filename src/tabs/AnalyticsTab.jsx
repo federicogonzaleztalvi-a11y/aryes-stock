@@ -57,6 +57,22 @@ export default function AnalyticsTab() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [live, setLive] = useState(null);   // En vivo (Live View): se refresca solo cada 10s
+
+  // Polling liviano del "En vivo" — independiente del rango de días. Pega a un
+  // endpoint aparte que sólo mira los últimos minutos, así no pesa.
+  useEffect(() => {
+    let alive = true;
+    const loadLive = async () => {
+      try {
+        const r = await fetch('/api/analytics-live', { headers: getAuthHeaders() });
+        if (r.ok && alive) setLive(await r.json());
+      } catch { /* silencioso: el panel en vivo es best-effort */ }
+    };
+    loadLive();
+    const id = setInterval(loadLive, 10000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -92,6 +108,35 @@ export default function AnalyticsTab() {
           ))}
         </div>
       </div>
+
+      {/* En vivo (Live View) — quién está en el portal ahora mismo. Se refresca
+         solo cada 10s. Sólo se muestra si hay alguien, para no ocupar lugar vacío. */}
+      {live && live.total > 0 && (
+        <div style={{ background: T.card, border: '1px solid #bbf7d0', borderRadius: 14, padding: '16px 20px', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: T.green, boxShadow: '0 0 0 4px #dcfce7' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.text }}>En vivo</span>
+            <span style={{ fontSize: 13, color: T.textSm }}>
+              {live.total} {live.total === 1 ? 'persona' : 'personas'} en el portal ahora
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {live.activos.map((a, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '7px 0', borderTop: i === 0 ? 'none' : '1px solid ' + T.border }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text, overflow: 'hidden' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 5, padding: '2px 7px', color: a.logueado ? '#166534' : T.textSm, background: a.logueado ? '#dcfce7' : T.bg }}>
+                    {a.logueado ? 'Cliente' : 'Visitante'}
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.accion}</span>
+                </span>
+                <span style={{ fontSize: 12, color: T.textXs, whiteSpace: 'nowrap' }}>
+                  {a.haceSeg < 10 ? 'ahora' : 'hace ' + fmtDur(a.haceSeg)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading && <div style={{ padding: 40, textAlign: 'center', color: T.textXs }}>Cargando…</div>}
       {err && !loading && <div style={{ padding: 16, background: '#fef2f2', color: '#b91c1c', borderRadius: 10, fontSize: 13 }}>{err}</div>}
