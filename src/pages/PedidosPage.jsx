@@ -4930,7 +4930,8 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const sugerencias = useMemo(() => {
     const tokens = deburr(busq).split(/\s+/).filter(Boolean);
     if (!tokens.length || busq.trim().length < 2) return [];
-    const scored = [];
+    const porNombre = [];  // matcheó por nombre/marca/categoría
+    const porVariante = []; // matcheó SÓLO por una variante (sabor/color)
     for (const i of items) {
       const doc = searchDocs.get(i.id);
       if (!doc) continue;
@@ -4940,10 +4941,25 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         if (!tokenMatchesDoc(tokens[t], hay, doc.words)) { all = false; break; }
       }
       if (!all) continue;
-      scored.push({ i, r: scoreDoc(doc, tokens) + (doc.hasImg ? 0.5 : 0) });
+      const r = scoreDoc(doc, tokens) + (doc.hasImg ? 0.5 : 0);
+      // ¿El nombre/marca/categoría ya contiene lo buscado? Si NO, matcheó por una
+      // variante → mostramos CUÁL (ej: "Aromas en polvo · Frutilla") y le reservamos
+      // lugar en el dropdown para que no lo tapen los productos que lo tienen en el nombre.
+      const enTexto = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc}`;
+      const inName = tokens.every(t => enTexto.includes(t));
+      let matchVar = null;
+      if (!inName && i.variants?.options?.length) {
+        const opt = i.variants.options.find(o => { const l = deburr(o.label); return tokens.some(t => l.includes(t)); });
+        if (opt) matchVar = opt.label;
+      }
+      (matchVar ? porVariante : porNombre).push({ i, r, matchVar });
     }
-    scored.sort((a, b) => b.r - a.r);
-    return scored.slice(0, 8).map(s => s.i);
+    porNombre.sort((a, b) => b.r - a.r);
+    porVariante.sort((a, b) => b.r - a.r);
+    // Reservamos hasta 3 lugares para matches por variante, para que SIEMPRE se vean.
+    const varPick = porVariante.slice(0, 3);
+    const namePick = porNombre.slice(0, 8 - varPick.length);
+    return [...namePick, ...varPick].slice(0, 8);
   }, [items, busq, searchDocs]);
 
   // Datos derivados para los facetas (genéricos, salen del catálogo del org):
@@ -5190,7 +5206,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                     else if (e.key === 'ArrowUp') { e.preventDefault(); setSugIdx(i => Math.max(i - 1, -1)); }
                     else if (e.key === 'Enter' && sugIdx >= 0) {
                       e.preventDefault();
-                      const it = sugerencias[sugIdx];
+                      const it = sugerencias[sugIdx]?.i;
                       if (it) { setVista('catalogo'); setDetalle(it); setSugOpen(false); setSugIdx(-1); }
                     } else if (e.key === 'Escape') { setSugOpen(false); setSugIdx(-1); }
                   }}
@@ -5212,28 +5228,34 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
                     boxShadow: '0 12px 34px rgba(0,0,0,.14)' }}>
                     {sugerencias.map((s, i) => {
                       const on = i === sugIdx;
+                      const p = s.i;
                       return (
-                        <div key={s.id} role="option" aria-selected={on}
-                          onMouseDown={e => { e.preventDefault(); setVista('catalogo'); setDetalle(s); setSugOpen(false); setSugIdx(-1); }}
+                        <div key={p.id} role="option" aria-selected={on}
+                          onMouseDown={e => { e.preventDefault(); setVista('catalogo'); setDetalle(p); setSugOpen(false); setSugIdx(-1); }}
                           onMouseEnter={() => setSugIdx(i)}
                           style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', cursor: 'pointer',
                             background: on ? '#f4f7f5' : '#fff', borderBottom: i < sugerencias.length - 1 ? '1px solid #f4f4f0' : 'none' }}>
                           <div style={{ width: 38, height: 38, borderRadius: 8, flexShrink: 0, background: '#f7f7f4',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                            {s.imagen_url
-                              ? <img src={thumb(s.imagen_url, 100)} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                            {p.imagen_url
+                              ? <img src={thumb(p.imagen_url, 100)} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                               : <span style={{ color: GRAY }}>{Icon.search}</span>}
                           </div>
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 600, color: INK, fontFamily: SANS,
-                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nombre}</div>
-                            {(s.marca || s.categoria) && (
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nombre}</div>
+                            {s.matchVar ? (
+                              <div style={{ fontSize: 11.5, color: G, fontFamily: SANS, fontWeight: 600,
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {(p.variants?.label || 'Variante') + ': ' + s.matchVar}
+                              </div>
+                            ) : (p.marca || p.categoria) && (
                               <div style={{ fontSize: 11.5, color: GRAY, fontFamily: SANS,
-                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.marca || s.categoria}</div>
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.marca || p.categoria}</div>
                             )}
                           </div>
-                          {s.precio > 0 && (
-                            <div style={{ fontSize: 13, fontWeight: 700, color: G, flexShrink: 0 }}>{fmt.price(s.precio)}</div>
+                          {p.precio > 0 && (
+                            <div style={{ fontSize: 13, fontWeight: 700, color: G, flexShrink: 0 }}>{fmt.price(p.precio)}</div>
                           )}
                         </div>
                       );
