@@ -87,6 +87,131 @@ export default function AnalyticsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  const [exporting, setExporting] = useState(false);
+
+  // Exportar a Excel (exceljs, estilo profesional Pazque). Import dinámico para
+  // no sumar exceljs al bundle de la pestaña: sólo se baja al tocar Exportar.
+  const descargarExcel = async () => {
+    if (!data || data.pendingSetup || exporting) return;
+    setExporting(true);
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Pazque';
+      const GREEN = 'FF059669', GREY = 'FF595959';
+      const NUM = '#,##0', MONEY = '"$ "#,##0';
+      const fillH = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN } };
+      const border = { top: { style: 'thin', color: { argb: 'FFE5E7EB' } }, bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } }, left: { style: 'thin', color: { argb: 'FFE5E7EB' } }, right: { style: 'thin', color: { argb: 'FFE5E7EB' } } };
+      const headerRow = (ws, cells, r) => {
+        const row = ws.getRow(r);
+        cells.forEach((v, i) => {
+          const c = row.getCell(i + 1);
+          c.value = v; c.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          c.fill = fillH; c.border = border; c.alignment = { horizontal: i === 0 ? 'left' : 'center', vertical: 'center', wrapText: true };
+        });
+        row.height = 24;
+      };
+      const titulo = (ws, text, sub) => {
+        ws.getCell('A1').value = text;
+        ws.getCell('A1').font = { name: 'Arial', size: 16, bold: true, color: { argb: GREEN } };
+        if (sub) { ws.getCell('A2').value = sub; ws.getCell('A2').font = { name: 'Arial', size: 9, color: { argb: GREY } }; }
+      };
+      const dataRow = (ws, r, cells, fmts) => {
+        const row = ws.getRow(r);
+        cells.forEach((v, i) => {
+          const c = row.getCell(i + 1);
+          c.value = v; c.border = border; c.font = { name: 'Arial', size: 10 };
+          c.alignment = { horizontal: i === 0 ? 'left' : 'center', vertical: 'center' };
+          if (fmts && fmts[i]) c.numFmt = fmts[i];
+        });
+      };
+      const hoy = new Date().toLocaleDateString('es-UY');
+      const sub = `Últimos ${days} días · portal de pedidos · generado ${hoy}`;
+
+      const R = wb.addWorksheet('Resumen', { views: [{ showGridLines: false }] });
+      R.columns = [{ width: 32 }, { width: 20 }];
+      titulo(R, 'Analítica del portal', sub);
+      let r = 4;
+      headerRow(R, ['Métrica', 'Valor'], r); r++;
+      const rs = data.resumen || {};
+      [
+        ['Visitas (sesiones)', rs.visitas ?? 0, NUM],
+        ['Clientes activos', rs.clientesActivos ?? 0, NUM],
+        ['Pedidos confirmados', rs.pedidos ?? 0, NUM],
+        ['Tiempo medio por visita', fmtDur(rs.duracionMediaSeg), null],
+        ['Productos vistos', rs.productosVistos ?? 0, NUM],
+        ['Agregados al carrito', rs.productosAgregados ?? 0, NUM],
+        ['Búsquedas', rs.busquedas ?? 0, NUM],
+        ['Búsquedas sin resultado', rs.busquedasSin ?? 0, NUM],
+      ].forEach(([l, v, fmt]) => { dataRow(R, r, [l, v], [null, fmt]); r++; });
+
+      const E = wb.addWorksheet('Embudo', { views: [{ showGridLines: false }] });
+      E.columns = [{ width: 24 }, { width: 16 }, { width: 16 }];
+      titulo(E, 'Embudo de pedido', 'Visitas distintas que llegaron a cada paso. El % es sobre el paso anterior.');
+      r = 4; headerRow(E, ['Paso', 'Visitas', 'Conversión'], r); r++;
+      const fn = data.embudo || {};
+      const steps = [
+        ['Vio el catálogo', fn.catalogo || 0],
+        ['Vio un producto', fn.productoVisto || 0],
+        ['Agregó al carrito', fn.agregado || 0],
+        ['Confirmó pedido', fn.pedido || 0],
+      ];
+      steps.forEach((s, i) => {
+        const prev = i > 0 ? steps[i - 1][1] : s[1];
+        const conv = i === 0 ? '' : (prev > 0 ? Math.round(s[1] / prev * 100) + '%' : '0%');
+        dataRow(E, r, [s[0], s[1], conv], [null, NUM, null]); r++;
+      });
+
+      const SS = wb.addWorksheet('Sin resultado', { views: [{ showGridLines: false }] });
+      SS.columns = [{ width: 40 }, { width: 14 }];
+      titulo(SS, 'Búsquedas sin resultado', 'Lo que tus clientes buscaron y no estaba. Mercadería que podrías vender.');
+      r = 4; headerRow(SS, ['Término buscado', 'Veces'], r); r++;
+      const sinRes = data.busquedasSinResultado || [];
+      if (!sinRes.length) { dataRow(SS, r, ['(sin huecos en este rango)', '']); r++; }
+      sinRes.forEach((x) => { dataRow(SS, r, [x.k, x.v], [null, NUM]); r++; });
+
+      const BQ = wb.addWorksheet('Búsquedas', { views: [{ showGridLines: false }] });
+      BQ.columns = [{ width: 40 }, { width: 14 }];
+      titulo(BQ, 'Búsquedas más frecuentes', sub);
+      r = 4; headerRow(BQ, ['Término buscado', 'Veces'], r); r++;
+      (data.busquedas || []).forEach((x) => { dataRow(BQ, r, [x.k, x.v], [null, NUM]); r++; });
+
+      const P = wb.addWorksheet('Productos', { views: [{ showGridLines: false }] });
+      P.columns = [{ width: 40 }, { width: 14 }];
+      titulo(P, 'Productos', sub);
+      r = 4;
+      headerRow(P, ['Más vistos', 'Veces'], r); r++;
+      (data.topProductos || []).forEach((x) => { dataRow(P, r, [x.k, x.v], [null, NUM]); r++; });
+      r++;
+      headerRow(P, ['Más agregados al carrito', 'Veces'], r); r++;
+      (data.topAgregados || []).forEach((x) => { dataRow(P, r, [x.k, x.v], [null, NUM]); r++; });
+
+      const V = wb.addWorksheet('Vendedor digital', { views: [{ showGridLines: false }] });
+      V.columns = [{ width: 28 }, { width: 14 }, { width: 18 }, { width: 10 }];
+      const reco = data.recomendaciones || { porOrigen: [] };
+      titulo(V, '¿Vende el vendedor digital?', `El portal vendió $ ${Number(reco.recoRevenuePedido || 0).toLocaleString('es-UY')} de más (en ${reco.pedidosConReco || 0} pedidos).`);
+      r = 4; headerRow(V, ['Origen del agregado', 'Agregados', 'Mercadería', '¿Portal?'], r); r++;
+      (reco.porOrigen || []).forEach((o) => { dataRow(V, r, [o.label, o.adds, o.revenue, o.esReco ? 'Sí' : ''], [null, NUM, MONEY, null]); r++; });
+
+      const D = wb.addWorksheet('Visitas por día', { views: [{ showGridLines: false }] });
+      D.columns = [{ width: 14 }, { width: 14 }, { width: 14 }];
+      titulo(D, 'Visitas por día', sub);
+      r = 4; headerRow(D, ['Día', 'Visitas', 'Pedidos'], r); r++;
+      (data.porDia || []).forEach((d) => { dataRow(D, r, [d.dia, d.visitas, d.pedidos], [null, NUM, NUM]); r++; });
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Analitica_portal_' + days + 'd_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr('No se pudo exportar el Excel. ' + (e?.message || ''));
+    } finally { setExporting(false); }
+  };
+
   const wrap = { padding: '8px 4px 40px', maxWidth: 1100 };
   const headRow = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 };
 
@@ -97,7 +222,7 @@ export default function AnalyticsTab() {
           <h1 style={{ fontSize: 26, fontWeight: 800, color: T.text, margin: 0 }}>Analítica web</h1>
           <p style={{ fontSize: 13, color: T.textSm, margin: '4px 0 0' }}>Cómo usan tus clientes el portal de pedidos.</p>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {[7, 30, 90].map(d => (
             <button key={d} onClick={() => setDays(d)}
               style={{ padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -106,6 +231,13 @@ export default function AnalyticsTab() {
               {d} días
             </button>
           ))}
+          <button onClick={descargarExcel} disabled={!data || data.pendingSetup || exporting}
+            style={{ marginLeft: 4, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              cursor: (!data || data.pendingSetup || exporting) ? 'default' : 'pointer',
+              border: '1px solid ' + T.green, background: T.card, color: T.green,
+              opacity: (!data || data.pendingSetup) ? 0.5 : 1 }}>
+            {exporting ? 'Generando…' : '↓ Exportar a Excel'}
+          </button>
         </div>
       </div>
 
