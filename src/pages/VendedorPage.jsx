@@ -942,7 +942,7 @@ function VisitarClientes({ session, onLogout, onCargar }) {
       </div>
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px 96px' }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em' }}>Para visitar</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em' }}>Para contactar</div>
         <div style={{ fontSize: 13.5, color: '#6a6a68', marginTop: 3, marginBottom: 16 }}>Clientes tuyos que hace rato no te hacen un pedido.</div>
 
         {data === null && (
@@ -1016,7 +1016,7 @@ function BottomNav({ tab, setTab, visitarCount = 0 }) {
       {item('pedidos', 'Pedidos', c => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6M9 16h4" /></svg>
       ))}
-      {item('visitar', 'Visitar', c => (
+      {item('visitar', 'Contactar', c => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
       ), visitarCount)}
       {item('clientes', 'Clientes', c => (

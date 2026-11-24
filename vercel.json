@@ -173,6 +173,9 @@
   }, {
     "path": "/api/cron-jefe-gabinete",
     "schedule": "30 11 * * *"
+  }, {
+    "path": "/api/cron-contactar",
+    "schedule": "0 13 * * 1"
   }],
   "version": 2
 }
