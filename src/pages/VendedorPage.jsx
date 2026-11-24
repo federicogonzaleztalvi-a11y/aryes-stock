@@ -624,8 +624,7 @@ function NotifVendedorBanner({ session }) {
     <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#166534' }}>Activá los avisos</div>
-        <div style={{ fontSize: 12, color: '#3f6b4e', marginTop: 1 }}>Te avisamos cuando un cliente tuyo haga un pedido.</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#166534' }}>Activá las notificaciones</div>
       </div>
       <button onClick={activar} disabled={busy} style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: '#fff', background: G, border: 'none', borderRadius: 8, padding: '7px 14px', cursor: busy ? 'default' : 'pointer', fontFamily: SANS, opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Activar'}</button>
       <button onClick={cerrar} aria-label="Cerrar" style={{ flexShrink: 0, fontSize: 18, lineHeight: 1, color: '#6a8a74', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
