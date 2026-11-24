@@ -62,6 +62,7 @@ export async function createB2BOrder({
   envioDestino = null,
   envioCosto = 0,
   viaVendedor = false,
+  cargadoPor = null,
 }) {
   const envioCostoNum = Math.max(0, Number(envioCosto) || 0);
   // El RPC tipa p_cliente_id como UUID. Un cliente con id no-UUID (filas legacy o
@@ -345,6 +346,22 @@ export async function createB2BOrder({
       });
     } catch (envErr) {
       log.warn('create-order', 'envio patch failed (non-fatal)', { error: envErr.message });
+    }
+  }
+
+  // ── Atribución de vendedor (best-effort, no fatal) ─────────────────────────
+  // Si el pedido lo cargó un vendedor EN NOMBRE del cliente, dejamos su nombre en
+  // el pedido para que Eric vea "cargado por X" en el panel del portal. Si falla,
+  // el pedido ya está creado y no lo invalidamos — sólo quedaría sin atribución.
+  if (cargadoPor) {
+    try {
+      await fetch(SB_URL + '/rest/v1/b2b_orders?id=eq.' + finalOrderId, {
+        method: 'PATCH',
+        headers: { apikey: SB_SVC || SB_ANON, Authorization: 'Bearer ' + (SB_SVC || SB_ANON), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ cargado_por: cargadoPor }),
+      });
+    } catch (cpErr) {
+      log.warn('create-order', 'cargado_por patch failed (non-fatal)', { error: cpErr.message });
     }
   }
 

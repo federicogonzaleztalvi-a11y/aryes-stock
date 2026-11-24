@@ -257,7 +257,10 @@ export default function PortalAdminTab() {
                     onMouseEnter={e => e.currentTarget.style.background = T.hover}
                     onMouseLeave={e => e.currentTarget.style.background = i%2===0 ? T.card : T.cardWarm}>
                     <td style={{ padding:'11px 13px', fontSize:11, color:T.textXs, fontFamily:'monospace' }}>{String(p.id).slice(0,8)}</td>
-                    <td style={{ padding:'11px 13px', fontSize:13, fontWeight:500, color:T.text }}>{p.cliente_nombre || p.cliente_id || '—'}</td>
+                    <td style={{ padding:'11px 13px', fontSize:13, fontWeight:500, color:T.text }}>
+                      {p.cliente_nombre || p.cliente_id || '—'}
+                      {p.cargado_por && <div style={{ fontSize:11, fontWeight:400, color:T.textSm, marginTop:2 }}>Cargado por {p.cargado_por}</div>}
+                    </td>
                     <td style={{ padding:'11px 13px', fontSize:13, color:T.textSm }}>{items.length} ítem{items.length !== 1 ? 's' : ''}</td>
                     <td style={{ padding:'11px 13px', fontSize:13, fontWeight:600, color:G }}>${Number(p.total || 0).toFixed(2)}</td>
                     <td style={{ padding:'11px 13px', fontSize:12, color:T.textSm, whiteSpace:'nowrap' }}>{fmtFecha(p.creado_en)}</td>
@@ -296,6 +299,7 @@ export default function PortalAdminTab() {
               <div style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:6 }}>Cliente</div>
               <div style={{ fontSize:14, fontWeight:700, color:T.text }}>{pedidoSel.cliente_nombre || '—'}</div>
               {pedidoSel.cliente_tel && <div style={{ fontSize:12, color:T.textSm, marginTop:2 }}>Tel: {pedidoSel.cliente_tel}</div>}
+              {pedidoSel.cargado_por && <div style={{ fontSize:12, color:T.textSm, marginTop:2 }}>Cargado por: {pedidoSel.cargado_por}</div>}
             </div>
 
             {/* Items */}

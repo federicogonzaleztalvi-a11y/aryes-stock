@@ -434,6 +434,7 @@ async function handler(req, res) {
     items, total, notas, idempotencyKey, fechaEntrega,
     envioMetodo, envioTipo, envioDestino, envioCosto,
     viaVendedor: portalSession.via_vendedor === true,
+    cargadoPor: portalSession.via_vendedor === true ? (portalSession.vendedor_nombre || null) : null,
   });
 
   if (!result.ok) {
