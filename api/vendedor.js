@@ -357,6 +357,48 @@ async function handler(req, res) {
     return res.status(200).json({ pedidos });
   }
 
+  // ── ?action=porvisitar — clientes del vendedor que hace rato no le compran ────
+  // "Vendedor digital": juntamos el último pedido de cada cliente asignado y
+  // devolvemos los que no piden hace >= UMBRAL días (o nunca pidieron), ordenados
+  // del más atrasado al menos. El vendedor los ve al abrir la app → sabe a quién
+  // visitar. Read-only, sin tocar nada compartido.
+  if (action === 'porvisitar') {
+    const UMBRAL_DIAS = 21;
+    const clients = await fetchVendedorClients(vendedor, svcKey);
+    if (clients === null) {
+      log.error('vendedor', 'porvisitar clients db error', { org: vendedor.org });
+      return res.status(502).json({ error: 'Error al cargar tu cartera' });
+    }
+    if (!clients.length) return res.status(200).json({ clientes: [], umbralDias: UMBRAL_DIAS });
+
+    const inList = 'in.(' + clients.map(c => c.id).join(',') + ')';
+    const r = await fetch(
+      `${SB_URL}/rest/v1/b2b_orders?org_id=eq.${encodeURIComponent(vendedor.org)}` +
+      `&cliente_id=${encodeURIComponent(inList)}&select=cliente_id,creado_en&order=creado_en.desc&limit=2000`,
+      { headers: { apikey: svcKey, Authorization: 'Bearer ' + svcKey, Accept: 'application/json' } }
+    );
+    const orders = r.ok ? await r.json() : [];
+    const ultimo = new Map();
+    for (const o of (Array.isArray(orders) ? orders : [])) {
+      if (!ultimo.has(o.cliente_id)) ultimo.set(o.cliente_id, o.creado_en); // desc → el primero es el más reciente
+    }
+
+    const now = Date.now();
+    const lista = clients.map(c => {
+      const ult = ultimo.get(c.id) || null;
+      const dias = ult ? Math.floor((now - new Date(ult).getTime()) / 86400000) : null;
+      return { id: c.id, nombre: c.name, tel: c.phone || '', ciudad: c.ciudad || '', ultimoPedido: ult, dias };
+    })
+      .filter(c => c.dias === null || c.dias >= UMBRAL_DIAS)
+      .sort((a, b) => {
+        if (a.dias === null) return 1;   // "nunca pidió" al final
+        if (b.dias === null) return -1;
+        return b.dias - a.dias;          // más atrasado primero
+      });
+
+    return res.status(200).json({ clientes: lista, umbralDias: UMBRAL_DIAS });
+  }
+
   return res.status(400).json({ error: 'action inválida' });
 }
 

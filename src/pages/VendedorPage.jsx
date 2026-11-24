@@ -895,13 +895,118 @@ function PedidoDetalle({ session, pedido, onBack, onCargar }) {
   );
 }
 
-// ── Nav inferior: Pedidos · Clientes ────────────────────────────────────────
-function BottomNav({ tab, setTab }) {
-  const item = (id, label, draw) => {
+// ── Por visitar — clientes que hace rato no compran (vendedor proactivo) ─────
+// Lee /api/vendedor?action=porvisitar (ya calculado y filtrado en el servidor) y
+// le muestra al vendedor a quién conviene visitar/llamar. Desde cada uno puede
+// escribir por WhatsApp o pasarle un pedido.
+function diasTexto(dias) {
+  if (dias === null || dias === undefined) return 'Nunca pidió';
+  if (dias >= 14) return 'Hace ' + Math.floor(dias / 7) + ' semanas';
+  return 'Hace ' + dias + ' días';
+}
+
+function VisitarClientes({ session, onLogout, onCargar }) {
+  const [data, setData]   = useState(null); // null = cargando
+  const [error, setError] = useState('');
+  const brand = useBrand(session.org);
+
+  const fetchData = useCallback(async () => {
+    setError('');
+    try {
+      const r = await fetch('/api/vendedor?action=porvisitar', { headers: { Authorization: 'Bearer ' + session.access_token } });
+      if (r.status === 401) { onLogout(); return; }
+      if (!r.ok) { setError('No pudimos cargar la lista.'); setData([]); return; }
+      const d = await r.json();
+      setData(Array.isArray(d.clientes) ? d.clientes : []);
+    } catch { setError('Error de conexión.'); setData([]); }
+  }, [session.access_token, onLogout]);
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const lista = data || [];
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f5f6f4', fontFamily: SANS, overflowX: 'hidden' }}>
+      <InstallVendedorBanner brandNombre={brand.name} />
+      <div style={{ background: '#fff', borderBottom: '1px solid #ececea', padding: '11px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
+          {brand.logo ? (
+            <img src={brand.logo} alt={brand.name || 'Logo'} style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'contain', background: '#fff' }} />
+          ) : (
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: G, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h12" /></svg>
+            </div>
+          )}
+          <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Portal de vendedores</span>
+        </div>
+        <button onClick={onLogout} style={{ fontSize: 12.5, color: '#6a6a68', background: 'transparent', border: '1px solid #e2e2de', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: SANS, flexShrink: 0 }}>Salir</button>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px 96px' }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#1a1a18', letterSpacing: '-0.01em' }}>Para visitar</div>
+        <div style={{ fontSize: 13.5, color: '#6a6a68', marginTop: 3, marginBottom: 16 }}>Clientes tuyos que hace rato no te hacen un pedido.</div>
+
+        {data === null && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #ececea', borderRadius: 14, padding: 15 }}>
+                <div style={{ height: 13, width: '55%', background: '#f0f0ec', borderRadius: 5, marginBottom: 9 }} />
+                <div style={{ height: 10, width: '30%', background: '#f4f4f0', borderRadius: 5 }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 12, padding: 14, fontSize: 13 }}>{error}</div>}
+
+        {data !== null && lista.length === 0 && !error && (
+          <div style={{ textAlign: 'center', padding: '48px 20px', background: '#fff', border: '1px solid #ececea', borderRadius: 14 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#166534', marginBottom: 6 }}>¡Estás al día!</div>
+            <div style={{ fontSize: 13, color: '#6a6a68', lineHeight: 1.5 }}>Ninguno de tus clientes quedó sin pedir hace mucho.</div>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gap: 10 }}>
+          {lista.map(c => {
+            const tel = (c.tel || '').replace(/\D/g, '');
+            const waLink = tel ? 'https://wa.me/' + tel + '?text=' + encodeURIComponent('Hola ' + String(c.nombre || '').split(' ')[0] + ', ¿cómo andás? ¿Te preparo un pedido?') : null;
+            const urgente = c.dias === null || c.dias >= 42;
+            return (
+              <div key={c.id} style={{ background: '#fff', border: '1px solid #ececea', borderRadius: 14, padding: '13px 15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontSize: 14.5, fontWeight: 700, color: '#1a1a18', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nombre}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, flexShrink: 0, padding: '2px 9px', borderRadius: 20, background: urgente ? '#fef2f2' : '#fef3c7', color: urgente ? '#b91c1c' : '#92400e' }}>{diasTexto(c.dias)}</span>
+                </div>
+                {c.ciudad && <div style={{ fontSize: 12, color: '#9a9a96', marginTop: 2 }}>{c.ciudad}</div>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 11 }}>
+                  {waLink && (
+                    <a href={waLink} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: G, color: '#fff', padding: '9px', borderRadius: 10, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.7 4.8-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.1 14.9l-.4-.2-2.6.7.7-2.5-.3-.4A8 8 0 0 1 12 4zm4.3 10.5c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8 1-.3.1-.5 0a6.5 6.5 0 0 1-3.2-2.8c-.2-.4.2-.4.6-1.2a.5.5 0 0 0 0-.5l-.8-1.9c-.2-.4-.4-.4-.5-.4h-.5a1 1 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1c0 1.3.9 2.5 1 2.7s1.8 2.9 4.5 4c1.6.6 2.2.7 3 .6a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .1-1.2c0-.1-.2-.2-.4-.3z"/></svg>
+                      WhatsApp
+                    </a>
+                  )}
+                  <button onClick={() => onCargar({ id: c.id, name: c.nombre })} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'transparent', color: G, border: '1px solid ' + G, padding: '9px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>
+                    Hacer pedido
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Nav inferior: Pedidos · Visitar · Clientes ──────────────────────────────
+function BottomNav({ tab, setTab, visitarCount = 0 }) {
+  const item = (id, label, draw, badge) => {
     const on = tab === id;
     return (
-      <button onClick={() => setTab(id)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 0', fontFamily: SANS }}>
-        {draw(on ? G : '#9a9a96')}
+      <button onClick={() => setTab(id)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'transparent', border: 'none', cursor: 'pointer', padding: '9px 0', fontFamily: SANS, position: 'relative' }}>
+        <span style={{ position: 'relative', display: 'inline-flex' }}>
+          {draw(on ? G : '#9a9a96')}
+          {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -8, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 10, background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>{badge > 99 ? '99' : badge}</span>}
+        </span>
         <span style={{ fontSize: 11, fontWeight: on ? 700 : 500, color: on ? G : '#9a9a96' }}>{label}</span>
       </button>
     );
@@ -911,6 +1016,9 @@ function BottomNav({ tab, setTab }) {
       {item('pedidos', 'Pedidos', c => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6M9 16h4" /></svg>
       ))}
+      {item('visitar', 'Visitar', c => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+      ), visitarCount)}
       {item('clientes', 'Clientes', c => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
       ))}
@@ -923,6 +1031,18 @@ export default function VendedorPage() {
   const [selected, setSelected] = useState(null);
   const [tab, setTab] = useState('pedidos');
   const [verPedido, setVerPedido] = useState(null);
+  const [visitarCount, setVisitarCount] = useState(0);
+
+  // Contador para el badge de "Visitar" (clientes que hace rato no compran).
+  useEffect(() => {
+    if (!session) return undefined;
+    let cancelled = false;
+    fetch('/api/vendedor?action=porvisitar', { headers: { Authorization: 'Bearer ' + session.access_token } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d && Array.isArray(d.clientes)) setVisitarCount(d.clientes.length); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [session]);
 
   // PWA: en /vendedor apuntamos el manifest a la variante "vendedor" para que, al
   // instalar, sea una app PROPIA (start_url=/vendedor → abre el login del
@@ -976,8 +1096,10 @@ export default function VendedorPage() {
     <>
       {tab === 'pedidos'
         ? <MisPedidos session={session} onLogout={logout} onVer={setVerPedido} />
-        : <ClientesAsignados session={session} onLogout={logout} onSelect={setSelected} />}
-      <BottomNav tab={tab} setTab={setTab} />
+        : tab === 'visitar'
+          ? <VisitarClientes session={session} onLogout={logout} onCargar={setSelected} />
+          : <ClientesAsignados session={session} onLogout={logout} onSelect={setSelected} />}
+      <BottomNav tab={tab} setTab={setTab} visitarCount={visitarCount} />
     </>
   );
 }
