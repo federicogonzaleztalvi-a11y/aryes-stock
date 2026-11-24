@@ -2221,6 +2221,82 @@ function TotalesResumen({ lineasConCalc, subtotalNeto, total, boxed = false, tot
 }
 
 // ── Cart Drawer ───────────────────────────────────────────────────────────────
+// Días de recepción: etiquetas legibles, mismo valor que se guarda y que ve Eric.
+const DIAS_SEMANA = [['Lun','Lun'],['Mar','Mar'],['Mié','Mié'],['Jue','Jue'],['Vie','Vie'],['Sáb','Sáb'],['Dom','Dom']];
+
+// Formulario de datos de facturación/entrega (self-service) dentro del checkout.
+// Núcleo obligatorio: razón social, RUT, dirección de entrega, ciudad y contacto.
+function DatosClienteBlock({ perfil, onCampo, nucleoCompleto }) {
+  const [abierto, setAbierto] = useState(!nucleoCompleto);
+  const [verMas, setVerMas] = useState(false);
+  const p = perfil || {};
+  const inp = { width: '100%', padding: '11px 12px', border: '1px solid #e0e0d8', borderRadius: 10, fontSize: 16, fontFamily: SANS, boxSizing: 'border-box', background: '#fff', color: '#1a1a18' };
+  const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: '#6a6a68', marginBottom: 5 };
+  const faltante = (v) => !v ? { borderColor: '#f0b4b4', background: '#fffafa' } : {};
+  const star = <b style={{ color: '#dc2626' }}>*</b>;
+  const diasSel = (p.dias_recepcion || '').split(',').map(s => s.trim()).filter(Boolean);
+  const fiscalIgual = !p.direccion_fiscal || p.direccion_fiscal === p.address;
+  const toggleDia = (et) => {
+    const set = new Set(diasSel);
+    if (set.has(et)) set.delete(et); else set.add(et);
+    onCampo('dias_recepcion', DIAS_SEMANA.filter(([e]) => set.has(e)).map(([e]) => e).join(', '));
+  };
+  return (
+    <div style={{ margin: '0 24px 16px', border: '1px solid #ececec', borderRadius: 14, background: '#fcfcfb' }}>
+      <button onClick={() => setAbierto(a => !a)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'none', border: 'none', padding: '14px 16px', cursor: 'pointer', fontFamily: SANS }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a18' }}>Datos de facturación y entrega</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: nucleoCompleto ? '#059669' : '#d97706' }}>{nucleoCompleto ? '✓ Completos' : 'Faltan datos'} {abierto ? '▲' : '▼'}</span>
+      </button>
+      {abierto && (
+        <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 11.5, color: '#9a9a98', lineHeight: 1.4 }}>Los campos con {star} son obligatorios para poder facturarte. Se guardan y no te los pedimos de nuevo.</div>
+          <div><label style={lbl}>Razón social {star}</label>
+            <input value={p.razon_social || ''} onChange={e => onCampo('razon_social', e.target.value)} style={{ ...inp, ...faltante(p.razon_social) }} placeholder="Nombre legal del negocio" /></div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>RUT {star}</label>
+              <input value={p.rut || ''} onChange={e => onCampo('rut', e.target.value)} style={{ ...inp, ...faltante(p.rut) }} inputMode="numeric" placeholder="RUT" /></div>
+            <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Email de factura</label>
+              <input value={p.email_facturacion || ''} onChange={e => onCampo('email_facturacion', e.target.value)} style={inp} type="email" placeholder="facturas@..." /></div>
+          </div>
+          <div><label style={lbl}>Dirección de entrega {star}</label>
+            <input value={p.address || ''} onChange={e => { onCampo('address', e.target.value); if (fiscalIgual) onCampo('direccion_fiscal', e.target.value); }} style={{ ...inp, ...faltante(p.address) }} placeholder="Calle, número, esquina" /></div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Ciudad {star}</label>
+              <input value={p.ciudad || ''} onChange={e => onCampo('ciudad', e.target.value)} style={{ ...inp, ...faltante(p.ciudad) }} placeholder="Ciudad" /></div>
+            <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Zona</label>
+              <input value={p.zona_entrega || ''} onChange={e => onCampo('zona_entrega', e.target.value)} style={inp} placeholder="Barrio / zona" /></div>
+          </div>
+          <div><label style={lbl}>Persona de contacto {star}</label>
+            <input value={p.contacto || ''} onChange={e => onCampo('contacto', e.target.value)} style={{ ...inp, ...faltante(p.contacto) }} placeholder="Quién recibe o hace los pedidos" /></div>
+          <div><label style={lbl}>Días que reciben mercadería</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {DIAS_SEMANA.map(([k, et]) => { const on = diasSel.includes(et); return (
+                <button key={k} onClick={() => toggleDia(et)} style={{ flex: '1 0 auto', minWidth: 42, padding: '9px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, fontFamily: SANS, cursor: 'pointer', border: `1px solid ${on ? '#059669' : '#e0e0d8'}`, background: on ? '#059669' : '#fff', color: on ? '#fff' : '#6a6a68' }}>{et}</button>
+              ); })}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Reciben desde</label>
+              <input value={p.horario_desde || ''} onChange={e => onCampo('horario_desde', e.target.value)} style={inp} type="time" /></div>
+            <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Hasta</label>
+              <input value={p.horario_hasta || ''} onChange={e => onCampo('horario_hasta', e.target.value)} style={inp} type="time" /></div>
+          </div>
+          {!verMas ? (
+            <button onClick={() => setVerMas(true)} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: '#2563eb', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, padding: 0 }}>+ Datos de cobranza (opcional)</button>
+          ) : (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Tel. de pagos</label>
+                <input value={p.telefono_cobranza || ''} onChange={e => onCampo('telefono_cobranza', e.target.value)} style={inp} inputMode="tel" placeholder="Cobranzas" /></div>
+              <div style={{ flex: 1, minWidth: 0 }}><label style={lbl}>Email de pagos</label>
+                <input value={p.email_cobranza || ''} onChange={e => onCampo('email_cobranza', e.target.value)} style={inp} type="email" placeholder="Cobranzas" /></div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos, onAdd, onAddSugerido, onRemove, onRemoveLine, onGuardarLista, brandCfg, brandNombre, coBuy, recommended }) {
   const [notas,   setNotas]   = useState('');
   // "Guardar como lista": el cliente nombra el carrito armado para repetirlo luego.
@@ -2230,6 +2306,10 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   const [loading, setLoading] = useState(false);
   const [done,    setDone]    = useState(false);
   const [err,     setErr]     = useState('');
+  // Datos de facturación/entrega del cliente (self-service). null = cargando.
+  const [perfil, setPerfil] = useState(null);
+  const [perfilDirty, setPerfilDirty] = useState(false);
+  const setPerfilCampo = (k, v) => { setPerfil(p => ({ ...(p || {}), [k]: v })); setPerfilDirty(true); };
   // Envío: método elegido + destino. Los métodos salen de brandcfg.envio.metodos,
   // filtrados por los habilitados para este cliente (session.envioMetodos).
   const [envioMetodoId, setEnvioMetodoId] = useState('');
@@ -2253,6 +2333,18 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   const [emailing,    setEmailing]    = useState(false);
   const [accionMsg,   setAccionMsg]   = useState('');
   const isDemo = typeof window !== 'undefined' && window.location.search.includes('demo=true');
+  // Prefilear con los datos actuales del cliente al abrir el drawer.
+  React.useEffect(() => {
+    if (isDemo || !session?.token) { setPerfil({}); return; }
+    let vivo = true;
+    fetch(`${window.location.origin}/api/perfil`, { headers: { Authorization: `Bearer ${session.token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (vivo) setPerfil((d && d.perfil) ? d.perfil : {}); })
+      .catch(() => { if (vivo) setPerfil({}); });
+    return () => { vivo = false; };
+  }, [session, isDemo]);
+  const nucleoCompleto = !!(perfil && perfil.razon_social && perfil.rut && perfil.address && perfil.ciudad && perfil.contacto);
+  const datosIncompletos = !isDemo && !!session?.token && !nucleoCompleto;
 
   // La clave puede ser "id" (producto simple) o "id::variantId" (con variante).
   // Resolvemos el producto base y, si hay variante, anexamos su etiqueta al nombre
@@ -2439,6 +2531,20 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
       if (window.location.search.includes('demo=true')) {
         setDone(true);
         return;
+      }
+
+      // Núcleo obligatorio + guardado del perfil del cliente antes de enviar.
+      if (datosIncompletos) { setShowPreview(true); setErr('Completá tus datos obligatorios (marcados con *) para confirmar.'); return; }
+      if (session?.token && perfilDirty && perfil) {
+        setLoading(true); setErr('');
+        try {
+          const pr = await fetch(`${window.location.origin}/api/perfil`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+            body: JSON.stringify(perfil),
+          });
+          if (!pr.ok) { const d = await pr.json().catch(() => ({})); setErr(d.error || 'No se pudieron guardar tus datos.'); setLoading(false); return; }
+          setPerfilDirty(false);
+        } catch { setErr('Error de conexión al guardar tus datos.'); setLoading(false); return; }
       }
 
     setLoading(true); setErr('');
@@ -2765,6 +2871,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
             <TotalesResumen lineasConCalc={lineasConCalc} subtotalNeto={subtotalNeto} total={total} boxed totalSize={20} />
           </div>
 
+          {/* Datos de facturación y entrega (self-service, núcleo obligatorio) */}
+          {!isDemo && session?.token && perfil !== null && (
+            <DatosClienteBlock perfil={perfil} onCampo={setPerfilCampo} nucleoCompleto={nucleoCompleto} />
+          )}
+
           {/* Envío: cómo recibir el pedido (genérico por-org; solo si hay métodos) */}
           {metodosEnvio.length > 0 && (
             <div style={{ padding: '0 24px 16px' }}>
@@ -2872,12 +2983,12 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
                 cursor: 'pointer', fontFamily: SANS }}>
                 ← Editar
               </button>
-              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto} style={{
+              <button onClick={confirmar} disabled={loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto || datosIncompletos} style={{
                 flex: 1, padding: '12px 0',
-                background: loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto ? '#c8c8c0' : G,
+                background: loading || lineas.length === 0 || !cumpleMinimo || envioIncompleto || datosIncompletos ? '#c8c8c0' : G,
                 color: '#fff', border: 'none', borderRadius: 50, fontSize: 14, fontWeight: 600,
-                cursor: (loading || !cumpleMinimo || envioIncompleto) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
-                {loading ? 'Enviando…' : (envioIncompleto ? (metodoSelEnvio ? 'Completá el destino' : 'Elegí cómo recibir') : 'Confirmar pedido')}
+                cursor: (loading || !cumpleMinimo || envioIncompleto || datosIncompletos) ? 'not-allowed' : 'pointer', fontFamily: SANS }}>
+                {loading ? 'Enviando…' : (datosIncompletos ? 'Completá tus datos' : (envioIncompleto ? (metodoSelEnvio ? 'Completá el destino' : 'Elegí cómo recibir') : 'Confirmar pedido'))}
               </button>
             </div>
           </div>

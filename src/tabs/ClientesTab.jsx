@@ -512,7 +512,7 @@ function ClientesTab(){
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',zonaEntrega:'',vendedorId:'',envioMetodos:[]};
+  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',diasRecepcion:'',zonaEntrega:'',vendedorId:'',envioMetodos:[]};
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
@@ -554,6 +554,7 @@ function ClientesTab(){
       codigo:            client.codigo || null,
       horario_desde:     client.horarioDesde || null,
       horario_hasta:     client.horarioHasta  || null,
+      dias_recepcion:    client.diasRecepcion    || null,
       lat:               client.lat ?? null,
       lng:               client.lng ?? null,
       geocoded_at:       client.geocodedAt || null,
@@ -609,7 +610,7 @@ function ClientesTab(){
     setVista('lista');
   };
 
-  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||'',envioMetodos:Array.isArray(x.envioMetodos)?x.envioMetodos:[]});setEditId(x.id);setVista('form');};
+  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',diasRecepcion:x.diasRecepcion||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||'',envioMetodos:Array.isArray(x.envioMetodos)?x.envioMetodos:[]});setEditId(x.id);setVista('form');};
   const filtered=items.filter(x=>
     (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase())||(x.contacto||'').toLowerCase().includes(q.toLowerCase()))
     &&(filtro==='Todos'||x.tipo===filtro)
@@ -659,7 +660,7 @@ function ClientesTab(){
         </div>
       )}
       <div style={{background:'#fff',borderRadius:12,padding:28,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-        {[{l:'Nombre *',k:'nombre',full:true},{l:'Código',k:'codigo'},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección de entrega',k:'direccion',full:true},{l:'Dirección fiscal',k:'direccionFiscal',full:true},{l:'Ciudad',k:'ciudad'},{l:'Zona de entrega',k:'zonaEntrega'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito ('+(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+')',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Tel. cobranza / administración',k:'telefonoCobranza'},{l:'Email cobranza / administración',k:'emailCobranza'},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'}].map(fld=>{
+        {[{l:'Nombre *',k:'nombre',full:true},{l:'Código',k:'codigo'},{l:'Tipo',k:'tipo',sel:true},{l:'RUT',k:'rut'},{l:'Teléfono',k:'telefono'},{l:'Email',k:'email'},{l:'Contacto',k:'contacto'},{l:'Dirección de entrega',k:'direccion',full:true},{l:'Dirección fiscal',k:'direccionFiscal',full:true},{l:'Ciudad',k:'ciudad'},{l:'Zona de entrega',k:'zonaEntrega'},{l:'Notas',k:'notas',full:true,ta:true},{l:'Cond. pago',k:'condPago',sel2:true},{l:'Límite crédito ('+(brandCfg?.tax_country?getTaxConfig(brandCfg.tax_country).currency:'UYU')+')',k:'limiteCredito'},{l:'Email facturación',k:'emailFacturacion',full:true},{l:'Tel. cobranza / administración',k:'telefonoCobranza'},{l:'Email cobranza / administración',k:'emailCobranza'},{l:'Lista de precios',k:'listaId',sel3:true},{l:'Horario recepción (desde)',k:'horarioDesde',type:'time'},{l:'Horario recepción (hasta)',k:'horarioHasta',type:'time'},{l:'Días que reciben',k:'diasRecepcion'}].map(fld=>{
           if(fld.k==='direccionFiscal' && form.fiscalIgualEntrega) return null;
           return (
           <div key={fld.k} style={{gridColumn:fld.full?'1/-1':'auto'}}>
