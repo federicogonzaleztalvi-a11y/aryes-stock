@@ -106,6 +106,29 @@ let ORG = getOrgFromContext();
 const ORG_NEEDS_RESOLUTION = ORG === window.location.hostname && ORG.includes('.');
 const SK   = 'aryes-pedidos-session';
 
+// Caché del último catálogo en el dispositivo (patrón Amazon/MercadoLibre/Shopify:
+// al reabrir, mostramos AL INSTANTE lo último que vimos y refrescamos por detrás,
+// en vez de un esqueleto en blanco cada vez). Clave por org + cliente (los precios
+// son por cliente). Todo envuelto en try/catch: en modo privado o sin cuota, no
+// cachea y el flujo sigue igual.
+const CAT_CACHE_PREFIX = 'pz-cat-';
+const catCacheKey = (cli) => `${CAT_CACHE_PREFIX}${ORG}:${cli || 'pub'}`;
+function readCatCache(cli) {
+  try {
+    const raw = localStorage.getItem(catCacheKey(cli));
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    return (c && Array.isArray(c.items) && c.items.length) ? c : null;
+  } catch { return null; }
+}
+function writeCatCache(cli, items, cats, arbol) {
+  try {
+    localStorage.setItem(catCacheKey(cli), JSON.stringify({
+      items, cats: cats || [], arbol: arbol || [], ts: Date.now(),
+    }));
+  } catch { /* quota excedida / modo privado → se ignora */ }
+}
+
 // Atribución de campaña: al entrar por un anuncio (?utm_source=meta&utm_campaign=..
 // o ?fbclid=..), guardamos esos parámetros para adjuntarlos si el visitante deja
 // sus datos como prospecto. Se persisten en sessionStorage porque la nav interna
@@ -4708,6 +4731,15 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const loadCatalogo = useCallback(async (ses) => {
     if (!ses?.clienteId) return;
     setLoading(true);
+    // Pintado instantáneo: si ya vimos este catálogo, lo mostramos YA (sin esperar
+    // la red) y lo refrescamos por detrás. Sólo hidrata si todavía no hay productos
+    // en pantalla (functional update → no pisa un catálogo ya cargado).
+    const cached = readCatCache(ses.clienteId);
+    if (cached) {
+      setItems(prev => (prev && prev.length) ? prev : cached.items);
+      setCats(prev => (prev && prev.length > 1) ? prev : ['Todos', ...(cached.cats || [])]);
+      setCatArbol(prev => (prev && prev.length) ? prev : (Array.isArray(cached.arbol) ? cached.arbol : []));
+    }
     try {
       const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`,
         ses.token ? { headers: { Authorization: `Bearer ${ses.token}` } } : undefined);
@@ -4762,6 +4794,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
         setCatArbol(Array.isArray(d.categoriasArbol) ? d.categoriasArbol : []);
+        writeCatCache(ses.clienteId, prods, d.categorias, d.categoriasArbol);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         trackWeb('catalogo_visto', { productos: prods.length }, 'catalogo');
@@ -4812,6 +4845,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           setItems(d.items);
           setCats(['Todos', ...(d.categorias || [])]);
           setCatArbol(Array.isArray(d.categoriasArbol) ? d.categoriasArbol : []);
+          writeCatCache(null, d.items, d.categorias, d.categoriasArbol);
           setPublicMode(true);
           try { trackWeb('catalogo_publico_visto', { productos: d.items.length }, 'catalogo'); } catch {}
         }
@@ -5616,11 +5650,12 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
               <p style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', margin: '0 0 6px' }}>Portal no disponible</p>
               <p style={{ fontSize: 13, color: '#6a6a68', margin: 0, lineHeight: 1.5 }}>{portalBloqueado}</p>
             </div>
-          ) : loading ? (
-            /* Skeleton que CALCA la forma de la card real (foto + categoría + 2
-               líneas de nombre + precio + botón). Al llegar los productos encajan
-               en el mismo molde → sin "salto" de layout. Las medidas espejan
-               ProductCard: imagen imgH (120/160), cuerpo padding 10/12/12. */
+          ) : (loading && items.length === 0) ? (
+            /* Skeleton SÓLO en la primerísima carga (sin catálogo cacheado). Si ya
+               vimos el catálogo, lo mostramos al instante desde la caché y refrescamos
+               por detrás (patrón Amazon/ML), así que nunca se ve el esqueleto en blanco
+               al reabrir. Calca la card real (foto + categoría + 2 líneas + precio +
+               botón) → sin salto de layout cuando llegan los productos. */
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(190px,1fr))', gap: isMobile ? 10 : 14 }}>
               {[...Array(8)].map((_, i) => (
                 <div key={i} style={{ background: '#fff', borderRadius: 16, border: '1px solid #f0f0ec', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
