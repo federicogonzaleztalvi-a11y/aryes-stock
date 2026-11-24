@@ -1739,7 +1739,11 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
 
           {variantOptsVis ? (
             <div style={{ maxWidth: 420 }}>
-              <VariantPicker item={item} options={variantOptsVis} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH={300} />
+              {/* maxH="none": en la ficha el picker NO usa scroll propio (era una
+                  trampa de scroll anidado en celular: el gesto scrolleaba la página
+                  y la cajita de 300px solo mostraba ~7 de 40 sabores). Render completo
+                  + buscador sticky → scrollea la página y se ven TODAS las opciones. */}
+              <VariantPicker item={item} options={variantOptsVis} carrito={carrito} onAdd={onAdd} onRemove={onRemove} label={item.variants.label} maxH="none" />
               {publico && !variantOpts && (
                 <div style={{ textAlign: 'center', fontSize: 12, color: GRAY, marginTop: 10 }}>
                   Ingresá para ver precios y comprar
