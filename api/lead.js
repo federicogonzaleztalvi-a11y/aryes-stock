@@ -18,6 +18,7 @@ import { setCorsHeaders } from './_cors.js';
 import { checkRateLimit } from './_rate-limit.js';
 import { sendEmail, templates } from './_email.js';
 import { readWeb, findSocial, placesSearch, placesConfigured, anthropicJSON, anthropicConfigured, perplexitySonar, perplexityConfigured } from './_prospecting.js';
+import { sendWaTemplate } from './_whatsapp.js';
 import crypto from 'node:crypto';
 
 // Los scrapers de redes (Apify) del enriquecimiento tardan; le damos aire a la
@@ -43,6 +44,11 @@ const PRIORIDS = ['alta', 'media', 'baja'];
 const WA_TOKEN    = process.env.WA_ACCESS_TOKEN;
 const WA_PHONE_ID = process.env.WA_PHONE_NUMBER_ID;
 const WA_LANG     = process.env.WA_BROADCAST_LANG || 'es_AR';
+// Aviso automático de bienvenida al cliente cuando el distribuidor lo aprueba.
+// APAGADO por defecto: se prende recién cuando la plantilla `pazque_bienvenida`
+// esté APROBADA en Meta (si no, el envío fallaría). Un deploy nunca empieza a
+// escribirles a los clientes solo. Prender con WELCOME_WHATSAPP_ENABLED=true.
+const WELCOME_WA_ON = process.env.WELCOME_WHATSAPP_ENABLED === 'true';
 
 function svcHeaders() {
   const k = SB_SVC || SB_ANON;
@@ -504,6 +510,52 @@ async function notifyWhatsApp(org, lead, notifyPhone) {
   }
 }
 
+// Avisa AL CLIENTE, por WhatsApp, que su acceso al portal quedó activo. Se dispara
+// al aprobar el prospecto. Best-effort (nunca rompe el approve). Gated por
+// WELCOME_WHATSAPP_ENABLED (se prende cuando la plantilla esté aprobada en Meta).
+// Plantilla `pazque_bienvenida`: cuerpo {{1}}=nombre del cliente, {{2}}=nombre de la
+// distribuidora; botón URL dinámico {{1}}=org → pazque.com/pedidos?org={{1}}.
+async function notifyClientApproved(org, lead) {
+  if (!WELCOME_WA_ON) return;
+  const to = String(lead?.tel || '').replace(/\D/g, '');
+  if (!to) return;   // el prospecto no dejó WhatsApp → no hay a dónde avisar
+
+  // Sender: la WABA propia de la org si tiene la plantilla aprobada; si no, Pazque.
+  let sender = null;
+  try {
+    const r = await fetch(
+      `${SB_URL}/rest/v1/organizations?id=eq.${encodeURIComponent(org)}&select=whatsapp_sender&limit=1`,
+      { headers: svcHeaders() }
+    );
+    if (r.ok) sender = (await r.json())?.[0]?.whatsapp_sender || null;
+  } catch { /* usa fallback Pazque */ }
+  const useOrg = !!(sender?.phone_id && sender?.token && sender?.bienvenida_status === 'APPROVED');
+  const phoneId = useOrg ? sender.phone_id : WA_PHONE_ID;
+  const token   = useOrg ? sender.token   : WA_TOKEN;
+  if (!phoneId || !token) return;
+
+  // Nombre de la distribuidora para el mensaje (de app_config brandcfg).
+  let marca = 'tu proveedor';
+  try {
+    const br = await fetch(
+      `${SB_URL}/rest/v1/app_config?org_id=eq.${encodeURIComponent(org)}&key=eq.brandcfg&select=value&limit=1`,
+      { headers: svcHeaders() }
+    );
+    if (br.ok) { const v = (await br.json())?.[0]?.value; if (v?.name) marca = v.name; }
+  } catch { /* queda el fallback */ }
+
+  try {
+    await sendWaTemplate({
+      to, template: 'pazque_bienvenida', lang: WA_LANG,
+      bodyParams: [waParam(lead.nombre), waParam(marca)],
+      urlButtonParam: org,
+      phoneId, token,
+    });
+  } catch (e) {
+    console.warn('[lead] welcome WhatsApp failed (non-fatal):', String(e?.message || e).slice(0, 200));
+  }
+}
+
 export default async function handler(req, res) {
   await setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -620,6 +672,10 @@ export default async function handler(req, res) {
         headers: { ...svcHeaders(), Prefer: 'return=minimal' },
         body: JSON.stringify({ estado: 'convertido', converted_client_id: created.id, updated_at: new Date().toISOString() }),
       });
+
+      // Avisar al cliente que su acceso quedó activo (WhatsApp). Best-effort y
+      // gated: no bloquea ni rompe el approve si WhatsApp no está disponible.
+      await notifyClientApproved(org, lead);
 
       return res.status(200).json({ ok: true, client: { id: created.id, name: created.name, phone: created.phone } });
     }
