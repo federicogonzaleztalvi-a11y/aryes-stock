@@ -4128,6 +4128,7 @@ function scoreDoc(doc, tokens) {
     else if (doc.nameWordStart.indexOf('\u0001' + t) !== -1) score += 60; // arranque de palabra en el nombre
     else if (doc.name.includes(t)) score += 40;
     else if (doc.marca.includes(t)) score += 30;
+    else if (doc.vars.includes(t)) score += 20; // matcheó en una variante (sabor/color): es algo que se puede pedir
     else if (doc.cat.includes(t)) score += 16;
     else if (doc.desc.includes(t)) score += 8;
     else score += 2; // matcheó sólo por plural/typo: cuenta, pero pesa poco
@@ -4840,12 +4841,15 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       const marca = deburr(i.marca || '');
       const cat   = deburr(`${i.categoria || ''} ${i.subcategoria || ''}`);
       const desc  = deburr(i.descripcion || '');
+      // Variantes (sabor/color/tamaño): sus etiquetas también deben matchear. Un
+      // "Yogurt" con variante "Frutilla" tiene que salir al buscar "frutilla".
+      const vars  = deburr((i.variants?.options || []).map(o => o.label).join(' '));
       const nameWordStart = '\u0001' + name.split(/\s+/).filter(Boolean).join('\u0001');
-      // Palabras candidatas para el fuzzy: nombre+marca+categoría (no descripción, para
-      // acotar ruido y costo). Sólo palabras de >2 letras.
+      // Palabras candidatas para el fuzzy: nombre+marca+categoría+variantes (no
+      // descripción, para acotar ruido y costo). Sólo palabras de >2 letras.
       const wordSet = new Set();
-      (name + ' ' + marca + ' ' + cat).split(/\s+/).forEach(w => { if (w.length > 2) wordSet.add(w); });
-      m.set(i.id, { name, nameWordStart, marca, cat, desc, words: [...wordSet], hasImg: !!i.imagen_url, inStock: Number(i.stock) > 0 });
+      (name + ' ' + marca + ' ' + cat + ' ' + vars).split(/\s+/).forEach(w => { if (w.length > 2) wordSet.add(w); });
+      m.set(i.id, { name, nameWordStart, marca, cat, desc, vars, words: [...wordSet], hasImg: !!i.imagen_url, inStock: Number(i.stock) > 0 });
     }
     return m;
   }, [items]);
@@ -4870,7 +4874,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       if (tokens.length) {
         const doc = searchDocs.get(i.id);
         if (!doc) continue;
-        const hay = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc}`;
+        const hay = `${doc.name} ${doc.marca} ${doc.cat} ${doc.desc} ${doc.vars}`;
         let all = true;
         for (let t = 0; t < tokens.length; t++) {
           if (!tokenMatchesDoc(tokens[t], hay, doc.words)) { all = false; break; }
