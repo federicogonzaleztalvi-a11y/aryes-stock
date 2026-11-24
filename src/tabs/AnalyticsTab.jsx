@@ -117,6 +117,9 @@ export default function AnalyticsTab() {
             <Card label="Productos vistos" value={data.resumen.productosVistos ?? 0} accent={T.blue} />
             <Card label="Agregados" value={data.resumen.productosAgregados ?? 0} accent={T.green} sub="al carrito" />
             <Card label="Búsquedas" value={data.resumen.busquedas ?? 0} accent={T.amber} />
+            {(data.resumen.busquedasSin ?? 0) > 0 && (
+              <Card label="Sin resultado" value={data.resumen.busquedasSin} accent="#dc2626" sub="buscaron y no estaba" />
+            )}
           </div>
 
           {/* Embudo de pedido */}
@@ -148,6 +151,36 @@ export default function AnalyticsTab() {
               });
             })()}
           </div>
+
+          {/* Búsquedas sin resultados — huecos de catálogo (señal de plata estilo Shopify).
+             Lo que tus clientes buscaron y NO encontraron: mercadería que podrías
+             estar vendiendo. Sólo se muestra el panel si hay algo para mostrar. */}
+          {(data.busquedasSinResultado || []).length > 0 && (() => {
+            const rows = data.busquedasSinResultado;
+            const max = Math.max(1, ...rows.map(r => r.v));
+            return (
+              <div style={{ background: T.card, padding: '18px 20px', borderRadius: 14, border: '1px solid #fecaca', boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Búsquedas sin resultado</div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#b91c1c', background: '#fef2f2', borderRadius: 5, padding: '2px 7px' }}>hueco de catálogo</span>
+                </div>
+                <div style={{ fontSize: 12, color: T.textSm, marginBottom: 14 }}>
+                  Lo que tus clientes buscaron en el portal y no encontraron. Es mercadería que podrías estar vendiendo: sumala al catálogo o ajustá el nombre si ya la tenés con otro.
+                </div>
+                {rows.map((r, i) => (
+                  <div key={i} style={{ marginBottom: 11 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: T.text, marginBottom: 4 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '74%' }}>“{r.k}”</span>
+                      <span style={{ fontWeight: 700, color: T.textSm }}>{r.v} {r.v === 1 ? 'vez' : 'veces'}</span>
+                    </div>
+                    <div style={{ height: 7, background: '#fef2f2', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: (r.v / max * 100) + '%', height: '100%', background: '#dc2626', borderRadius: 4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* ¿Vende el vendedor digital? — adds empujados por recomendaciones */}
           {(() => {

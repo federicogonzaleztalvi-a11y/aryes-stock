@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     if (r.ok) rows = await r.json();
     else if (r.status === 404 || r.status === 400) {
       // Tabla aún no creada → devolvemos vacío con una pista para el panel.
-      return res.status(200).json({ pendingSetup: true, resumen: {}, porDia: [], topPaginas: [], topProductos: [], topAgregados: [], busquedas: [], embudo: {}, tiempos: {}, recomendaciones: { porOrigen: [], totalAdds: 0, recoAdds: 0, recoRevenue: 0, recoSharePct: 0, recoRevenuePedido: 0, recoAddsPedido: 0, pedidosConReco: 0 } });
+      return res.status(200).json({ pendingSetup: true, resumen: {}, porDia: [], topPaginas: [], topProductos: [], topAgregados: [], busquedas: [], busquedasSinResultado: [], embudo: {}, tiempos: {}, recomendaciones: { porOrigen: [], totalAdds: 0, recoAdds: 0, recoRevenue: 0, recoSharePct: 0, recoRevenuePedido: 0, recoAddsPedido: 0, pedidosConReco: 0 } });
     }
   } catch {
     return res.status(502).json({ error: 'Error al leer analítica' });
@@ -93,6 +93,8 @@ export default async function handler(req, res) {
   const prodAgregados = {};      // producto -> count
   const addsPorOrigen = {};      // origen -> { adds, revenue }  (¿vende el vendedor digital?)
   const searches = {};           // q -> count
+  const searchesSin = {};        // q -> count de búsquedas que NO dieron resultado (hueco de catálogo)
+  let busquedasSinTotal = 0;     // total de búsquedas con 0 resultados
   const sessionSpan = {};        // sid -> { min, max }
   const perSession = {};         // sid -> [ {event, path, t} ]
 
@@ -130,7 +132,18 @@ export default async function handler(req, res) {
     }
     if (e.event === 'busqueda') {
       const q = ((e.props && e.props.q) || '').toString().trim().toLowerCase();
-      if (q) searches[q] = (searches[q] || 0) + 1;
+      if (q) {
+        searches[q] = (searches[q] || 0) + 1;
+        // Búsqueda sin resultados = el cliente buscó algo que NO está en el
+        // catálogo. Es la señal de plata más directa (hueco de catálogo).
+        // Sólo cuenta cuando el evento trae resultados === 0 explícito;
+        // eventos viejos sin ese campo no se asumen como cero.
+        const res = e.props && e.props.resultados;
+        if (res === 0 || res === '0') {
+          searchesSin[q] = (searchesSin[q] || 0) + 1;
+          busquedasSinTotal++;
+        }
+      }
     }
 
     const span = sessionSpan[sid] || { min: t, max: t };
@@ -234,6 +247,7 @@ export default async function handler(req, res) {
       productosAgregados: evCount['producto_agregado'] || 0,
       productosVistos: evCount['producto_visto'] || 0,
       busquedas: evCount['busqueda'] || 0,
+      busquedasSin: busquedasSinTotal,
       duracionMediaSeg: avgSession,
     },
     porDia,
@@ -241,6 +255,7 @@ export default async function handler(req, res) {
     topProductos: sortTop(prodVistos),
     topAgregados: sortTop(prodAgregados),
     busquedas: sortTop(searches),
+    busquedasSinResultado: sortTop(searchesSin),
     embudo,
     recomendaciones,
   });
