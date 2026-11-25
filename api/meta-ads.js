@@ -200,20 +200,36 @@ function pctChange(cur, prev) {
   return ((cur - prev) / Math.abs(prev)) * 100;
 }
 
-// Arma el paquete completo de métricas de la cuenta activa.
-async function buildMetrics(cfg, range) {
-  const actId = cfg.id || ('act_' + cfg.account_id);
-  const token = cfg.token;
+const FIXED_RANGES = ['last_7d', 'last_14d', 'last_30d', 'last_90d'];
+const isLongRange = (range) => range === 'this_year' || range === 'maximum';
 
-  // 1) Total de la cuenta (una fila agregada).
+// Deriva CTR/CPC/CPM/CPA/ROAS a partir de valores crudos sumados (para agregados).
+function deriveFromRaw(s, resultLabel) {
+  const ctr = s.impressions ? (s.clicks / s.impressions) * 100 : 0;
+  const cpc = s.clicks ? s.spend / s.clicks : 0;
+  const cpm = s.impressions ? (s.spend / s.impressions) * 1000 : 0;
+  const cpa = s.results ? s.spend / s.results : null;
+  const roas = (s.convValue && s.spend) ? s.convValue / s.spend : null;
+  return { ...s, ctr, cpc, cpm, cpa, roas, resultLabel };
+}
+function sumRaw(rows) {
+  const s = { spend: 0, impressions: 0, clicks: 0, reach: 0, results: 0, convValue: 0 };
+  for (const r of rows) {
+    if (!r) continue;
+    s.spend += r.spend || 0; s.impressions += r.impressions || 0; s.clicks += r.clicks || 0;
+    s.reach += r.reach || 0; s.results += r.results || 0; s.convValue += r.convValue || 0;
+  }
+  return s;
+}
+
+// Métricas completas de UNA cuenta publicitaria.
+async function singleMetrics(actId, token, currency, accountName, range) {
+  // 1) Total de la cuenta.
   const totalRes = await fetchInsights(actId, token, { level: 'account', range });
   if (totalRes.error) return { error: totalRes.error };
   const total = totalRes.rows[0] ? extractRow(totalRes.rows[0]) : extractRow({});
 
-  // 1b) Período INMEDIATAMENTE anterior (mismo largo) → para el "vs período anterior".
-  //     Solo tiene sentido en rangos de largo fijo; en "este año"/"máximo" no hay
-  //     período previo comparable, así que lo omitimos y el delta queda null.
-  const FIXED_RANGES = ['last_7d', 'last_14d', 'last_30d', 'last_90d'];
+  // 1b) Período inmediatamente anterior (solo rangos de largo fijo).
   const prevRes = FIXED_RANGES.includes(range)
     ? await fetchInsights(actId, token, { level: 'account', timeRange: previousWindow(range) })
     : { rows: [] };
@@ -226,28 +242,18 @@ async function buildMetrics(cfg, range) {
     ctr:     pctChange(total.ctr,     prev.ctr),
     reach:   pctChange(total.reach,   prev.reach),
   } : null;
-  total.prev = prev ? { spend: prev.spend, results: prev.results, cpa: prev.cpa, roas: prev.roas, ctr: prev.ctr } : null;
 
-  // 2) Serie para la tendencia. Diaria en rangos cortos; mensual en los largos
-  //    ("este año"/"máximo"), si no traería cientos de barras ilegibles.
-  const longRange = (range === 'this_year' || range === 'maximum');
+  // 2) Serie para la tendencia (mensual en rangos largos).
+  const longRange = isLongRange(range);
   const trendRes = await fetchInsights(actId, token, { level: 'account', range, timeIncrement: longRange ? 'monthly' : 1 });
   const trend = (trendRes.rows || []).map(r => {
     const e = extractRow(r);
     return { date: r.date_start, spend: e.spend, results: e.results, roas: e.roas };
   });
-  const trendUnit = longRange ? 'mes' : 'día';
 
   // 3) Por anuncio, para mejores/peores.
-  const adsRes = await fetchInsights(actId, token, {
-    level: 'ad', range, limit: 100, extraFields: 'ad_id,ad_name',
-  });
-  const ads = (adsRes.rows || []).map(r => {
-    const e = extractRow(r);
-    return { id: r.ad_id, name: r.ad_name || 'Anuncio', ...e };
-  }).filter(a => a.spend > 0);
-
-  // Mejores = mejor ROAS (o menor CPA si no hay ROAS); peores = lo contrario. Con gasto real.
+  const adsRes = await fetchInsights(actId, token, { level: 'ad', range, limit: 100, extraFields: 'ad_id,ad_name' });
+  const ads = (adsRes.rows || []).map(r => ({ id: r.ad_id, name: r.ad_name || 'Anuncio', ...extractRow(r) })).filter(a => a.spend > 0);
   const hasRoas = ads.some(a => a.roas != null);
   const score = (a) => hasRoas ? (a.roas ?? -1) : (a.cpa != null ? -a.cpa : -Infinity);
   const sorted = [...ads].sort((x, y) => score(y) - score(x));
@@ -255,17 +261,86 @@ async function buildMetrics(cfg, range) {
   const worst = sorted.slice(-3).reverse().filter(a => !best.includes(a));
 
   return {
-    currency: cfg.currency || 'USD',
-    account_name: cfg.account_name || null,
-    range,
-    total,
-    trend,
-    trendUnit,
-    ads_count: ads.length,
-    best,
-    worst,
-    sortedBy: hasRoas ? 'roas' : 'cpa',
+    currency: currency || 'USD', account_name: accountName || null, range,
+    total, trend, trendUnit: longRange ? 'mes' : 'día',
+    ads_count: ads.length, best, worst, sortedBy: hasRoas ? 'roas' : 'cpa',
   };
+}
+
+// Métricas sumadas de TODAS las cuentas que comparten la misma moneda.
+async function aggregateMetrics(cfg, accts, range) {
+  const token = cfg.token;
+  const baseCur = cfg.currency || accts[0]?.currency || 'USD';
+  const list = accts.filter(a => (a.currency || baseCur) === baseCur);
+  const use = list.length ? list : [accts[0]];
+  const longRange = isLongRange(range);
+
+  const per = await Promise.all(use.map(async (a) => {
+    const actId = a.id || ('act_' + a.account_id);
+    const [totRes, trendRes, adsRes, prevRes] = await Promise.all([
+      fetchInsights(actId, token, { level: 'account', range }),
+      fetchInsights(actId, token, { level: 'account', range, timeIncrement: longRange ? 'monthly' : 1 }),
+      fetchInsights(actId, token, { level: 'ad', range, limit: 50, extraFields: 'ad_id,ad_name' }),
+      FIXED_RANGES.includes(range) ? fetchInsights(actId, token, { level: 'account', timeRange: previousWindow(range) }) : Promise.resolve({ rows: [] }),
+    ]);
+    return {
+      total: totRes.rows?.[0] ? extractRow(totRes.rows[0]) : extractRow({}),
+      prev: prevRes.rows?.[0] ? extractRow(prevRes.rows[0]) : null,
+      trend: (trendRes.rows || []).map(r => ({ date: r.date_start, e: extractRow(r) })),
+      ads: (adsRes.rows || []).map(r => ({ id: r.ad_id, name: r.ad_name || 'Anuncio', ...extractRow(r) })).filter(x => x.spend > 0),
+    };
+  }));
+
+  const labels = [...new Set(per.map(p => p.total.resultLabel).filter(Boolean))];
+  const resultLabel = labels.length === 1 ? labels[0] : 'Resultados';
+  const total = deriveFromRaw(sumRaw(per.map(p => p.total)), resultLabel);
+
+  if (per.some(p => p.prev)) {
+    const prevAgg = deriveFromRaw(sumRaw(per.map(p => p.prev)), resultLabel);
+    total.delta = {
+      spend:   pctChange(total.spend,   prevAgg.spend),
+      results: pctChange(total.results, prevAgg.results),
+      cpa:     pctChange(total.cpa,     prevAgg.cpa),
+      roas:    pctChange(total.roas,    prevAgg.roas),
+      ctr:     pctChange(total.ctr,     prevAgg.ctr),
+      reach:   pctChange(total.reach,   prevAgg.reach),
+    };
+  } else total.delta = null;
+
+  // Tendencia: sumar por fecha entre cuentas.
+  const tMap = new Map();
+  for (const p of per) for (const t of p.trend) {
+    const c = tMap.get(t.date) || { date: t.date, spend: 0, results: 0 };
+    c.spend += t.e.spend || 0; c.results += t.e.results || 0;
+    tMap.set(t.date, c);
+  }
+  const trend = [...tMap.values()].sort((x, y) => (x.date < y.date ? -1 : 1));
+
+  // Anuncios: juntar todos y rankear.
+  const ads = per.flatMap(p => p.ads);
+  const hasRoas = ads.some(a => a.roas != null);
+  const score = (a) => hasRoas ? (a.roas ?? -1) : (a.cpa != null ? -a.cpa : -Infinity);
+  const sorted = [...ads].sort((x, y) => score(y) - score(x));
+  const best = sorted.slice(0, 3);
+  const worst = sorted.slice(-3).reverse().filter(a => !best.includes(a));
+
+  return {
+    currency: baseCur, account_name: `Todas las cuentas (${use.length})`, range,
+    total, trend, trendUnit: longRange ? 'mes' : 'día',
+    ads_count: ads.length, best, worst, sortedBy: hasRoas ? 'roas' : 'cpa', aggregated: true,
+  };
+}
+
+// Despacha: una cuenta puntual, todas sumadas, o la cuenta activa (default).
+async function buildMetrics(cfg, range, sel) {
+  const token = cfg.token;
+  const accts = Array.isArray(cfg.accounts) ? cfg.accounts : [];
+  if (sel && sel !== 'all') {
+    const a = accts.find(x => x.account_id === sel || x.id === sel || ('act_' + x.account_id) === sel);
+    if (a) return singleMetrics(a.id || ('act_' + a.account_id), token, a.currency, a.name, range);
+  }
+  if (sel === 'all' && accts.length > 1) return aggregateMetrics(cfg, accts, range);
+  return singleMetrics(cfg.id || ('act_' + cfg.account_id), token, cfg.currency, cfg.account_name, range);
 }
 
 // ── Insights de Claude sobre las métricas (panel de sugerencias, NO chat) ──
@@ -405,11 +480,14 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, connected: false });
   }
 
-  // ── GET metrics: métricas calculadas de la cuenta activa ──
+  // Cuenta pedida: '' (activa), un account_id puntual, o 'all' (todas sumadas).
+  const account = String(req.query?.account || '');
+
+  // ── GET metrics: métricas de la cuenta pedida (o todas) ──
   if (action === 'metrics' && req.method === 'GET') {
     const cfg = await getConfig(org);
     if (!cfg?.token) return res.status(400).json({ error: 'Meta Ads no está conectado.' });
-    const m = await buildMetrics(cfg, range);
+    const m = await buildMetrics(cfg, range, account);
     if (m.error) return res.status(502).json({ error: 'Meta devolvió un error al leer las métricas: ' + m.error });
     return res.status(200).json(m);
   }
@@ -418,9 +496,9 @@ export default async function handler(req, res) {
   if (action === 'advice' && req.method === 'GET') {
     const cfg = await getConfig(org);
     if (!cfg?.token) return res.status(400).json({ error: 'Meta Ads no está conectado.' });
-    const m = await buildMetrics(cfg, range);
+    const m = await buildMetrics(cfg, range, account);
     if (m.error) return res.status(502).json({ error: 'No se pudieron leer las métricas para analizar.' });
-    const a = await getAdvice(m, cfg.currency || 'USD');
+    const a = await getAdvice(m, m.currency || cfg.currency || 'USD');
     if (a.error) return res.status(200).json({ suggestions: [], warning: a.error });
     return res.status(200).json({ suggestions: a.suggestions });
   }

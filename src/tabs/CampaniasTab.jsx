@@ -254,6 +254,7 @@ const Card = ({ children, pad = '16px 18px', style }) => (
 export default function CampaniasTab() {
   const [status, setStatus] = React.useState(null);
   const [range, setRange] = React.useState('last_30d');
+  const [account, setAccount] = React.useState(null);   // 'all' | account_id | '' (activa)
   const [metrics, setMetrics] = React.useState(null);
   const [advice, setAdvice] = React.useState(null);
   const [loadingM, setLoadingM] = React.useState(false);
@@ -269,13 +270,26 @@ export default function CampaniasTab() {
     })();
   }, []);
 
+  // Cuenta por defecto: si hay varias de la misma moneda → "Todas"; si no, la activa.
   React.useEffect(() => {
     if (!status?.connected) return;
+    const accts = status.accounts || [];
+    if (accts.length > 1) {
+      const sameCur = accts.every(a => (a.currency || '') === (accts[0].currency || ''));
+      setAccount(sameCur ? 'all' : (status.account_id || accts[0].account_id));
+    } else {
+      setAccount(status.account_id || accts[0]?.account_id || '');
+    }
+  }, [status]);
+
+  React.useEffect(() => {
+    if (!status?.connected || account == null) return;
     let alive = true;
+    const qs = `range=${range}&account=${encodeURIComponent(account)}`;
     setLoadingM(true); setLoadingA(true); setErr(''); setAdvice(null);
     (async () => {
       try {
-        const r = await fetch(`/api/meta-ads?action=metrics&range=${range}`, { headers: getAuthHeaders() });
+        const r = await fetch(`/api/meta-ads?action=metrics&${qs}`, { headers: getAuthHeaders() });
         const d = await r.json();
         if (!alive) return;
         if (!r.ok) { setErr(d?.error || 'No se pudieron cargar las métricas.'); setMetrics(null); }
@@ -285,14 +299,14 @@ export default function CampaniasTab() {
     })();
     (async () => {
       try {
-        const r = await fetch(`/api/meta-ads?action=advice&range=${range}`, { headers: getAuthHeaders() });
+        const r = await fetch(`/api/meta-ads?action=advice&${qs}`, { headers: getAuthHeaders() });
         const d = r.ok ? await r.json() : {};
         if (alive) setAdvice(d);
       } catch { if (alive) setAdvice({ warning: 'No se pudo generar el análisis.' }); }
       if (alive) setLoadingA(false);
     })();
     return () => { alive = false; };
-  }, [status?.connected, range]);
+  }, [status?.connected, range, account]);
 
   const goIntegraciones = () => window.dispatchEvent(new CustomEvent('pazque-nav', { detail: { tab: 'integraciones' } }));
 
@@ -319,6 +333,9 @@ export default function CampaniasTab() {
   const cur = metrics?.currency || status.currency;
   const primary = t.roas != null ? 'roas' : t.results ? 'results' : 'reach';
   const noData = metrics && metrics.ads_count === 0 && !(t.spend > 0);
+  const accts = status.accounts || [];
+  const multiAcct = accts.length > 1;
+  const sameCur = multiAcct && accts.every(a => (a.currency || '') === (accts[0].currency || ''));
 
   return (
     <div style={{ fontFamily: C.sans, background: C.bg, minHeight: '100%', padding: '22px 24px' }}>
@@ -328,9 +345,25 @@ export default function CampaniasTab() {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 780, color: C.ink, margin: 0, letterSpacing: '-0.02em' }}>Campañas Meta</h1>
-            <div style={{ fontSize: 12.5, color: C.sub, marginTop: 3 }}>
-              {status.account_name || 'Cuenta publicitaria'}{cur ? ` · ${cur}` : ''}
-            </div>
+            {multiAcct ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 }}>
+                <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <select value={account || ''} onChange={e => setAccount(e.target.value)}
+                    style={{ appearance: 'none', WebkitAppearance: 'none', padding: '6px 28px 6px 11px', background: C.card,
+                      border: `1px solid ${C.line}`, borderRadius: 9, fontSize: 12.5, fontWeight: 600, color: C.ink,
+                      cursor: 'pointer', fontFamily: C.sans, maxWidth: 260 }}>
+                    {sameCur && <option value="all">Todas las cuentas</option>}
+                    {accts.map(a => <option key={a.account_id} value={a.account_id}>{a.name}{!sameCur && a.currency ? ` · ${a.currency}` : ''}</option>)}
+                  </select>
+                  <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', color: C.faint, fontSize: 10 }}>▼</span>
+                </div>
+                {cur && <span style={{ fontSize: 12, color: C.faint }}>{cur}</span>}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12.5, color: C.sub, marginTop: 3 }}>
+                {status.account_name || 'Cuenta publicitaria'}{cur ? ` · ${cur}` : ''}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 2, background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: 3, flexWrap: 'wrap' }}>
             {RANGES.map(r => (
