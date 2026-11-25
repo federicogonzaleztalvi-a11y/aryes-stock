@@ -4446,6 +4446,45 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   // corta eso caía al final y el cliente "entraba por abajo".
   useEffect(() => { if (typeof window !== 'undefined') window.scrollTo(0, 0); }, [detalle, vista, catFil, subFil, verTodoCatalogo]);
 
+  // ── Sobrevivir a un refresh: NO perder dónde estabas ───────────────────────
+  // Antes, al recargar la página (o volver a la pestaña), vista/categoría/ficha
+  // arrancaban en el default ('catalogo') y el cliente "volvía al inicio" aunque
+  // estuviera mirando un producto o una categoría. Guardamos la navegación en
+  // sessionStorage (por org+cliente, dura lo que dura la pestaña) y la ficha de
+  // producto ya vive en la URL (?p=<id>). Al cargar el catálogo, restauramos ambos.
+  const navKey = `pz-nav:${ORG}:${session?.clienteId || 'pub'}`;
+  const navRestored = useRef(false);
+  // Guardar la navegación, pero SOLO después de haber restaurado. Si guardáramos
+  // al montar (cuando vista/categoría están en su default), pisaríamos lo guardado
+  // antes de leerlo y el refresh igual "volvería al inicio".
+  useEffect(() => {
+    if (!navRestored.current) return;
+    try { sessionStorage.setItem(navKey, JSON.stringify({ vista, catFil, subFil, verTodoCatalogo })); } catch { /* storage bloqueado */ }
+  }, [navKey, vista, catFil, subFil, verTodoCatalogo]);
+
+  useEffect(() => {
+    if (navRestored.current || !items.length) return;   // esperar a que cargue el catálogo
+    navRestored.current = true;
+    try {
+      // 1) Restaurar vista/categoría de esta pestaña.
+      const raw = sessionStorage.getItem(navKey);
+      if (raw) {
+        const n = JSON.parse(raw);
+        const soloConSesion = ['habituales', 'historial', 'listas'];
+        if (n.vista && (!soloConSesion.includes(n.vista) || session?.clienteId)) setVista(n.vista);
+        if (typeof n.catFil === 'string') setCatFil(n.catFil);
+        if (typeof n.subFil === 'string') setSubFil(n.subFil);
+        if (typeof n.verTodoCatalogo === 'boolean') setVerTodoCatalogo(n.verTodoCatalogo);
+      }
+      // 2) Restaurar la ficha de producto desde la URL (?p=<id>), si estaba abierta.
+      const pid = new URLSearchParams(window.location.search).get('p');
+      if (pid) {
+        const prod = items.find(it => String(it.id) === String(pid));
+        if (prod) { pdpUrlRef.current = true; setDetalle(prod); }  // ya está en la URL: no re-pushear
+      }
+    } catch { /* noop */ }
+  }, [items, navKey, session?.clienteId]);
+
   useEffect(() => {
     if (!reorderMsg) return;
     const t = setTimeout(() => setReorderMsg(''), 4000);
