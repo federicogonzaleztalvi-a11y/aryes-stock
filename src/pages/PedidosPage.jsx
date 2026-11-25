@@ -121,10 +121,11 @@ function readCatCache(cli) {
     return (c && Array.isArray(c.items) && c.items.length) ? c : null;
   } catch { return null; }
 }
-function writeCatCache(cli, items, cats, arbol) {
+function writeCatCache(cli, items, cats, arbol, brand, currency) {
   try {
     localStorage.setItem(catCacheKey(cli), JSON.stringify({
-      items, cats: cats || [], arbol: arbol || [], ts: Date.now(),
+      items, cats: cats || [], arbol: arbol || [],
+      brand: brand || null, currency: currency || null, ts: Date.now(),
     }));
   } catch { /* quota excedida / modo privado → se ignora */ }
 }
@@ -4739,6 +4740,13 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       setItems(prev => (prev && prev.length) ? prev : cached.items);
       setCats(prev => (prev && prev.length > 1) ? prev : ['Todos', ...(cached.cats || [])]);
       setCatArbol(prev => (prev && prev.length) ? prev : (Array.isArray(cached.arbol) ? cached.arbol : []));
+      // Branding (logo + nombre) y moneda: también al instante, para que el logo
+      // real aparezca de entrada en vez del cuadrito de fallback que salta después.
+      if (cached.brand) {
+        setBrandCfg(prev => prev || cached.brand);
+        if (cached.brand.name) setBrandNombre(prev => prev || cached.brand.name);
+      }
+      if (cached.currency) { try { fmt.setCurrency(cached.currency); } catch { /* noop */ } }
     }
     try {
       const r = await fetch(`${window.location.origin}/api/catalogo?org=${ORG}&cliente=${ses.clienteId}`,
@@ -4794,7 +4802,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         setItems(prods);
         setCats(['Todos', ...(d.categorias || [])]);
         setCatArbol(Array.isArray(d.categoriasArbol) ? d.categoriasArbol : []);
-        writeCatCache(ses.clienteId, prods, d.categorias, d.categoriasArbol);
+        writeCatCache(ses.clienteId, prods, d.categorias, d.categoriasArbol, d.portalCfg, d.currencySymbol);
         if (d.horarioDesde || d.horarioHasta) setHorarioInfo({ desde: d.horarioDesde, hasta: d.horarioHasta });
         try { window.posthog?.identify(ses.clienteId, { nombre: ses.nombre, org: ORG }); } catch {}
         trackWeb('catalogo_visto', { productos: prods.length }, 'catalogo');
@@ -4845,7 +4853,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
           setItems(d.items);
           setCats(['Todos', ...(d.categorias || [])]);
           setCatArbol(Array.isArray(d.categoriasArbol) ? d.categoriasArbol : []);
-          writeCatCache(null, d.items, d.categorias, d.categoriasArbol);
+          writeCatCache(null, d.items, d.categorias, d.categoriasArbol, d.portalCfg, d.currencySymbol);
           setPublicMode(true);
           try { trackWeb('catalogo_publico_visto', { productos: d.items.length }, 'catalogo'); } catch {}
         }
