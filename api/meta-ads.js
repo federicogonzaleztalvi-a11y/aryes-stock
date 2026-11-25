@@ -309,7 +309,7 @@ Reglas:
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-5-5',
         max_tokens: 1000,
         system,
         messages: [{ role: 'user', content: 'Métricas:\n' + JSON.stringify(compact, null, 2) }],
