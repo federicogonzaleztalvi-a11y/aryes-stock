@@ -2134,7 +2134,84 @@ export default function ConfigInline({
           {settingsTab==="datos" && (
             <div>
               <h3 style={{fontSize:15,fontWeight:700,marginBottom:4}}>Exportar datos</h3>
-              <p style={{fontSize:13,color:'#6a6a68',marginBottom:16}}>Descargá todos los datos de tu organización en formato CSV. Incluye productos, clientes, ventas, facturas, cobros, rutas y más.</p>
+              <p style={{fontSize:13,color:'#6a6a68',marginBottom:16}}>Descargá TODA tu información para tenerla fuera de Pazque cuando quieras. Tu data es tuya.</p>
+              <button
+                id="exportar-completo"
+                onClick={async()=>{
+                  const btn=document.getElementById('exportar-completo');
+                  const RESET='📦 Exportar todo (Excel + fotos)';
+                  btn.disabled=true; btn.textContent='Preparando...';
+                  try{
+                    const SB=import.meta.env.VITE_SUPABASE_URL;
+                    const h=getAuthHeaders({Accept:'application/json'});
+                    const org=getOrgId();
+                    const fecha=new Date().toISOString().slice(0,10);
+                    const tablas=[
+                      ['products','Productos'],['clients','Clientes'],['suppliers','Proveedores'],
+                      ['ventas','Ventas'],['invoices','Facturas'],['collections','Cobros'],
+                      ['orders','Pedidos'],['rutas','Rutas'],['stock_movements','Movimientos stock'],
+                      ['recepciones','Recepciones'],['devoluciones','Devoluciones'],['lotes','Lotes'],
+                      ['price_lists','Listas de precios'],['price_list_items','Precios por cliente'],['conteos','Conteos'],
+                    ];
+                    const results={};
+                    for(const [t] of tablas){
+                      const r=await fetch(SB+'/rest/v1/'+t+'?org_id=eq.'+encodeURIComponent(org)+'&limit=10000',{headers:h});
+                      if(r.ok) results[t]=await r.json();
+                    }
+                    // Excel con una pestaña por tabla
+                    const ExcelJS=(await import('exceljs')).default;
+                    const wb=new ExcelJS.Workbook();
+                    for(const [t,label] of tablas){
+                      const data=results[t]; if(!data||!data.length) continue;
+                      const ws=wb.addWorksheet(label.slice(0,31));
+                      const cols=Object.keys(data[0]);
+                      ws.columns=cols.map(c=>({header:c,key:c,width:Math.min(42,Math.max(12,c.length+3))}));
+                      data.forEach(row=>ws.addRow(cols.reduce((o,c)=>{let v=row[c]; if(v&&typeof v==='object') v=JSON.stringify(v); o[c]=(v==null?'':v); return o;},{})));
+                      const hr=ws.getRow(1);
+                      hr.font={bold:true,color:{argb:'FFFFFFFF'}};
+                      hr.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF059669'}};
+                      hr.alignment={vertical:'middle'};
+                      ws.views=[{state:'frozen',ySplit:1}];
+                    }
+                    const xlsxBuf=await wb.xlsx.writeBuffer();
+                    // ZIP: Excel + carpeta de fotos
+                    const JSZip=(await import('jszip')).default;
+                    const zip=new JSZip();
+                    zip.file('pazque-datos-'+fecha+'.xlsx', xlsxBuf);
+                    const fotosDir=zip.folder('fotos');
+                    const prods=(results.products||[]).filter(p=>p.imagen_url);
+                    const sanitize=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60)||'producto';
+                    let done=0; const total=prods.length;
+                    const bajarFoto=async(p)=>{
+                      try{
+                        const r=await fetch(p.imagen_url);
+                        if(r.ok){
+                          const blob=await r.blob();
+                          const ext=((p.imagen_url.split('?')[0].match(/\.(jpe?g|png|webp|gif)$/i)||[])[1]||'jpg').toLowerCase();
+                          const base=sanitize((p.codigo?p.codigo+'-':'')+(p.name||p.nombre||''));
+                          fotosDir.file(base+'-'+String(p.uuid||'').slice(0,8)+'.'+ext, blob);
+                        }
+                      }catch(_){}
+                      finally{ done++; btn.textContent='Descargando fotos '+done+'/'+total+'...'; }
+                    };
+                    // Descarga en paralelo con tope de 6 a la vez
+                    const cola=[...prods];
+                    await Promise.all(Array.from({length:6},async()=>{ while(cola.length) await bajarFoto(cola.shift()); }));
+                    btn.textContent='Comprimiendo...';
+                    const zipBlob=await zip.generateAsync({type:'blob'});
+                    const url=URL.createObjectURL(zipBlob);
+                    const a=document.createElement('a'); a.href=url; a.download='pazque-export-completo-'+fecha+'.zip';
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                    btn.textContent='Descarga lista ✓'; setTimeout(()=>{btn.textContent=RESET;btn.disabled=false;},3000);
+                  }catch(e){
+                    console.error('Export completo error:',e);
+                    btn.textContent='Error al exportar'; setTimeout(()=>{btn.textContent=RESET;btn.disabled=false;},3000);
+                  }
+                }}
+                style={{padding:'11px 26px',background:'#059669',color:'#fff',border:'none',borderRadius:8,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:10}}
+              >📦 Exportar todo (Excel + fotos)</button>
+              <p style={{fontSize:12,color:'#6a6a68',margin:'0 0 20px'}}>Un ZIP con un <b>Excel de una pestaña por tabla</b> (productos, clientes, precios, pedidos…) y una carpeta <b>fotos/</b> con todas las imágenes de productos. Es el respaldo completo, listo para llevar a otro lado.</p>
+              <div style={{fontSize:12,fontWeight:700,color:'#9a9a98',marginBottom:6}}>O solo los datos, sin fotos:</div>
               <button
                 id="exportar-datos"
                 onClick={async()=>{
@@ -2164,20 +2241,20 @@ export default function ConfigInline({
                         allContent+='\n\n===== '+name.toUpperCase()+' ('+data.length+' registros) =====\n'+csv;
                       }
                     }
-                    if(!allContent){btn.textContent='Sin datos para exportar';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},2000);return;}
+                    if(!allContent){btn.textContent='Sin datos para exportar';setTimeout(()=>{btn.textContent='Descargar datos (CSV)';btn.disabled=false;},2000);return;}
                     const blob=new Blob([allContent],{type:'text/csv;charset=utf-8;'});
                     const url=URL.createObjectURL(blob);
                     const a=document.createElement('a');
                     a.href=url;a.download='pazque-export-'+new Date().toISOString().slice(0,10)+'.csv';
                     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-                    btn.textContent='Descarga lista ✓';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},3000);
+                    btn.textContent='Descarga lista ✓';setTimeout(()=>{btn.textContent='Descargar datos (CSV)';btn.disabled=false;},3000);
                   }catch(e){
                     console.error('Export error:',e);
-                    btn.textContent='Error al exportar';setTimeout(()=>{btn.textContent='Exportar todos mis datos';btn.disabled=false;},3000);
+                    btn.textContent='Error al exportar';setTimeout(()=>{btn.textContent='Descargar datos (CSV)';btn.disabled=false;},3000);
                   }
                 }}
                 style={{padding:'10px 24px',background:'#059669',color:'#fff',border:'none',borderRadius:6,fontSize:13,fontWeight:600,cursor:'pointer'}}
-              >Exportar todos mis datos</button>
+              >Descargar datos (CSV)</button>
               <p style={{fontSize:11,color:'#9a9a98',marginTop:12}}>El archivo incluye todos tus datos en formato CSV. Podés abrirlo en Excel, Google Sheets o cualquier herramienta de análisis.</p>
 
               <div style={{marginTop:32,paddingTop:20,borderTop:'1px solid #e2e2de'}}>
