@@ -321,6 +321,7 @@ export interface Cliente {
   diasRecepcion?:   string;           // días que recibe mercadería (ej "Lun, Mié, Vie")
   notas:            string;
   creado:           string;
+  codigo?:          string;           // código interno del cliente (único por org)
 }
 
 // ── Facturación (CFE / Cobro) ─────────────────────────────────────────────────

@@ -481,15 +481,15 @@ export default function PreciosListasTab() {
             <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>El cliente verá sus precios al entrar al portal B2B.</p>
           </div>
           <input
-            placeholder="🔍 Buscar cliente por nombre o teléfono..."
+            placeholder="🔍 Buscar cliente por nombre, código o teléfono..."
             value={busqCli}
             onChange={e => setBusqCli(e.target.value)}
-            style={{ flex: '0 1 340px', minWidth: 200, padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 20, fontSize: 13, outline: 'none' }}
+            style={{ flex: '0 1 360px', minWidth: 200, padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 20, fontSize: 13, outline: 'none' }}
           />
         </div>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0ec', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ background: '#f9fafb' }}><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Cliente</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Teléfono</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Lista asignada</th></tr></thead>
+            <thead><tr style={{ background: '#f9fafb' }}><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Cliente</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Código</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Teléfono</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Lista asignada</th></tr></thead>
             <tbody>
               {(() => {
                 const q = busqCli.trim().toLowerCase();
@@ -498,12 +498,13 @@ export default function PreciosListasTab() {
                     if (!q) return true;
                     const nm = (c.name || c.nombre || '').toLowerCase();
                     const ph = String(c.phone || c.telefono || '').toLowerCase();
-                    return nm.includes(q) || ph.includes(q);
+                    const cod = (c.codigo || '').toLowerCase();
+                    return nm.includes(q) || ph.includes(q) || cod.includes(q);
                   })
                   .slice()
                   .sort((a, b) => (a.name || a.nombre || '').localeCompare(b.name || b.nombre || '', 'es', { sensitivity: 'base' }));
                 if (filtrados.length === 0) return (
-                  <tr><td colSpan={3} style={{ padding: '22px 16px', textAlign: 'center', fontSize: 13, color: '#9ca3af' }}>
+                  <tr><td colSpan={4} style={{ padding: '22px 16px', textAlign: 'center', fontSize: 13, color: '#9ca3af' }}>
                     {q ? <>No se encontró ningún cliente para “{busqCli}”.</> : 'Todavía no hay clientes.'}
                   </td></tr>
                 );
@@ -515,6 +516,7 @@ export default function PreciosListasTab() {
                   return (
                   <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                     <td style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{c.name || c.nombre}</td>
+                    <td style={{ padding: '9px 16px', fontSize: 12, color: c.codigo ? '#374151' : '#c7c7c7', fontWeight: c.codigo ? 600 : 400 }}>{c.codigo || '—'}</td>
                     <td style={{ padding: '9px 16px', fontSize: 12, color: '#6b7280' }}>{c.phone || c.telefono || '—'}</td>
                     <td style={{ padding: '9px 16px' }}>
                       <select value={lid} onChange={e => asignarCliente(c.id, e.target.value || null)} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, cursor: 'pointer', background: lid ? '#f0fdf4' : '#fff', color: lid ? G : '#6b7280', fontWeight: lid ? 700 : 400 }}>

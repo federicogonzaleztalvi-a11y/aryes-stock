@@ -301,6 +301,7 @@ const describeAction = (action: string, detail: string): string => {
             modoEntregaCustom: ['envio','retira','express'].includes(r.modo_entrega) ? '' : (r.modo_entrega || ''),
             notasEntrega: r.notas_entrega || '',
             notas: r.notas||'', creado: r.created_at||'',
+            codigo: r.codigo || '',
             vendedorId: r.vendedor_id||null,
             envioMetodos: Array.isArray(r.envio_metodos) ? r.envio_metodos : [],
           }));

@@ -569,8 +569,13 @@ function ClientesTab(){
       created_at:        client.creado            || new Date().toISOString(),
     }, 'id').catch(e=>{
       console.warn('[ClientesTab] syncClient failed:', e?.message||e);
-      setMsg('⚠ Cliente guardado localmente — no se pudo sincronizar con el servidor');
-      setTimeout(()=>setMsg(''),5000);
+      const em = ((e?.message||'')+'').toLowerCase();
+      if(e?.code==='23505' || em.includes('clients_org_codigo') || ((em.includes('duplicate')||em.includes('unique')) && em.includes('codigo'))){
+        setMsg('❌ El código "'+(client.codigo||'')+'" ya está en uso por otro cliente. Cambialo y volvé a guardar.');
+      } else {
+        setMsg('⚠ Cliente guardado localmente — no se pudo sincronizar con el servidor');
+      }
+      setTimeout(()=>setMsg(''),6000);
     });
   };
 
@@ -580,9 +585,15 @@ function ClientesTab(){
     if(form.email&&!/^[^@]+@[^@]+\.[^@]+$/.test(form.email)){setMsg('Email inválido');return;}
     const isNew = !editId;
     const newId = isNew ? crypto.randomUUID() : editId;
+    // Código único por org: si ya hay otro cliente con el mismo código, no se guarda.
+    const cod = (form.codigo||'').trim();
+    if(cod){
+      const dup = items.find(x=>x.id!==newId && (x.codigo||'').trim().toLowerCase()===cod.toLowerCase());
+      if(dup){ setMsg('⚠ El código "'+cod+'" ya lo usa el cliente "'+(dup.nombre||dup.name||'')+'". El código debe ser único.'); setTimeout(()=>setMsg(''),6000); return; }
+    }
     const record = isNew
-      ? {...form, id: newId, creado: new Date().toISOString(), lat: null, lng: null, geocodedAt: null, horarioDesde: null, horarioHasta: null}
-      : {...items.find(x=>x.id===editId), ...form};
+      ? {...form, codigo: cod, id: newId, creado: new Date().toISOString(), lat: null, lng: null, geocodedAt: null, horarioDesde: null, horarioHasta: null}
+      : {...items.find(x=>x.id===editId), ...form, codigo: cod};
     if (form.fiscalIgualEntrega) record.direccionFiscal = record.direccion || '';
     // Si lo crea un vendedor, queda auto-asignado a él (su email) para que
     // aparezca en su lista. El admin asigna manualmente con el selector.
