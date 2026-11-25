@@ -2348,6 +2348,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   // filtrados por los habilitados para este cliente (session.envioMetodos).
   const [envioMetodoId, setEnvioMetodoId] = useState('');
   const [envioDestino,  setEnvioDestino]  = useState('');
+  const [editandoEnvio, setEditandoEnvio] = useState(false); // colapso del método (una línea + "Cambiar")
   // Vista previa de la orden (antes de confirmar) + acciones post-confirmación
   // (descargar PDF / enviar por mail). lastOrderId es el id real devuelto por el
   // endpoint, necesario para pedir el comprobante; en demo queda null.
@@ -2432,6 +2433,8 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
   }, [brandCfg?.envio, session?.envioMetodos]);
   const metodoSelEnvio = metodosEnvio.find(m => m.id === envioMetodoId) || null;
   const esAgenciaEnvio = metodoSelEnvio?.tipo === 'agencia';
+  const esPropioEnvio  = metodoSelEnvio?.tipo === 'propio';   // reparto a domicilio → necesita dirección
+  const esRetiroEnvio  = metodoSelEnvio?.tipo === 'retiro';   // retiro en depósito → sin dirección
   const pagaEnDestino  = esAgenciaEnvio && (metodoSelEnvio.cobro || 'factura') === 'destino';
   // El flete de agencia es NETO: lleva IVA 22% (criterio UY), que se suma al total y
   // a la línea de IVA de la factura. `envioCosto` es el neto que configuró la org y se
@@ -2451,7 +2454,7 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
     let saved = '';
     try { saved = localStorage.getItem(envioLSKey) || ''; } catch { /* sin storage */ }
     if (saved && metodosEnvio.find(m => m.id === saved)) setEnvioMetodoId(saved);
-    else if (metodosEnvio.length === 1) setEnvioMetodoId(metodosEnvio[0].id);
+    else setEnvioMetodoId(metodosEnvio[0].id); // default: la 1ª de la lista (la org controla el orden)
   }, [metodosEnvio]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (envioMetodoId) { try { localStorage.setItem(envioLSKey, envioMetodoId); } catch { /* sin storage */ } }
@@ -2779,10 +2782,11 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
             {session?.tel && <div style={{ fontSize: 12, color: '#6a6a68', marginTop: 2 }}>Tel: {session.tel}</div>}
           </div>
 
-          {/* Entregar en — se elige acá, en la confirmación (patrón Amazon: la
-              dirección es un paso del checkout, no del carrito). Con espacio de
-              sobra, se ve grande y clara con pin + referencia. */}
-          {addresses.length > 0 && (
+          {/* Entregar en — SOLO cuando la org no usa métodos de envío (entrega
+              implícita a la dirección). Si usa métodos, el "Entregar en" aparece
+              contextual, pegado al método "reparto propio" más abajo — porque con
+              retiro o agencia la dirección del cliente no es el destino. */}
+          {metodosEnvio.length === 0 && addresses.length > 0 && (
             <div style={{ padding: '12px 24px 4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2917,38 +2921,113 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
           {metodosEnvio.length > 0 && (
             <div style={{ padding: '0 24px 16px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 8 }}>¿CÓMO QUERÉS RECIBIR EL PEDIDO?</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {metodosEnvio.map(m => {
-                  const on = m.id === envioMetodoId;
-                  const costoM = (m.tipo === 'agencia' && (m.cobro || 'factura') === 'factura') ? (Number(m.costo) || 0) : 0;
-                  const destM = m.tipo === 'agencia' && (m.cobro || 'factura') === 'destino';
+              {(() => {
+                // Colapsado (patrón Amazon/Meli): elegido un método válido, se muestra
+                // en UNA línea con "Cambiar". Expandido: la lista + el dato que ese
+                // método necesita (dirección para reparto, destino para agencia). Así
+                // "Entregar en" va pegado al método, no suelto arriba.
+                const expandido = editandoEnvio || !metodoSelEnvio || (esAgenciaEnvio && !envioDestino.trim());
+                if (!expandido) {
+                  const costoM = (esAgenciaEnvio && (metodoSelEnvio.cobro || 'factura') === 'factura') ? (Number(metodoSelEnvio.costo) || 0) : 0;
+                  const destinoTxt = esPropioEnvio
+                    ? (direccionSel ? `${direccionSel.label}${direccionSel.ciudad ? ', ' + direccionSel.ciudad : ''}` : '')
+                    : (esAgenciaEnvio ? envioDestino.trim() : '');
                   return (
-                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px',
-                      border: on ? `1.5px solid ${G}` : '1px solid #e0e0d8', borderRadius: 10, cursor: 'pointer',
-                      background: on ? '#f6fdf9' : '#fff' }}>
-                      <input type="radio" name="pz-envio" checked={on} onChange={() => setEnvioMetodoId(m.id)}
-                        style={{ accentColor: G, cursor: 'pointer', flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1a1a18', fontFamily: SANS }}>{m.nombre}</span>
-                      {costoM > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: G, fontFamily: SANS }}>+{fmt.price(costoM)} + IVA</span>}
-                      {destM && <span style={{ fontSize: 11, color: GRAY, fontFamily: SANS }}>abonás al retirar</span>}
-                    </label>
-                  );
-                })}
-              </div>
-              {esAgenciaEnvio && (
-                <div style={{ marginTop: 10 }}>
-                  <input value={envioDestino} onChange={e => setEnvioDestino(e.target.value)}
-                    placeholder="Localidad / sucursal de destino"
-                    aria-label="Datos de envío: localidad o sucursal de destino"
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
-                      fontSize: 16, fontFamily: SANS, boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
-                  {pagaEnDestino && (
-                    <div style={{ fontSize: 12, color: GRAY, marginTop: 6, fontFamily: SANS }}>
-                      El envío por {metodoSelEnvio.nombre} lo abonás al retirar en la agencia.
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', border: `1.5px solid ${G}`, borderRadius: 10, background: '#f6fdf9' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a18', fontFamily: SANS }}>
+                          {metodoSelEnvio.nombre}{costoM > 0 ? ` · +${fmt.price(costoM)} + IVA` : ''}
+                        </div>
+                        {destinoTxt && <div style={{ fontSize: 12, color: GRAY, fontFamily: SANS, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{destinoTxt}</div>}
+                      </div>
+                      <button type="button" onClick={() => setEditandoEnvio(true)} style={{ flexShrink: 0, fontSize: 13, fontWeight: 700, color: G, background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: SANS }}>Cambiar</button>
                     </div>
-                  )}
-                </div>
-              )}
+                  );
+                }
+                return (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {metodosEnvio.map(m => {
+                        const on = m.id === envioMetodoId;
+                        const costoM = (m.tipo === 'agencia' && (m.cobro || 'factura') === 'factura') ? (Number(m.costo) || 0) : 0;
+                        const destM = m.tipo === 'agencia' && (m.cobro || 'factura') === 'destino';
+                        return (
+                          <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px',
+                            border: on ? `1.5px solid ${G}` : '1px solid #e0e0d8', borderRadius: 10, cursor: 'pointer',
+                            background: on ? '#f6fdf9' : '#fff' }}>
+                            <input type="radio" name="pz-envio" checked={on}
+                              onChange={() => {
+                                setEnvioMetodoId(m.id);
+                                // Si el método no necesita más datos, colapsamos al toque.
+                                const needsInput = m.tipo === 'agencia' || (m.tipo === 'propio' && addresses.length > 1);
+                                if (!needsInput) setEditandoEnvio(false);
+                              }}
+                              style={{ accentColor: G, cursor: 'pointer', flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#1a1a18', fontFamily: SANS }}>{m.nombre}</span>
+                            {costoM > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: G, fontFamily: SANS }}>+{fmt.price(costoM)} + IVA</span>}
+                            {destM && <span style={{ fontSize: 11, color: GRAY, fontFamily: SANS }}>abonás al retirar</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {/* Dato contextual del método elegido */}
+                    {esPropioEnvio && addresses.length > 0 && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                          </svg>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5 }}>ENTREGAR EN</span>
+                        </div>
+                        {addresses.length === 1 ? (
+                          <div style={{ fontSize: 13, color: '#4a4a48' }}>
+                            <strong style={{ color: '#1a1a18' }}>{addresses[0].label}</strong>
+                            {' — '}{addresses[0].direccion}{addresses[0].ciudad ? `, ${addresses[0].ciudad}` : ''}
+                          </div>
+                        ) : (
+                          <select value={selectedAddress || ''} onChange={e => setSelectedAddress(Number(e.target.value))}
+                            aria-label="Sucursal de entrega"
+                            style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                              fontSize: 16, fontFamily: SANS, color: '#1a1a18', background: '#fff', outline: 'none' }}>
+                            {addresses.map(a => (
+                              <option key={a.id} value={a.id}>{a.label} — {a.direccion}{a.ciudad ? `, ${a.ciudad}` : ''}</option>
+                            ))}
+                          </select>
+                        )}
+                        {direccionSel?.referencia && (
+                          <div style={{ fontSize: 11, color: '#6a6a68', marginTop: 6, fontStyle: 'italic' }}>{direccionSel.referencia}</div>
+                        )}
+                      </div>
+                    )}
+                    {esRetiroEnvio && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: GRAY, fontFamily: SANS }}>Retirás el pedido en el depósito.</div>
+                    )}
+                    {esAgenciaEnvio && (
+                      <div style={{ marginTop: 10 }}>
+                        <input value={envioDestino} onChange={e => setEnvioDestino(e.target.value)}
+                          placeholder="Localidad / sucursal de destino"
+                          aria-label="Datos de envío: localidad o sucursal de destino"
+                          style={{ width: '100%', padding: '10px 12px', border: '1px solid #e0e0d8', borderRadius: 8,
+                            fontSize: 16, fontFamily: SANS, boxSizing: 'border-box', outline: 'none', background: '#fafaf7' }} />
+                        {pagaEnDestino && (
+                          <div style={{ fontSize: 12, color: GRAY, marginTop: 6, fontFamily: SANS }}>
+                            El envío por {metodoSelEnvio.nombre} lo abonás al retirar en la agencia.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {metodoSelEnvio && !(esAgenciaEnvio && !envioDestino.trim()) && (
+                      <button type="button" onClick={() => setEditandoEnvio(false)}
+                        style={{ marginTop: 12, padding: '9px 18px', background: G, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>
+                        Listo
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
               {envioCosto > 0 && (
                 <div style={{ marginTop: 12, borderTop: '1px solid #ececec', paddingTop: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
