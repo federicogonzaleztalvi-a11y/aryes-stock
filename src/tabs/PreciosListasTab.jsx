@@ -389,6 +389,7 @@ export default function PreciosListasTab() {
   const [saving, setSaving] = useState(false);
   const [fNombre, setFNombre] = useState('');
   const [fDesc, setFDesc] = useState('');
+  const [busqCli, setBusqCli] = useState('');
   const flash = t => { setMsg(t); setTimeout(() => setMsg(''), 3000); };
   const loadAll = async () => {
     setLoading(true);
@@ -474,33 +475,63 @@ export default function PreciosListasTab() {
         </div>
       )}
       <div>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Asignar lista a clientes</h3>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 14 }}>El cliente verá sus precios al entrar al portal B2B.</p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Asignar lista a clientes</h3>
+            <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>El cliente verá sus precios al entrar al portal B2B.</p>
+          </div>
+          <input
+            placeholder="🔍 Buscar cliente por nombre o teléfono..."
+            value={busqCli}
+            onChange={e => setBusqCli(e.target.value)}
+            style={{ flex: '0 1 340px', minWidth: 200, padding: '9px 14px', border: '1px solid #e5e7eb', borderRadius: 20, fontSize: 13, outline: 'none' }}
+          />
+        </div>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0ec', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr style={{ background: '#f9fafb' }}><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Cliente</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Teléfono</th><th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: .5 }}>Lista asignada</th></tr></thead>
             <tbody>
-              {(clientes || []).slice().sort((a, b) => (a.name || a.nombre || '').localeCompare(b.name || b.nombre || '', 'es', { sensitivity: 'base' })).slice(0, 150).map((c, i) => {
-                // El contexto mapea la columna DB lista_id a la clave camelCase
-                // listaId; leer sólo c.lista_id daba SIEMPRE "Sin lista" aunque el
-                // cliente tuviera lista. Aceptamos ambas por las dudas.
-                const lid = c.listaId ?? c.lista_id ?? '';
-                return (
-                <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                  <td style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{c.name || c.nombre}</td>
-                  <td style={{ padding: '9px 16px', fontSize: 12, color: '#6b7280' }}>{c.phone || c.telefono || '—'}</td>
-                  <td style={{ padding: '9px 16px' }}>
-                    <select value={lid} onChange={e => asignarCliente(c.id, e.target.value || null)} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, cursor: 'pointer', background: lid ? '#f0fdf4' : '#fff', color: lid ? G : '#6b7280', fontWeight: lid ? 700 : 400 }}>
-                      <option value="">Sin lista (precio base)</option>
-                      {listas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-                    </select>
-                  </td>
-                </tr>
+              {(() => {
+                const q = busqCli.trim().toLowerCase();
+                const filtrados = (clientes || [])
+                  .filter(c => {
+                    if (!q) return true;
+                    const nm = (c.name || c.nombre || '').toLowerCase();
+                    const ph = String(c.phone || c.telefono || '').toLowerCase();
+                    return nm.includes(q) || ph.includes(q);
+                  })
+                  .slice()
+                  .sort((a, b) => (a.name || a.nombre || '').localeCompare(b.name || b.nombre || '', 'es', { sensitivity: 'base' }));
+                if (filtrados.length === 0) return (
+                  <tr><td colSpan={3} style={{ padding: '22px 16px', textAlign: 'center', fontSize: 13, color: '#9ca3af' }}>
+                    {q ? <>No se encontró ningún cliente para “{busqCli}”.</> : 'Todavía no hay clientes.'}
+                  </td></tr>
                 );
-              })}
+                return filtrados.slice(0, 150).map((c, i) => {
+                  // El contexto mapea la columna DB lista_id a la clave camelCase
+                  // listaId; leer sólo c.lista_id daba SIEMPRE "Sin lista" aunque el
+                  // cliente tuviera lista. Aceptamos ambas por las dudas.
+                  const lid = c.listaId ?? c.lista_id ?? '';
+                  return (
+                  <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                    <td style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{c.name || c.nombre}</td>
+                    <td style={{ padding: '9px 16px', fontSize: 12, color: '#6b7280' }}>{c.phone || c.telefono || '—'}</td>
+                    <td style={{ padding: '9px 16px' }}>
+                      <select value={lid} onChange={e => asignarCliente(c.id, e.target.value || null)} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12, cursor: 'pointer', background: lid ? '#f0fdf4' : '#fff', color: lid ? G : '#6b7280', fontWeight: lid ? 700 : 400 }}>
+                        <option value="">Sin lista (precio base)</option>
+                        {listas.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
+        {!busqCli.trim() && (clientes || []).length > 150 && (
+          <p style={{ fontSize: 12, color: '#9ca3af', margin: '10px 2px 0' }}>Mostrando los primeros 150 de {(clientes || []).length}. Usá el buscador para encontrar cualquier cliente.</p>
+        )}
       </div>
     </div>
   );
