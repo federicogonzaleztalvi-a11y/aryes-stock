@@ -1078,8 +1078,11 @@ function ProductCard({ item, qty, onAdd, onRemove, brandCfg, carrito, onOpen, on
                   sufijos "/kg" o "/lt" — confundirían al cliente. Sí unidades de venta. */}
               {item.precio > 0 && esUnidadVenta(item.unidad) && <span style={{ fontSize: 10, color: GRAY, fontWeight: 400, marginLeft: 3 }}>/ {item.unidad}</span>}
             </div>
-            {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
+            {/* El /kg va ANTES del "+ IVA" para que la etiqueta de IVA quede debajo
+                de AMBOS precios (total y /kg) y se lea que los dos son + IVA. Antes
+                el "+ IVA" iba en el medio y parecía que el /kg ya lo incluía. */}
             {item.precio > 0 && <PorKgRef item={item} brandCfg={brandCfg} precio={precioEff} />}
+            {item.precio > 0 && <IvaLine precio={item.precio} iva_rate={item.iva_rate} />}
           </>
         )}
         {/* Entrega estimada compacta (criterio Amazon: "Llega mañana" en la card).
@@ -1659,8 +1662,10 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
                   {showUnidad && <span style={{ fontSize: 13, color: GRAY, fontWeight: 400, marginLeft: 5 }}>/ {item.unidad}</span>}
                 </div>
               )}
-              {item.precio > 0 && <div style={{ marginBottom: 4 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
-              {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><PorKgRef item={item} brandCfg={brandCfg} precio={precioEffD} /></div>}
+              {/* /kg antes del "+ IVA": la etiqueta de IVA queda debajo de los dos
+                  precios y se entiende que ambos son + IVA (no que el /kg lo incluye). */}
+              {item.precio > 0 && <div style={{ marginBottom: 2 }}><PorKgRef item={item} brandCfg={brandCfg} precio={precioEffD} /></div>}
+              {item.precio > 0 && <div style={{ marginBottom: (boxD || tiersD.length) ? 10 : 16 }}><IvaLine precio={item.precio} iva_rate={item.iva_rate} /></div>}
             </>
           )}
           {/* Reglas disponibles (caja / por cantidad): cada una muestra el PRECIO
