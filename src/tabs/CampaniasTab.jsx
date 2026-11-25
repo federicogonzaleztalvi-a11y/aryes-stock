@@ -22,10 +22,12 @@ const C = {
 };
 
 const RANGES = [
-  { id: 'last_7d',  label: '7 días' },
-  { id: 'last_14d', label: '14 días' },
-  { id: 'last_30d', label: '30 días' },
-  { id: 'last_90d', label: '90 días' },
+  { id: 'last_7d',   label: '7 días' },
+  { id: 'last_14d',  label: '14 días' },
+  { id: 'last_30d',  label: '30 días' },
+  { id: 'last_90d',  label: '90 días' },
+  { id: 'this_year', label: 'Este año' },
+  { id: 'maximum',   label: 'Máximo' },
 ];
 
 function fmtMoney(n, currency) {
@@ -57,15 +59,19 @@ function Delta({ pct, betterWhenLower, neutral }) {
 
 // ── Número héroe: la métrica que define la decisión, grande y arriba de todo ──
 function Hero({ total, currency }) {
-  const hasRoas = total.roas != null;
-  const label = hasRoas ? 'ROAS' : 'Costo por resultado';
-  const value = hasRoas ? fmtNum(total.roas, 2) + 'x' : fmtMoney(total.cpa, currency);
-  const sub = hasRoas
-    ? 'retorno por cada $ invertido en anuncios'
-    : `lo que te cuesta cada ${(total.resultLabel || 'resultado').toLowerCase()}`;
-  const pct = hasRoas ? total.delta?.roas : total.delta?.cpa;
-  const betterWhenLower = !hasRoas;                       // en CPA, menos es mejor
-  const goodTone = hasRoas ? total.roas >= 1 : true;
+  // Elegí la métrica héroe según lo que la cuenta realmente optimiza:
+  // ROAS (venta) → Costo por resultado (hay resultados) → Alcance (campañas de alcance).
+  const mode = total.roas != null ? 'roas' : total.cpa != null ? 'cpa' : 'reach';
+  const label = mode === 'roas' ? 'ROAS' : mode === 'cpa' ? 'Costo por resultado' : 'Alcance';
+  const value = mode === 'roas' ? fmtNum(total.roas, 2) + 'x'
+    : mode === 'cpa' ? fmtMoney(total.cpa, currency)
+    : fmtNum(total.reach);
+  const sub = mode === 'roas' ? 'retorno por cada $ invertido en anuncios'
+    : mode === 'cpa' ? `lo que te cuesta cada ${(total.resultLabel || 'resultado').toLowerCase()}`
+    : 'personas distintas que vieron tus anuncios';
+  const pct = mode === 'roas' ? total.delta?.roas : mode === 'cpa' ? total.delta?.cpa : total.delta?.reach;
+  const betterWhenLower = mode === 'cpa';                 // en CPA, menos es mejor
+  const goodTone = mode === 'roas' ? total.roas >= 1 : true;
   const accent = pct == null ? C.ink
     : (betterWhenLower ? pct <= 0 : pct >= 0) ? C.green : C.red;
   return (
@@ -120,16 +126,17 @@ function Suggestion({ s }) {
 }
 
 // ── Mini gráfico de barras (gasto diario) — SVG puro, sin librerías ──────────
-function TrendBars({ trend, currency }) {
+function TrendBars({ trend, currency, unit }) {
   if (!trend || !trend.length) return null;
   const max = Math.max(...trend.map(d => d.spend || 0), 1);
+  const per = unit === 'mes' ? 'mes' : 'día';
   const W = 100, H = 40, gap = 1.2;
   const bw = Math.max(0.5, (W - gap * (trend.length - 1)) / trend.length);
   return (
     <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: '14px 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Gasto diario</div>
-        <div style={{ fontSize: 11.5, color: C.faint }}>máx {fmtMoney(max, currency)}/día</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>Gasto {per === 'mes' ? 'mensual' : 'diario'}</div>
+        <div style={{ fontSize: 11.5, color: C.faint }}>máx {fmtMoney(max, currency)}/{per}</div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: 90, display: 'block' }}>
         {trend.map((d, i) => {
@@ -297,23 +304,23 @@ export default function CampaniasTab() {
           <Hero total={t} currency={cur} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <Kpi label="Alcance" value={fmtNum(t.reach)} delta={t.delta?.reach} neutralDelta hint="personas alcanzadas" />
+            <Kpi label={t.resultLabel || 'Resultados'} value={fmtNum(t.results)} accent={C.green} delta={t.delta?.results} hint="resultados del período" />
             <Kpi label="Gasto" value={fmtMoney(t.spend, cur)} delta={t.delta?.spend} neutralDelta hint="inversión total" />
-            <Kpi label={t.resultLabel || 'Resultados'} value={fmtNum(t.results)} accent={C.green} delta={t.delta?.results} hint="conversiones" />
+            <Kpi label="CTR" value={fmtPct(t.ctr)} delta={t.delta?.ctr} hint={`${fmtNum(t.clicks)} clics`} />
             <Kpi label="Costo / resultado" value={fmtMoney(t.cpa, cur)} delta={t.delta?.cpa} betterWhenLower hint={t.resultLabel ? `por ${t.resultLabel.toLowerCase()}` : null} />
             <Kpi label="ROAS" value={t.roas != null ? fmtNum(t.roas, 2) + 'x' : '—'} delta={t.delta?.roas} hint="retorno por $ gastado" accent={t.roas >= 1 ? C.green : t.roas != null ? C.red : null} />
-            <Kpi label="CTR" value={fmtPct(t.ctr)} delta={t.delta?.ctr} hint="tasa de clics" />
-            <Kpi label="Alcance" value={fmtNum(t.reach)} delta={t.delta?.reach} neutralDelta hint={`${fmtNum(t.clicks)} clics`} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-            <TrendBars trend={metrics.trend} currency={cur} />
+            <TrendBars trend={metrics.trend} currency={cur} unit={metrics.trendUnit} />
             <AdsTable title="Mejores anuncios" ads={metrics.best} currency={cur} sortedBy={metrics.sortedBy} tone="best" />
             <AdsTable title="Peores anuncios" ads={metrics.worst} currency={cur} sortedBy={metrics.sortedBy} tone="worst" />
           </div>
 
           {metrics.ads_count === 0 && (
             <div style={{ marginTop: 16, background: C.amberBg, color: C.amber, borderRadius: 10, padding: '12px 14px', fontSize: 13 }}>
-              No hay anuncios con gasto en este período. Probá ampliar el rango o revisá que tus campañas estén activas.
+              No hay anuncios con gasto en este período. Si tus campañas son más viejas, probá el rango <b>“Máximo”</b> (arriba a la derecha) para ver todo el historial.
             </div>
           )}
         </>

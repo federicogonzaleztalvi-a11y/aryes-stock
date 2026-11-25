@@ -136,12 +136,23 @@ function extractRow(row) {
   const leads     = sumActions(row.actions, /lead/);
   const linkClk   = sumActions(row.actions, /link_click/);
   const messaging = sumActions(row.actions, /(onsite_conversion\.total_messaging_connection|messaging_conversation_started)/);
+  // Objetivos de alcance/engagement (muy comunes en posts promocionados de IG/FB).
+  const profileVisits = sumActions(row.actions, /(profile_visit|ig_profile|instagram_profile)/);
+  const landingViews  = sumActions(row.actions, /landing_page_view/);
+  const postEng       = sumActions(row.actions, /post_engagement/);
+  const videoViews    = sumActions(row.actions, /video_view/);
 
-  // "Resultado" = la conversión más relevante disponible, en orden de valor comercial.
+  // "Resultado" = el resultado más relevante disponible, en orden de valor. Primero
+  // objetivos de venta; si no hay, caemos a objetivos de alcance/engagement, así los
+  // posts promocionados (p.ej. "visitas al perfil") muestran su resultado real, no 0.
   let results = purchases, resultLabel = 'Compras';
-  if (!results && messaging) { results = messaging; resultLabel = 'Conversaciones'; }
-  if (!results && leads)     { results = leads;     resultLabel = 'Leads'; }
-  if (!results && linkClk)   { results = linkClk;   resultLabel = 'Clics al enlace'; }
+  if (!results && messaging)     { results = messaging;     resultLabel = 'Conversaciones'; }
+  if (!results && leads)         { results = leads;         resultLabel = 'Leads'; }
+  if (!results && profileVisits) { results = profileVisits; resultLabel = 'Visitas al perfil'; }
+  if (!results && linkClk)       { results = linkClk;       resultLabel = 'Clics al enlace'; }
+  if (!results && landingViews)  { results = landingViews;  resultLabel = 'Vistas de página'; }
+  if (!results && postEng)       { results = postEng;       resultLabel = 'Interacciones'; }
+  if (!results && videoViews)    { results = videoViews;    resultLabel = 'Reproducciones'; }
 
   const roasArr = row.purchase_roas;
   let roas = null;
@@ -199,8 +210,13 @@ async function buildMetrics(cfg, range) {
   if (totalRes.error) return { error: totalRes.error };
   const total = totalRes.rows[0] ? extractRow(totalRes.rows[0]) : extractRow({});
 
-  // 1b) Mismo total pero del período INMEDIATAMENTE anterior → para el "vs período anterior".
-  const prevRes = await fetchInsights(actId, token, { level: 'account', timeRange: previousWindow(range) });
+  // 1b) Período INMEDIATAMENTE anterior (mismo largo) → para el "vs período anterior".
+  //     Solo tiene sentido en rangos de largo fijo; en "este año"/"máximo" no hay
+  //     período previo comparable, así que lo omitimos y el delta queda null.
+  const FIXED_RANGES = ['last_7d', 'last_14d', 'last_30d', 'last_90d'];
+  const prevRes = FIXED_RANGES.includes(range)
+    ? await fetchInsights(actId, token, { level: 'account', timeRange: previousWindow(range) })
+    : { rows: [] };
   const prev = prevRes.rows?.[0] ? extractRow(prevRes.rows[0]) : null;
   total.delta = prev ? {
     spend:   pctChange(total.spend,   prev.spend),
@@ -212,12 +228,15 @@ async function buildMetrics(cfg, range) {
   } : null;
   total.prev = prev ? { spend: prev.spend, results: prev.results, cpa: prev.cpa, roas: prev.roas, ctr: prev.ctr } : null;
 
-  // 2) Serie diaria para la tendencia (gasto + resultados por día).
-  const trendRes = await fetchInsights(actId, token, { level: 'account', range, timeIncrement: 1 });
+  // 2) Serie para la tendencia. Diaria en rangos cortos; mensual en los largos
+  //    ("este año"/"máximo"), si no traería cientos de barras ilegibles.
+  const longRange = (range === 'this_year' || range === 'maximum');
+  const trendRes = await fetchInsights(actId, token, { level: 'account', range, timeIncrement: longRange ? 'monthly' : 1 });
   const trend = (trendRes.rows || []).map(r => {
     const e = extractRow(r);
     return { date: r.date_start, spend: e.spend, results: e.results, roas: e.roas };
   });
+  const trendUnit = longRange ? 'mes' : 'día';
 
   // 3) Por anuncio, para mejores/peores.
   const adsRes = await fetchInsights(actId, token, {
@@ -241,6 +260,7 @@ async function buildMetrics(cfg, range) {
     range,
     total,
     trend,
+    trendUnit,
     ads_count: ads.length,
     best,
     worst,
@@ -281,6 +301,7 @@ Reglas:
 - El "detalle" debe citar el número que justifica la acción. Aprovechá "vs_periodo_anterior_pct" para señalar si algo mejoró o empeoró (ej: "tu costo por resultado subió 23% vs el período anterior").
 - Máximo 5 sugerencias, ordenadas por impacto. Si algo está bien, marcalo como "info" y felicitá con el dato.
 - Usá SOLO los números reales que te paso (no inventes). Si falta un dato (—), no lo asumas.
+- Si la cuenta corre objetivos de alcance/engagement (p.ej. "tipo_resultado" = Visitas al perfil, Interacciones, Reproducciones) y NO hay ROAS ni compras, NO la trates como campaña de venta ni la marces como "sin actividad": evaluá alcance, CTR, clics y costo por resultado, y sugerí en esa clave (ej: ampliar el alcance del mejor post, bajar el costo por visita).
 - No sugieras ejecutar cambios automáticos: el distribuidor decide y aprueba. Vos aconsejás.`;
 
   try {
