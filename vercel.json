@@ -35,7 +35,7 @@
       "maxDuration": 60
     },
     "api/cron-health.js": {
-      "maxDuration": 30
+      "maxDuration": 60
     },
     "api/cron-reposicion.js": {
       "maxDuration": 300

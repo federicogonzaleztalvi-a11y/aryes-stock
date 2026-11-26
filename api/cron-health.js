@@ -32,7 +32,11 @@ const ENABLED     = process.env.HEALTH_MONITOR_ENABLED === 'true';
 const ALERT_EMAIL = process.env.ALERT_EMAIL || 'contacto@pazque.com';
 const SITE        = (process.env.SITE_URL || 'https://pazque.com').replace(/\/$/, '');
 const TIMEOUT_MS  = 12000;  // margen para cold-starts; un pico de 8s no es una caída
-const RECHECK_MS  = 3000;   // espera antes de reconfirmar un chequeo que falló
+const RECHECK_MS  = 30000;  // espera antes de reconfirmar un chequeo que falló.
+                            // 30s: filtra los blips transitorios del borde (ventana de
+                            // deploy, hipo del WAF) que se recuperan en segundos y antes
+                            // disparaban falsas alarmas; una caída REAL dura minutos y
+                            // sigue fallando al reintento. (maxDuration=60 en vercel.json.)
 
 function esc(v) {
   return String(v == null ? '' : v)
