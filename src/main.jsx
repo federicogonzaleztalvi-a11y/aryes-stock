@@ -487,31 +487,49 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </RootErrorBoundary>
 );
 
-// ── PWA Service Worker registration + auto-update ────────────
-// El SW cachea la app. Sin esto, al publicar una versión nueva el cliente seguía
-// viendo la vieja hasta cerrar y reabrir la app a mano (problema recurrente en el
-// PWA instalado). Ahora, cuando el SW nuevo toma control (skipWaiting+claim),
-// recargamos automáticamente para servir el código fresco. El carrito y la sesión
-// viven en localStorage, así que la recarga no pierde nada.
+// ── PWA Service Worker: registro + auto-update suave ──────────────────
+// Objetivo (patrón Amazon/Mercado Libre): cuando subimos una versión nueva, la
+// app instalada la toma SOLA, sin pedirle nada al cliente. Pero sin la molestia
+// vieja de "se refresca cada vez que vuelvo": antes recargábamos en CADA retorno
+// (al activarse cualquier SW) aunque no hubiera nada nuevo.
+//
+// Regla nueva: sólo recargamos cuando (1) hay DE VERDAD una versión nueva lista
+// y (2) el usuario está VOLVIENDO a la app tras dejarla un rato (no un cambio de
+// pestaña fugaz a mitad de una compra). Así, usando la app nunca se interrumpe; y
+// al volver tras un deploy, entra sola al código fresco una única vez.
+//
+// Es seguro recargar: el SW es "network-first" y NO cachea el JS/HTML (solo el
+// logo, ver public/sw.js), y el carrito/sesión viven en localStorage y sobreviven
+// la recarga. Un reload siempre trae el código nuevo.
 if ('serviceWorker' in navigator) {
-  // Si ya había un SW controlando la página, un cambio de controller = versión
-  // nueva activada → recargamos una sola vez. En la PRIMERA visita no hay
-  // controller previo, así que no recarga (la página ya trae el código fresco).
-  const hadController = !!navigator.serviceWorker.controller;
-  let reloading = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading || !hadController) return;
-    reloading = true;
-    window.location.reload();
-  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
-      // Chequear updates al volver a la app (foco) — el navegador no siempre
-      // revalida el sw.js solo en PWAs standalone.
+      let updateReady = false;   // hay una versión nueva instalada esperando
+      let hiddenAt    = 0;       // cuándo se ocultó la app por última vez
+
+      // Un worker nuevo que llega a "installed" MIENTRAS ya hay uno controlando =
+      // versión nueva disponible. (En la primera instalación no hay controller →
+      // no cuenta como update, no recargamos.)
+      const watch = (sw) => {
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) updateReady = true;
+        });
+      };
+      watch(reg.installing);
+      reg.addEventListener('updatefound', () => watch(reg.installing));
+
       const checkUpdate = () => { reg.update().catch(() => {}); };
       window.addEventListener('focus', checkUpdate);
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') checkUpdate();
+        if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+        checkUpdate();
+        // Auto-update suave: sólo si hay versión nueva Y el usuario estuvo fuera
+        // ≥20s (volvió a la app, no un flick de pestaña). Recarga UNA vez.
+        if (updateReady && hiddenAt && (Date.now() - hiddenAt) > 20000) {
+          updateReady = false;
+          window.location.reload();
+        }
       });
     }).catch(() => {});
   });

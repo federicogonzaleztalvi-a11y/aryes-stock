@@ -59,6 +59,7 @@ export default async function handler(req, res) {
   // recommendations — both are tenant-private data. Require a valid portal session
   // and DERIVE identity from it. Never trust the query param (IDOR defense).
   let clienteId = '';
+  let sessionExpiresAt = null;  // sesión deslizante: la fecha (quizá renovada) vuelve al cliente
   if (reqCliente) {
     const session = await validatePortalSession(getBearerToken(req));
     if (!session) {
@@ -68,6 +69,7 @@ export default async function handler(req, res) {
     // Override query identity with the authenticated session's identity.
     clienteId = String(session.cliente_id || '');
     org       = String(session.org_id || org).replace(/[^a-z0-9_-]/gi, '');
+    sessionExpiresAt = session.expires_at || null;
     if (!clienteId) {
       setHeaders(res);
       return res.status(401).json({ error: 'Sesión inválida' });
@@ -383,6 +385,7 @@ export default async function handler(req, res) {
       portalActivo,
       portalCfg,
       currencySymbol: currencySymbolFromCfg(portalCfg),
+      sessionExpiresAt,   // sesión deslizante: el cliente actualiza su copia local
     });
 
   } catch (err) {

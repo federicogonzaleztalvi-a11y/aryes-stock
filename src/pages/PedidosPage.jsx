@@ -1983,11 +1983,12 @@ function ProductDetail({ item, carrito, onAdd, onRemove, onSetQty, brandCfg, isM
 }
 
 // ── Historial ─────────────────────────────────────────────────────────────────
-function HistorialPedidos({ session, onReordenar }) {
+function HistorialPedidos({ session, onReordenar, onSessionExpired }) {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expand,  setExpand]  = useState(null);
   const [dlId,    setDlId]    = useState(null);
+  const [expired, setExpired] = useState(false);
 
   const descargarComprobante = async (pedidoId) => {
     if (!session?.token || session?.token === 'demo-token') return;
@@ -1996,6 +1997,7 @@ function HistorialPedidos({ session, onReordenar }) {
       const r = await fetch(`${API}/api/pedido?action=comprobante&orderId=${encodeURIComponent(pedidoId)}`, {
         headers: { Authorization: `Bearer ${session.token}` },
       });
+      if (r.status === 401) { setExpired(true); return; }
       if (!r.ok) throw new Error('No se pudo generar el comprobante');
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
@@ -2028,14 +2030,42 @@ function HistorialPedidos({ session, onReordenar }) {
     // MEDIO: sin token (o demo) cortábamos el effect sin apagar loading → el
     // historial quedaba en "Cargando..." para siempre. Apagar loading al salir.
     if (!session?.token || session?.token === 'demo-token') { setLoading(false); return; }
+    let cancelled = false;
+    setExpired(false);
     fetch(`${API}/api/pedido?action=historial`, {
       headers: { Authorization: `Bearer ${session.token}` }
     })
-      .then(r => r.json())
-      .then(d => { if (d.ok) setPedidos(d.pedidos || []); })
+      .then(async r => {
+        if (cancelled) return;
+        // Sesión vencida/revocada (ej. token viejo de una app instalada vieja):
+        // el server responde 401. NO lo tragamos mostrando "Sin pedidos aún" (eso
+        // hacía creer al cliente que su pedido no se guardó); marcamos la sesión
+        // como expirada para ofrecer reingresar. El pedido SÍ está en el sistema.
+        if (r.status === 401) { setExpired(true); return; }
+        const d = await r.json().catch(() => ({}));
+        if (d.ok) setPedidos(d.pedidos || []);
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [session]);
+
+  // Sesión vencida: el token guardado ya no vale (p.ej. app instalada vieja). En
+  // vez del cartel "Sin pedidos aún" —que hace creer que el pedido no se guardó—
+  // le decimos la verdad: tus pedidos están, reingresá para verlos.
+  if (expired) return (
+    <div style={{ textAlign: 'center', padding: 48 }}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a18', marginBottom: 6 }}>Tu sesión expiró</div>
+      <div style={{ fontSize: 13, color: '#6a6a68', marginBottom: 18, lineHeight: 1.5 }}>
+        Tus pedidos están guardados. Iniciá sesión de nuevo para verlos.
+      </div>
+      <button onClick={() => onSessionExpired?.()} style={{ background: '#1a1a18', color: '#fff',
+        border: 'none', borderRadius: 10, padding: '11px 22px', fontSize: 14, fontWeight: 600,
+        fontFamily: SANS, cursor: 'pointer' }}>
+        Iniciar sesión
+      </button>
+    </div>
+  );
 
   // Skeleton que CALCA la fila de pedido real (fecha + Nº OC + total + badge de
   // estado). Al llegar los pedidos encajan en el mismo molde → sin "salto" de
@@ -4889,6 +4919,20 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       }
       const d = await r.json();
 
+      // Sesión deslizante: el server pudo renovar expires_at (patrón Amazon/ML:
+      // el cliente activo nunca se re-loguea). Deslizamos la copia local en
+      // localStorage para que loadSession no la purgue en la próxima apertura
+      // aunque hayan pasado meses. Sólo localStorage (no tocamos el estado → sin
+      // re-render). No aplica a demo ni a sesión abierta por un vendedor.
+      if (d.sessionExpiresAt && ses.token && ses.token !== 'demo-token' && !onVendorExitRef.current) {
+        try {
+          const cur = JSON.parse(localStorage.getItem(SK) || 'null');
+          if (cur && cur.token === ses.token && cur.expiresAt !== d.sessionExpiresAt) {
+            saveSession({ ...cur, expiresAt: d.sessionExpiresAt });
+          }
+        } catch { /* storage bloqueado → la renovación server igual quedó hecha */ }
+      }
+
       // Branding vive en portalCfg (catalogo.js carga app_config key=brandcfg ahí).
       // Antes se leía d.brandCfg (inexistente) con campo .nombre (es .name) → marca nunca cargaba.
       if (d.currencySymbol) fmt.setCurrency(d.currencySymbol);
@@ -6032,7 +6076,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
             Volver al catálogo
           </button>
           <h1 style={{ fontSize: 18, fontWeight: 600, color: '#1a1a18', marginBottom: 16 }}>Mis pedidos</h1>
-          <HistorialPedidos session={session} onReordenar={order => {
+          <HistorialPedidos session={session} onSessionExpired={logout} onReordenar={order => {
             // MEDIO: validar contra el catálogo ACTUAL. Un pedido viejo puede tener
             // productos discontinuados / sin stock; antes se metían igual al carrito
             // y fallaba recién al confirmar. Sólo agregamos los disponibles y avisamos.
