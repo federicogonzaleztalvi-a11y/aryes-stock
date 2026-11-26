@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { db, getOrgId } from '../lib/constants.js';
 
 const G = '#059669';
 const F = { sans: "'Inter',system-ui,sans-serif" };
@@ -70,7 +71,17 @@ export default function RolesManager({ brandCfg, setBrandCfg }) {
   var [showNewForm, setShowNewForm] = useState(false);
 
   function saveRoles(updated) {
-    setBrandCfg(function(prev) { return Object.assign({}, prev, { custom_roles: updated }); });
+    // Merge sobre el brandcfg actual (nunca pisa el resto) y PERSISTE al servidor.
+    // Antes solo hacía setBrandCfg (estado en memoria): los cambios se veían pero
+    // al recargar / próximo login se perdían porque nunca llegaban a app_config.
+    var merged = Object.assign({}, brandCfg, { custom_roles: updated });
+    setBrandCfg(merged);
+    try {
+      var p = db.upsert('app_config',
+        { key: 'brandcfg', value: merged, org_id: getOrgId(), updated_at: new Date().toISOString() },
+        'key,org_id');
+      if (p && p.catch) p.catch(function () { /* reintenta al volver a guardar */ });
+    } catch (e) { /* noop */ }
   }
 
   function startEdit(roleId) {
