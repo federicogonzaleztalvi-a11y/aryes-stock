@@ -41,6 +41,7 @@ export function useRealtime(callbacks, enabled = true) {
     else if (table === 'rutas')       cb.onRutaChange?.(payload);
     else if (table === 'b2b_orders')  cb.onB2bOrderChange?.(payload);
     else if (table === 'clients')     cb.onClienteChange?.(payload);
+    else if (table === 'app_config')  cb.onConfigChange?.(payload);
   }, []);
 
   useEffect(() => {

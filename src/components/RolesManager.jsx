@@ -149,7 +149,7 @@ export default function RolesManager({ brandCfg, setBrandCfg }) {
     React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
       React.createElement('div', null,
         React.createElement('div', { style: { fontSize: 15, fontWeight: 700, color: '#1a1a18' } }, 'Roles y permisos'),
-        React.createElement('div', { style: { fontSize: 12, color: '#8a8a88', marginTop: 2 } }, 'Configura que ve cada rol. Los cambios aplican al proximo login.')
+        React.createElement('div', { style: { fontSize: 12, color: '#8a8a88', marginTop: 2 } }, 'Configura que ve cada rol. Los cambios se aplican al instante a los usuarios conectados (si no lo ven, con recargar la página alcanza).')
       ),
       React.createElement('button', {
         onClick: function() { setShowNewForm(true); },

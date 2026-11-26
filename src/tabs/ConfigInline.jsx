@@ -1636,7 +1636,7 @@ export default function ConfigInline({
             <div style={{maxWidth:560}}>
               <p style={{fontFamily:'Inter,sans-serif',fontSize:12,color:'#6a6a68',marginBottom:20,lineHeight:1.6}}>
                 Estos datos aparecen en el sidebar y reemplazan el logo por defecto.
-                Se guardan en la base de datos y aplican a todos los usuarios al próximo login.
+                Se guardan en la base de datos y se aplican al instante a los usuarios conectados.
               </p>
               <div style={{display:'grid',gap:16}}>
                 <div>

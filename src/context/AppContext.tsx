@@ -649,6 +649,11 @@ const describeAction = (action: string, detail: string): string => {
         return cs;
       });
     },
+    onConfigChange: ({ new: row }) => {
+      // Config editada en OTRA sesión (ej. permisos por rol, marca): se aplica EN VIVO
+      // a todos los usuarios logueados de la org, sin refresh ni re-login.
+      if (row?.key === 'brandcfg' && row?.value) setBrandCfg(row.value as BrandCfg);
+    },
   }, !!session && !isDemoMode); // only enable when logged in (disabled in demo)
 
   // ── Retry wrapper ─────────────────────────────────────────────────────────
