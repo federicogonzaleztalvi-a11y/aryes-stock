@@ -2,7 +2,7 @@
 // GET /catalogo?org=aryes           → catálogo público sin precios (modo vitrina)
 // GET /catalogo?org=aryes&cliente=X → catálogo con precios del cliente (modo compra)
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { fmt } from '../lib/constants.js';
 
 const G    = '#059669';
@@ -330,6 +330,7 @@ export default function CatalogoPage() {
   const [ddOpen,    setDdOpen]    = useState(false);
   const NAV_MAX = 10;
   const [modalCliente, setModalCliente] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const org       = params.get('org')     || 'aryes';
@@ -356,7 +357,26 @@ export default function CatalogoPage() {
       })
       .catch(() => setError('No se pudo cargar el catálogo.'))
       .finally(() => setLoading(false));
-  }, [org, clienteId]);
+  }, [org, clienteId, refreshKey]);
+
+  // Datos siempre frescos: al VOLVER al catálogo (foco/pestaña visible) re-pedimos
+  // productos+precios solos, así los cambios del distribuidor aparecen sin que el
+  // visitante recargue. Throttle 30s para no re-pedir en cada micro-foco.
+  const lastFreshRef = useRef(Date.now());
+  useEffect(() => {
+    const refrescar = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastFreshRef.current < 30000) return;
+      lastFreshRef.current = Date.now();
+      setRefreshKey(k => k + 1);
+    };
+    document.addEventListener('visibilitychange', refrescar);
+    window.addEventListener('focus', refrescar);
+    return () => {
+      document.removeEventListener('visibilitychange', refrescar);
+      window.removeEventListener('focus', refrescar);
+    };
+  }, []);
 
   // Marcas únicas
   const marcas = useMemo(() => {

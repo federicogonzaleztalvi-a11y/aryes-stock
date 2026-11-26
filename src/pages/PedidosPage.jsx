@@ -1989,6 +1989,7 @@ function HistorialPedidos({ session, onReordenar, onSessionExpired }) {
   const [expand,  setExpand]  = useState(null);
   const [dlId,    setDlId]    = useState(null);
   const [expired, setExpired] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const descargarComprobante = async (pedidoId) => {
     if (!session?.token || session?.token === 'demo-token') return;
@@ -2048,6 +2049,26 @@ function HistorialPedidos({ session, onReordenar, onSessionExpired }) {
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+  }, [session, refreshKey]);
+
+  // Estado del pedido siempre fresco: al volver a la app (foco/visible) re-pedimos
+  // el historial así el cliente ve el avance (pendiente → confirmado → en camino)
+  // sin recargar. Throttle 30s para no re-pedir en cada micro-foco.
+  const lastHistRef = useRef(Date.now());
+  useEffect(() => {
+    if (!session?.token || session?.token === 'demo-token') return;
+    const refrescar = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastHistRef.current < 30000) return;
+      lastHistRef.current = Date.now();
+      setRefreshKey(k => k + 1);
+    };
+    document.addEventListener('visibilitychange', refrescar);
+    window.addEventListener('focus', refrescar);
+    return () => {
+      document.removeEventListener('visibilitychange', refrescar);
+      window.removeEventListener('focus', refrescar);
+    };
   }, [session]);
 
   // Sesión vencida: el token guardado ya no vale (p.ej. app instalada vieja). En
@@ -4995,6 +5016,31 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   }, [isPortalDemo, items]);
 
     useEffect(() => { if (orgReady && session) loadCatalogo(session); }, [orgReady, session, loadCatalogo]);
+
+  // Datos siempre frescos (patrón Amazon/Mercado Libre): hasta acá el portal
+  // refrescaba al ABRIR, no al VOLVER. Si el cliente dejaba la app abierta y el
+  // distribuidor cambiaba un precio / agregaba un producto, no lo veía hasta
+  // recargar. Ahora, cada vez que el cliente VUELVE a la app (foco / pestaña
+  // visible) re-pedimos el catálogo+precios solos, sin que toque nada. Throttle
+  // de 30s para no re-pedir en cada micro-foco. loadCatalogo es
+  // stale-while-revalidate (muestra lo actual al instante y actualiza por
+  // detrás) → el refresco no parpadea ni interrumpe.
+  const lastFreshRef = useRef(Date.now());
+  useEffect(() => {
+    if (!session || isPortalDemo) return;
+    const refrescar = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastFreshRef.current < 30000) return;
+      lastFreshRef.current = Date.now();
+      loadCatalogo(session);
+    };
+    document.addEventListener('visibilitychange', refrescar);
+    window.addEventListener('focus', refrescar);
+    return () => {
+      document.removeEventListener('visibilitychange', refrescar);
+      window.removeEventListener('focus', refrescar);
+    };
+  }, [session, isPortalDemo, loadCatalogo]);
 
   // ── Bootstrap de modo público ──────────────────────────────────────────────
   // Sin sesión (y sin demo): preguntamos al server si esta org tiene el catálogo
