@@ -2,7 +2,7 @@ import BackButton from '../components/BackButton.jsx';
 import ImportadorPrecios from './ImportadorPrecios.jsx';
 import { fmt , getOrgId, getAuthHeaders } from '../lib/constants.js';
 // src/tabs/PreciosListasTab.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { calcLinea } from '../lib/pricing.js';
 
@@ -380,7 +380,19 @@ export default function PreciosListasTab() {
   const { clientes, setClientes, products } = useApp();
   const [listas, setListas] = useState([]);
   const [listItems, setListItems] = useState({});
-  const [cliMap, setCliMap] = useState({});
+  // Clientes por lista: se DERIVAN de los clientes ya en memoria (useApp), NO se
+  // re-fetchean por lista. Con 1500+ clientes, traer todos por cada lista era
+  // inviable; acá es gratis y siempre al día (asignarCliente actualiza `clientes`).
+  const cliMap = useMemo(() => {
+    const byLista = {};
+    for (const c of (clientes || [])) {
+      const lid = c.listaId ?? c.lista_id;
+      if (lid) (byLista[lid] = byLista[lid] || []).push(c);
+    }
+    const m = {};
+    for (const l of listas) m[l.id] = byLista[l.id] || [];
+    return m;
+  }, [listas, clientes]);
   const [loading, setLoading] = useState(true);
   const [vistaEditar, setVistaEditar] = useState(null);
   const [vistaImportar, setVistaImportar] = useState(false);
@@ -396,9 +408,9 @@ export default function PreciosListasTab() {
     try {
       const data = await sb(`price_lists?org_id=eq.${getOrgId()}&order=creado_en.desc`);
       setListas(data || []);
-      const im = {}, cm = {};
-      for (const l of (data || [])) { im[l.id] = await sb(`price_list_items?lista_id=eq.${l.id}`).catch(() => []); cm[l.id] = await sb(`clients?lista_id=eq.${l.id}&select=id,name,phone`).catch(() => []); }
-      setListItems(im); setCliMap(cm);
+      const im = {};
+      for (const l of (data || [])) { im[l.id] = await sb(`price_list_items?lista_id=eq.${l.id}`).catch(() => []); }
+      setListItems(im);  // los clientes por lista se derivan en memoria (cliMap)
     } catch (e) { flash('❌ ' + e.message); }
     setLoading(false);
   };
@@ -409,7 +421,7 @@ export default function PreciosListasTab() {
     try {
       const n = await sb('price_lists', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify({ id: 'lista_' + Math.random().toString(36).slice(2, 10), org_id: getOrgId(), nombre: fNombre.trim(), descripcion: fDesc.trim() || null, descuento: 0, activa: true }) });
       const lista = n?.[0]; if (!lista) throw new Error('Sin respuesta');
-      setListas(ls => [lista, ...ls]); setListItems(m => ({ ...m, [lista.id]: [] })); setCliMap(m => ({ ...m, [lista.id]: [] }));
+      setListas(ls => [lista, ...ls]); setListItems(m => ({ ...m, [lista.id]: [] }));
       setFNombre(''); setFDesc(''); setShowForm(false); flash(`✅ Lista "${lista.nombre}" creada`);
     } catch (e) { flash('❌ ' + e.message); }
     setSaving(false);
@@ -468,7 +480,7 @@ export default function PreciosListasTab() {
                     <button onClick={() => eliminarLista(lista)} style={{ padding: '8px 12px', background: '#fff', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Eliminar</button>
                   </div>
                 </div>
-                {cc > 0 && <div style={{ padding: '6px 20px 10px', borderTop: '1px solid #f9fafb', display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(cliMap[lista.id] || []).slice(0, 10).map(c => <span key={c.id} style={{ fontSize: 11, background: '#eff6ff', color: '#1d4ed8', padding: '2px 10px', borderRadius: 20, fontWeight: 600 }}>{c.name}</span>)}{cc > 10 && <span style={{ fontSize: 11, color: '#9ca3af' }}>+{cc - 10} más</span>}</div>}
+                {cc > 0 && <div style={{ padding: '6px 20px 10px', borderTop: '1px solid #f9fafb', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{(cliMap[lista.id] || []).slice(0, 4).map(c => <span key={c.id} style={{ fontSize: 11, background: '#eff6ff', color: '#1d4ed8', padding: '2px 10px', borderRadius: 20, fontWeight: 600 }}>{c.nombre || c.name}</span>)}{cc > 4 && <span style={{ fontSize: 11, color: '#9ca3af' }}>+{cc - 4} más</span>}</div>}
               </div>
             );
           })}
