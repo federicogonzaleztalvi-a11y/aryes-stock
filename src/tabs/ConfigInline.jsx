@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import RolesManager from '../components/RolesManager.jsx';
+import MiMenuPanel from '../components/MiMenuPanel.jsx';
 import { TAX_BY_COUNTRY, getCountryOptions } from '../lib/taxConfig.js';
 import UsersTab from './UsersTab.jsx';
 import RolesTab from './config/RolesTab.jsx';
@@ -1630,7 +1631,10 @@ export default function ConfigInline({
           )}
 
           {settingsTab==="roles" && (
-            <RolesManager brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
+            <>
+              <RolesManager brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
+              <MiMenuPanel session={session} brandCfg={brandCfg} />
+            </>
           )}
           {settingsTab==="marca" && (
             <div style={{maxWidth:560}}>

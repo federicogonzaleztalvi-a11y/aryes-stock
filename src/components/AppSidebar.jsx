@@ -194,53 +194,27 @@ const NavItem = ({ item, active, onClick, badge }) => {
 };
 
 // ─── AppSidebar ───────────────────────────────────────────────────────────────
-// Fila del modo "Personalizar menú": la pestaña con un toggle Visible/Oculto.
-// Preferencia PERSONAL por usuario (en este dispositivo): no cambia permisos ni
-// afecta a otros. Las fijas (dashboard, config) no se pueden ocultar.
-function CustomizeRow({ item, hidden, locked, onToggle }) {
-  return (
-    <div
-      role="button"
-      onClick={locked ? undefined : onToggle}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 18px',
-        cursor: locked ? 'default' : 'pointer', opacity: hidden ? 0.55 : 1, fontFamily: S.sans }}
-    >
-      <Icon name={item.icon} size={15} color={hidden ? S.textXs : S.textSm} />
-      <span style={{ flex: 1, fontSize: 13, color: S.text }}>{item.label}</span>
-      {locked ? (
-        <span style={{ fontSize: 10, color: S.textXs }}>fijo</span>
-      ) : (
-        <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-          background: hidden ? '#f0ede8' : S.greenBg, color: hidden ? S.textXs : S.green }}>
-          {hidden ? 'Oculto' : 'Visible'}
-        </span>
-      )}
-    </div>
-  );
-}
-
 export default function AppSidebar({ session, tab, setTab }) {
   const { syncStatus, hasPendingSync, brandCfg, critN, orders, cfes, clientes, ventas} = useApp();
 
   const role = session?.role || 'admin';
   const nav  = getNavForRole(role, brandCfg);
 
-  // ── Menú personal: cada usuario oculta las pestañas que no usa (solo visual) ──
-  // Se guarda por usuario en este dispositivo; no toca permisos ni a otros usuarios.
-  // 'dashboard' y 'config' quedan siempre (para no quedar sin inicio ni ajustes).
-  const PROTECTED = ['dashboard', 'config'];
+  // ── Menú personal: cada usuario oculta las pestañas que no usa ──────────────
+  // El CONTROL vive en Configuración → Roles → "Tu menú personal". Acá solo
+  // LEEMOS la preferencia (localStorage por usuario) y filtramos el menú. El
+  // evento 'pz-menu-changed' avisa cuando cambia para re-aplicar sin recargar.
   const userKey = session?.email || session?.username || session?.id || 'user';
   const HIDE_KEY = `pz-menu-hidden:${userKey}`;
-  const [customizing, setCustomizing] = React.useState(false);
   const [hidden, setHidden] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem(HIDE_KEY) || '[]'); } catch { return []; }
   });
-  const toggleHide = (id) => {
-    if (PROTECTED.includes(id)) return;
-    const next = hidden.includes(id) ? hidden.filter(x => x !== id) : [...hidden, id];
-    setHidden(next);
-    try { localStorage.setItem(HIDE_KEY, JSON.stringify(next)); } catch { /* storage bloqueado */ }
-  };
+  React.useEffect(() => {
+    const reread = () => { try { setHidden(JSON.parse(localStorage.getItem(HIDE_KEY) || '[]')); } catch { /* noop */ } };
+    window.addEventListener('pz-menu-changed', reread);
+    window.addEventListener('storage', reread);
+    return () => { window.removeEventListener('pz-menu-changed', reread); window.removeEventListener('storage', reread); };
+  }, [HIDE_KEY]);
   const visibleNav = nav.filter(n => !hidden.includes(n.id));
 
   const vencidasN  = cfes.filter(f =>
@@ -325,16 +299,8 @@ export default function AppSidebar({ session, tab, setTab }) {
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0', scrollbarWidth: 'none' }}>
         <style>{`nav::-webkit-scrollbar { display: none; }`}</style>
 
-        {customizing && (
-          <div style={{ padding: '10px 18px 4px', fontSize: 11.5, color: S.textSm, lineHeight: 1.5 }}>
-            Elegí qué pestañas ver en tu menú. Es solo para vos — no cambia permisos
-            ni afecta a otros usuarios. Podés volver a mostrarlas cuando quieras.
-          </div>
-        )}
-
         {NAV_GROUPS.map(g => {
-          const source = customizing ? nav : visibleNav;
-          const items = source.filter(n => g.ids.includes(n.id));
+          const items = visibleNav.filter(n => g.ids.includes(n.id));
           if (!items.length) return null;
 
           return (
@@ -351,46 +317,18 @@ export default function AppSidebar({ session, tab, setTab }) {
 
               {/* Items */}
               {items.map(n => (
-                customizing ? (
-                  <CustomizeRow
-                    key={n.id}
-                    item={n}
-                    hidden={hidden.includes(n.id)}
-                    locked={PROTECTED.includes(n.id)}
-                    onToggle={() => toggleHide(n.id)}
-                  />
-                ) : (
-                  <NavItem
-                    key={n.id}
-                    item={n}
-                    active={tab === n.id}
-                    onClick={() => setTab(n.id)}
-                    badge={getBadge(n.id)}
-                  />
-                )
+                <NavItem
+                  key={n.id}
+                  item={n}
+                  active={tab === n.id}
+                  onClick={() => setTab(n.id)}
+                  badge={getBadge(n.id)}
+                />
               ))}
             </React.Fragment>
           );
         })}
       </nav>
-
-      {/* ── Footer: personalizar el propio menú ───────────────────────────── */}
-      <div style={{ borderTop: `1px solid ${S.border}`, padding: '10px 14px', flexShrink: 0 }}>
-        <button
-          onClick={() => setCustomizing(v => !v)}
-          style={{
-            width: '100%', padding: '8px 10px',
-            background: customizing ? S.green : 'transparent',
-            color: customizing ? '#fff' : S.textSm,
-            border: customizing ? 'none' : `1px solid ${S.border}`,
-            borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            fontFamily: S.sans, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 6,
-          }}
-        >
-          {customizing ? '✓ Listo' : '⚙ Personalizar menú'}
-        </button>
-      </div>
 
     </aside>
   );
