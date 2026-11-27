@@ -47,23 +47,21 @@ export default async function handler(req, res) {
   const H   = { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' };
 
   // ── GET: datos actuales (para prefilear el checkout) ───────────────────────
+  // Vía RPC SECURITY DEFINER `portal_get_profile`: la lectura directa de clients
+  // corría con RLS → devolvía vacío si la clave no era service-role (el prefill
+  // no cargaba). La RPC valida el token adentro y devuelve {perfil, tienePedidos}
+  // scopeado a ese cliente, sin depender de la key.
   if (req.method === 'GET') {
     try {
-      const r = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${cid}&org_id=eq.${org}&select=${CAMPOS.join(',')}&limit=1`,
-        { headers: H }
-      );
-      const rows = r.ok ? await r.json() : [];
-      // ¿El cliente ya hizo pedidos? Si sí, es un cliente establecido: el checkout
-      // NO lo bloquea por datos faltantes (no rompemos la operación en curso). El
-      // bloqueo del núcleo sólo aplica a clientes nuevos (primer pedido).
-      let tienePedidos = false;
-      try {
-        const orows = await fetch(`${SB_URL}/rest/v1/b2b_orders?cliente_id=eq.${cid}&org_id=eq.${org}&select=id&limit=1`, { headers: H });
-        const oj = orows.ok ? await orows.json() : [];
-        tienePedidos = Array.isArray(oj) && oj.length > 0;
-      } catch { /* best-effort: ante la duda no bloqueamos */ tienePedidos = true; }
-      return res.status(200).json({ perfil: rows?.[0] || {}, tienePedidos });
+      const r = await fetch(`${SB_URL}/rest/v1/rpc/portal_get_profile`, {
+        method: 'POST',
+        headers: { ...H, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_token: getBearerToken(req) }),
+      });
+      const out = r.ok ? await r.json() : null;
+      // tienePedidos default true = no bloqueamos el checkout ante la duda.
+      if (!out || out.invalid) return res.status(200).json({ perfil: {}, tienePedidos: true });
+      return res.status(200).json({ perfil: out.perfil || {}, tienePedidos: out.tienePedidos !== false });
     } catch { return res.status(502).json({ error: 'Database error' }); }
   }
 

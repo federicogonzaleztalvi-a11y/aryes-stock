@@ -27,20 +27,17 @@ export function getBearerToken(req) {
 // Extiende expires_at a +90 días. Best-effort: si falla, la sesión sigue siendo
 // válida igual (sólo pierde la renovación de esta pasada), nunca rompe el login.
 async function renewSession(token, key) {
-  const nuevoExpira = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  // Vía RPC SECURITY DEFINER (anon no puede UPDATE portal_sessions). Devuelve la
+  // nueva fecha para que el caller la pase al cliente (desliza su copia local).
   try {
-    await fetch(
-      `${SB_URL}/rest/v1/portal_sessions?token=eq.${encodeURIComponent(token)}`,
-      {
-        method: 'PATCH',
-        headers: {
-          apikey: key, Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json', Prefer: 'return=minimal',
-        },
-        body: JSON.stringify({ expires_at: nuevoExpira }),
-      }
-    );
-    return nuevoExpira;  // el caller lo devuelve al cliente para que deslice su copia local
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/portal_renew_session`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ p_token: token }),
+    });
+    if (!r.ok) return null;
+    const out = await r.json().catch(() => null);  // la RPC devuelve el timestamptz
+    return out || null;
   } catch { return null; /* best-effort; la sesión actual sigue válida igual */ }
 }
 
@@ -49,18 +46,23 @@ export async function validatePortalSession(token) {
   const key = SB_SVC || SB_ANON;
   if (!SB_URL || !key) return null;
 
+  // Validamos vía RPC SECURITY DEFINER `portal_validate_session` en vez de leer
+  // portal_sessions directo. Motivo: la lectura directa corre con el rol de la
+  // clave y, si el service-role no surte efecto, cae a `anon` → RLS bloquea la
+  // lectura de portal_sessions → la validación fallaba para TODOS (login no
+  // persistía, "Mis pedidos" daba 401). La RPC corre con permisos del dueño y
+  // valida el token adentro → el portal NO depende de la service-role key.
   const r = await fetch(
-    `${SB_URL}/rest/v1/portal_sessions` +
-    `?token=eq.${encodeURIComponent(token)}` +
-    `&expires_at=gte.${new Date().toISOString()}` +
-    `&revoked=eq.false` +
-    `&select=token,cliente_id,org_id,tel,expires_at,via_vendedor,vendedor_nombre` +
-    `&limit=1`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+    `${SB_URL}/rest/v1/rpc/portal_validate_session`,
+    {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ p_token: token }),
+    }
   );
   if (!r.ok) return null;
   const rows = await r.json();
-  const session = rows?.[0] || null;
+  const session = Array.isArray(rows) ? (rows[0] || null) : (rows || null);
 
   // Sesión deslizante: si a esta sesión le quedan pocos días, renovarla a +90d y
   // reflejar la fecha nueva en el objeto que devolvemos (así el endpoint puede

@@ -198,9 +198,17 @@ async function handler(req, res) {
       const session = await validatePortalSession(token);
       if (!session) return res.status(401).json({ error: 'Sesión inválida' });
       const key = SB_SVC || SB_ANON;
+      // Vía RPC SECURITY DEFINER `portal_historial`: la lectura directa de
+      // b2b_orders corría con RLS basada en auth.uid() (null para el portal) →
+      // devolvía VACÍO si la clave no era service-role. La RPC valida el token
+      // adentro y devuelve los pedidos del cliente, sin depender de la key.
       const r = await fetch(
-        `${SB_URL}/rest/v1/b2b_orders?cliente_id=eq.${session.cliente_id}&org_id=eq.${session.org_id}&order=creado_en.desc&limit=30`,
-        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' } }
+        `${SB_URL}/rest/v1/rpc/portal_historial`,
+        {
+          method: 'POST',
+          headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ p_token: token }),
+        }
       );
       if (!r.ok) return res.status(500).json({ error: 'Error al obtener historial' });
       
