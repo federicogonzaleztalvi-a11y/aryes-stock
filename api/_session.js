@@ -66,9 +66,16 @@ export async function validatePortalSession(token) {
       body: JSON.stringify({ p_token: token }),
     }
   );
-  if (!r.ok) return null;
+  if (!r.ok) {
+    let body = ''; try { body = (await r.text()).slice(0, 200); } catch { body = '(sin cuerpo)'; }
+    console.error('[session-diag] rpc !ok status=' + r.status + ' tok=' + (token ? token.slice(0, 8) : 'none') + ' body=' + body);
+    return null;
+  }
   const rows = await r.json();
   const session = Array.isArray(rows) ? (rows[0] || null) : (rows || null);
+  if (!session) {
+    console.warn('[session-diag] rpc ok pero SIN sesión · tok=' + (token ? token.slice(0, 8) : 'none') + ' rows=' + JSON.stringify(rows).slice(0, 120));
+  }
 
   // Sesión deslizante: si a esta sesión le quedan pocos días, renovarla a +90d y
   // reflejar la fecha nueva en el objeto que devolvemos (así el endpoint puede
