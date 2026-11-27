@@ -194,7 +194,7 @@ async function handler(req, res) {
     if (action === 'historial') {
       const authHeader = req.headers['authorization'] || '';
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      log.warn('pedido', 'hist-diag', { v: 'diag5', authLen: authHeader.length, tokPref: token ? token.slice(0, 8) : 'NULL' });
+      console.log('[hist-diag] authLen=' + authHeader.length + ' authPref=' + JSON.stringify(authHeader.slice(0, 16)) + ' tok=' + (token ? token.slice(0, 8) : 'NULL'));
       const session = await validatePortalSession(token);
       if (!session) return res.status(401).json({
         error: 'Sesión inválida',
