@@ -163,10 +163,11 @@ async function handler(req, res) {
 
 
   // ── GET /api/pedido?action=pendientes — lista pedidos B2B pendientes (operador) ──
-  if (req.method === 'GET') {
-    const action = req.query?.action;
-    if (action !== 'pendientes')
-      return res.status(401).json({ error: 'No autorizado' });
+  // BUG HISTÓRICO: este bloque hacía `if (action !== 'pendientes') return 401`, lo
+  // que TAPABA a los otros GET (historial, comprobante) → el portal del cliente
+  // recibía "No autorizado" antes de llegar a su handler. Ahora el bloque sólo
+  // corre para action=pendientes; los demás GET siguen de largo a su handler.
+  if (req.method === 'GET' && req.query?.action === 'pendientes') {
     // Require auth — derive org from authenticated user
     const authH = req.headers['authorization'] || '';
     const userToken = authH.startsWith('Bearer ') ? authH.slice(7) : null;
@@ -194,12 +195,8 @@ async function handler(req, res) {
     if (action === 'historial') {
       const authHeader = req.headers['authorization'] || '';
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      console.log('[hist-diag] authLen=' + authHeader.length + ' authPref=' + JSON.stringify(authHeader.slice(0, 16)) + ' tok=' + (token ? token.slice(0, 8) : 'NULL'));
       const session = await validatePortalSession(token);
-      if (!session) return res.status(401).json({
-        error: 'Sesión inválida',
-        _diag: { v: 'diag5', authLen: authHeader.length, tokPref: token ? token.slice(0, 8) : null },
-      });
+      if (!session) return res.status(401).json({ error: 'Sesión inválida' });
       // RPC SECURITY DEFINER con la ANON key (pública, válida): valida el token y
       // devuelve los pedidos del cliente, sin depender de la service-role key.
       const key = SB_ANON;
