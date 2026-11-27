@@ -194,9 +194,12 @@ async function handler(req, res) {
     if (action === 'historial') {
       const authHeader = req.headers['authorization'] || '';
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      console.log('[hist-diag] authLen=' + authHeader.length + ' pref=' + authHeader.slice(0, 14) + ' tok=' + (token ? token.slice(0, 8) : 'NULL'));
+      log.warn('pedido', 'hist-diag', { v: 'diag5', authLen: authHeader.length, tokPref: token ? token.slice(0, 8) : 'NULL' });
       const session = await validatePortalSession(token);
-      if (!session) return res.status(401).json({ error: 'Sesión inválida' });
+      if (!session) return res.status(401).json({
+        error: 'Sesión inválida',
+        _diag: { v: 'diag5', authLen: authHeader.length, tokPref: token ? token.slice(0, 8) : null },
+      });
       // RPC SECURITY DEFINER con la ANON key (pública, válida): valida el token y
       // devuelve los pedidos del cliente, sin depender de la service-role key.
       const key = SB_ANON;
