@@ -194,7 +194,7 @@ async function handler(req, res) {
     if (action === 'historial') {
       const authHeader = req.headers['authorization'] || '';
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      console.warn('[hist-diag] authLen=' + authHeader.length + ' pref=' + authHeader.slice(0, 14) + ' tok=' + (token ? token.slice(0, 8) : 'NULL'));
+      console.log('[hist-diag] authLen=' + authHeader.length + ' pref=' + authHeader.slice(0, 14) + ' tok=' + (token ? token.slice(0, 8) : 'NULL'));
       const session = await validatePortalSession(token);
       if (!session) return res.status(401).json({ error: 'Sesión inválida' });
       // RPC SECURITY DEFINER con la ANON key (pública, válida): valida el token y
