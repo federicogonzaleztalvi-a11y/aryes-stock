@@ -2963,8 +2963,14 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
             <TotalesResumen lineasConCalc={lineasConCalc} subtotalNeto={subtotalNeto} total={total} boxed totalSize={20} />
           </div>
 
-          {/* Datos de facturación y entrega (self-service, núcleo obligatorio) */}
-          {!isDemo && session?.token && perfil !== null && !nucleoCompleto && (
+          {/* Datos de facturación y entrega (self-service, núcleo obligatorio).
+              Se muestra si faltan datos O si el cliente ya empezó a editar
+              (perfilDirty): antes, al tipear el ÚLTIMO campo faltante, nucleoCompleto
+              pasaba a true y el bloque se DESMONTABA a mitad de tipeo → se perdía el
+              foco y la vista saltaba a envío. Manteniéndolo montado mientras edita,
+              eso ya no pasa; para un cliente ya completo (que no tocó nada) sigue
+              oculto como antes. */}
+          {!isDemo && session?.token && perfil !== null && (!nucleoCompleto || perfilDirty) && (
             <DatosClienteBlock perfil={perfil} onCampo={setPerfilCampo} nucleoCompleto={nucleoCompleto} autoAbrir={!tienePedidos} />
           )}
 

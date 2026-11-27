@@ -76,11 +76,18 @@ export default async function handler(req, res) {
     }
     if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Nada para guardar' });
     try {
-      const r = await fetch(
-        `${SB_URL}/rest/v1/clients?id=eq.${cid}&org_id=eq.${org}`,
-        { method: 'PATCH', headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(patch) }
-      );
+      // Guardamos vía RPC SECURITY DEFINER (portal_save_profile). Un PATCH directo
+      // a `clients` fallaba cuando la función corre con rol anon (anon no tiene
+      // grant de UPDATE en clients). La RPC corre con permisos del dueño, re-valida
+      // el token adentro (sin IDOR) y sólo toca columnas de la whitelist.
+      const r = await fetch(`${SB_URL}/rest/v1/rpc/portal_save_profile`, {
+        method: 'POST',
+        headers: { ...H, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_token: getBearerToken(req), p_patch: patch }),
+      });
       if (!r.ok) return res.status(502).json({ error: 'No se pudieron guardar los datos' });
+      const out = await r.json().catch(() => null);
+      if (out === 'invalid_session') return res.status(401).json({ error: 'Sesión inválida' });
       return res.status(200).json({ ok: true });
     } catch { return res.status(502).json({ error: 'Database error' }); }
   }

@@ -122,6 +122,21 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setPurchaseOrders(d); }).catch(()=>{});
   }, []);
 
+  // Pedidos del PORTAL (b2b_orders) — lo que mandan los clientes. Antes el
+  // dashboard solo contaba la tabla `ventas` (órdenes armadas en el admin), así
+  // que los pedidos del portal NO aparecían en "Tus números" → Eric veía 0
+  // aunque sus clientes pedían. Los traemos (últimas 2 semanas alcanza para los
+  // KPIs semana-actual vs anterior) y los sumamos abajo, sin contar doble.
+  const [portalOrders, setPortalOrders] = React.useState([]);
+  React.useEffect(() => {
+    if (!getSession()?.access_token) return;
+    const SB = import.meta.env.VITE_SUPABASE_URL;
+    const desde = new Date(Date.now() - 15 * 86400000).toISOString();
+    fetch(`${SB}/rest/v1/b2b_orders?org_id=eq.${getOrgId()}&creado_en=gte.${desde}&select=id,total,creado_en,cliente_id,cliente_nombre,estado&order=creado_en.desc&limit=500`,
+      {headers:getAuthHeaders()})
+      .then(r=>r.json()).then(d=>{ if(Array.isArray(d)) setPortalOrders(d); }).catch(()=>{});
+  }, []);
+
 
   // Pull ventas reactively — avoids adding a prop to the parent call site
   const { ventas = [], clientes = [], rutas = [], priceListas = [], brandCfg = {} } = useApp();
@@ -505,8 +520,20 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       const t = new Date(creadoEn).getTime();
       return t >= start && t < end;
     };
-    const thisWeek = ventasActivas.filter(v => inWin(v.creadoEn, now - wk, now));
-    const lastWeek = ventasActivas.filter(v => inWin(v.creadoEn, now - 2 * wk, now - wk));
+    // Unimos las ventas del admin con los pedidos del PORTAL (b2b_orders), para
+    // que "Tus números" refleje lo que mandan los clientes. Sin doble conteo: si
+    // un pedido del portal ya se convirtió en venta (venta.orderId), no lo
+    // sumamos de nuevo. Normalizamos los campos del portal a la forma de venta.
+    const idsYaEnVenta = new Set((ventas || []).map(v => v.orderId).filter(Boolean));
+    const portalNorm = (portalOrders || [])
+      .filter(o => o.estado !== 'cancelada' && !idsYaEnVenta.has(o.id))
+      .map(o => ({
+        id: o.id, creadoEn: o.creado_en, total: o.total,
+        clienteId: o.cliente_id, clienteNombre: o.cliente_nombre, estado: o.estado,
+      }));
+    const todas = [...ventasActivas, ...portalNorm];
+    const thisWeek = todas.filter(v => inWin(v.creadoEn, now - wk, now));
+    const lastWeek = todas.filter(v => inWin(v.creadoEn, now - 2 * wk, now - wk));
     const sum = arr => arr.reduce((s, v) => s + Number(v.total || 0), 0);
     const totalThis = sum(thisWeek), totalLast = sum(lastWeek);
     const pedThis = thisWeek.length, pedLast = lastWeek.length;
@@ -521,7 +548,7 @@ function DashboardInline({products, suppliers, orders, movements, session, setTa
       ticketThis, ticketPct: pct(ticketThis, ticketLast),
       cliThis, clientesPct: pct(cliThis, cliLast),
     };
-  }, [ventasActivas]);
+  }, [ventasActivas, portalOrders, ventas]);
 
   // Top 5 productos vendidos — este mes (por facturación)
   const topProductosMes = React.useMemo(() => {
