@@ -67,28 +67,25 @@ const CORS = {
 async function buildComprobantePdf(session, orderId) {
   const key = SB_SVC || SB_ANON;
   const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
-  const oRes = await fetch(
-    `${SB_URL}/rest/v1/b2b_orders?id=eq.${encodeURIComponent(orderId)}&cliente_id=eq.${session.cliente_id}&org_id=eq.${session.org_id}&limit=1`,
-    hdr
-  );
-  if (!oRes.ok) throw new Error('order_fetch_failed');
-  const oRows = await oRes.json();
-  if (!oRows?.length) return null;
-  const pedido = oRows[0];
+  // Datos vía RPC SECURITY DEFINER `portal_comprobante_data` (valida el token y
+  // trae pedido + empresa + datos fiscales + precios base, scopeado al cliente).
+  // Antes eran 4 lecturas REST directas que, con rol anon (service-role key sin
+  // efecto), volvían vacías por RLS → el comprobante fallaba. Así NO depende de la key.
+  const dRes = await fetch(`${SB_URL}/rest/v1/rpc/portal_comprobante_data`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ p_token: session.token, p_order_id: orderId }),
+  });
+  if (!dRes.ok) throw new Error('order_fetch_failed');
+  const data = await dRes.json();
+  if (!data || data.invalid || data.notfound) return null;
+  const pedido = data.pedido;
   const orderItems = pedido.items || [];
-  // empresa
-  const orgRes = await fetch(SB_URL + '/rest/v1/organizations?id=eq.' + encodeURIComponent(session.org_id) + '&select=name', hdr);
-  const empresa = (orgRes.ok ? (await orgRes.json())[0]?.name : '') || 'Pazque';
-  // datos fiscales del cliente
-  const cliRes = await fetch(SB_URL + '/rest/v1/clients?id=eq.' + encodeURIComponent(session.cliente_id) + '&select=name,codigo,rut,address,ciudad,horario_desde,horario_hasta,zona_entrega,cond_pago&limit=1', hdr);
-  const cli = (cliRes.ok ? (await cliRes.json())[0] : null) || {};
-  // precios base
-  const ids = orderItems.map(i => i.id || i.productId).filter(Boolean);
-  let baseMap = {};
-  if (ids.length) {
-    const prRes = await fetch(SB_URL + '/rest/v1/products?uuid=in.(' + ids.map(encodeURIComponent).join(',') + ')&select=uuid,precio_venta,codigo', hdr);
-    if (prRes.ok) (await prRes.json()).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
-  }
+  const empresa = data.empresa || 'Pazque';
+  const cli = data.cliente || {};
+  // precios base (del RPC)
+  const baseMap = {};
+  (data.productos || []).forEach(p => { baseMap[p.uuid] = { precio: Number(p.precio_venta) || 0, codigo: p.codigo || '' }; });
   const lineas = buildLineas(orderItems, baseMap);
   const { subtotal, descuentoTotal } = sumLineas(lineas);
   const total = Number(pedido.total) || subtotal;
