@@ -36,7 +36,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const key = SB_SVC || SB_ANON;
+  // ANON key (pública, válida) para las RPCs SECURITY DEFINER del portal; no
+  // depende de la service-role key (que puede estar rota/rechazada por el gateway).
+  const key = SB_ANON;
   if (!SB_URL || !key) return res.status(500).json({ error: 'Server misconfigured' });
 
   const session = await validatePortalSession(getBearerToken(req));

@@ -43,7 +43,13 @@ async function renewSession(token, key) {
 
 export async function validatePortalSession(token) {
   if (!token || typeof token !== 'string') return null;
-  const key = SB_SVC || SB_ANON;
+  // Usamos la ANON key (pública, siempre válida) para las RPCs del portal, NO la
+  // service-role: estas funciones son SECURITY DEFINER (corren con permisos del
+  // dueño y validan el token adentro), así que no necesitan service-role. Además,
+  // si el valor de SUPABASE_SERVICE_ROLE_KEY está roto/rechazado por el gateway,
+  // `SB_SVC || SB_ANON` tomaba el valor roto y TODA llamada fallaba → el portal
+  // depende sólo de la anon key, que es pública y estable.
+  const key = SB_ANON;
   if (!SB_URL || !key) return null;
 
   // Validamos vía RPC SECURITY DEFINER `portal_validate_session` en vez de leer

@@ -65,7 +65,9 @@ const CORS = {
 // SECURITY: el cliente sólo accede a SUS pedidos (cliente_id + org_id de la sesión).
 // Devuelve null si el pedido no existe / no es del cliente; lanza ante fallo de red.
 async function buildComprobantePdf(session, orderId) {
-  const key = SB_SVC || SB_ANON;
+  // ANON key (pública, válida) para la RPC SECURITY DEFINER; no depende de la
+  // service-role. (hdr se usa abajo para orgCurrencySymbol, también anon.)
+  const key = SB_ANON;
   const hdr = { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } };
   // Datos vía RPC SECURITY DEFINER `portal_comprobante_data` (valida el token y
   // trae pedido + empresa + datos fiscales + precios base, scopeado al cliente).
@@ -194,11 +196,9 @@ async function handler(req, res) {
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
       const session = await validatePortalSession(token);
       if (!session) return res.status(401).json({ error: 'Sesión inválida' });
-      const key = SB_SVC || SB_ANON;
-      // Vía RPC SECURITY DEFINER `portal_historial`: la lectura directa de
-      // b2b_orders corría con RLS basada en auth.uid() (null para el portal) →
-      // devolvía VACÍO si la clave no era service-role. La RPC valida el token
-      // adentro y devuelve los pedidos del cliente, sin depender de la key.
+      // RPC SECURITY DEFINER con la ANON key (pública, válida): valida el token y
+      // devuelve los pedidos del cliente, sin depender de la service-role key.
+      const key = SB_ANON;
       const r = await fetch(
         `${SB_URL}/rest/v1/rpc/portal_historial`,
         {
