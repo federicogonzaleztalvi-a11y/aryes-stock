@@ -2480,28 +2480,59 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
       ? brandCfg.envio.metodos.filter(m => m && m.id && String(m.nombre || '').trim())
       : [];
     const permit = Array.isArray(session?.envioMetodos) ? session.envioMetodos : [];
-    return permit.length ? all.filter(m => permit.includes(m.id)) : all;
-  }, [brandCfg?.envio, session?.envioMetodos]);
+    const base = permit.length ? all.filter(m => permit.includes(m.id)) : all;
+    // Fase B — mínimo de reparto: si el método propio tiene mínimo, el carrito no
+    // llega y su regla es 'oculta', no se ofrece (el cliente usa agencia/retiro).
+    return base.filter(m => {
+      if (m.tipo !== 'propio') return true;
+      const min = Number(m.minimo) || 0;
+      if (min <= 0 || (m.debajoMinimo || 'oculta') !== 'oculta') return true;
+      return total >= min;
+    });
+  }, [brandCfg?.envio, session?.envioMetodos, total]);
+  // Fase B — aviso cuando el reparto queda oculto por no llegar al mínimo (regla
+  // 'oculta'): le decimos cuánto le falta (patrón Amazon de envío gratis). Sólo si
+  // ese método está habilitado para el cliente.
+  const repartoOculto = useMemo(() => {
+    const all = Array.isArray(brandCfg?.envio?.metodos) ? brandCfg.envio.metodos : [];
+    const permit = Array.isArray(session?.envioMetodos) ? session.envioMetodos : [];
+    const base = permit.length ? all.filter(m => permit.includes(m.id)) : all;
+    const p = base.find(m => m && m.tipo === 'propio' && (Number(m.minimo) || 0) > 0 && (m.debajoMinimo || 'oculta') === 'oculta' && total < Number(m.minimo));
+    return p ? { nombre: p.nombre, falta: Number(p.minimo) - total, minimo: Number(p.minimo) } : null;
+  }, [brandCfg?.envio, session?.envioMetodos, total]);
   const metodoSelEnvio = metodosEnvio.find(m => m.id === envioMetodoId) || null;
   const esAgenciaEnvio = metodoSelEnvio?.tipo === 'agencia';
   const esPropioEnvio  = metodoSelEnvio?.tipo === 'propio';   // reparto a domicilio → necesita dirección
   const esRetiroEnvio  = metodoSelEnvio?.tipo === 'retiro';   // retiro en depósito → sin dirección
   const pagaEnDestino  = esAgenciaEnvio && (metodoSelEnvio.cobro || 'factura') === 'destino';
+  // Fase B — mínimo de reparto (método propio seleccionado). La regla 'oculta' ya
+  // lo sacó de la lista arriba; acá cubrimos 'cobra_flete' (suma un flete) y
+  // 'bloquea' (no deja cerrar el pedido). Arriba del mínimo, nada de esto aplica.
+  const minReparto       = esPropioEnvio ? (Number(metodoSelEnvio?.minimo) || 0) : 0;
+  const bajoMinReparto   = minReparto > 0 && total < minReparto;
+  const reglaDebajoRep   = metodoSelEnvio?.debajoMinimo || 'oculta';
+  const faltaMinReparto  = bajoMinReparto ? (minReparto - total) : 0;
+  const fleteReparto     = (bajoMinReparto && reglaDebajoRep === 'cobra_flete') ? (Number(metodoSelEnvio.fleteDebajo) || 0) : 0;
+  const repartoBloqueado = bajoMinReparto && reglaDebajoRep === 'bloquea';
   // El flete de agencia es NETO: lleva IVA 22% (criterio UY), que se suma al total y
   // a la línea de IVA de la factura. `envioCosto` es el neto que configuró la org y se
   // muestra como "Envío"; `envioIva` es su IVA; `totalConEnvio` incluye ambos. Aguas
   // abajo, el comprobante deriva IVA = total − subtotal − envío, así que al venir el IVA
   // del flete dentro de `total`, la línea de IVA ya lo incluye sin tocar nada más.
-  const envioCosto     = (esAgenciaEnvio && !pagaEnDestino) ? (Number(metodoSelEnvio.costo) || 0) : 0;
+  const envioCosto     = ((esAgenciaEnvio && !pagaEnDestino) ? (Number(metodoSelEnvio.costo) || 0) : 0) + fleteReparto;
   const envioIva       = Math.round(envioCosto * 22) / 100;
   const totalConEnvio  = total + envioCosto + envioIva;
   // Falta elegir método (si la org configuró alguno) o completar el destino de agencia.
-  const envioIncompleto = metodosEnvio.length > 0 && (!metodoSelEnvio || (esAgenciaEnvio && !envioDestino.trim()));
+  const envioIncompleto = metodosEnvio.length > 0 && (!metodoSelEnvio || (esAgenciaEnvio && !envioDestino.trim()) || repartoBloqueado);
   // Recordar la última elección del cliente (patrón Amazon/Meli): la próxima compra
   // ya viene con su método precargado. Por org+cliente, en el navegador.
   const envioLSKey = `pz-envio-${(brandCfg?.orgId) || ''}-${(session?.clienteId) || ''}`;
   useEffect(() => {
-    if (envioMetodoId || metodosEnvio.length === 0) return;
+    if (metodosEnvio.length === 0) return;
+    // Si ya hay uno elegido y SIGUE disponible, lo dejamos. Si no hay ninguno, o el
+    // elegido quedó fuera (ej: el reparto se ocultó al bajar del mínimo), elegimos
+    // uno válido para no quedar con una selección fantasma.
+    if (envioMetodoId && metodosEnvio.find(m => m.id === envioMetodoId)) return;
     let saved = '';
     try { saved = localStorage.getItem(envioLSKey) || ''; } catch { /* sin storage */ }
     if (saved && metodosEnvio.find(m => m.id === saved)) setEnvioMetodoId(saved);
@@ -2975,9 +3006,24 @@ function CartDrawer({ carrito, items, session, onClose, onConfirm, onVerPedidos,
           )}
 
           {/* Envío: cómo recibir el pedido (genérico por-org; solo si hay métodos) */}
-          {metodosEnvio.length > 0 && (
+          {(metodosEnvio.length > 0 || repartoOculto) && (
             <div style={{ padding: '0 24px 16px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: G, letterSpacing: .5, marginBottom: 8 }}>¿CÓMO QUERÉS RECIBIR EL PEDIDO?</div>
+              {repartoOculto && (
+                <div style={{ fontSize: 12.5, color: '#92600a', background: '#fef9ec', border: '1px solid #f6e3b4', borderRadius: 8, padding: '8px 11px', marginBottom: 10, fontFamily: SANS }}>
+                  Agregá {fmt.price(repartoOculto.falta)} para recibir a domicilio (mínimo {fmt.price(repartoOculto.minimo)} para {repartoOculto.nombre}).
+                </div>
+              )}
+              {bajoMinReparto && reglaDebajoRep === 'bloquea' && (
+                <div style={{ fontSize: 12.5, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 11px', marginBottom: 10, fontFamily: SANS }}>
+                  Te faltan {fmt.price(faltaMinReparto)} para el mínimo de {metodoSelEnvio?.nombre} ({fmt.price(minReparto)}). Agregá más productos o elegí otro método.
+                </div>
+              )}
+              {bajoMinReparto && reglaDebajoRep === 'cobra_flete' && (
+                <div style={{ fontSize: 12.5, color: '#92600a', background: '#fef9ec', border: '1px solid #f6e3b4', borderRadius: 8, padding: '8px 11px', marginBottom: 10, fontFamily: SANS }}>
+                  Debajo de {fmt.price(minReparto)} el reparto tiene un flete de {fmt.price(fleteReparto)} + IVA (gratis arriba del mínimo).
+                </div>
+              )}
               {(() => {
                 // Colapsado (patrón Amazon/Meli): elegido un método válido, se muestra
                 // en UNA línea con "Cambiar". Expandido: la lista + el dato que ese

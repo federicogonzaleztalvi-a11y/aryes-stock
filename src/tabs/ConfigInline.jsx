@@ -877,6 +877,38 @@ function EnvioPanel({ brandCfg, setBrandCfg }) {
                 )}
               </div>
             )}
+            {m.tipo === 'propio' && (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', paddingLeft: 2 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48' }}>
+                  <span>Monto mínimo de pedido:</span>
+                  <input type="number" min="0" step="1"
+                    value={m.minimo ?? 0}
+                    onChange={e => setMetodo(i, { minimo: Math.max(0, Number(e.target.value) || 0) })}
+                    style={{ ...inputStyle, width: 110 }} />
+                  <span style={{ fontSize: 12, color: '#6a6a68' }}>0 = sin mínimo</span>
+                </label>
+                {(Number(m.minimo) || 0) > 0 && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48' }}>
+                    <span>Si el pedido no llega:</span>
+                    <select value={m.debajoMinimo || 'oculta'} onChange={e => setMetodo(i, { debajoMinimo: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                      <option value="oculta">No se ofrece el reparto (usa agencia / retiro)</option>
+                      <option value="cobra_flete">Se ofrece con flete</option>
+                      <option value="bloquea">No deja cerrar el pedido</option>
+                    </select>
+                  </label>
+                )}
+                {(Number(m.minimo) || 0) > 0 && (m.debajoMinimo || 'oculta') === 'cobra_flete' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48' }}>
+                    <span>Flete debajo del mínimo (sin IVA):</span>
+                    <input type="number" min="0" step="1"
+                      value={m.fleteDebajo ?? 0}
+                      onChange={e => setMetodo(i, { fleteDebajo: Math.max(0, Number(e.target.value) || 0) })}
+                      style={{ ...inputStyle, width: 110 }} />
+                    <span style={{ fontSize: 12, color: '#6a6a68' }}>el portal le suma IVA 22%</span>
+                  </label>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
