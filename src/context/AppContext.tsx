@@ -304,6 +304,7 @@ const describeAction = (action: string, detail: string): string => {
             codigo: r.codigo || '',
             vendedorId: r.vendedor_id||null,
             envioMetodos: Array.isArray(r.envio_metodos) ? r.envio_metodos : [],
+            grupoId: r.grupo_id || null,
           }));
           setClientes(mappedClientes);
         }

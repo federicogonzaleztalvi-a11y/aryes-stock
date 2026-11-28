@@ -4320,6 +4320,10 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
   const [portalDemo, setPortalDemo] = useState(null); // null | 'selecting' | dataset key
   const isPortalDemo = !!portalDemo && portalDemo !== 'selecting';
   const [session,  setSession]  = useState(() => vendorSession || loadSession());
+  // Fase A — grupos: métodos de envío efectivos (cliente > grupo) que resuelve el
+  // server en cada carga de catálogo. Se usa fresco en el checkout; null = todavía
+  // no cargó el catálogo (se cae a la copia cacheada de la sesión).
+  const [catalogEnvioMetodos, setCatalogEnvioMetodos] = useState(null);
   const [vista,    setVista]    = useState('catalogo');
   const [verTodoCatalogo, setVerTodoCatalogo] = useState(false); // vidriera: true = mostrar la grilla completa
   const [detalle,  setDetalle]  = useState(null); // producto abierto en la PDP (null = grilla)
@@ -4945,6 +4949,11 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
         return;
       }
       const d = await r.json();
+
+      // Fase A — grupos: el server resuelve cliente > grupo y manda la lista
+      // efectiva de métodos de envío. La guardamos aparte (no en la sesión) para
+      // que el checkout la use fresca sin disparar un re-render → otro loadCatalogo.
+      if (Array.isArray(d.envioMetodos)) setCatalogEnvioMetodos(d.envioMetodos);
 
       // Sesión deslizante: el server pudo renovar expires_at (patrón Amazon/ML:
       // el cliente activo nunca se re-loguea). Deslizamos la copia local en
@@ -6332,7 +6341,7 @@ export default function PedidosPage({ vendorSession = null, onVendorExit = null,
       )}
 
       {showCart && (
-        <CartDrawer carrito={carrito} items={items} session={session} brandCfg={brandCfg} brandNombre={brandNombre}
+        <CartDrawer carrito={carrito} items={items} session={catalogEnvioMetodos ? { ...session, envioMetodos: catalogEnvioMetodos } : session} brandCfg={brandCfg} brandNombre={brandNombre}
           coBuy={coBuy} recommended={recommended}
           onAdd={(it, v) => addItem(it, v, 'carrito_mas')} onAddSugerido={(it) => addItem(it, undefined, 'carrito_sugerido')} onRemove={removeItem} onRemoveLine={removeLine}
           onClose={() => setShowCart(false)}

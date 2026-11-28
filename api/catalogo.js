@@ -103,6 +103,33 @@ export default async function handler(req, res) {
     }
     const { items, categorias, categoriasArbol, hasLista, descGlobal, horarioDesde, horarioHasta, portalActivo, portalCfg } = catalogo;
 
+    // ── Métodos de envío efectivos (Fase A — grupos de cliente) ───────────────
+    // Resolución cliente > grupo > org: el valor propio del cliente (su ficha)
+    // SIEMPRE gana; si no tiene, hereda los del grupo; si tampoco, ve todos ([]).
+    // Sólo en modo privado (clienteId). Best-effort: ante cualquier error queda []
+    // (ve todos) → nunca rompe el checkout. El front lo usa fresco en cada carga,
+    // así asignar/mover un cliente de grupo surte efecto en la próxima apertura.
+    let envioMetodosEff = [];
+    if (clienteId) {
+      try {
+        const _cliR = await fetch(
+          `${SB_URL}/rest/v1/clients?id=eq.${encodeURIComponent(clienteId)}&select=envio_metodos,grupo_id&limit=1`,
+          { headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, Accept: 'application/json' } }
+        );
+        const _cli = _cliR.ok ? (await _cliR.json())[0] : null;
+        const _propios = Array.isArray(_cli?.envio_metodos) ? _cli.envio_metodos : [];
+        if (_propios.length) {
+          envioMetodosEff = _propios;                          // el cliente manda
+        } else if (_cli?.grupo_id) {
+          const _grupos = Array.isArray(portalCfg?.gruposCliente) ? portalCfg.gruposCliente : [];
+          const _g = _grupos.find(g => g && g.id === _cli.grupo_id);
+          if (_g && Array.isArray(_g.envioMetodos) && _g.envioMetodos.length) {
+            envioMetodosEff = _g.envioMetodos;                 // hereda del grupo
+          }
+        }
+      } catch { /* best-effort: [] = ve todos, nunca rompe el checkout */ }
+    }
+
     setHeaders(res, { 'Cache-Control': clienteId
       ? 'private, max-age=60'                          // personalized — don't cache in CDN
       : 'public, s-maxage=60, stale-while-revalidate=300' });
@@ -385,6 +412,7 @@ export default async function handler(req, res) {
       portalActivo,
       portalCfg,
       currencySymbol: currencySymbolFromCfg(portalCfg),
+      envioMetodos: envioMetodosEff,   // Fase A: métodos de envío efectivos (cliente > grupo)
       sessionExpiresAt,   // sesión deslizante: el cliente actualiza su copia local
     });
 

@@ -512,7 +512,7 @@ function ClientesTab(){
   const { confirm, ConfirmDialog } = useConfirm();
   const TIPOS=["Panadería","Heladería","Pastelería","HORECA","Catering","Supermercado","Otro"];
   const TCOLOR={"Panadería":"#f59e0b","Heladería":"#3b82f6","Pastelería":"#ec4899","HORECA":"#8b5cf6","Catering":"#06b6d4","Supermercado":"#10b981","Otro":"#6b7280"};
-  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',diasRecepcion:'',zonaEntrega:'',vendedorId:'',envioMetodos:[]};
+  const emptyForm={nombre:'',codigo:'',tipo:'Panadería',condPago:'credito_30',limiteCredito:'',emailFacturacion:'',telefonoCobranza:'',emailCobranza:'',rut:'',telefono:'',email:'',direccion:'',direccionFiscal:'',fiscalIgualEntrega:false,ciudad:'',contacto:'',notas:'',listaId:'',horarioDesde:'',horarioHasta:'',diasRecepcion:'',zonaEntrega:'',vendedorId:'',grupoId:'',envioMetodos:[]};
   const [form,setForm]=useState(emptyForm);
   const [editId,setEditId]=useState(null);
   
@@ -561,6 +561,7 @@ function ClientesTab(){
       notes:             client.notas             || '',
       notas_entrega:     client.notasEntrega      || '',
       vendedor_id:       client.vendedorId        || null,
+      grupo_id:          client.grupoId           || null,
       zona_entrega:      client.zonaEntrega       || '',
       // Métodos de envío habilitados para este cliente (ids de brandcfg.envio.metodos).
       // null/vacío = ve todos los métodos de la org (compat. con clientes viejos).
@@ -621,7 +622,7 @@ function ClientesTab(){
     setVista('lista');
   };
 
-  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',diasRecepcion:x.diasRecepcion||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||'',envioMetodos:Array.isArray(x.envioMetodos)?x.envioMetodos:[]});setEditId(x.id);setVista('form');};
+  const edit=(x)=>{setForm({nombre:x.nombre,codigo:x.codigo||'',tipo:x.tipo,rut:x.rut||'',telefono:x.telefono||'',email:x.email||'',direccion:x.direccion||'',direccionFiscal:x.direccionFiscal||'',fiscalIgualEntrega:(!x.direccionFiscal||x.direccionFiscal===x.direccion),ciudad:x.ciudad||'',contacto:x.contacto||'',notas:x.notas||'',condPago:x.condPago||'credito_30',limiteCredito:x.limiteCredito||'',emailFacturacion:x.emailFacturacion||'',telefonoCobranza:x.telefonoCobranza||'',emailCobranza:x.emailCobranza||'',listaId:x.listaId||'',horarioDesde:x.horarioDesde||'',horarioHasta:x.horarioHasta||'',diasRecepcion:x.diasRecepcion||'',zonaEntrega:x.zonaEntrega||'',vendedorId:x.vendedorId||'',grupoId:x.grupoId||'',envioMetodos:Array.isArray(x.envioMetodos)?x.envioMetodos:[]});setEditId(x.id);setVista('form');};
   const filtered=items.filter(x=>
     (!q||x.nombre.toLowerCase().includes(q.toLowerCase())||(x.ciudad||'').toLowerCase().includes(q.toLowerCase())||(x.contacto||'').toLowerCase().includes(q.toLowerCase()))
     &&(filtro==='Todos'||x.tipo===filtro)
@@ -699,6 +700,17 @@ function ClientesTab(){
             {usersList.filter(u=>(u.role==='vendedor'||u.role==='admin')&&(u.email||u.username||u.name)).map(u=><option key={u.email||u.username||u.name} value={u.email||u.username||u.name}>{u.name||u.username} ({u.role})</option>)}
           </select>
         </div>}
+        {/* Grupo de cliente (Fase A): define defaults; la ficha siempre manda sobre el grupo */}
+        {Array.isArray(brandCfg?.gruposCliente) && brandCfg.gruposCliente.filter(g=>g&&g.id&&String(g.nombre||'').trim()).length > 0 && (
+          <div style={{gridColumn:'1/-1'}}>
+            <label style={{fontSize:11,fontWeight:600,color:'#888',display:'block',marginBottom:4}}>GRUPO DE CLIENTE</label>
+            <div style={{fontSize:12,color:'#6a6a68',marginBottom:8}}>Define los valores por defecto de este cliente (envíos, condición de pago). Lo que cargues abajo en la ficha siempre manda sobre el grupo.</div>
+            <select value={form.grupoId||''} onChange={e=>setForm(p=>({...p,grupoId:e.target.value}))} style={{...inp,background:'#fff',maxWidth:360}}>
+              <option value="">Sin grupo</option>
+              {brandCfg.gruposCliente.filter(g=>g&&g.id&&String(g.nombre||'').trim()).map(g=><option key={g.id} value={g.id}>{g.nombre}</option>)}
+            </select>
+          </div>
+        )}
         {/* Métodos de envío habilitados para este cliente (de brandcfg.envio.metodos) */}
         {Array.isArray(brandCfg?.envio?.metodos) && brandCfg.envio.metodos.length > 0 && (
           <div style={{gridColumn:'1/-1'}}>

@@ -889,6 +889,99 @@ function EnvioPanel({ brandCfg, setBrandCfg }) {
   );
 }
 
+// ── Grupos de cliente (Fase A) ────────────────────────────────────────────
+// Un grupo empaqueta los valores por defecto de un TIPO de cliente (ej:
+// Mayorista / Minorista). Hoy define: qué métodos de envío puede usar y una
+// condición de pago por defecto. Se asigna a cada cliente en su ficha
+// (ClientesTab → campo "Grupo"). Resolución cliente > grupo > org: el valor
+// propio del cliente SIEMPRE gana; el grupo sólo rellena lo que el cliente dejó
+// vacío → los clientes existentes no cambian. Se guarda en brandcfg.gruposCliente
+// con el mismo patrón de merge que el resto. Genérico: nombres editables, perillas
+// opcionales; un distribuidor que vende a un solo tipo simplemente no crea grupos.
+function GruposPanel({ brandCfg, setBrandCfg }) {
+  const G = '#059669';
+  const grupos = Array.isArray(brandCfg?.gruposCliente) ? brandCfg.gruposCliente : [];
+  const metodosEnvio = Array.isArray(brandCfg?.envio?.metodos)
+    ? brandCfg.envio.metodos.filter(m => m && m.id && String(m.nombre || '').trim()) : [];
+
+  const persist = (next) => {
+    const updated = { ...(brandCfg || {}), gruposCliente: next };
+    setBrandCfg(updated);
+    db.upsert('app_config', { key: 'brandcfg', value: updated, org_id: getOrgId() }, 'key,org_id');
+  };
+  const setGrupo = (i, patch) => persist(grupos.map((g, j) => (j === i ? { ...g, ...patch } : g)));
+  const addGrupo = () => persist([...grupos, { id: 'g' + Math.random().toString(36).slice(2, 9), nombre: '', condPago: '', envioMetodos: [] }]);
+  const delGrupo = (i) => persist(grupos.filter((_, j) => j !== i));
+  const toggleMetodo = (i, mid) => {
+    const cur = Array.isArray(grupos[i]?.envioMetodos) ? grupos[i].envioMetodos : [];
+    setGrupo(i, { envioMetodos: cur.includes(mid) ? cur.filter(x => x !== mid) : [...cur, mid] });
+  };
+
+  const card = { background: '#fff', border: '1px solid #e8e4de', borderRadius: 10, padding: '16px 20px' };
+  const inputStyle = { padding: '8px 11px', borderRadius: 6, border: '1px solid #e8e4de', fontSize: 14, background: '#fafaf7', color: '#1a1a18' };
+
+  return (
+    <div style={{ ...card, marginTop: 16 }}>
+      <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, color: '#1a1a18' }}>Grupos de cliente</div>
+      <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, color: '#6a6a68', marginTop: 2, marginBottom: 16, maxWidth: 560 }}>
+        Agrupá a tus clientes por tipo (ej: Mayorista, Minorista) y definí sus valores por defecto una sola vez. Después, en la ficha de cada cliente, elegís a qué grupo pertenece. Lo que el cliente tenga cargado en su propia ficha siempre manda sobre el grupo. Si vendés a un solo tipo de cliente, no hace falta crear grupos.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {grupos.length === 0 && (
+          <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#9a9a98', padding: '8px 0' }}>
+            Todavía no creaste grupos.
+          </div>
+        )}
+        {grupos.map((g, i) => (
+          <div key={g.id || i} style={{ border: '1px solid #e8e4de', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input value={g.nombre || ''} onChange={e => setGrupo(i, { nombre: e.target.value })}
+                placeholder="Nombre del grupo (ej: Mayorista)" style={{ ...inputStyle, flex: 1, minWidth: 180 }} />
+              <button type="button" onClick={() => delGrupo(i)}
+                style={{ border: '1px solid #e8e4de', background: '#fff', color: '#b91c1c', borderRadius: 6, cursor: 'pointer', padding: '7px 11px', fontSize: 13, fontFamily: 'Inter,sans-serif' }}>Quitar</button>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48', flexWrap: 'wrap' }}>
+              <span>Condición de pago por defecto:</span>
+              <select value={g.condPago || ''} onChange={e => setGrupo(i, { condPago: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="">Sin default (usa la del cliente)</option>
+                <option value="contado">Contado</option>
+                <option value="credito_15">Crédito 15 días</option>
+                <option value="credito_30">Crédito 30 días</option>
+                <option value="credito_60">Crédito 60 días</option>
+                <option value="credito_90">Crédito 90 días</option>
+              </select>
+            </label>
+            {metodosEnvio.length > 0 && (
+              <div>
+                <div style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: '#4a4a48', marginBottom: 6 }}>
+                  Métodos de envío de este grupo <span style={{ color: '#9a9a98' }}>(ninguno marcado = ve todos)</span>:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {metodosEnvio.map(m => {
+                    const on = Array.isArray(g.envioMetodos) && g.envioMetodos.includes(m.id);
+                    return (
+                      <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', border: on ? `1px solid ${G}` : '1px solid #e5e7eb', background: on ? '#f0fdf4' : '#fff', fontSize: 13, color: '#374151', userSelect: 'none' }}>
+                        <input type="checkbox" checked={on} onChange={() => toggleMetodo(i, m.id)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: G }} />
+                        {m.nombre}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={addGrupo}
+        style={{ marginTop: 12, border: `1px dashed ${G}`, background: '#f6fdf9', color: G, borderRadius: 8, cursor: 'pointer', padding: '9px 14px', fontSize: 13, fontWeight: 600, fontFamily: 'Inter,sans-serif' }}>
+        + Agregar grupo
+      </button>
+    </div>
+  );
+}
+
 // ── Tarjeta de integración con SimpliRoute (self-service) ─────────────────
 // El distribuidor pega su API token de SimpliRoute. Pazque lo valida, lo guarda
 // server-side (api/simpliroute) y registra el webhook de entregas. Una vez
@@ -2045,6 +2138,9 @@ export default function ConfigInline({
 
                 {/* Métodos de envío (reparto / retiro / agencia con flete) */}
                 <EnvioPanel brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
+
+                {/* Grupos de cliente (Fase A): defaults por tipo de cliente */}
+                <GruposPanel brandCfg={brandCfg} setBrandCfg={setBrandCfg} />
 
                 {/* Toggle: Recordatorio de carrito abandonado */}
                 <div style={{background:'#fff',border:'1px solid #e8e4de',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
